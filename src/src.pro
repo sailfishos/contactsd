@@ -23,7 +23,6 @@ TESTS_DIR = $$PWD/../tests
 HEADERS += contactsdaemon.h \
     contactsdpluginloader.h \
     contactsdplugininterface.h \
-    contactsdplugin.h \
     logger.h
 SOURCES += main.cpp \
     contactsdaemon.cpp \
@@ -34,5 +33,8 @@ unix {
     DEFINES += CONTACTSD_PLUGIN_PATH=\\\"/usr/lib/contactsd-1.0/plugins\\\"
 }
 
+headers.files = contactsdplugininterface.h
+headers.path = /usr/include/contactsd-1.0
+
 target.path = /usr/bin
-INSTALLS += target
+INSTALLS += target headers
