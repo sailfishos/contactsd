@@ -45,21 +45,19 @@ bool ContactPhotoCopy::copyToAvatarDir(const QString& fullFilePath, const QSize&
     QFileInfo fileInfo = QFileInfo(fullFilePath);
     int i = 1;
     if ( QFile::exists(fullFilePath) ) {
-        if ( QFile::exists( avatarDir() + '/' + fileInfo.fileName() ) ) {
-            do {
-                newFileName = QString("%1(%2).%3").arg(fileInfo.baseName()).arg(QString::number(i,10)).arg(fileInfo.completeSuffix());
-                i++;
-            } while( QFile::exists(avatarDir() + '/' + newFileName) && i < 10000 );
-        }
-        else {
-            newFileName = fileInfo.fileName();
+        // FIXME: When 10000 entry is reached, that file will be overwritten
+        // subsequently
+        newFileName = fileInfo.fileName();
+        while (QFile::exists(dir.absoluteFilePath(newFileName)) && i < 10000 ) {
+            newFileName = QString("%1(%2).%3").arg(fileInfo.baseName()).arg(QString::number(i,10)).arg(fileInfo.completeSuffix());
+            i++;
         }
     }
     else {
         return false;
     }
     if ( photoEditType == ContactPhotoCopy::PhotoEditLeaveUntouched) {
-        return QFile::copy(fullFilePath, avatarDir() + '/' + newFileName);
+        return QFile::copy(fullFilePath, dir.absoluteFilePath(newFileName));
     }
     else {
         if (photoEditType == ContactPhotoCopy::PhotoEditCropAndScale &&
@@ -87,7 +85,7 @@ bool ContactPhotoCopy::copyToAvatarDir(const QString& fullFilePath, const QSize&
         else {
             croppedImg = scaledImg;
         }
-        return croppedImg.save(avatarDir() + '/' + newFileName, 0, 85);
+        return croppedImg.save(dir.absoluteFilePath(newFileName), 0, 85);
     }
 }
 
