@@ -1,0 +1,241 @@
+/* * This file is part of contacts *
+ * Copyright © 2009 Nokia Corporation and/or its subsidiary(-ies). All rights reserved.
+ * Contact: Aleksandar Stojiljkovic <aleksandar.stojiljkovic@nokia.com>
+ * This software, including documentation, is protected by copyright controlled by
+ * Nokia Corporation. All rights are reserved. Copying, including reproducing, storing,
+ * adapting or translating, any or all of this material requires the prior written consent
+ * of Nokia Corporation. This material also contains confidential information which may
+ * not be disclosed to others without the prior written consent of Nokia. */
+
+// Qt Includes
+#include <QDebug>
+#include <QImage>
+#include <QCryptographicHash>
+#include <QDir>
+
+// Qt Tracker Includes
+#include <QtTracker/Tracker>
+#include <QtTracker/QLive>
+#include <QtTracker/ontologies/nco.h>
+
+// Telepathy Includes
+#include "telepathycontroller.h"
+#include "telepathyaccount.h"
+
+// People & Contacts includes
+#include "telepathyplugin.h"
+
+using namespace SopranoLive;
+
+TelepathyPlugin::TelepathyPlugin():
+        m_tpController( new TelepathyController( this, false ) ),
+        mStore(TrackerSink::instance())
+{}
+
+TelepathyPlugin::~TelepathyPlugin()
+{
+    delete m_tpController;
+    qDeleteAll(mAccounts);
+    mAccounts.clear();
+}
+
+
+void TelepathyPlugin::init()
+{
+    qDebug() << Q_FUNC_INFO << "Initializing TelepathyPlugin.";
+    mAm = Tp::AccountManager::create();
+    connect(mAm->becomeReady(), SIGNAL(finished(Tp::PendingOperation*)),
+            this,SLOT(onAccountManagerReady(Tp::PendingOperation*)));
+    connect(mAm.data(),
+            SIGNAL(accountCreated(const QString &)),
+            SLOT(onAccountCreated(const QString &)));
+    accountServiceMapper.initialize();
+}
+
+QMap<QString, QVariant> TelepathyPlugin::metaData()
+{
+    QMap<QString, QVariant> data;
+    data["name"]= QVariant(QString("telepathy"));
+    data["version"] = QVariant(QString("0.1"));
+    data["comment"] = QVariant(QString("Telepathy Contact Collector"));
+    //TODO: translations ?
+    return data;
+}
+
+void TelepathyPlugin::onAccountCreated(const QString& path)
+{
+    Tp::AccountPtr account = Tp::Account::create(mAm->busName(), path);
+    PendingRosters* request = m_tpController->requestRosters(account);
+    mRosters.append(request);
+    connect(request, SIGNAL(finished(Tp::PendingOperation *)),
+            this,    SLOT(onFinished(Tp::PendingOperation *)));
+    connect(account->becomeReady(Tp::Account::FeatureCore | Tp::Account::FeatureAvatar), SIGNAL(finished(Tp::PendingOperation*)),
+            this, SLOT(onAccountReady(Tp::PendingOperation*)));
+
+}
+
+void TelepathyPlugin::onAccountManagerReady(Tp::PendingOperation* op)
+{
+    qDebug() << Q_FUNC_INFO << "Account manager ready.";
+
+    if (op->isError() ) {
+        qDebug() << Q_FUNC_INFO << ": Error: " << op->errorMessage() << " - " << op->errorName();
+    }
+
+    foreach (Tp::AccountPtr account, mAm->validAccounts() ) {
+        PendingRosters* request = m_tpController->requestRosters(account);
+        mRosters.append(request);
+        connect(request, SIGNAL(finished(Tp::PendingOperation *)),
+                this,    SLOT(onFinished(Tp::PendingOperation *)));
+        
+        connect(account->becomeReady(Tp::Account::FeatureAvatar), SIGNAL(finished(Tp::PendingOperation*)),
+                this, SLOT(onAccountReady(Tp::PendingOperation*)));
+    }
+}
+
+void TelepathyPlugin::onAccountReady(Tp::PendingOperation* op)
+{
+    if (op->isError()) {
+        return;
+    }
+
+    Tp::PendingReady * pa = qobject_cast<Tp::PendingReady *>(op);
+    Tp::AccountPtr account = Tp::AccountPtr(qobject_cast<Tp::Account *>(pa->object()));
+
+    if (!account) {
+        return;
+    }
+
+    qDebug() << Q_FUNC_INFO << ": Account ready: " << account->objectPath();
+
+    TelepathyAccount * tpaccount = new TelepathyAccount(account);
+    connect(tpaccount, SIGNAL(accountChanged(TelepathyAccount*,TelepathyAccount::Changes)),
+            this, SLOT(onAccountChanged(TelepathyAccount*,TelepathyAccount::Changes)));
+    mAccounts.append(tpaccount);
+    saveSelfContact(account);
+}
+
+void TelepathyPlugin::onFinished(Tp::PendingOperation* op)
+{
+    qDebug() << Q_FUNC_INFO << ": Request roster operation finished.";
+
+    if (op->isError() ) {
+        emit error("libtelepathycollectorplugin", op->errorName(), op->errorMessage());
+    }
+    PendingRosters * roster = qobject_cast<PendingRosters*>(op);
+    foreach (QSharedPointer<TpContact> c, roster->telepathyRosterList()) {
+        mStore->sinkToStorage(c);
+    }
+}
+
+void TelepathyPlugin::onAccountChanged(TelepathyAccount* account, TelepathyAccount::Changes changes)
+{
+    qDebug() << Q_FUNC_INFO << ": account " << *account << "changed: " << changes;
+
+    saveIMAccount(account->account(), changes);
+}
+//TODO
+//remove this ?
+void TelepathyPlugin::saveSelfContact(Tp::AccountPtr account)
+{
+    qDebug() << Q_FUNC_INFO << ": Saving self contact to Tracker. Account is: " << account->objectPath();
+    saveIMAccount(account, TelepathyAccount::All);
+}
+
+void TelepathyPlugin::saveIMAccount(Tp::AccountPtr account, TelepathyAccount::Changes changes)
+{
+    qDebug() << Q_FUNC_INFO << ": saving own IM account: " << account->objectPath() << "with changed: " << changes;
+
+
+    QUrl accountUrl("telepathy:" + account->objectPath());
+    RDFVariable theAccount = RDFVariable::fromType<nco::IMAccount>();
+    Live<nco::IMAccount> liveAccount = ::tracker()->liveNode(accountUrl);
+
+    RDFUpdate up;
+    up.addInsertion(theAccount, nco::IMAccount::iri(), liveAccount.variable());
+    ::tracker()->executeQuery(up);
+
+    accountModelReady(account);
+}
+void TelepathyPlugin::accountModelReady(Tp::AccountPtr account)
+{
+
+     Live<nco::IMAccount> liveAccount =
+     ::tracker()->liveNode(QUrl("telepathy:"+account->objectPath()));
+     QString displayName = accountServiceMapper.serviceForAccountPath(account->objectPath());
+     if (displayName.isEmpty()) {
+         liveAccount->setImDisplayName(account->displayName());
+     } else {
+         liveAccount->setImDisplayName(accountServiceMapper.serviceForAccountPath(account->objectPath()));
+     }
+
+     liveAccount->setImAccountType(account->protocol());
+
+     Live<nco::IMAddress> addressInfo =
+         ::tracker()->liveNode(QUrl("telepathy:"+account->objectPath() + "!"
+                      + account->parameters()["account"].toString()));
+     addressInfo->addImID(account->parameters()["account"].toString());
+     addressInfo->setImNickname(account->nickname());
+     liveAccount->addImAccountAddress(addressInfo);
+     Tp::SimplePresence presence = account->currentPresence();
+     qDebug() << Q_FUNC_INFO << presence.status ;
+     addressInfo->setImStatusMessage(presence.statusMessage);
+     Live<nco::PresenceStatus> cstatus =
+     ::tracker()->liveNode(TrackerSink::toTrackerStatus(presence.status));
+     addressInfo->setImPresence(cstatus);
+     //link the IMAddress to me-contact
+     Live<nco::PersonContact> me = ::tracker()->liveResource<nco::default_contact_me>();
+     //save avatar
+     QString filename;
+     bool ok = saveAvatar(account->avatar().avatarData, account->avatar().MIMEType, QDir::homePath()
+             + "/.contacts/avatars/", filename);
+
+    if (ok) {
+        Live<nie::DataObject> fileUrl = ::tracker()->liveNode(QUrl(filename));
+        addressInfo->addImAvatar(fileUrl);
+    }
+    
+     me->addHasIMAddress(addressInfo);
+
+     if (presence.status == "offline") {
+         mStore->takeAllOffline(account->objectPath());
+     }
+
+}
+
+bool TelepathyPlugin::saveAvatar(const QByteArray& data, const QString& mime, const QString& path,
+                                 QString& fileName )
+{
+    qDebug() << Q_FUNC_INFO << ": Saving avatar image: " << fileName;
+
+    // if image data is empty, lets leave
+    if (data.size() == 0) {
+        qWarning() << Q_FUNC_INFO << ": Empty avatar image.";
+        return false;
+    }
+
+    const QString ext = mime.split('/').value(1);
+    QImage img;
+    img.loadFromData(data);
+    QString file = path + QString(QCryptographicHash::hash(data, QCryptographicHash::Sha1).toHex());
+
+    // check if mime was
+    if (ext.isEmpty()) {
+        fileName = file + ".jpeg";
+    }
+    else {
+        fileName = file + '.' + ext;
+    }
+
+    if (img.save(fileName) == false) {
+        qWarning() << Q_FUNC_INFO << ": Saving avatar image failed: " << fileName;
+        return false;
+    }
+
+    qDebug() << Q_FUNC_INFO << ": Avatar image saved successfully: " << fileName;
+
+    return true;
+}
+
+
+Q_EXPORT_PLUGIN2(TpPlugin, TelepathyPlugin)

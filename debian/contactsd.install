@@ -1,0 +1,5 @@
+usr/bin/contactsd
+usr/lib/libcontactstelepathysupport.so.*
+usr/lib/contactsd-1.0/plugins/libhelloworld.so
+usr/lib/contactsd-1.0/plugins/libringplugin.so
+usr/lib/contactsd-1.0/plugins/libtelepathycollectorplugin.so
