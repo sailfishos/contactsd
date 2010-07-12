@@ -27,13 +27,15 @@
 
 //tracker headers
 
+typedef QHash<uint, QSharedPointer<TpContact> > ContactMapHash;
+
 class TrackerSink::Private
 {
 public:
     Private():transaction_(0) {}
     ~Private() {
     }
-    QHash<uint, QSharedPointer<TpContact> > contactMap;
+    ContactMapHash contactMap;
     RDFTransactionPtr transaction_;
     QHash<uint, uint> presenceHash; // maps tpCId hash to presence message hash
     LiveNodes livenode;
@@ -82,13 +84,14 @@ void TrackerSink::onModelUpdate()
         bool ok;
         const uint localId = imLocalId.toUInt(&ok, 0);
 
-        const QSharedPointer<const TpContact> contact = d->contactMap[localId];
-        qDebug() << imAddress << imLocalId << ":" << contact;
-
-        if (0 == contact) {
+        ContactMapHash::const_iterator it = d->contactMap.find(localId);
+        if (it == d->contactMap.end()) {
             qWarning() << "cannot find TpContact for" << imAddress << localId;
             continue;
         }
+
+        const QSharedPointer<const TpContact> contact = it.value();
+        qDebug() << imAddress << imLocalId << ":" << contact;
 
         const QSharedPointer<const Tp::Contact> tcontact = contact->contact();
         saveToTracker(imLocalId, tcontact->id(),
@@ -102,12 +105,16 @@ void TrackerSink::onModelUpdate()
 
     if (d->livenode->rowCount() <= 0) {
         foreach (const QSharedPointer<TpContact>& contact, d->contactMap.values()) {
-            const QSharedPointer<const Tp::Contact> tcontact = contact->contact();
-            const QString tpCId = contact->accountPath() + "!" + tcontact->id();
-            const QString id(QString::number(qHash(tpCId)));
+            if (contact.isNull()) {
+                continue;
+            }
 
+            const QSharedPointer<const Tp::Contact> tcontact = contact->contact();
             if(!tcontact)
                 continue;
+
+            const QString tpCId = contact->accountPath() + "!" + tcontact->id();
+            const QString id(QString::number(qHash(tpCId)));
 
             saveToTracker(id, tcontact->id(),
                           tcontact->alias(),
