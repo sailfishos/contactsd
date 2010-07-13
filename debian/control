@@ -28,5 +28,5 @@ Description: Debug symbols for Contacts daemon.
 Package: contactsd-dev
 Architecture: any
 Section: libdevel
-Depends: contactsd (= ${binary:Version})
+Recommends: contactsd (= ${binary:Version})
 Description: Debug symbols for Contacts daemon.
