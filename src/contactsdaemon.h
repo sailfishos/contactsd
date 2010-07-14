@@ -44,8 +44,7 @@ public:
     void loadAllPlugins(const QStringList &loadPlugins = QStringList());
     const QStringList validPlugins() const;
 
-
-signals:
+Q_SIGNALS:
     void pluginsLoaded();
 
 private:

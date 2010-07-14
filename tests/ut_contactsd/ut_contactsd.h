@@ -36,7 +36,7 @@ Q_OBJECT
 public:
     bool getPluginsLoaded() { return plugsLoaded; }
 
-private slots:
+private Q_SLOTS:
     void initTestCase();
 
     void testLoadAllPlugins();
@@ -44,7 +44,7 @@ private slots:
 
     void cleanupTestCase();
 
-public slots:
+public Q_SLOTS:
     void pluginsLoaded();
 private:
     ContactsDaemon* daemon;

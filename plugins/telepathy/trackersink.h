@@ -68,7 +68,7 @@ public:
 
     void getIMContacts(const QString&);
 
-signals:
+Q_SIGNALS:
     /*! \brief Signal which is emmited when a new avatar is added to the storage
       */
     void  avatarUpdated();

@@ -37,7 +37,7 @@ Q_OBJECT
 public:
     ut_trackersink();
 
-private slots:
+private Q_SLOTS
     void initTestCase();
     void cleanupTestCase();
     void testImContactForTpContactId();
@@ -47,7 +47,7 @@ private slots:
     void testOnSimplePresenceChanged();
     void sinkContainsImAccount();
 
-protected slots:
+protected Q_SLOTS:
     void contactsAdded(const QList<QContactLocalId>& contactIds);
     void contactsChanged(const QList<QContactLocalId>& contactIds);
 
@@ -64,7 +64,7 @@ class Slots: public QObject
     Q_OBJECT
 public:
     QList<QContact> contacts;
-public slots:
+public Q_SLOTS:
     void progress(QContactFetchRequest* self, bool appendOnly);
 };
 
