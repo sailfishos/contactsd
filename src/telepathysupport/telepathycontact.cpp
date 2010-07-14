@@ -277,7 +277,7 @@ QString TelepathyContact::accountPath() const
     return mAccountPath;
 }
 
-Tp::ContactPtr TelepathyContact::contact()
+Tp::ContactPtr TelepathyContact::contact() const
 {
     return mContact;
 }

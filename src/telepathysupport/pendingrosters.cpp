@@ -149,7 +149,7 @@ void PendingRosters::onConnectionReady(Tp::PendingOperation * op)
  \return Tp::Contacts
 */
 
-Tp::Contacts PendingRosters::rosterList()
+Tp::Contacts PendingRosters::rosterList() const
 {
     return mContacts;
 }
@@ -162,7 +162,7 @@ Tp::Contacts PendingRosters::rosterList()
 \return a list of rosters
 \sa PendingRosters::rosterList
 */
-QList<QSharedPointer<TpContact> > PendingRosters::telepathyRosterList()
+QList<QSharedPointer<TpContact> > PendingRosters::telepathyRosterList() const
 {
     qDebug() << Q_FUNC_INFO << "Found number of rosters for account " << mAccount->objectPath() << ": " << mTpContacts.count();
     return mTpContacts;

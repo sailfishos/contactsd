@@ -79,7 +79,7 @@ public:
     void setAccountPath(const QString&);
     QString accountPath() const;
 
-    Tp::ContactPtr contact();
+    Tp::ContactPtr contact() const;
 
     Tp::ContactCapabilities* contactCapabilities() const;
     uint storageId() const;

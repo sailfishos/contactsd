@@ -39,8 +39,8 @@ class PendingRosters : public Tp::PendingOperation
     Q_OBJECT
 public:
     explicit PendingRosters(QObject *parent = 0);
-    Tp::Contacts rosterList();
-    QList<QSharedPointer<TpContact> > telepathyRosterList();
+    Tp::Contacts rosterList() const;
+    QList<QSharedPointer<TpContact> > telepathyRosterList() const;
 Q_SIGNALS:
     void contact(QSharedPointer<TpContact>);
 private Q_SLOTS:
