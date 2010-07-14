@@ -42,7 +42,7 @@ public:
     virtual ~ContactsDaemon();
 
     void loadAllPlugins(const QStringList &loadPlugins = QStringList());
-    const QStringList validPlugins() const;
+    QStringList validPlugins() const;
 
 Q_SIGNALS:
     void pluginsLoaded();

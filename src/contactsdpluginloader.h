@@ -39,7 +39,7 @@ class ContactsdPluginLoader : public QObject
 public:
     ContactsdPluginLoader(const QStringList &plugins, const QStringList &banList);
     ~ContactsdPluginLoader();
-    const QStringList validPlugins() const;
+    QStringList validPlugins() const;
 
 private:
     typedef QMap<QString, QPluginLoader*> PluginStore;

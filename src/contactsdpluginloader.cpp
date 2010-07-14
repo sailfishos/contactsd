@@ -98,7 +98,7 @@ void ContactsdPluginLoader::onPluginError(const QString &name, const QString &er
     reloadPlugin (name);
 }
 
-const QStringList ContactsdPluginLoader::validPlugins() const
+QStringList ContactsdPluginLoader::validPlugins() const
 {
     return m_pluginStore.keys();
 }

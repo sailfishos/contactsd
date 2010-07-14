@@ -114,7 +114,7 @@ void ContactsDaemon::loadAllPlugins(const QStringList &loadPlugins)
     }
 }
 
-const QStringList ContactsDaemon::validPlugins() const
+QStringList ContactsDaemon::validPlugins() const
 {
     if (d->loader != 0) {
         return d->loader->validPlugins();
