@@ -303,7 +303,7 @@ void Logger::setLoggingLevel(const QString & levelString)
                  qPrintable(QString("Logger::setLoggingLevel: logging level set to %1").arg(levelString)));
 }
 
-void Logger::setLoggingPrefixes(const QStringList &whitelist, const QStringList blacklist)
+void Logger::setLoggingPrefixes(const QStringList & whitelist, const QStringList & blacklist)
 {
     if (whitelist.isEmpty() == false && blacklist.isEmpty() == false) {
         writeMessage(QtWarningMsg,

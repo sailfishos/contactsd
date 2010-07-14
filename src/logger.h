@@ -52,7 +52,7 @@ public:
     /**
      * Destructor, closes the log file and installs original message handler.
      */
-    ~Logger ();
+    ~Logger();
 
     /**
      * Sets console logging enabled / disabled. By default console logging could be disabled.
@@ -74,7 +74,7 @@ public:
      * @param whitelist show only messages that start with the prefix from whitelist.
      * @param blacklist shot only messages that do not start with prefix from blacklist.
      */
-    void setLoggingPrefixes(const QStringList &whitelist, const QStringList blacklist);
+    void setLoggingPrefixes(const QStringList & whitelist, const QStringList & blacklist);
 
 private:
     /**
@@ -95,7 +95,7 @@ private:
      * @param type the log level type.
      * @param msg the message to be logged.
      */
-    static void messageHandler (QtMsgType type, const char *msg);
+    static void messageHandler(QtMsgType type, const char * msg);
 
     /**
      * Performs log file rotation. If a the size of the log file exceeds a specific size (in @e
@@ -103,7 +103,7 @@ private:
      * additional @e .0 suffix and all old files have their suffix incremented by one. If we
      * have @e store_count old files then the last one is removed.
      */
-    void rotate ();
+    void rotate();
 
     /**
      * @brief Worker method that does the actual writing of log message.
@@ -111,7 +111,7 @@ private:
      * @param type the type of log message (debug, warning etc).
      * @param msg the actual message to be logged.
      */
-    void writeMessage(QtMsgType type, const char *msg);
+    void writeMessage(QtMsgType type, const char * msg);
 
     //! an instance pointer to the class
     static Logger * instance;
