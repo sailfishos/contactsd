@@ -17,10 +17,13 @@
 **
 ****************************************************************************/
 
+// contactsd
+#include <contactsdplugininterface.h>
+// Qt
 #include <QObject>
-#include <QSettings>
 
-#include "contactsdplugininterface.h"
+class QSettings;
+
 
 class HelloWorld : public QObject, public ContactsdPluginInterface
 {

@@ -17,23 +17,17 @@
 **
 ****************************************************************************/
 
-// Qt Includes
-#include <QDebug>
-#include <QImage>
-#include <QCryptographicHash>
-#include <QDir>
+#include "telepathyplugin.h"
 
-// Qt Tracker Includes
+// this plugin
+#include "trackersink.h"
+// Telepathy support
+#include <telepathycontroller.h>
+// Qt Tracker
 #include <QtTracker/Tracker>
 #include <QtTracker/QLive>
 #include <QtTracker/ontologies/nco.h>
 
-// Telepathy Includes
-#include "telepathycontroller.h"
-#include "telepathyaccount.h"
-
-// People & Contacts includes
-#include "telepathyplugin.h"
 
 using namespace SopranoLive;
 

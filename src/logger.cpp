@@ -17,14 +17,14 @@
 **
 ****************************************************************************/
 
-// Qt includes
+#include "logger.h"
+
+// Qt
 #include <QDir>
 #include <QFileInfo>
 #include <QTime>
 #include <QMutexLocker>
 
-// People & Contacts includes
-#include "logger.h"
 
 // static initialization
 Logger * Logger::instance = 0;

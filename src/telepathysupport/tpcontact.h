@@ -20,12 +20,12 @@
 #ifndef TP_CONTACT_H
 #define TP_CONTACT_H
 
-#include <QObject>
-
+// Telepathy
 #include <TelepathyQt4/ContactManager>
 #include <TelepathyQt4/Connection>
 #include <TelepathyQt4/ContactCapabilities>
-#include <QImage>
+// Qt
+#include <QObject>
 
 /** A class which wrapps a telepathy contact
   and also supports caching of avatars and

@@ -20,12 +20,13 @@
 #ifndef CONTACTSPLUGINLOADER_H_
 #define CONTACTSPLUGINLOADER_H_
 
+// Qt
 #include <QObject>
-#include <QString>
-#include <QStringList>
 #include <QMap>
 
 class QPluginLoader;
+class QString;
+class QStringList;
 
 /*!
   \class ContacsdPluginLoader

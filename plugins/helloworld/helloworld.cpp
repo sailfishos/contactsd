@@ -18,8 +18,11 @@
 ****************************************************************************/
 
 #include "helloworld.h"
+
+// Qt
 #include <QDebug>
-#include <QtCore>
+#include <QSettings>
+#include <QtPlugin>
 
 
 HelloWorld::HelloWorld()

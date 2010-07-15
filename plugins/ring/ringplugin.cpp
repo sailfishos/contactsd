@@ -19,7 +19,15 @@
 
 #include "ringplugin.h"
 
-#include "telepathycontroller.h"
+// contactsd
+// #include <telepathycontroller.h>
+// 
+#include <TelepathyQt4/PendingOperation>
+#include <TelepathyQt4/AccountManager>
+#include <TelepathyQt4/PendingReady>
+// Qt
+#include <QSettings>
+
 
 RingPlugin::RingPlugin()
     : mCache(0)

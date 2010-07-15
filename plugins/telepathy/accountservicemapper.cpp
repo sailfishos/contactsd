@@ -18,6 +18,8 @@
 ****************************************************************************/
 
 #include "accountservicemapper.h"
+
+// Qt
 #include <QXmlStreamReader>
 #include <QUrl>
 #include <QDebug>
@@ -29,7 +31,7 @@ public:
     {
     }
 
-    bool isEmpty()
+    bool isEmpty() const
     {
         return (manager.isEmpty() || protocol.isEmpty());
     }
@@ -71,7 +73,7 @@ void AccountServiceMapper::initialize()
     serviceMap.clear();
 }
 
-QList<ServiceMapData*> AccountServiceMapper::serviceMapData(const Accounts::Account *account)
+QList<ServiceMapData*> AccountServiceMapper::serviceMapData(const Accounts::Account *account) const
 {
     QList<ServiceMapData*> result;
     const Accounts::ServiceList services = account->services();
@@ -87,7 +89,7 @@ QList<ServiceMapData*> AccountServiceMapper::serviceMapData(const Accounts::Acco
     return result;
 }
 
-QString AccountServiceMapper::serviceForAccountPath(const QString &accountPath)
+QString AccountServiceMapper::serviceForAccountPath(const QString &accountPath) const
 {
     foreach (const QString &key, mAccountServiceMap.keys()) {
         QString accountPathCopy(accountPath);
@@ -123,7 +125,7 @@ void AccountServiceMapper::onAccountCreated(Accounts::AccountId id)
     serviceMap.clear();
 }
 
-bool AccountServiceMapper::parseServiceXml(QXmlStreamReader *xml, ServiceMapData *serviceMapData)
+bool AccountServiceMapper::parseServiceXml(QXmlStreamReader *xml, ServiceMapData *serviceMapData) const
 {
     if (!xml) {
         return false;

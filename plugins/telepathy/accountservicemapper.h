@@ -20,9 +20,11 @@
 #ifndef ACCOUNTSERVICEMAPPER_H
 #define ACCOUNTSERVICEMAPPER_H
 
+// Accounts
+#include <accounts-qt/manager.h>
+// Qt
 #include <QObject>
 #include <QMap>
-#include <accounts-qt/manager.h>
 
 class QXmlStreamReader;
 class ServiceMapData;
@@ -34,12 +36,12 @@ public:
     AccountServiceMapper(QObject *parent = 0);
     virtual ~AccountServiceMapper();
     void initialize();
-    QString serviceForAccountPath(const QString &accountPath);
+    QString serviceForAccountPath(const QString &accountPath) const;
 private Q_SLOTS:
     void onAccountCreated(Accounts::AccountId id);
 private:
-    QList<ServiceMapData*> serviceMapData(const Accounts::Account *account);
-    bool parseServiceXml(QXmlStreamReader *xml, ServiceMapData *serviceMapData);
+    QList<ServiceMapData*> serviceMapData(const Accounts::Account *account) const;
+    bool parseServiceXml(QXmlStreamReader *xml, ServiceMapData *serviceMapData) const;
     QMap<QString, QString> buildAccountServiceMap(const QMap<QString, QList<ServiceMapData*> > &serviceMap) const;
     const QString KeyUserName;
 private:

@@ -17,20 +17,19 @@
 **
 ****************************************************************************/
 
+// contactsd
+#include <contactsdplugininterface.h>
+// TelepathyQt4
+#include <TelepathyQt4/Types>
+// Qt
 #include <QObject>
 
-#include <TelepathyQt4/PendingOperation>
-#include <TelepathyQt4/Types>
-#include <TelepathyQt4/Account>
-#include <TelepathyQt4/AccountManager>
-#include <TelepathyQt4/PendingReady>
-#include <TelepathyQt4/PendingContacts>
-#include <TelepathyQt4/ContactManager>
-#include <QSettings>
+namespace Tp
+{
+    class PendingOperation;
+}
+class QSettings;
 
-#include "contactsdplugininterface.h"
-
-class TelepathyController;
 
 class RingPlugin : public QObject, public ContactsdPluginInterface
 {

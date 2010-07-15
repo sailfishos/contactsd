@@ -18,13 +18,13 @@
 ****************************************************************************/
 
 #include "contactsdpluginloader.h"
-#include "contactsdplugininterface.h"
 
+// contactsd
+#include "contactsdplugininterface.h"
+// Qt
 #include <QDebug>
 #include <QDir>
-#include <QMap>
 #include <QPluginLoader>
-#include <QTimer>
 #include <QVariant>
 
 const QString pluginPath = CONTACTSD_PLUGIN_PATH;

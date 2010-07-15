@@ -24,14 +24,13 @@
    yayayayay
 
    */
-#include <QObject>
-#include <QString>
-#include <QStringList>
-#include <QMap>
 
-#include "contactsdplugininterface.h"
+// Qt
+#include <QObject>
+#include <QStringList>
 
 class ContactsServiceAdaptor;
+
 
 class ContactsDaemon : public QObject
 {

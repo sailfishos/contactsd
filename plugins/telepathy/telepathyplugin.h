@@ -17,24 +17,26 @@
 **
 ****************************************************************************/
 
+// this plugin
+#include "accountservicemapper.h"
+// contactsd
+#include <contactsdplugininterface.h>
+// telepathy support
+#include <telepathyaccount.h>
+// TelepathyQt4
+#include <TelepathyQt4/Types>
+// Qt
 #include <QObject>
 
-#include <TelepathyQt4/PendingOperation>
-#include <TelepathyQt4/Types>
-#include <TelepathyQt4/Account>
-#include <TelepathyQt4/AccountManager>
-#include <TelepathyQt4/PendingReady>
-#include <TelepathyQt4/PendingContacts>
-#include <TelepathyQt4/ContactManager>
-
-#include <pendingrosters.h>
-#include <trackersink.h>
-#include <telepathyaccount.h>
-#include "accountservicemapper.h"
-
-#include "contactsdplugininterface.h"
-
+class TrackerSink;
+class PendingRosters;
 class TelepathyController;
+class TelepathyAccount;
+namespace Tp
+{
+    class PendingOperation;
+}
+
 
 class TelepathyPlugin : public QObject, public ContactsdPluginInterface
 {

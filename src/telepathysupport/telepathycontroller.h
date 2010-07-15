@@ -20,13 +20,15 @@
 #ifndef TELEPATHY_CONTROLLER_H
 #define TELEPATHY_CONTROLLER_H
 
-#include <QtCore/QObject>
-
+// this lib
+#include "telepathycontact.h"
+#include "pendingrosters.h"
+// TelepathyQt4
 #include <TelepathyQt4/PendingOperation>
 #include <TelepathyQt4/Account>
 #include <TelepathyQt4/ContactManager>
-#include "telepathycontact.h"
-#include "pendingrosters.h"
+// Qt
+#include <QObject>
 
 /**
  * Provides access to Telepathy Contacts

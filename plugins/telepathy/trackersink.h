@@ -20,11 +20,13 @@
 #ifndef TRACKERSINK_H
 #define TRACKERSINK_H
 
-#include <QtTracker/Tracker>
-#include <QtTracker/QLive>
-#include <QtTracker/ontologies/nco.h>
+// telepathy support
 #include <tpcontact.h>
 
+namespace SopranoLive {
+    class RDFService;
+    typedef QSharedPointer <RDFService > RDFServicePtr;
+}
 using namespace SopranoLive;
 
 /**

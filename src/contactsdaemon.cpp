@@ -18,15 +18,10 @@
 ****************************************************************************/
 
 #include "contactsdaemon.h"
+
+// contactd
 #include "contactsdpluginloader.h"
-
-#include <QDebug>
-
-#include <QMap>
-#include <QDir>
-#include <QProcess>
-#include <QFileInfo>
-#include <QVariant>
+// Qt
 #include <QSettings>
 
 /*!

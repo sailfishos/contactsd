@@ -18,14 +18,14 @@
 ****************************************************************************/
 
 #include "trackersink.h"
-#include <TelepathyQt4/Types>
-#include <TelepathyQt4/Constants>
-#include <TelepathyQt4/ContactManager>
-#include <TelepathyQt4/Connection>
 
+// contactsd
 #include <contactphotocopy.h>
+// QtTracker
+#include <QtTracker/Tracker>
+#include <QtTracker/QLive>
+#include <QtTracker/ontologies/nco.h>
 
-//tracker headers
 
 typedef QHash<uint, QSharedPointer<TpContact> > ContactMapHash;
 

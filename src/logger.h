@@ -20,6 +20,7 @@
 #ifndef LOGGER_H
 #define LOGGER_H
 
+// Qt
 #include <QObject>
 #include <QFile>
 #include <QString>
