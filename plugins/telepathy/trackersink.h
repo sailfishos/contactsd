@@ -62,7 +62,7 @@ public:
 
     void saveAvatarToken(const QString& id, const QString& token, const QString& mime);
 
-    void saveToTracker(const QString&, const QString&, const QString&, const QString&, const QString&, const QString&, Tp::ContactCapabilities*);
+    void saveToTracker(const QString&, const QString&, const QString&, const QUrl&, const QString&, const QString&, Tp::ContactCapabilities*);
 
     void takeAllOffline(const QString& path);
 
@@ -83,6 +83,7 @@ private Q_SLOTS:
 
 private:
     void connectOnSignals(TpContactPtr contact);
+    const QUrl& toTrackerStatus(const uint stat);
 
 
 private:

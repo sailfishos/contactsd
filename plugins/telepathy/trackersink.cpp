@@ -96,7 +96,7 @@ void TrackerSink::onModelUpdate()
         const QSharedPointer<const Tp::Contact> tcontact = contact->contact();
         saveToTracker(imLocalId, tcontact->id(),
                       tcontact->alias(),
-                      tcontact->presenceStatus(),
+                      toTrackerStatus(tcontact->presenceType()),
                       tcontact->presenceMessage(),
                       contact->accountPath(),
                       tcontact->capabilities());
@@ -118,7 +118,7 @@ void TrackerSink::onModelUpdate()
 
             saveToTracker(id, tcontact->id(),
                           tcontact->alias(),
-                          tcontact->presenceStatus(),
+                          toTrackerStatus(tcontact->presenceType()),
                           tcontact->presenceMessage(),
                           contact->accountPath(),
                           tcontact->capabilities());
@@ -184,7 +184,8 @@ static QUrl buildContactIri(unsigned int uniqueId)
   return buildContactIri(QString::number(uniqueId));
 }
 
-void TrackerSink::saveToTracker(const QString& uri, const QString& imId, const QString& nick, const QString& status, const QString& msg, const QString& accountpath, Tp::ContactCapabilities * contactcaps)
+void TrackerSink::saveToTracker(const QString& uri, const QString& imId, const QString& nick, const
+        QUrl& status, const QString& msg, const QString& accountpath, Tp::ContactCapabilities * contactcaps)
 {
     const RDFVariable contact(buildContactIri(uri));
 
@@ -204,7 +205,7 @@ void TrackerSink::saveToTracker(const QString& uri, const QString& imId, const Q
                                RDFStatement(imAddress, rdf::type::iri(), nco::IMAddress::iri()) <<
                                RDFStatement(imAddress, nco::imNickname::iri(), LiteralValue(nick)) <<
                                RDFStatement(imAddress, nco::imStatusMessage::iri(), LiteralValue((msg))) <<
-                               RDFStatement(imAddress, nco::imPresence::iri(), toTrackerStatus(status)) <<
+                               RDFStatement(imAddress, nco::imPresence::iri(), status) <<
                                RDFStatement(imAddress, nco::imID::iri(), LiteralValue(imId)) );
 
     addressUpdate.addInsertion(RDFStatementList() <<
@@ -257,7 +258,7 @@ void TrackerSink::sinkToStorage(const QSharedPointer<TpContact>& obj)
     qDebug() << Q_FUNC_INFO <<
         " \n{Contact Id :" << tcontact->id() <<
         " }\n{Alias : " <<  tcontact->alias() <<
-        " }\n{Status : " << tcontact->presenceStatus() <<
+        " }\n{Status : " << tcontact->presenceType() <<
         " }\n{Message : " << tcontact->presenceMessage() <<
         " }\n{AccountPath : " << obj->accountPath();
 
@@ -265,7 +266,7 @@ void TrackerSink::sinkToStorage(const QSharedPointer<TpContact>& obj)
 
     saveToTracker(id, tcontact->id(),
                       tcontact->alias(),
-                      tcontact->presenceStatus(),
+                      toTrackerStatus(tcontact->presenceType()),
                       tcontact->presenceMessage(),
                       obj->accountPath(),
                       tcontact->capabilities());
@@ -332,9 +333,9 @@ void TrackerSink::onSimplePresenceChanged(TpContact* obj, uint uniqueId)
     const QDateTime datetime = QDateTime::currentDateTime();
 
     RDFStatementList insertions;
-    insertions << RDFStatement(imAddress, nco::imStatusMessage::iri(), LiteralValue(tcontact->presenceMessage()))
-        << RDFStatement(imAddress, nie::contentLastModified::iri(), LiteralValue(datetime));
-    insertions << RDFStatement(imAddress, nco::imPresence::iri(), toTrackerStatus(tcontact->presenceStatus()));
+    insertions << RDFStatement(imAddress, nco::imStatusMessage::iri(),
+            LiteralValue(tcontact->presenceMessage()));
+    insertions << RDFStatement(imAddress, nco::imPresence::iri(), toTrackerStatus(tcontact->presenceType()));
     addressUpdate.addInsertion(insertions);
     addressUpdate.addInsertion(contact, nie::contentLastModified::iri(), RDFVariable(datetime));
 
@@ -499,6 +500,25 @@ void TrackerSink::takeAllOffline(const QString& path)
 
     service()->executeQuery(addressUpdate);
     this->commitTrackerTransaction();
+}
+
+const QUrl & TrackerSink::toTrackerStatus(const uint stat)
+{
+   switch (stat) {
+       case Tp::ConnectionPresenceTypeUnset: return nco::presence_status_unknown::iri();
+       case Tp::ConnectionPresenceTypeOffline: return nco::presence_status_offline::iri();
+       case Tp::ConnectionPresenceTypeAvailable: return nco::presence_status_available::iri();
+       case Tp::ConnectionPresenceTypeAway: return nco::presence_status_away::iri();
+       case Tp::ConnectionPresenceTypeExtendedAway: return
+                                                    nco::presence_status_extended_away::iri();
+       case Tp::ConnectionPresenceTypeHidden: return nco::presence_status_hidden::iri();
+       case Tp::ConnectionPresenceTypeBusy: return nco::presence_status_busy::iri();
+       case Tp::ConnectionPresenceTypeUnknown: return nco::presence_status_unknown::iri();
+       case Tp::ConnectionPresenceTypeError: return nco::presence_status_error::iri();
+       default: qWarning() << Q_FUNC_INFO << "Presence Status Unknown";
+   }
+
+   return nco::presence_status_error::iri();
 }
 
 const QUrl & TrackerSink::toTrackerStatus(const QString& status)
