@@ -7,7 +7,7 @@
 # This special exception was added by Craig Small in version 0.37 of dh-make.
 
 # Uncomment this to turn on verbose mode.
-#export DH_VERBOSE=1
+export DH_VERBOSE=1
 
 
 
@@ -30,8 +30,11 @@ QMAKE_OPTIONS += CONFIG+=nocoverage
 QMAKE_OPTIONS += QMAKE_CXXFLAGS_RELEASE+=-g
 QMAKE_OPTIONS += QMAKE_STRIP=echo
 
-Makefile:
-	qmake -r $(QMAKE_OPTIONS) contactsd.pro
+builddir:
+	mkdir -p builddir
+
+builddir/Makefile: builddir
+	cd builddir && qmake -r $(QMAKE_OPTIONS) ../contactsd.pro
 
 configure: configure-stamp
 configure-stamp:
@@ -41,34 +44,33 @@ configure-stamp:
 	touch configure-stamp
 
 build: build-stamp
-build-stamp: configure-stamp Makefile
+build-stamp: configure-stamp builddir/Makefile
 	dh_testdir
 
 	# Add here commands to compile the package.
-	$(MAKE)
+	cd builddir && $(MAKE)
 
 	touch $@
 
-clean: Makefile
+clean:
 	dh_testdir
 	dh_testroot
 	rm -f build-stamp configure-stamp
-
 	# Add here commands to clean up after the build process.
-	$(MAKE) clean
-	rm -f Makefile  # Remove any old Makefile that is existing.
-
+	cd builddir && $(MAKE) clean || true
+	cd builddir && $(MAKE) distclean || true
+	rm -rf builddir
 	dh_clean
 
 install: build
 	dh_testdir
 	dh_testroot
-	dh_prep
+	dh_clean -k
 	dh_installdirs
 
 	# Add here commands to install the package into debian/tmp
 	# $(MAKE) DESTDIR=$(CURDIR)/debian/tmp install
-	INSTALL_ROOT=$(CURDIR)/debian/tmp $(MAKE) install
+	cd builddir && INSTALL_ROOT=$(CURDIR)/debian/tmp $(MAKE) install
 
 
 # Build architecture-independent files here.
