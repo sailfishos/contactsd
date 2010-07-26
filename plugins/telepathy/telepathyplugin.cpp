@@ -137,6 +137,13 @@ void TelepathyPlugin::onAccountChanged(TelepathyAccount* account, TelepathyAccou
     qDebug() << Q_FUNC_INFO << ": account " << *account << "changed: " << changes;
 
     saveIMAccount(account->account(), changes);
+
+    const Tp::SimplePresence presence (account->account()->currentPresence());
+
+    if (changes == TelepathyAccount::Presence && presence.status != "offline") {
+        qDebug() << Q_FUNC_INFO << "Presence Change";
+        mStore->takeContactsOnline(account->account()->objectPath());
+    }
 }
 //TODO
 //remove this ?

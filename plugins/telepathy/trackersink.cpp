@@ -332,6 +332,8 @@ void TrackerSink::onSimplePresenceChanged(TpContact* obj, uint uniqueId)
     const QSharedPointer<const Tp::Contact> tcontact = obj->contact();
     const QDateTime datetime = QDateTime::currentDateTime();
 
+    qDebug() << Q_FUNC_INFO << toTrackerStatus(tcontact->presenceType());
+
     RDFStatementList insertions;
     insertions << RDFStatement(imAddress, nco::imStatusMessage::iri(),
             LiteralValue(tcontact->presenceMessage()));
@@ -466,6 +468,35 @@ void TrackerSink::initiateTrackerTransaction()
 }
 
 
+void TrackerSink::takeContactsOnline(const QString& path)
+{
+    initiateTrackerTransaction();
+    RDFUpdate addressUpdate;
+    foreach (TpContactPtr obj, getFromStorage()) {
+        if (obj->accountPath() != path) {
+            continue;
+        }
+
+        const RDFVariable contact(buildContactIri(obj->uniqueId()));
+        const RDFVariable imAddress(obj->imAddress());
+
+        addressUpdate.addDeletion(imAddress, nco::imPresence::iri());
+        addressUpdate.addDeletion(imAddress, nco::imStatusMessage::iri());
+        addressUpdate.addDeletion(contact, nie::contentLastModified::iri());
+
+        addressUpdate.addInsertion(RDFStatementList() <<
+                                   RDFStatement(imAddress, nco::imStatusMessage::iri(),
+                                                LiteralValue("")) <<
+                                   RDFStatement(imAddress, nco::imPresence::iri(),
+                                                toTrackerStatus(obj->contact()->presenceType())));
+
+        addressUpdate.addInsertion(contact, nie::contentLastModified::iri(),
+                                   RDFVariable(QDateTime::currentDateTime()));
+    }
+
+    service()->executeQuery(addressUpdate);
+    this->commitTrackerTransaction();
+}
 /* When account goes offline make all contacts as Unknown
    this is a specification requirement
    */
