@@ -67,7 +67,7 @@ public:
     void saveToTracker(const QString&, const QString&, const QString&, const QUrl&, const QString&, const QString&, Tp::ContactCapabilities*);
 
     void takeAllOffline(const QString& path);
-    void takeContactsOnline(const QString& path);
+    void clearContacts(const QString& path);
 
     void getIMContacts(const QString&);
 

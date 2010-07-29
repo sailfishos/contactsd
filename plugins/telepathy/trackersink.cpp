@@ -193,8 +193,6 @@ void TrackerSink::saveToTracker(const QString& uri, const QString& imId, const Q
     const RDFVariable imAddress(TpContact::buildImAddress(accountpath, imId));
     const RDFVariable imAccount(QUrl("telepathy:" + accountpath));
 
-    qDebug() << Q_FUNC_INFO <<id;
-
     RDFUpdate addressUpdate;
 
     addressUpdate.addDeletion(imAddress, nco::imNickname::iri());
@@ -468,35 +466,27 @@ void TrackerSink::initiateTrackerTransaction()
 }
 
 
-void TrackerSink::takeContactsOnline(const QString& path)
+void TrackerSink::clearContacts(const QString& path)
 {
-    initiateTrackerTransaction();
-    RDFUpdate addressUpdate;
-    foreach (TpContactPtr obj, getFromStorage()) {
-        if (obj->accountPath() != path) {
+    const QList<uint> list (d->contactMap.keys());
+    
+    foreach (uint index, list) {
+        QSharedPointer<TpContact> contact = d->contactMap[index];
+        
+        if (!contact) {
             continue;
         }
+        
+        if (contact->accountPath() != path) {
+            continue;
+        }
+        
+        qDebug() << Q_FUNC_INFO << "Removing Contact";
 
-        const RDFVariable contact(buildContactIri(obj->uniqueId()));
-        const RDFVariable imAddress(obj->imAddress());
-
-        addressUpdate.addDeletion(imAddress, nco::imPresence::iri());
-        addressUpdate.addDeletion(imAddress, nco::imStatusMessage::iri());
-        addressUpdate.addDeletion(contact, nie::contentLastModified::iri());
-
-        addressUpdate.addInsertion(RDFStatementList() <<
-                                   RDFStatement(imAddress, nco::imStatusMessage::iri(),
-                                                LiteralValue("")) <<
-                                   RDFStatement(imAddress, nco::imPresence::iri(),
-                                                toTrackerStatus(obj->contact()->presenceType())));
-
-        addressUpdate.addInsertion(contact, nie::contentLastModified::iri(),
-                                   RDFVariable(QDateTime::currentDateTime()));
+        d->contactMap.remove(index);
     }
-
-    service()->executeQuery(addressUpdate);
-    this->commitTrackerTransaction();
 }
+
 /* When account goes offline make all contacts as Unknown
    this is a specification requirement
    */

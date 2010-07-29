@@ -126,10 +126,16 @@ void TelepathyPlugin::onFinished(Tp::PendingOperation* op)
     if (op->isError() ) {
         emit error("libtelepathycollectorplugin", op->errorName(), op->errorMessage());
     }
+    
     PendingRosters * roster = qobject_cast<PendingRosters*>(op);
     foreach (QSharedPointer<TpContact> c, roster->telepathyRosterList()) {
+        qDebug() << Q_FUNC_INFO << "Adding Contacts";
         mStore->sinkToStorage(c);
     }
+
+    int index = mRosters.indexOf(roster);
+    mRosters.removeAt(index);
+    roster->deleteLater();
 }
 
 void TelepathyPlugin::onAccountChanged(TelepathyAccount* account, TelepathyAccount::Changes changes)
@@ -142,7 +148,11 @@ void TelepathyPlugin::onAccountChanged(TelepathyAccount* account, TelepathyAccou
 
     if (changes == TelepathyAccount::Presence && presence.status != "offline") {
         qDebug() << Q_FUNC_INFO << "Presence Change";
-        mStore->takeContactsOnline(account->account()->objectPath());
+        mStore->clearContacts(account->account()->objectPath());
+        PendingRosters* request = m_tpController->requestRosters(account->account());
+        mRosters.append(request);
+        connect(request, SIGNAL(finished(Tp::PendingOperation *)),
+                this,    SLOT(onFinished(Tp::PendingOperation *)));
     }
 }
 //TODO
