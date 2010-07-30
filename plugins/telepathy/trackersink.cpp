@@ -493,8 +493,6 @@ void TrackerSink::clearContacts(const QString& path)
 
 void TrackerSink::takeAllOffline(const QString& path)
 {
-
-    initiateTrackerTransaction();
     RDFUpdate addressUpdate;
     foreach (TpContactPtr obj, getFromStorage()) {
         if (obj->accountPath() != path) {
@@ -520,7 +518,6 @@ void TrackerSink::takeAllOffline(const QString& path)
     }
 
     service()->executeQuery(addressUpdate);
-    this->commitTrackerTransaction();
 }
 
 const QUrl & TrackerSink::toTrackerStatus(const uint stat)
