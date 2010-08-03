@@ -202,11 +202,15 @@ void TelepathyPlugin::accountModelReady(Tp::AccountPtr account)
 
      liveAccount->setImAccountType(account->protocol());
 
+     const QUrl imAddressUrl("telepathy:"+account->objectPath() + "!"
+                            + account->parameters()["account"].toString());
      Live<nco::IMAddress> addressInfo =
-         ::tracker()->liveNode(QUrl("telepathy:"+account->objectPath() + "!"
-                      + account->parameters()["account"].toString()));
+         ::tracker()->liveNode(imAddressUrl);
      addressInfo->addImID(account->parameters()["account"].toString());
      addressInfo->setImNickname(account->nickname());
+     const QDateTime datetime = QDateTime::currentDateTime();
+     Live<nie::InformationElement> info = ::tracker()->liveNode(imAddressUrl);
+     info->setContentLastModified(datetime);
      liveAccount->addImAccountAddress(addressInfo);
      Tp::SimplePresence presence = account->currentPresence();
      qDebug() << Q_FUNC_INFO << presence.status ;
