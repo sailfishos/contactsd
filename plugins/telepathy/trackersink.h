@@ -68,6 +68,7 @@ public:
 
     void takeAllOffline(const QString& path);
     void clearContacts(const QString& path);
+    void deleteContacts(const QString& path);
 
     void getIMContacts(const QString&);
 
@@ -83,6 +84,7 @@ private Q_SLOTS:
    void onFeaturesReady(TpContact*);
    void onChange(uint uniqueId, TpContact::ChangeType type);
    void onModelUpdate();
+   void onDeleteModelReady();
 
 private:
     void connectOnSignals(TpContactPtr contact);

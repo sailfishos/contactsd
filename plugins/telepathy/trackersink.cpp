@@ -39,6 +39,7 @@ public:
     RDFTransactionPtr transaction_;
     QHash<uint, uint> presenceHash; // maps tpCId hash to presence message hash
     LiveNodes livenode;
+    QString accountToDelete;
 
 };
 
@@ -145,6 +146,7 @@ TpContact* TrackerSink::find(uint id)
 
 void TrackerSink::onChange(uint uniqueId, TpContact::ChangeType type)
 {
+
     TpContact* contact = find(uniqueId);
     if (!contact) {
         return;
@@ -238,6 +240,14 @@ void TrackerSink::saveToTracker(const QString& uri, const QString& imId, const Q
 
 void TrackerSink::sinkToStorage(const QSharedPointer<TpContact>& obj)
 {
+
+    if (obj->contact()) {
+       Tp::ContactPtr c = obj->contact();
+       if (c->isBlocked()) {
+          return;
+       }
+    }
+
     const unsigned int uniqueId = obj->uniqueId();
     if (!find(uniqueId) ) {
         connectOnSignals(obj);
@@ -465,6 +475,50 @@ void TrackerSink::initiateTrackerTransaction()
         d->transaction_ = ::tracker()->createTransaction();
 }
 
+
+void TrackerSink::deleteContacts(const QString& path)
+{
+    //TODO: 
+    //Fix the query when doing contact merging
+
+    d->accountToDelete = path;
+    RDFSelect select;
+
+    RDFVariable contact = RDFVariable::fromType<nco::PersonContact>();
+    RDFVariable imaddress = contact.optional().property<nco::hasIMAddress>();
+    RDFVariable imaccount = RDFVariable::fromType<nco::IMAccount>();
+
+    imaccount.property<nco::hasIMContact>() = imaddress;
+
+    select.addColumn("contact", contact);
+    select.addColumn("distinct", imaddress.property<nco::imID>());
+    select.addColumn("contactId", contact.property<nco::contactLocalUID> ());
+    select.addColumn("accountPath", imaccount);
+    select.addColumn("address", imaddress);
+
+    d->livenode = ::tracker()->modelQuery(select);
+
+    connect(d->livenode.model(), SIGNAL(modelUpdated()), this, SLOT(onDeleteModelReady()));
+
+}
+
+void TrackerSink::onDeleteModelReady()
+{
+     for (int i = 0 ; i < d->livenode->rowCount() ; i ++) {
+        const QString imAddress = d->livenode->index(i, 1).data().toString();
+        const QString imLocalId = d->livenode->index(i, 2).data().toString();
+        const QString imAccountPath = d->livenode->index(i, 3).data().toString();
+        const QString path(imAccountPath.split(":").value(1));
+
+        if ( path == d->accountToDelete) {
+            Live<nco::PersonContact> contact = d->livenode->liveResource<nco::PersonContact>(i, 0);
+            contact->remove();
+            Live<nco::IMAddress> address = d->livenode->liveResource<nco::PersonContact>(i,4);
+            address->remove();
+        }
+     }
+
+}
 
 void TrackerSink::clearContacts(const QString& path)
 {

@@ -61,6 +61,7 @@ private Q_SLOTS:
     void onAccountReady(Tp::PendingOperation*);
     void onAccountChanged(TelepathyAccount*, TelepathyAccount::Changes changes);
     void accountModelReady(Tp::AccountPtr);
+    void onAccountRemoved();
 
 private:
     void saveIMAccount(Tp::AccountPtr account, TelepathyAccount::Changes changes);

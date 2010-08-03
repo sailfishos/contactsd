@@ -117,6 +117,16 @@ void TelepathyPlugin::onAccountReady(Tp::PendingOperation* op)
             this, SLOT(onAccountChanged(TelepathyAccount*,TelepathyAccount::Changes)));
     mAccounts.append(tpaccount);
     saveSelfContact(account);
+    connect(account.data(), SIGNAL(removed()), this, SLOT(onAccountRemoved()));
+}
+
+void TelepathyPlugin::onAccountRemoved()
+{
+    if (sender()) {
+        Tp::Account*  account = qobject_cast<Tp::Account *>(sender());
+        qDebug() << Q_FUNC_INFO << "Account Removed:"<<  account->objectPath();
+        mStore->deleteContacts(account->objectPath());
+    }
 }
 
 void TelepathyPlugin::onFinished(Tp::PendingOperation* op)
