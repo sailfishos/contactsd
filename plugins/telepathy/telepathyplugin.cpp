@@ -231,6 +231,9 @@ void TelepathyPlugin::accountModelReady(Tp::AccountPtr account)
     }
     
      me->addHasIMAddress(addressInfo);
+     // Writing local UID for default-contact-me
+     const QString strLocalUID = QString::number(0x7FFFFFFF);
+     me->setContactLocalUID(strLocalUID);
 
      if (presence.status == "offline") {
          mStore->takeAllOffline(account->objectPath());
