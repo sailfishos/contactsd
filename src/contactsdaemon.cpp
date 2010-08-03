@@ -114,4 +114,5 @@ QStringList ContactsDaemon::validPlugins() const
     if (d->loader != 0) {
         return d->loader->validPlugins();
     }
+    return QStringList();
 }
