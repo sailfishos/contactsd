@@ -119,15 +119,43 @@ void TelepathyPlugin::onAccountReady(Tp::PendingOperation* op)
             this, SLOT(onAccountChanged(TelepathyAccount*,TelepathyAccount::Changes)));
     mAccounts.append(tpaccount);
     saveSelfContact(account);
+    
     connect(account.data(), SIGNAL(removed()), this, SLOT(onAccountRemoved()));
+    connect(account.data(), SIGNAL(onlinenessChanged(bool)), this, SLOT(onOnlinenessChanged(bool)));
+    connect(account.data(), SIGNAL(haveConnectionChanged(bool)), this, SLOT(onConnectionChanged(bool)));
 }
 
+void TelepathyPlugin::onConnectionChanged(bool connection)
+{
+    qDebug() << Q_FUNC_INFO << connection;
+    if (!connection) {
+        Tp::Account*  account = qobject_cast<Tp::Account *>(sender());
+        if (account) {
+            mStore->takeAllOffline(account->objectPath());
+        }
+    }
+}
+void TelepathyPlugin::onOnlinenessChanged(bool online)
+{
+    qDebug() << Q_FUNC_INFO << online;
+    if (!online) {
+        
+        Tp::Account*  account = qobject_cast<Tp::Account *>(sender());
+        if (account) {
+            if (!account->isEnabled()) {
+                mStore->deleteContacts(account->objectPath());
+            }
+        }
+    }
+}
 void TelepathyPlugin::onAccountRemoved()
 {
     if (sender()) {
         Tp::Account*  account = qobject_cast<Tp::Account *>(sender());
-        qDebug() << Q_FUNC_INFO << "Account Removed:"<<  account->objectPath();
-        mStore->deleteContacts(account->objectPath());
+        if (account) {
+            qDebug() << Q_FUNC_INFO << "Account Removed:"<<  account->objectPath();
+            mStore->deleteContacts(account->objectPath());
+        }
     }
 }
 
