@@ -71,6 +71,7 @@ void TelepathyPlugin::onAccountCreated(const QString& path)
     Tp::AccountPtr account = Tp::Account::create(mAm->busName(), path);
     PendingRosters* request = m_tpController->requestRosters(account);
     mRosters.append(request);
+
     connect(request, SIGNAL(finished(Tp::PendingOperation *)),
             this,    SLOT(onFinished(Tp::PendingOperation *)));
     connect(account->becomeReady(Tp::Account::FeatureCore | Tp::Account::FeatureAvatar), SIGNAL(finished(Tp::PendingOperation*)),
@@ -84,6 +85,7 @@ void TelepathyPlugin::onAccountManagerReady(Tp::PendingOperation* op)
 
     if (op->isError() ) {
         qDebug() << Q_FUNC_INFO << ": Error: " << op->errorMessage() << " - " << op->errorName();
+        return;
     }
 
     foreach (Tp::AccountPtr account, mAm->validAccounts() ) {
