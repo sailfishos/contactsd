@@ -74,7 +74,11 @@ void TelepathyPlugin::onAccountCreated(const QString& path)
 
     connect(request, SIGNAL(finished(Tp::PendingOperation *)),
             this,    SLOT(onFinished(Tp::PendingOperation *)));
-    connect(account->becomeReady(Tp::Account::FeatureCore | Tp::Account::FeatureAvatar), SIGNAL(finished(Tp::PendingOperation*)),
+    Tp::Features features;
+    features << Tp::Account::FeatureAvatar
+        << Tp::Account::FeatureCore
+        << Tp::Account::FeatureProtocolInfo;
+    connect(account->becomeReady(features), SIGNAL(finished(Tp::PendingOperation*)),
             this, SLOT(onAccountReady(Tp::PendingOperation*)));
 
 }
@@ -94,7 +98,12 @@ void TelepathyPlugin::onAccountManagerReady(Tp::PendingOperation* op)
         connect(request, SIGNAL(finished(Tp::PendingOperation *)),
                 this,    SLOT(onFinished(Tp::PendingOperation *)));
         
-        connect(account->becomeReady(Tp::Account::FeatureAvatar), SIGNAL(finished(Tp::PendingOperation*)),
+     Tp::Features features;
+     features << Tp::Account::FeatureAvatar
+        << Tp::Account::FeatureCore
+        << Tp::Account::FeatureProtocolInfo;
+
+        connect(account->becomeReady(features), SIGNAL(finished(Tp::PendingOperation*)),
                 this, SLOT(onAccountReady(Tp::PendingOperation*)));
     }
 }
@@ -221,9 +230,10 @@ void TelepathyPlugin::saveIMAccount(Tp::AccountPtr account, TelepathyAccount::Ch
 void TelepathyPlugin::accountModelReady(Tp::AccountPtr account)
 {
 
-     Live<nco::IMAccount> liveAccount =
-     ::tracker()->liveNode(QUrl("telepathy:"+account->objectPath()));
+     Live<nco::IMAccount> liveAccount = ::tracker()->liveNode(QUrl("telepathy:"+account->objectPath()));
+
      QString displayName = accountServiceMapper.serviceForAccountPath(account->objectPath());
+
      if (displayName.isEmpty()) {
          liveAccount->setImDisplayName(account->displayName());
      } else {
@@ -236,14 +246,16 @@ void TelepathyPlugin::accountModelReady(Tp::AccountPtr account)
                             + account->parameters()["account"].toString());
      Live<nco::IMAddress> addressInfo =
          ::tracker()->liveNode(imAddressUrl);
+
      addressInfo->addImID(account->parameters()["account"].toString());
      addressInfo->setImNickname(account->nickname());
      const QDateTime datetime = QDateTime::currentDateTime();
+
      Live<nie::InformationElement> info = ::tracker()->liveNode(imAddressUrl);
      info->setContentLastModified(datetime);
      liveAccount->addImAccountAddress(addressInfo);
+
      Tp::SimplePresence presence = account->currentPresence();
-     qDebug() << Q_FUNC_INFO << presence.status ;
      addressInfo->setImStatusMessage(presence.statusMessage);
      Live<nco::PresenceStatus> cstatus =
      ::tracker()->liveNode(TrackerSink::toTrackerStatus(presence.status));
@@ -257,7 +269,11 @@ void TelepathyPlugin::accountModelReady(Tp::AccountPtr account)
 
     if (ok) {
         Live<nie::DataObject> fileUrl = ::tracker()->liveNode(QUrl(filename));
-        addressInfo->addImAvatar(fileUrl);
+        addressInfo->addImAvatar(fileUrl);  
+        Live<nie::DataObject> photo = me->getPhoto();
+        if (photo->getUrl().isEmpty()) {
+            me->setPhoto(fileUrl);
+        }
     }
     
      me->addHasIMAddress(addressInfo);
