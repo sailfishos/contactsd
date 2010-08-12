@@ -195,6 +195,7 @@ void TrackerSink::saveToTracker(const QString& uri, const QString& imId, const Q
     const QString id(QString::number(TpContact::buildUniqueId(accountpath, imId)));
     const RDFVariable imAddress(TpContact::buildImAddress(accountpath, imId));
     const RDFVariable imAccount(QUrl("telepathy:" + accountpath));
+    const RDFVariable imInfo(QUrl(TpContact::buildImAddress(accountpath, imId)));
     const QDateTime datetime = QDateTime::currentDateTime();
 
     RDFUpdate addressUpdate;
@@ -203,7 +204,7 @@ void TrackerSink::saveToTracker(const QString& uri, const QString& imId, const Q
     addressUpdate.addDeletion(imAddress, nco::imPresence::iri());
     addressUpdate.addDeletion(imAddress, nco::imStatusMessage::iri());
     addressUpdate.addDeletion(contact, nie::contentLastModified::iri());
-    addressUpdate.addDeletion(imAddress, nie::contentLastModified::iri());
+    addressUpdate.addDeletion(imInfo, nie::contentLastModified::iri());
 
     addressUpdate.addInsertion(RDFStatementList() <<
                                RDFStatement(imAddress, rdf::type::iri(), nco::IMAddress::iri()) <<
@@ -223,6 +224,9 @@ void TrackerSink::saveToTracker(const QString& uri, const QString& imId, const Q
                                RDFStatement(imAccount, nco::hasIMContact::iri(), imAddress));
 
     addressUpdate.addInsertion(contact, nie::contentLastModified::iri(), RDFVariable(datetime));
+    addressUpdate.addInsertion(RDFStatementList() <<
+            RDFStatement(imInfo, rdf::type::iri(), nie::InformationElement::iri()) <<
+            RDFStatement(imInfo, nie::contentLastModified::iri(), RDFVariable(datetime)));
 
     addressUpdate.addDeletion(imAddress, nco::imCapability::iri());
 
