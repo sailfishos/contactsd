@@ -1,8 +1,9 @@
-contactsd (0.5.31~1) UNRELEASED; urgency=low
+contactsd (0.5.31-1) unstable; urgency=low
 
   * Fixes: NB#176654 - Buddy presence and custom status message not updated in Contacts/Conversations UI
+  * Fixes: NB#175714 - Presence icon is not reflected for any imported gtalk contacts after network is reconnected
 
- -- Aleksandar Stojiljkovic <aleksandar.stojiljkovic@nokia.com>  Fri, 13 Aug 2010 14:04:41 +0300
+ -- Aleksandar Stojiljkovic <aleksandar.stojiljkovic@nokia.com>  Fri, 13 Aug 2010 15:38:54 +0300
 
 contactsd (0.5.30-2) unstable; urgency=low
 
