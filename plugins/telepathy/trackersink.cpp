@@ -340,6 +340,7 @@ void TrackerSink::onSimplePresenceChanged(TpContact* obj, uint uniqueId)
 
     const RDFVariable contact(buildContactIri(uniqueId));
     const RDFVariable imAddress(obj->imAddress());
+    const RDFVariable imInfo(QUrl(obj->imAddress()));
 
     RDFUpdate addressUpdate;
 
@@ -355,8 +356,11 @@ void TrackerSink::onSimplePresenceChanged(TpContact* obj, uint uniqueId)
 
     RDFStatementList insertions;
     insertions << RDFStatement(imAddress, nco::imStatusMessage::iri(),
-            LiteralValue(tcontact->presenceMessage()));
-    insertions << RDFStatement(imAddress, nco::imPresence::iri(), toTrackerStatus(tcontact->presenceType()));
+                               LiteralValue(tcontact->presenceMessage()));
+    insertions << RDFStatement(imAddress, nco::imPresence::iri(),
+                               toTrackerStatus(tcontact->presenceType()));
+    insertions << RDFStatement(imInfo, rdf::type::iri(), nie::InformationElement::iri())
+               << RDFStatement(imInfo, nie::contentLastModified::iri(), RDFVariable(datetime));
     addressUpdate.addInsertion(insertions);
     addressUpdate.addInsertion(contact, nie::contentLastModified::iri(), RDFVariable(datetime));
 
