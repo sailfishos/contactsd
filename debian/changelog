@@ -1,8 +1,9 @@
 contactsd (0.5.32-1) unstable; urgency=low
 
   * Fixing a crash in contactsd
+  * Fixes: NB#183545 - For the gtalk contacts with default avatar mail address is displayed instead of name in the contact list view
 
- -- Aleksandar Stojiljkovic <aleksandar.stojiljkovic@nokia.com>  Fri, 13 Aug 2010 17:17:14 +0300
+ -- Aleksandar Stojiljkovic <aleksandar.stojiljkovic@nokia.com>  Fri, 13 Aug 2010 17:24:54 +0300
 
 contactsd (0.5.31-1) unstable; urgency=low
 
