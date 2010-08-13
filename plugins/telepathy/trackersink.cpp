@@ -340,7 +340,8 @@ void TrackerSink::onSimplePresenceChanged(TpContact* obj, uint uniqueId)
 
     const RDFVariable contact(buildContactIri(uniqueId));
     const RDFVariable imAddress(obj->imAddress());
-    const RDFVariable imInfo(QUrl(obj->imAddress()));
+    const RDFVariable imInfo(QUrl(TpContact::buildImAddress(obj->accountPath(), obj->contact()->id())));
+    const QDateTime datetime = QDateTime::currentDateTime();
 
     RDFUpdate addressUpdate;
 
@@ -350,7 +351,6 @@ void TrackerSink::onSimplePresenceChanged(TpContact* obj, uint uniqueId)
     addressUpdate.addDeletion(contact, nie::contentLastModified::iri());
 
     const QSharedPointer<const Tp::Contact> tcontact = obj->contact();
-    const QDateTime datetime = QDateTime::currentDateTime();
 
     qDebug() << Q_FUNC_INFO << toTrackerStatus(tcontact->presenceType());
 
@@ -363,6 +363,11 @@ void TrackerSink::onSimplePresenceChanged(TpContact* obj, uint uniqueId)
                << RDFStatement(imInfo, nie::contentLastModified::iri(), RDFVariable(datetime));
     addressUpdate.addInsertion(insertions);
     addressUpdate.addInsertion(contact, nie::contentLastModified::iri(), RDFVariable(datetime));
+
+    addressUpdate.addInsertion(RDFStatementList() <<
+            RDFStatement(imInfo, rdf::type::iri(), nie::InformationElement::iri()) <<
+            RDFStatement(imInfo, nie::contentLastModified::iri(), RDFVariable(datetime)));
+
 
     service()->executeQuery(addressUpdate);
 
