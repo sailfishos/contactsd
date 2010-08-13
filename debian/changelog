@@ -1,8 +1,8 @@
 contactsd (0.5.31~1) UNRELEASED; urgency=low
 
-  * 
+  * Fixes: NB#176654 - Buddy presence and custom status message not updated in Contacts/Conversations UI
 
- -- Aleksandar Stojiljkovic <aleksandar.stojiljkovic@nokia.com>  Mon, 12 Jul 2010 11:11:40 +0300
+ -- Aleksandar Stojiljkovic <aleksandar.stojiljkovic@nokia.com>  Fri, 13 Aug 2010 14:04:41 +0300
 
 contactsd (0.5.30-2) unstable; urgency=low
 
