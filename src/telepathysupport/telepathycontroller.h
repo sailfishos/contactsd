@@ -21,7 +21,6 @@
 #define TELEPATHY_CONTROLLER_H
 
 // this lib
-#include "telepathycontact.h"
 #include "pendingrosters.h"
 // TelepathyQt4
 #include <TelepathyQt4/PendingOperation>
@@ -38,7 +37,6 @@ class TelepathyController : public QObject
 {
     Q_OBJECT
 public:
-    typedef QList<QSharedPointer<TelepathyContact> > ContactList;
     explicit TelepathyController(QObject * parent = 0,  bool cache = false);
     virtual ~TelepathyController();
     /*!

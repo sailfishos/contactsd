@@ -74,6 +74,7 @@ void TrackerSink::getIMContacts(const QString& /* contact_iri */)
 
 }
 
+// TODO this is dead code - needed in future for merging?
 void TrackerSink::onModelUpdate()
 {
     QStringList idList;
@@ -92,37 +93,39 @@ void TrackerSink::onModelUpdate()
         }
 
         const QSharedPointer<const TpContact> contact = it.value();
-        qDebug() << imAddress << imLocalId << ":" << contact;
+        qDebug() << Q_FUNC_INFO << imAddress << imLocalId << ":" << contact;
 
-        const QSharedPointer<const Tp::Contact> tcontact = contact->contact();
-        saveToTracker(imLocalId, tcontact->id(),
-                      tcontact->alias(),
-                      toTrackerStatus(tcontact->presenceType()),
-                      tcontact->presenceMessage(),
+        saveToTracker(imLocalId, contact->id(),
+                      contact->alias(),
+                      toTrackerStatus(contact->presenceType()),
+                      contact->presenceMessage(),
                       contact->accountPath(),
-                      tcontact->capabilities());
+                      contact->capabilities());
     }
 
 
+    // TODO unclear logic in this part of dead code. Document.
     if (d->livenode->rowCount() <= 0) {
         foreach (const QSharedPointer<TpContact>& contact, d->contactMap.values()) {
             if (contact.isNull()) {
                 continue;
             }
 
-            const QSharedPointer<const Tp::Contact> tcontact = contact->contact();
-            if(!tcontact)
+            if(!contact->contact()) {
+                qWarning() << Q_FUNC_INFO << "lost contact?" << contact;
                 continue;
+            }
 
-            const QString tpCId = contact->accountPath() + "!" + tcontact->id();
+            const QString tpCId = contact->accountPath() + "!" + contact->id();
+
             const QString id(QString::number(qHash(tpCId)));
 
-            saveToTracker(id, tcontact->id(),
-                          tcontact->alias(),
-                          toTrackerStatus(tcontact->presenceType()),
-                          tcontact->presenceMessage(),
+            saveToTracker(id, contact->id(),
+                          contact->alias(),
+                          toTrackerStatus(contact->presenceType()),
+                          contact->presenceMessage(),
                           contact->accountPath(),
-                          tcontact->capabilities());
+                          contact->capabilities());
 
         }
     }
@@ -251,12 +254,8 @@ void TrackerSink::saveToTracker(const QString& uri, const QString& imId, const Q
 
 void TrackerSink::sinkToStorage(const QSharedPointer<TpContact>& obj)
 {
-
-    if (obj->contact()) {
-       Tp::ContactPtr c = obj->contact();
-       if (c->isBlocked()) {
-          return;
-       }
+    if (obj->contact() && obj->contact()->isBlocked()) {
+        return;
     }
 
     const unsigned int uniqueId = obj->uniqueId();
@@ -272,24 +271,25 @@ void TrackerSink::sinkToStorage(const QSharedPointer<TpContact>& obj)
         return;
     }
 
-    const QSharedPointer<const Tp::Contact> tcontact = obj->contact();
 
     qDebug() << Q_FUNC_INFO <<
-        " \n{Contact Id :" << tcontact->id() <<
-        " }\n{Alias : " <<  tcontact->alias() <<
-        " }\n{Status : " << tcontact->presenceType() <<
-        " }\n{Message : " << tcontact->presenceMessage() <<
+        " \n{Contact Id :" << obj->id() <<
+        " }\n{Alias : " <<  obj->alias() <<
+        " }\n{Status : " << obj->presenceType() <<
+        " }\n{Message : " << obj->presenceMessage() <<
         " }\n{AccountPath : " << obj->accountPath();
 
     const QString id(QString::number(uniqueId));
 
-    saveToTracker(id, tcontact->id(),
-                      tcontact->alias(),
-                      toTrackerStatus(tcontact->presenceType()),
-                      tcontact->presenceMessage(),
+    saveToTracker(id, obj->id(),
+                      obj->alias(),
+                      toTrackerStatus(obj->presenceType()),
+                      obj->presenceMessage(),
                       obj->accountPath(),
-                      tcontact->capabilities());
-   this->commitTrackerTransaction();
+                      obj->capabilities());
+    // TODO this is dead code - transaction is never initialized.
+    // After benchmarking on device decide if to use transactions or not
+    this->commitTrackerTransaction();
 }
 
 void TrackerSink::onCapabilities(TpContact* obj)

@@ -47,10 +47,14 @@ public:
     explicit TpContact(QObject * parent = 0);
     virtual ~TpContact();
 
-    //TODO: Is this non-const accessor even used?
-    Tp::ContactPtr contact();
-
     QSharedPointer<const Tp::Contact> contact() const;
+
+    // following Tp::Contact wrappers are virtual for stubbing purposes
+    virtual QString id() const;
+    virtual QString alias() const;
+    virtual unsigned int presenceType() const;
+    virtual QString presenceMessage() const;
+    virtual Tp::ContactCapabilities *capabilities() const;
 
     QString accountPath() const;
     void setAccountPath(const QString&);
@@ -91,4 +95,4 @@ private:
 typedef QList<QSharedPointer<TpContact> > TpContactList;
 typedef QSharedPointer<TpContact> TpContactPtr;
 
-#endif // TELEPATHYCONTACT_H
+#endif

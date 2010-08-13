@@ -28,9 +28,6 @@
 #include <TelepathyQt4/PendingReady>
 #include <TelepathyQt4/PendingContacts>
 
-//project includes
-
-#include "telepathycontact.h"
 
 class TelepathyController::Private
 {

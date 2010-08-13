@@ -195,11 +195,6 @@ QString TpContact::accountPath() const
     return d->mAccountPath;
 }
 
-Tp::ContactPtr TpContact::contact()
-{
-    return d->mContact;
-}
-
 //Not that libtelepathy-qt doesn't have a ContactConstPtr because it doesn't
 //seem to really understand the use of const and (smart) pointers. const ContactPtr would not be the same.
 QSharedPointer<const Tp::Contact> TpContact::contact() const
@@ -207,9 +202,34 @@ QSharedPointer<const Tp::Contact> TpContact::contact() const
     return d->mContact;
 }
 
+QString TpContact::id() const
+{
+    return d->mContact->id();
+}
+
+QString TpContact::alias() const
+{
+    d->mContact->alias();
+}
+
+unsigned int TpContact::presenceType() const
+{
+    d->mContact->presenceType();
+}
+
+QString TpContact::presenceMessage() const
+{
+    d->mContact->presenceMessage();
+}
+
+Tp::ContactCapabilities *TpContact::capabilities() const
+{
+    return d->mContact->capabilities();
+}
+
 unsigned int TpContact::uniqueId() const
 {
-    return buildUniqueId(this->accountPath(), d->mContact->id());
+    return buildUniqueId(this->accountPath(), id());
 }
 
 unsigned int TpContact::buildUniqueId(const QString& accountPath, const QString& imId)
@@ -217,10 +237,9 @@ unsigned int TpContact::buildUniqueId(const QString& accountPath, const QString&
         return qHash(accountPath + '!' +  imId);
 }
 
-
 QUrl TpContact::imAddress() const
 {
-    return buildImAddress(this->accountPath(), d->mContact->id());
+    return buildImAddress(this->accountPath(), id());
 }
 
 QUrl TpContact::buildImAddress(const QString& accountPath, const QString& imId)

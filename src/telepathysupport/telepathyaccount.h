@@ -26,7 +26,6 @@
 #include <TelepathyQt4/PendingOperation>
 #include <TelepathyQt4/Account>
 #include <TelepathyQt4/ContactManager>
-#include "telepathycontact.h"
 #include "pendingrosters.h"
 
 /**
