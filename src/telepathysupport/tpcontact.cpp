@@ -209,17 +209,17 @@ QString TpContact::id() const
 
 QString TpContact::alias() const
 {
-    d->mContact->alias();
+    return d->mContact->alias();
 }
 
 unsigned int TpContact::presenceType() const
 {
-    d->mContact->presenceType();
+    return d->mContact->presenceType();
 }
 
 QString TpContact::presenceMessage() const
 {
-    d->mContact->presenceMessage();
+    return d->mContact->presenceMessage();
 }
 
 Tp::ContactCapabilities *TpContact::capabilities() const
