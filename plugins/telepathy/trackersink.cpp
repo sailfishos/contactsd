@@ -359,8 +359,6 @@ void TrackerSink::onSimplePresenceChanged(TpContact* obj, uint uniqueId)
                                LiteralValue(tcontact->presenceMessage()));
     insertions << RDFStatement(imAddress, nco::imPresence::iri(),
                                toTrackerStatus(tcontact->presenceType()));
-    insertions << RDFStatement(imInfo, rdf::type::iri(), nie::InformationElement::iri())
-               << RDFStatement(imInfo, nie::contentLastModified::iri(), RDFVariable(datetime));
     addressUpdate.addInsertion(insertions);
     addressUpdate.addInsertion(contact, nie::contentLastModified::iri(), RDFVariable(datetime));
 
