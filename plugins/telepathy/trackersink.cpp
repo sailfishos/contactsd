@@ -95,12 +95,7 @@ void TrackerSink::onModelUpdate()
         const QSharedPointer<const TpContact> contact = it.value();
         qDebug() << Q_FUNC_INFO << imAddress << imLocalId << ":" << contact;
 
-        saveToTracker(imLocalId, contact->id(),
-                      contact->alias(),
-                      toTrackerStatus(contact->presenceType()),
-                      contact->presenceMessage(),
-                      contact->accountPath(),
-                      contact->capabilities());
+        saveToTracker(imLocalId, contact.data());
     }
 
 
@@ -120,12 +115,7 @@ void TrackerSink::onModelUpdate()
 
             const QString id(QString::number(qHash(tpCId)));
 
-            saveToTracker(id, contact->id(),
-                          contact->alias(),
-                          toTrackerStatus(contact->presenceType()),
-                          contact->presenceMessage(),
-                          contact->accountPath(),
-                          contact->capabilities());
+            saveToTracker(id, contact.data());
 
         }
     }
@@ -190,10 +180,15 @@ static QUrl buildContactIri(unsigned int uniqueId)
   return buildContactIri(QString::number(uniqueId));
 }
 
-void TrackerSink::saveToTracker(const QString& uri, const QString& imId, const QString& nick, const
-        QUrl& status, const QString& msg, const QString& accountpath, Tp::ContactCapabilities * contactcaps)
+void TrackerSink::saveToTracker(const QString& contactLocalId, const TpContact *tpContact)
 {
-    const RDFVariable contact(buildContactIri(uri));
+    const QString& imId = tpContact->id();
+    const QString& nick = tpContact->alias();
+    const QUrl& status = toTrackerStatus(tpContact->presenceType());
+    const QString& msg = tpContact->presenceMessage();
+    const QString& accountpath = tpContact->accountPath();
+
+    const RDFVariable contact(buildContactIri(contactLocalId));
 
     const QString id(QString::number(TpContact::buildUniqueId(accountpath, imId)));
     const RDFVariable imAddress(TpContact::buildImAddress(accountpath, imId));
@@ -235,14 +230,14 @@ void TrackerSink::saveToTracker(const QString& uri, const QString& imId, const Q
 
 
 
-    if (contactcaps->supportsMediaCalls() || contactcaps->supportsAudioCalls())  {
+    if (tpContact->supportsMediaCalls() || tpContact->supportsAudioCalls())  {
         addressUpdate.addInsertion( RDFStatementList() <<
                                     RDFStatement(imAddress, nco::imCapability::iri(),
                                                  nco::im_capability_audio_calls::iri()));
 
     }
 
-    if (contactcaps->supportsTextChats() ) {
+    if (tpContact->supportsTextChats()) {
         addressUpdate.addInsertion( RDFStatementList() <<
                                     RDFStatement(imAddress, nco::imCapability::iri(),
                                                  nco::im_capability_text_chat::iri()));
@@ -281,12 +276,7 @@ void TrackerSink::sinkToStorage(const QSharedPointer<TpContact>& obj)
 
     const QString id(QString::number(uniqueId));
 
-    saveToTracker(id, obj->id(),
-                      obj->alias(),
-                      toTrackerStatus(obj->presenceType()),
-                      obj->presenceMessage(),
-                      obj->accountPath(),
-                      obj->capabilities());
+    saveToTracker(id, obj.data());
     // TODO this is dead code - transaction is never initialized.
     // After benchmarking on device decide if to use transactions or not
     this->commitTrackerTransaction();
@@ -305,11 +295,7 @@ void TrackerSink::onCapabilities(TpContact* obj)
 
     addressUpdate.addDeletion(imAddress, nco::imCapability::iri());
 
-    const Tp::ContactCapabilities *capabilities = obj->contact()->capabilities();
-
-    if (capabilities && (capabilities->supportsMediaCalls() ||
-            capabilities->supportsAudioCalls()) ) {
-
+    if (obj->supportsAudioCalls() || obj->supportsMediaCalls()) {
 
         //TODO: Move this to the constructor, so it's only called once?
         // This liveNode() call actually sets this RDF triple:

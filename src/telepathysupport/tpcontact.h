@@ -54,7 +54,15 @@ public:
     virtual QString alias() const;
     virtual unsigned int presenceType() const;
     virtual QString presenceMessage() const;
-    virtual Tp::ContactCapabilities *capabilities() const;
+
+    // capabilities section
+    virtual bool supportsTextChats() const;
+    virtual bool supportsMediaCalls() const;
+    virtual bool supportsAudioCalls() const;
+    virtual bool supportsVideoCalls(bool withAudio = true) const;
+    virtual bool supportsUpgradingCalls() const;
+    Tp::ContactCapabilities *capabilities() const;
+
 
     QString accountPath() const;
     void setAccountPath(const QString&);

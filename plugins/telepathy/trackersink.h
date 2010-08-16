@@ -64,7 +64,8 @@ public:
 
     void saveAvatarToken(const QString& id, const QString& token, const QString& mime);
 
-    void saveToTracker(const QString&, const QString&, const QString&, const QUrl&, const QString&, const QString&, Tp::ContactCapabilities*);
+    // TODO QString contactLocalId to QContactLocalId. Why it is QString?
+    void saveToTracker(const QString& contactLocalId, const TpContact *tpContact);
 
     void takeAllOffline(const QString& path);
     void clearContacts(const QString& path);

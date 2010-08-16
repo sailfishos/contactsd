@@ -18,7 +18,6 @@ INCLUDEPATH += $$QCONTACTS_TRACKER_BACKENDDIR
 HEADERS += $$QCONTACTS_TRACKER_BACKENDDIR/trackersink.h \
            $$QCONTACTS_TRACKER_BACKENDDIR/telepathycontact.h \
            $$QCONTACTS_TRACKER_BACKENDDIR/telepathycontroller.h  \
-           $$QCONTACTS_TRACKER_BACKENDDIR/contactcache.h \
            $$QCONTACTS_TRACKER_BACKENDDIR/abstractcontactsink.h \
            $$QCONTACTS_TRACKER_BACKENDDIR/pendingrosters.h
 

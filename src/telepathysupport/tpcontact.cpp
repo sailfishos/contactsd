@@ -227,6 +227,37 @@ Tp::ContactCapabilities *TpContact::capabilities() const
     return d->mContact->capabilities();
 }
 
+bool TpContact::supportsTextChats() const
+{
+    const Tp::ContactCapabilities *caps = capabilities();
+    return caps && caps->supportsTextChats();
+}
+
+bool TpContact::supportsMediaCalls() const
+{
+    const Tp::ContactCapabilities *caps = capabilities();
+    return caps && caps->supportsMediaCalls();
+}
+
+bool TpContact::supportsAudioCalls() const
+{
+    const Tp::ContactCapabilities *caps = capabilities();
+    return caps && caps->supportsAudioCalls();
+}
+
+bool TpContact::supportsVideoCalls(bool withAudio) const
+{
+    const Tp::ContactCapabilities *caps = capabilities();
+    return caps && caps->supportsVideoCalls(withAudio);
+}
+
+bool TpContact::supportsUpgradingCalls() const
+{
+    const Tp::ContactCapabilities *caps = capabilities();
+    return caps && caps->supportsUpgradingCalls();
+}
+
+
 unsigned int TpContact::uniqueId() const
 {
     return buildUniqueId(this->accountPath(), id());
