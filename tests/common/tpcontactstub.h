@@ -72,14 +72,11 @@ public:
      */
     QString avatarFilePath() const;
 
-    void setAccountPath(const QString&);
-    QString accountPath() const;
-
     Tp::ContactPtr contact() const;
 
     //!\ fill following values to \sa setCapabilitiesStrings to define capabilities
     static const QString CAPABILITIES_TEXT;
-    static const QString CAPABILITIES_MEDIA;
+    static const QString CAPABILITIES_AUDIO_CALLS;
 
     void setCapabilitiesStrings(const QStringList &);
 
@@ -88,7 +85,6 @@ private:
     QString mId, mPresenceMessage, mAlias;
     unsigned int mPresenceType;
     QString mAvatar;
-    QString mAccountPath;
     QStringList mCapabilities;
 
     // This _uniqueId is used for tests. test set it so that it is not fetched fro

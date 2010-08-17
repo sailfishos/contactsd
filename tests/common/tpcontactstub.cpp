@@ -25,7 +25,7 @@
 #include <contactphotocopy.h>
 
 const QString TpContactStub::CAPABILITIES_TEXT = QLatin1String("Text");
-const QString TpContactStub::CAPABILITIES_MEDIA = QLatin1String("StreamedMedia");
+const QString TpContactStub::CAPABILITIES_AUDIO_CALLS = QLatin1String("AudioCalls");
 
 /*!
  * utility method just for usage here
@@ -91,16 +91,6 @@ QString TpContactStub::avatarFilePath() const
     return mAvatar.isEmpty()? QString() : ::avatarFilePath(mAvatar, "jpeg");
 }
 
-void TpContactStub::setAccountPath(const QString& paths)
-{
-    mAccountPath = paths;
-}
-
-QString TpContactStub::accountPath() const
-{
-    return mAccountPath;
-}
-
 Tp::ContactPtr TpContactStub::contact() const
 {
     return mContact;
@@ -128,12 +118,12 @@ bool TpContactStub::supportsTextChats() const
 
 bool TpContactStub::supportsMediaCalls() const
 {
-    return mCapabilities.contains(CAPABILITIES_MEDIA);
+    return supportsAudioCalls();
 }
 
 bool TpContactStub::supportsAudioCalls() const
 {
-    return supportsMediaCalls();
+    return mCapabilities.contains(CAPABILITIES_AUDIO_CALLS);
 }
 
 QList<TpContact*> TpContactStub::generateRandomContacts(unsigned int contactsCount)
@@ -142,7 +132,7 @@ QList<TpContact*> TpContactStub::generateRandomContacts(unsigned int contactsCou
 
     const QStringList capabilitiesConsts (QStringList()
             << TpContactStub::CAPABILITIES_TEXT
-            << TpContactStub::CAPABILITIES_MEDIA);
+            << TpContactStub::CAPABILITIES_AUDIO_CALLS);
 
     const unsigned int onlineStatusesMax = 7;
 
@@ -161,7 +151,7 @@ QList<TpContact*> TpContactStub::generateRandomContacts(unsigned int contactsCou
         const int capsCount = capabilitiesConsts.size();
         QStringList list;
         for (int cap = 0; cap < capsCount; cap++ ) {
-            if (i%(cap+1)) {
+            if ((i+1)%(cap+1)) {
                 list << capabilitiesConsts[cap];
             }
         }
@@ -171,7 +161,7 @@ QList<TpContact*> TpContactStub::generateRandomContacts(unsigned int contactsCou
 
         telepathier->setPresenceType(i%onlineStatusesMax);
 
-        telepathier->setAccountPath(QString("gabble/jabber/generated_random_contact"));
+        telepathier->setAccountPath(QString("/gabble/jabber/generated_random_contact"));
 
         result << telepathier;
     }

@@ -44,6 +44,9 @@ void ut_trackersink::initTestCase()
 {
     telepathier = qobject_cast<TpContactStub*>(TpContactStub::generateRandomContacts(1)[0]);
     QVERIFY(telepathier);
+    // display name is mandatory detail when qtcontacts-tracker is reading contacts
+    Live<nco::IMAccount> liveAccount = ::tracker()->liveNode(QUrl("telepathy:"+telepathier->accountPath()));
+    liveAccount->setImDisplayName(QLatin1String("testService"));
 }
 
 void ut_trackersink::testSinkToStorage()
@@ -59,7 +62,7 @@ void ut_trackersink::testSinkToStorage()
 
     QStringList details;
     details << QContactName::DefinitionName << QContactAvatar::DefinitionName
-            << QContactOnlineAccount::DefinitionName;
+            << QContactOnlineAccount::DefinitionName << QContactPresence::DefinitionName;
     QContactFetchHint fetchHint;
     fetchHint.setDetailDefinitionsHint(details);
     QList<QContact> contacts = manager->contacts(filter, QList<QContactSortOrder>(), fetchHint);
@@ -69,7 +72,7 @@ void ut_trackersink::testSinkToStorage()
     contactInTrackerUID = contacts[0].localId();
 
     QStringList caps = contact.detail<QContactOnlineAccount>().capabilities();
-    qDebug() << Q_FUNC_INFO << caps;
+
     foreach(const QString &cap, telepathier->mCapabilities)
     {
         QVERIFY(caps.contains(cap));
@@ -80,6 +83,7 @@ void ut_trackersink::testSinkToStorage()
     QVERIFY((unsigned int)contact.detail<QContactPresence>().presenceState() == telepathier->presenceType());
     QVERIFY(contact.detail(QContactOnlineAccount::DefinitionName).value("AccountPath") == telepathier->accountPath());
 }
+
 /*
 void ut_trackersink::testOnSimplePresenceChanged()
 {

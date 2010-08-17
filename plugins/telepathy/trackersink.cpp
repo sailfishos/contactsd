@@ -191,6 +191,7 @@ void TrackerSink::saveToTracker(const QString& contactLocalId, const TpContact *
 
     const QString id(QString::number(TpContact::buildUniqueId(accountpath, imId)));
     const RDFVariable imAddress(TpContact::buildImAddress(accountpath, imId));
+    qDebug() << Q_FUNC_INFO << accountpath;
     const RDFVariable imAccount(QUrl("telepathy:" + accountpath));
     const RDFVariable imInfo(QUrl(TpContact::buildImAddress(accountpath, imId)));
     const QDateTime datetime = QDateTime::currentDateTime();

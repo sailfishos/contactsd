@@ -227,6 +227,10 @@ void TelepathyPlugin::saveIMAccount(Tp::AccountPtr account, TelepathyAccount::Ch
 
     accountModelReady(account);
 }
+
+// TODO duplicated logic from above (saveIMAccount):
+// creating LiveNode then RDFUpdate then again LiveNode... once
+// instead of 3 times should work
 void TelepathyPlugin::accountModelReady(Tp::AccountPtr account)
 {
 
