@@ -1,5 +1,6 @@
 <aegis>
      <request>
-         <for path="/usr/bin/contactsd" />
+        <credential name="Cellular" />
+        <for path="/usr/bin/contactsd" />
      </request>
 </aegis>
