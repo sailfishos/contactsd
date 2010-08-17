@@ -44,6 +44,9 @@ public:
     explicit TpContactStub(QObject * parent = 0);
     virtual ~TpContactStub();
 
+    //!\ Used in tests to generate content
+    static QList<TpContact*> generateRandomContacts(unsigned int contactsCount);
+
     //!\reimp
     bool supportsTextChats() const;
     bool supportsMediaCalls() const;
@@ -98,4 +101,4 @@ private:
 typedef QList<QSharedPointer<TpContactStub> > ContactList;
 typedef QSharedPointer<TpContactStub> TpContactStubPtr;
 
-#endif // TPCONTACTSTUB_H
+#endif // TPCONTACTSTUBH

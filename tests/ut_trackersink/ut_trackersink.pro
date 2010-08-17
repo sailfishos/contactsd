@@ -1,30 +1,35 @@
 test.depends = all
 QMAKE_EXTRA_TARGETS += test
-QCONTACTS_TRACKER_BACKENDDIR = $$PWD/../../src/telepathysupport
+TELEPATHY_SUPPORT_DIR = $$PWD/../../src/telepathysupport
+TELEPATHY_PLUGIN_DIR = $$PWD/../../plugins/telepathy
 
 CONFIG += test mobility
 
 MOBILITY += contacts
-QT += dbus network
+QT += dbus testlib
 
 CONFIG += link_pkgconfig
 PKGCONFIG += TelepathyQt4 qttracker
 
 OBJECTS_DIR = .obj
 
-INCLUDEPATH += $$QCONTACTS_TRACKER_BACKENDDIR 
+INCLUDEPATH += $$TELEPATHY_SUPPORT_DIR 
+INCLUDEPATH += $$TELEPATHY_PLUGIN_DIR 
+
+include($$PWD/../common/common.pri)
 
 ## Include source files under test.
-HEADERS += $$QCONTACTS_TRACKER_BACKENDDIR/trackersink.h \
-           $$QCONTACTS_TRACKER_BACKENDDIR/telepathycontact.h \
-           $$QCONTACTS_TRACKER_BACKENDDIR/telepathycontroller.h  \
-           $$QCONTACTS_TRACKER_BACKENDDIR/abstractcontactsink.h \
-           $$QCONTACTS_TRACKER_BACKENDDIR/pendingrosters.h
+HEADERS += $$TELEPATHY_PLUGIN_DIR/trackersink.h \
+           $$TELEPATHY_SUPPORT_DIR/telepathycontroller.h  \
+           $$TELEPATHY_SUPPORT_DIR/contactphotocopy.h  \
+           $$TELEPATHY_SUPPORT_DIR/tpcontact.h  \
+           $$TELEPATHY_SUPPORT_DIR/pendingrosters.h
 
-SOURCES += $$QCONTACTS_TRACKER_BACKENDDIR/trackersink.cpp \
-           $$QCONTACTS_TRACKER_BACKENDDIR/telepathycontact.cpp \
-           $$QCONTACTS_TRACKER_BACKENDDIR/telepathycontroller.cpp  \
-           $$QCONTACTS_TRACKER_BACKENDDIR/pendingrosters.cpp
+SOURCES += $$TELEPATHY_PLUGIN_DIR/trackersink.cpp \
+           $$TELEPATHY_SUPPORT_DIR/telepathycontroller.cpp  \
+           $$TELEPATHY_SUPPORT_DIR/contactphotocopy.cpp  \
+           $$TELEPATHY_SUPPORT_DIR/tpcontact.cpp  \
+           $$TELEPATHY_SUPPORT_DIR/pendingrosters.cpp
 
 
 ## Include unit test files

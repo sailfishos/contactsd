@@ -23,13 +23,17 @@
 #include <QObject>
 #include <QtTest/QtTest>
 #include <QString>
-#include <qcontactrequests.h>
-#include <tpcontact.h>
+
+#include <QContactManager>
+
+#include <tpcontactstub.h>
+
+QTM_USE_NAMESPACE
 
 class TrackerSink;
 
 /**
- * Telepathy support Tracker Sink unittests
+ * Telepathy plugin's TrackerSink unit test
  */
 class ut_trackersink : public QObject
 {
@@ -37,15 +41,14 @@ Q_OBJECT
 public:
     ut_trackersink();
 
-private Q_SLOTS
+private Q_SLOTS:
     void initTestCase();
     void cleanupTestCase();
-    void testImContactForTpContactId();
+/*    void testImContactForTpContactId();
     void testImContactForPeople();
-    void testPersonContactForTpContactId();
+    void testPersonContactForTpContactId();*/
     void testSinkToStorage();
-    void testOnSimplePresenceChanged();
-    void sinkContainsImAccount();
+//    void testOnSimplePresenceChanged();
 
 protected Q_SLOTS:
     void contactsAdded(const QList<QContactLocalId>& contactIds);
@@ -53,8 +56,9 @@ protected Q_SLOTS:
 
 private:
     TrackerSink* const sink;
+    QContactManager * const manager;
+    TpContactStub *telepathier;
     unsigned int contactInTrackerUID;
-    TpContactPtr telepathier;
     QList<QContactLocalId> added;
     QList<QContactLocalId> changed;
 };
@@ -64,8 +68,6 @@ class Slots: public QObject
     Q_OBJECT
 public:
     QList<QContact> contacts;
-public Q_SLOTS:
-    void progress(QContactFetchRequest* self, bool appendOnly);
 };
 
 #endif

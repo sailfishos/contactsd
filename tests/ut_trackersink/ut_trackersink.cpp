@@ -25,8 +25,6 @@
 #include <QMap>
 #include <QPair>
 
-#include <contactmanager.h>
-
 #include <QtTracker/Tracker>
 #include <QtTracker/ontologies/nco.h>
 #include <QtTracker/ontologies/nie.h>
@@ -34,76 +32,55 @@
 #include <qtcontacts.h>
 
 
-ut_trackersink::ut_trackersink()
-  : sink(TrackerSink::instance())
+ut_trackersink::ut_trackersink() :
+    sink(TrackerSink::instance()),
+    manager(new QContactManager(QLatin1String("tracker")))
 {
-    connect(ContactManager::instance(), SIGNAL(contactsAdded(const QList<QContactLocalId>&)), this, SLOT(contactsAdded(const QList<QContactLocalId>&)));
-    connect(ContactManager::instance(), SIGNAL(contactsChanged(const QList<QContactLocalId>&)), this, SLOT(contactsChanged(const QList<QContactLocalId>&)));
+    connect(manager, SIGNAL(contactsAdded(const QList<QContactLocalId>&)), this, SLOT(contactsAdded(const QList<QContactLocalId>&)));
+    connect(manager, SIGNAL(contactsChanged(const QList<QContactLocalId>&)), this, SLOT(contactsChanged(const QList<QContactLocalId>&)));
 }
 
 void ut_trackersink::initTestCase()
 {
-    telepathier = QSharedPointer<TelepathyContact>(new TpContact(),
-                                         &QObject::deleteLater);
-    // unique 32
-    QUuid guid = QUuid::createUuid();
-    QString str = guid.toString().replace(QRegExp("[-}{]"), "");
-    str = str.right(8);
-    quint32 id = str.toUInt(0, 16);
-    telepathier->setId(QString::number(id, 10));
-    Tp::ContactCapability cap;
-    cap.channelType = "org.freedesktop.Telepathy.Channel.Type.StreamedMedia";
-    Tp::ContactCapabilityList list(Tp::ContactCapabilityList()<<cap);
-    Tp::ContactCapability cap1;
-    cap1.channelType = "TestCap";
-    list<<cap1;
-    telepathier->mCaps = list;
-    QCOMPARE(telepathier->id(),QString::number(id, 10) );
-    telepathier->setMessage("message1"+telepathier->id());
-    telepathier->setPresenceStatus("offline");
-    telepathier->setAccountPath(QString("gabble/jabber/collabora_2etest_40gmail_2ecom1"));
-    telepathier->_uniqueId = id;
-    // TODO continuing with sink
+    telepathier = qobject_cast<TpContactStub*>(TpContactStub::generateRandomContacts(1)[0]);
+    QVERIFY(telepathier);
 }
 
 void ut_trackersink::testSinkToStorage()
 {
     // continue with telepathier sink
-    sink->sinkToStorage(telepathier);
+    sink->saveToTracker(telepathier->id(), telepathier);
     // check what was written
-    QContactFetchRequest request;
-    request.setManager(ContactManager::instance());
+
     QContactDetailFilter filter;
-    filter.setDetailDefinitionName(QContactOnlineAccount::DefinitionName, "Account");
+    filter.setDetailDefinitionName(QContactOnlineAccount::DefinitionName, QContactOnlineAccount::FieldAccountUri);
     filter.setValue(telepathier->id());
     filter.setMatchFlags(QContactFilter::MatchExactly);
 
     QStringList details;
     details << QContactName::DefinitionName << QContactAvatar::DefinitionName
             << QContactOnlineAccount::DefinitionName;
-    request.setDefinitionRestrictions(details);
-    request.setFilter(filter);
+    QContactFetchHint fetchHint;
+    fetchHint.setDetailDefinitionsHint(details);
+    QList<QContact> contacts = manager->contacts(filter, QList<QContactSortOrder>(), fetchHint);
+    QVERIFY(contacts.count() == 1);
+    QContact contact(contacts[0]);
 
-    // start both at once
-    request.start();
-    QVERIFY(request.waitForFinished(2000));
-    // if it takes more, then something is wrong
-    QVERIFY(request.isFinished());
+    contactInTrackerUID = contacts[0].localId();
 
-    QVERIFY(request.contacts().count() == 1);
-    contactInTrackerUID = request.contacts()[0].localId();
-
-    QString caps = request.contacts()[0].detail(QContactOnlineAccount::DefinitionName).value("Capabilities");
-    foreach(Tp::ContactCapability cap, telepathier->mCaps)
+    QStringList caps = contact.detail<QContactOnlineAccount>().capabilities();
+    qDebug() << Q_FUNC_INFO << caps;
+    foreach(const QString &cap, telepathier->mCapabilities)
     {
-        QVERIFY(caps.contains(cap.channelType));
+        QVERIFY(caps.contains(cap));
     }
 
-    QVERIFY(request.contacts()[0].detail(QContactOnlineAccount::DefinitionName).value(QContactOnlineAccount::FieldStatusMessage) == telepathier->message());
-    QVERIFY(request.contacts()[0].detail(QContactOnlineAccount::DefinitionName).value(QContactOnlineAccount::FieldPresence).contains(telepathier->presenceStatus(), Qt::CaseInsensitive));
-    QVERIFY(request.contacts()[0].detail(QContactOnlineAccount::DefinitionName).value("AccountPath") == telepathier->accountPath());
+    QVERIFY(contact.detail<QContactPresence>().customMessage() == telepathier->presenceMessage());
+    QVERIFY(contact.detail<QContactPresence>().nickname() == telepathier->alias());
+    QVERIFY((unsigned int)contact.detail<QContactPresence>().presenceState() == telepathier->presenceType());
+    QVERIFY(contact.detail(QContactOnlineAccount::DefinitionName).value("AccountPath") == telepathier->accountPath());
 }
-
+/*
 void ut_trackersink::testOnSimplePresenceChanged()
 {
     sink->onSimplePresenceChanged(telepathier.data(), "offline", 0, "new status"+telepathier->id());
@@ -169,6 +146,7 @@ void ut_trackersink::testPersonContactForTpContactId()
 
     QCOMPARE( ncoContact.iri() , foundNcoContact.iri() );
 }
+*/
 
 void ut_trackersink::contactsAdded(const QList<QContactLocalId>& contactIds)
 {
@@ -182,43 +160,10 @@ void ut_trackersink::contactsChanged(const QList<QContactLocalId>& contactIds)
     changed.append(contactIds);
 }
 
-void ut_trackersink::sinkContainsImAccount() {
-    QString accountName = "nobody@foobar.baz";
-    QVERIFY(sink->contains(accountName) == false);
-
-    // As the TrackerSink uses Qt Tracker Transactions, we need
-    // to flush the Transactions cache now in order to get this unit test
-    // working.
-    RDFTransactionPtr tx = ::tracker()->pendingTransaction();
-    if(tx) {
-        tx->commit();
-    }
-
-    Live<nco::PersonContact> ncoContact = ::tracker()->createLiveNode();
-    Live<nco::IMAccount> im = ncoContact->addHasIMAccount();
-    im->setImID(accountName);
-    QVERIFY(sink->contains(accountName) == true);
-
-    im->remove();
-    ncoContact->remove();
-    QVERIFY(sink->contains(accountName) == false);
-
-    // Restore Transactions.
-    QVERIFY(!tx || tx->reinitiate());
-}
-
-void Slots::progress(QContactFetchRequest* self, bool appendOnly)
-{
-    Q_UNUSED(appendOnly)
-    contacts = self->contacts();
-    QList<QContactLocalId> idsFromAllContactReq;
-}
-
 void ut_trackersink::cleanupTestCase()
 {
-    telepathier.clear();
-    QVERIFY(telepathier.isNull());
-    // see contacts::main() - the same bug here - application not closing
+    delete telepathier;
+    delete manager;
 }
 
 QTEST_MAIN(ut_trackersink)

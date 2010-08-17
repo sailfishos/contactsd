@@ -75,6 +75,7 @@ QString TpContactStub::presenceMessage() const
 
 void TpContactStub::setAvatarToken(const QString& avatar, const QString& mime)
 {
+    Q_UNUSED(mime)
     if(mAvatar != avatar) {
         mAvatar = avatar;
     }
@@ -87,7 +88,6 @@ QString TpContactStub::avatar() const
 
 QString TpContactStub::avatarFilePath() const
 {
-    //TODO merge in Siraj's changes about avatar path
     return mAvatar.isEmpty()? QString() : ::avatarFilePath(mAvatar, "jpeg");
 }
 
@@ -136,4 +136,46 @@ bool TpContactStub::supportsAudioCalls() const
     return supportsMediaCalls();
 }
 
+QList<TpContact*> TpContactStub::generateRandomContacts(unsigned int contactsCount)
+{
+    QList<TpContact*> result;
+
+    const QStringList capabilitiesConsts (QStringList()
+            << TpContactStub::CAPABILITIES_TEXT
+            << TpContactStub::CAPABILITIES_MEDIA);
+
+    const unsigned int onlineStatusesMax = 7;
+
+    for (unsigned i = 0; i < contactsCount; ++i)
+    {
+        TpContactStub *telepathier = new TpContactStub();
+
+        // unique 32
+        QUuid guid = QUuid::createUuid();
+        QString str = guid.toString().replace(QRegExp("[-}{]"), "");
+        str = str.right(8);
+        quint32 id = str.toUInt(0, 16);
+
+        telepathier->setId(QString::number(id, 10));
+
+        const int capsCount = capabilitiesConsts.size();
+        QStringList list;
+        for (int cap = 0; cap < capsCount; cap++ ) {
+            if (i%(cap+1)) {
+                list << capabilitiesConsts[cap];
+            }
+        }
+        telepathier->setCapabilitiesStrings(list);
+
+        telepathier->setPresenceMessage(QString::fromLatin1("Generated Random Contact message for ")+telepathier->id());
+
+        telepathier->setPresenceType(i%onlineStatusesMax);
+
+        telepathier->setAccountPath(QString("gabble/jabber/generated_random_contact"));
+
+        result << telepathier;
+    }
+
+    return result;
+}
 

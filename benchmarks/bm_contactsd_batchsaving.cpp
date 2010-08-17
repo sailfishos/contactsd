@@ -57,7 +57,7 @@ public:
             count(contactsCount),
             batchSize(bsizeCount)
     {
-        contacts = generateContacts(count);
+        contacts = TpContactStub::generateRandomContacts(count);
     }
 
     virtual ~Eng()
@@ -84,53 +84,6 @@ public:
 
 signals:
     void done();
-
-private slots:
-
-private:
-    QList<TpContact*> generateContacts(unsigned int contactsCount) const
-    {
-        QList<TpContact*> result;
-
-        qDebug() << Q_FUNC_INFO << "Generating contacts";
-        const QStringList capabilitiesConsts (QStringList()
-                << TpContactStub::CAPABILITIES_TEXT
-                << TpContactStub::CAPABILITIES_MEDIA);
-
-        const unsigned int onlineStatusesMax = 7;
-
-        for (unsigned i = 0; i < contactsCount; ++i)
-        {
-            TpContactStub *telepathier = new TpContactStub();
-
-            // unique 32
-            QUuid guid = QUuid::createUuid();
-            QString str = guid.toString().replace(QRegExp("[-}{]"), "");
-            str = str.right(8);
-            quint32 id = str.toUInt(0, 16);
-
-            telepathier->setId(QString::number(id, 10));
-
-            const int capsCount = capabilitiesConsts.size();
-            QStringList list;
-            for (int cap = 0; cap < capsCount; cap++ ) {
-                if (i%(cap+1)) {
-                    list << capabilitiesConsts[cap];
-                }
-            }
-            telepathier->setCapabilitiesStrings(list);
-
-            telepathier->setPresenceMessage(QString::fromLatin1("bm_contactsd_batchsaving message for ")+telepathier->id());
-
-            telepathier->setPresenceType(i%onlineStatusesMax);
-
-            telepathier->setAccountPath(QString("gabble/jabber/bm_contactsd_batchsaving"));
-
-            result << telepathier;
-        }
-
-        return result;
-    }
 
 private:
     unsigned count;
