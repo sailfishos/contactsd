@@ -1,0 +1,5 @@
+<aegis>
+     <request>
+         <for path="/usr/bin/contactsd" />
+     </request>
+</aegis>
