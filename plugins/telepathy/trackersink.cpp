@@ -58,6 +58,7 @@ TrackerSink::~TrackerSink()
     delete d;
 }
 
+// TODO dead code
 void TrackerSink::getIMContacts(const QString& /* contact_iri */)
 {
     RDFSelect select;
@@ -119,8 +120,6 @@ void TrackerSink::onModelUpdate()
 
         }
     }
-
-    this->commitTrackerTransaction();
 }
 
 void TrackerSink::connectOnSignals(TpContactPtr contact)
@@ -277,9 +276,6 @@ void TrackerSink::sinkToStorage(const QSharedPointer<TpContact>& obj)
     const QString id(QString::number(uniqueId));
 
     saveToTracker(id, obj.data());
-    // TODO this is dead code - transaction is never initialized.
-    // After benchmarking on device decide if to use transactions or not
-    this->commitTrackerTransaction();
 }
 
 void TrackerSink::onCapabilities(TpContact* obj)
@@ -311,8 +307,6 @@ void TrackerSink::onCapabilities(TpContact* obj)
     }
 
     service()->executeQuery(addressUpdate);
-
-    this->commitTrackerTransaction();
 }
 
 
@@ -354,9 +348,6 @@ void TrackerSink::onSimplePresenceChanged(TpContact* obj, uint uniqueId)
 
 
     service()->executeQuery(addressUpdate);
-
-    this->commitTrackerTransaction();
-
 }
 
 QList<QSharedPointer<TpContact> > TrackerSink::getFromStorage()
@@ -434,7 +425,6 @@ void TrackerSink::saveAvatarToken(const QString& id, const QString& token, const
             break;
         }
     }
-    this->commitTrackerTransaction();
 }
 
 void TrackerSink::onAvatarUpdated(const QString& id, const QString& token, const QString& mime)

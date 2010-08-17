@@ -73,6 +73,11 @@ public:
 
     void getIMContacts(const QString&);
 
+    // transaction used for batch saving.
+    void initiateTrackerTransaction();
+    void commitTrackerTransaction();
+
+
 Q_SIGNALS:
     /*! \brief Signal which is emmited when a new avatar is added to the storage
       */
@@ -99,8 +104,6 @@ private:
      * If transactions is committed - returns tracker.
      */
     RDFServicePtr service();
-    void commitTrackerTransaction();
-    void initiateTrackerTransaction();
     TpContact* find(uint id);
 
     bool isValidTpContact(const TpContact *tpContact);

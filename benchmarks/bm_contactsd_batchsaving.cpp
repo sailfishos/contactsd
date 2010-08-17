@@ -69,11 +69,14 @@ public:
     {
         unsigned int todo = count;
         unsigned int bsize;
-        batchSize = 1; //TODO no batch saving yet
         do {
             bsize = (todo > batchSize) ? batchSize : todo;
-            // use TpContact::id() as ContactLocalUID in this benchmark
-            TrackerSink::instance()->saveToTracker(contacts[todo-1]->id(), contacts[todo-1]);
+            TrackerSink::instance()->initiateTrackerTransaction();
+            for(int i = 0; i < bsize; i++) {
+                // use TpContact::id() as ContactLocalUID in this benchmark
+                TrackerSink::instance()->saveToTracker(contacts[todo-i-1]->id(), contacts[todo-i-1]);
+            }
+            TrackerSink::instance()->commitTrackerTransaction();
             todo -= bsize;
         } while (0 < todo);
         emit done();
@@ -159,7 +162,7 @@ int main(int argc, char* argv[])
 
 
     qDebug()
-            << "Going to add" << count << "contacts in batches of (batch is not yet used in code)" << bsize;
+            << "Going to add" << count << "contacts in batches of" << bsize;
 
     Eng eng(count, bsize);
 
