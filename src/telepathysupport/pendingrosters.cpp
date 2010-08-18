@@ -154,6 +154,11 @@ Tp::Contacts PendingRosters::rosterList() const
     return mContacts;
 }
 
+QList<Tp::ConnectionPtr> PendingRosters::contactConnections()
+{
+    return mConnectionList;
+}
+
 /*!
 
 \fn QList<QSharedPointer<TpContact> > PendingRosters::telepathyRosterList()

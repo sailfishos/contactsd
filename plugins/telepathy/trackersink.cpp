@@ -491,6 +491,11 @@ void TrackerSink::deleteContacts(const QString& path)
 
 }
 
+void TrackerSink::deleteContact(const Tp::ContactPtr contact)
+{
+
+}
+
 void TrackerSink::onDeleteModelReady()
 {
      for (int i = 0 ; i < d->livenode->rowCount() ; i ++) {

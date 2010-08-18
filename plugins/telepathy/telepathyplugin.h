@@ -64,6 +64,7 @@ private Q_SLOTS:
     void onAccountRemoved();
     void onOnlinenessChanged(bool online);
     void onConnectionChanged(bool connection);
+    void onContactsChanged(const Tp::Contacts& added, const Tp::Contacts& removed);
 
 private:
     void saveIMAccount(Tp::AccountPtr account, TelepathyAccount::Changes changes);
@@ -74,5 +75,6 @@ private:
     Tp::AccountManagerPtr mAm;
     QList<PendingRosters*> mRosters;
     QList<TelepathyAccount*> mAccounts;
+    QList<Tp::ConnectionPtr> mConnections;
     AccountServiceMapper accountServiceMapper;
 };

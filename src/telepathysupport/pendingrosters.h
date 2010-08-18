@@ -41,6 +41,7 @@ public:
     explicit PendingRosters(QObject *parent = 0);
     Tp::Contacts rosterList() const;
     QList<QSharedPointer<TpContact> > telepathyRosterList() const;
+    QList<Tp::ConnectionPtr> contactConnections();
 Q_SIGNALS:
     void contact(QSharedPointer<TpContact>);
 private Q_SLOTS:

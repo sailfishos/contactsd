@@ -70,6 +70,8 @@ public:
     void takeAllOffline(const QString& path);
     void clearContacts(const QString& path);
     void deleteContacts(const QString& path);
+    void deleteContact(const Tp::ContactPtr);
+    
 
     void getIMContacts(const QString&);
 

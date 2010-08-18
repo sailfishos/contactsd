@@ -182,9 +182,30 @@ void TelepathyPlugin::onFinished(Tp::PendingOperation* op)
         mStore->sinkToStorage(c);
     }
 
+    mConnections = roster->contactConnections();
+    for (int i = 0 ; i < mConnections.count() ; i++) {
+        Tp::ConnectionPtr conn = mConnections.value(i);
+        if (conn) {
+            if (conn.data()) {
+                connect(conn.data(), SIGNAL(allKnownContactsChanged(const Tp::Contacts& , const Tp::Contacts&)), this, SLOT(onContactsChanged(const Tp::Contacts&, const Tp::Contacts&)));
+            }
+        }
+    }
     int index = mRosters.indexOf(roster);
     mRosters.removeAt(index);
     roster->deleteLater();
+}
+
+void TelepathyPlugin::onContactsChanged(const Tp::Contacts& contactsAdded, const Tp::Contacts& contactsRemoved)
+{
+    foreach (const Tp::ContactPtr contact, contactsAdded) {
+        QSharedPointer<TpContact> tpcontact = QSharedPointer<TpContact>(new TpContact(contact), &QObject::deleteLater);
+        mStore->sinkToStorage(tpcontact);
+    }
+
+    foreach (const Tp::ContactPtr contact, contactsRemoved) {
+
+    }
 }
 
 void TelepathyPlugin::onAccountChanged(TelepathyAccount* account, TelepathyAccount::Changes changes)
