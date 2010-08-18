@@ -77,6 +77,13 @@ public:
     void initiateTrackerTransaction();
     void commitTrackerTransaction();
 
+    /*!
+     * TODO QHash lookup - if there is already created nco:PersonContacts in tracker
+     * for given \a tpContact.
+     *
+     * \a existing - false for not existing contacts
+     */
+    unsigned int contactLocalUID(const TpContact* const tpContact, bool *existing = 0) const;
 
 Q_SIGNALS:
     /*! \brief Signal which is emmited when a new avatar is added to the storage
@@ -85,7 +92,7 @@ Q_SIGNALS:
 
 private Q_SLOTS:
    void onAvatarUpdated(const QString&, const QString&, const QString&);
-   void onSimplePresenceChanged(TpContact* contact, uint uniqueId);
+   void onSimplePresenceChanged(TpContact* contact);
    void onCapabilities(TpContact*);
    void onFeaturesReady(TpContact*);
    void onChange(uint uniqueId, TpContact::ChangeType type);

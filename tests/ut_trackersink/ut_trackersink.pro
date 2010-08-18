@@ -6,7 +6,7 @@ TELEPATHY_PLUGIN_DIR = $$PWD/../../plugins/telepathy
 CONFIG += test mobility
 
 MOBILITY += contacts
-QT += dbus testlib
+QT += testlib
 
 CONFIG += link_pkgconfig
 PKGCONFIG += TelepathyQt4 qttracker

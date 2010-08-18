@@ -150,7 +150,7 @@ void TrackerSink::onChange(uint uniqueId, TpContact::ChangeType type)
         onAvatarUpdated(contact->contact()->id(), contact->avatar(), contact->avatarMime());
         break;
     case TpContact::SIMPLE_PRESENCE:
-        onSimplePresenceChanged(contact, uniqueId);
+        onSimplePresenceChanged(contact);
         break;
     case TpContact::CAPABILITIES:
         onCapabilities(contact);
@@ -169,14 +169,14 @@ void TrackerSink::onFeaturesReady(TpContact* tpContact)
     }
 }
 
-static QUrl buildContactIri(const QString& uniqueIdStr)
+static QUrl buildContactIri(const QString& contactLocalIdString)
 {
-  return QUrl("contact:" + uniqueIdStr);
+  return QUrl(QString::fromLatin1("contact:") + contactLocalIdString);
 }
 
-static QUrl buildContactIri(unsigned int uniqueId)
+static QUrl buildContactIri(unsigned int contactLocalId)
 {
-  return buildContactIri(QString::number(uniqueId));
+  return buildContactIri(QString::number(contactLocalId));
 }
 
 void TrackerSink::saveToTracker(const QString& contactLocalId, const TpContact *tpContact)
@@ -192,7 +192,7 @@ void TrackerSink::saveToTracker(const QString& contactLocalId, const TpContact *
     const QString id(QString::number(TpContact::buildUniqueId(accountpath, imId)));
     const RDFVariable imAddress(TpContact::buildImAddress(accountpath, imId));
     qDebug() << Q_FUNC_INFO << accountpath;
-    const RDFVariable imAccount(QUrl("telepathy:" + accountpath));
+    const RDFVariable imAccount(QUrl(QString::fromLatin1("telepathy:") + accountpath));
     const RDFVariable imInfo(QUrl(TpContact::buildImAddress(accountpath, imId)));
     const QDateTime datetime = QDateTime::currentDateTime();
 
@@ -274,7 +274,7 @@ void TrackerSink::sinkToStorage(const QSharedPointer<TpContact>& obj)
         " }\n{Message : " << obj->presenceMessage() <<
         " }\n{AccountPath : " << obj->accountPath();
 
-    const QString id(QString::number(uniqueId));
+    const QString id = QString::number(contactLocalUID(obj.data()));
 
     saveToTracker(id, obj.data());
 }
@@ -310,8 +310,8 @@ void TrackerSink::onCapabilities(TpContact* obj)
     service()->executeQuery(addressUpdate);
 }
 
-
-void TrackerSink::onSimplePresenceChanged(TpContact* obj, uint uniqueId)
+// uniqueId - QContactLocalId calculated as TpContact::uniqueId() in TpContact::onSimplePresenceChanged
+void TrackerSink::onSimplePresenceChanged(TpContact* obj)
 {
     qDebug() << Q_FUNC_INFO;
     if (!isValidTpContact(obj)) {
@@ -319,7 +319,6 @@ void TrackerSink::onSimplePresenceChanged(TpContact* obj, uint uniqueId)
         return;
     }
 
-    const RDFVariable contact(buildContactIri(uniqueId));
     const RDFVariable imAddress(obj->imAddress());
     const RDFVariable imInfo(QUrl(TpContact::buildImAddress(obj->accountPath(), obj->contact()->id())));
     const QDateTime datetime = QDateTime::currentDateTime();
@@ -328,8 +327,7 @@ void TrackerSink::onSimplePresenceChanged(TpContact* obj, uint uniqueId)
 
     addressUpdate.addDeletion(imAddress, nco::imPresence::iri());
     addressUpdate.addDeletion(imAddress, nco::imStatusMessage::iri());
-    addressUpdate.addDeletion(imAddress, nie::contentLastModified::iri());
-    addressUpdate.addDeletion(contact, nie::contentLastModified::iri());
+    addressUpdate.addDeletion(imInfo, nie::contentLastModified::iri());
 
     const QSharedPointer<const Tp::Contact> tcontact = obj->contact();
 
@@ -341,7 +339,6 @@ void TrackerSink::onSimplePresenceChanged(TpContact* obj, uint uniqueId)
     insertions << RDFStatement(imAddress, nco::imPresence::iri(),
                                toTrackerStatus(tcontact->presenceType()));
     addressUpdate.addInsertion(insertions);
-    addressUpdate.addInsertion(contact, nie::contentLastModified::iri(), RDFVariable(datetime));
 
     addressUpdate.addInsertion(RDFStatementList() <<
             RDFStatement(imInfo, rdf::type::iri(), nie::InformationElement::iri()) <<
@@ -405,13 +402,14 @@ void TrackerSink::saveAvatarToken(const QString& id, const QString& token, const
             // though the libqtttracker maintainer agrees that it's bad API.
             Live<nie::InformationElement> info = service()->liveNode(tpUrl);
 
-            const QString uniqueIdStr = QString::number(c->uniqueId());
-            Live<nco::PersonContact> photoAccount = service()->liveNode(buildContactIri(uniqueIdStr));
+            const unsigned int contactLocalId = contactLocalUID(c.data());
+            const QString contactLocalIdString = QString::number(contactLocalId);
+            Live<nco::PersonContact> photoAccount = service()->liveNode(buildContactIri(contactLocalId));
 
             // set both properties for a transition period
             // TODO: Set just one when it has been decided:
-            photoAccount->setContactLocalUID(uniqueIdStr);
-            photoAccount->setContactUID(uniqueIdStr);
+            photoAccount->setContactLocalUID(contactLocalIdString);
+            photoAccount->setContactUID(contactLocalIdString);
 
             const QDateTime datetime = QDateTime::currentDateTime();
             photoAccount->setContentCreated(datetime);
@@ -549,12 +547,12 @@ void TrackerSink::takeAllOffline(const QString& path)
             continue;
         }
 
-        const RDFVariable contact(buildContactIri(obj->uniqueId()));
         const RDFVariable imAddress(obj->imAddress());
+        const RDFVariable imInfo(QUrl(TpContact::buildImAddress(obj->accountPath(), obj->contact()->id())));
 
         addressUpdate.addDeletion(imAddress, nco::imPresence::iri());
         addressUpdate.addDeletion(imAddress, nco::imStatusMessage::iri());
-        addressUpdate.addDeletion(contact, nie::contentLastModified::iri());
+        addressUpdate.addDeletion(imInfo, nie::contentLastModified::iri());
 
         const QLatin1String status("unknown");
         addressUpdate.addInsertion(RDFStatementList() <<
@@ -563,7 +561,7 @@ void TrackerSink::takeAllOffline(const QString& path)
                                    RDFStatement(imAddress, nco::imPresence::iri(),
                                                 toTrackerStatus(status)));
 
-        addressUpdate.addInsertion(contact, nie::contentLastModified::iri(),
+        addressUpdate.addInsertion(imInfo, nie::contentLastModified::iri(),
                                    RDFVariable(QDateTime::currentDateTime()));
     }
 
@@ -611,4 +609,10 @@ const QUrl & TrackerSink::toTrackerStatus(const QString& status)
     }
 
     return nco::presence_status_error::iri();
+}
+
+unsigned int TrackerSink::contactLocalUID(const TpContact* const tpContact, bool *existing) const
+{
+    Q_UNUSED(existing)
+    return tpContact->uniqueId();
 }

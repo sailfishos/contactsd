@@ -44,11 +44,8 @@ public:
 private Q_SLOTS:
     void initTestCase();
     void cleanupTestCase();
-/*    void testImContactForTpContactId();
-    void testImContactForPeople();
-    void testPersonContactForTpContactId();*/
     void testSinkToStorage();
-//    void testOnSimplePresenceChanged();
+    void testOnSimplePresenceChanged();
 
 protected Q_SLOTS:
     void contactsAdded(const QList<QContactLocalId>& contactIds);
@@ -56,7 +53,7 @@ protected Q_SLOTS:
 
 private:
     TrackerSink* const sink;
-    QContactManager * const manager;
+    QContactManager *manager;
     TpContactStub *telepathier;
     unsigned int contactInTrackerUID;
     QList<QContactLocalId> added;

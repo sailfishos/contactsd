@@ -34,15 +34,18 @@
 
 ut_trackersink::ut_trackersink() :
     sink(TrackerSink::instance()),
-    manager(new QContactManager(QLatin1String("tracker")))
+    manager(0)
 {
-    connect(manager, SIGNAL(contactsAdded(const QList<QContactLocalId>&)), this, SLOT(contactsAdded(const QList<QContactLocalId>&)));
-    connect(manager, SIGNAL(contactsChanged(const QList<QContactLocalId>&)), this, SLOT(contactsChanged(const QList<QContactLocalId>&)));
 }
 
 void ut_trackersink::initTestCase()
 {
+    manager = new QContactManager(QLatin1String("tracker"));
+    connect(manager, SIGNAL(contactsAdded(const QList<QContactLocalId>&)), this, SLOT(contactsAdded(const QList<QContactLocalId>&)));
+    connect(manager, SIGNAL(contactsChanged(const QList<QContactLocalId>&)), this, SLOT(contactsChanged(const QList<QContactLocalId>&)));
+
     telepathier = qobject_cast<TpContactStub*>(TpContactStub::generateRandomContacts(1)[0]);
+
     QVERIFY(telepathier);
     // display name is mandatory detail when qtcontacts-tracker is reading contacts
     Live<nco::IMAccount> liveAccount = ::tracker()->liveNode(QUrl("telepathy:"+telepathier->accountPath()));
@@ -51,6 +54,7 @@ void ut_trackersink::initTestCase()
 
 void ut_trackersink::testSinkToStorage()
 {
+    QDateTime datetime = QDateTime::currentDateTime();
     // continue with telepathier sink
     sink->saveToTracker(telepathier->id(), telepathier);
     // check what was written
@@ -82,75 +86,30 @@ void ut_trackersink::testSinkToStorage()
     QVERIFY(contact.detail<QContactPresence>().nickname() == telepathier->alias());
     QVERIFY((unsigned int)contact.detail<QContactPresence>().presenceState() == telepathier->presenceType());
     QVERIFY(contact.detail(QContactOnlineAccount::DefinitionName).value("AccountPath") == telepathier->accountPath());
+    QVERIFY(contact.detail<QContactPresence>().timestamp() > datetime);
 }
 
-/*
+
 void ut_trackersink::testOnSimplePresenceChanged()
 {
-    sink->onSimplePresenceChanged(telepathier.data(), "offline", 0, "new status"+telepathier->id());
-    QContact contact = ContactManager::instance()->contact(contactInTrackerUID);
-    QVERIFY(telepathier->message() == QString("new status"+telepathier->id()) );
-    QVERIFY(telepathier->presenceStatus() == QString("offline"));
+    // check storing and reading of all presences
+    QDateTime datetime = QDateTime::currentDateTime();
+    for (int i = 0; i < 8; i++) {
+        QString presenceMessage = telepathier->presenceMessage() + QLatin1String("change");
+        telepathier->setPresenceMessage(presenceMessage);
+        unsigned int presenceType = (telepathier->presenceType() + 1) % 7;
+        telepathier->setPresenceType(presenceType);
+        sink->onSimplePresenceChanged(telepathier);
+        QContact contact = manager->contact(contactInTrackerUID);
+        QVERIFY(telepathier->presenceMessage() == presenceMessage);
+        QVERIFY(telepathier->presenceType() == presenceType);
 
-    QVERIFY(contact.detail(QContactOnlineAccount::DefinitionName).value(QContactOnlineAccount::FieldStatusMessage) == telepathier->message());
-    QVERIFY(contact.detail(QContactOnlineAccount::DefinitionName).value(QContactOnlineAccount::FieldPresence).contains(telepathier->presenceStatus(), Qt::CaseInsensitive));
+        QVERIFY(contact.detail<QContactPresence>().customMessage() == telepathier->presenceMessage());
+        QVERIFY(contact.detail<QContactPresence>().presenceState() == telepathier->presenceType());
+        QVERIFY(contact.detail<QContactPresence>().timestamp() > datetime);
+        datetime = QDateTime::currentDateTime();
+    }
 }
-
-// Fetch the im account based on telepathy contact and personcontact
-// and compare the result to make sure thay are the same.
-void ut_trackersink::testImContactForTpContactId()
-{
-    //Find the imAccount that corresponds to the telepathy contact id.
-    Live<nco::IMAccount> imAccount = sink->imAccountForTpContactId("0");
-
-    //INSERT <test:0>
-    Live<nco::PersonContact> ncoContact;
-    ncoContact =
-        ::tracker()->liveNode(QUrl("contact:0"));
-
-    //DELETE contactLocalUID and INSERT contactLocalUID
-    ncoContact->setContactLocalUID("0");
-
-    Live<nco::IMAccount> imAccount1 = sink->imAccountForPersonContact( ncoContact );
-
-    QCOMPARE( imAccount.iri(), imAccount1.iri() );
-}
-
-// In different order compared to the test above.
-// Fetch the im account based on telepathy contact and personcontact
-// and compare the result to make sure thay are the same.
-void ut_trackersink::testImContactForPeople()
-{
-    //INSERT <test:0>
-    Live<nco::PersonContact> ncoContact;
-    ncoContact =
-        ::tracker()->liveNode(QUrl("contact:0"));
-
-    //DELETE contactLocalUID and INSERT contactLocalUID
-    ncoContact->setContactLocalUID("0");
-
-    //Find existing IMAccount or INSERT IMAccount.
-    // With empty tracker this results in subject changed signal for
-    // "<test:0>" "http://www.semanticdesktop.org/ontologies/2007/03/22/nco#hasIMAccount"
-    Live<nco::IMAccount> imAccount1 = sink->imAccountForPersonContact( ncoContact );
-
-    //Compare the ImAccount to the one returned for telepathycontact
-    Live<nco::IMAccount> imAccount2 = sink->imAccountForTpContactId("0");
-    QCOMPARE( imAccount1.iri(), imAccount2.iri() );
-}
-
-// Create a "new" Live node contact and check that the new contact is returned.
-void ut_trackersink::testPersonContactForTpContactId()
-{
-    Live<nco::PersonContact> ncoContact;
-    ncoContact =
-        ::tracker()->liveNode(QUrl("contact:0"));
-
-    Live<nco::PersonContact> foundNcoContact = sink->imContactForTpContactId("0");
-
-    QCOMPARE( ncoContact.iri() , foundNcoContact.iri() );
-}
-*/
 
 void ut_trackersink::contactsAdded(const QList<QContactLocalId>& contactIds)
 {
