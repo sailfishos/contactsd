@@ -55,7 +55,7 @@ Q_SIGNALS:
     void error(const QString &, const QString &, const QString &);
 
 private Q_SLOTS:
-    void onFinished(Tp::PendingOperation* op);
+    void onFinished(PendingRosters* op);
     void onAccountManagerReady(Tp::PendingOperation*);
     void onAccountCreated(const QString &);
     void onAccountReady(Tp::PendingOperation*);

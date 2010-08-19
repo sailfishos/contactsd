@@ -72,8 +72,8 @@ void TelepathyPlugin::onAccountCreated(const QString& path)
     PendingRosters* request = m_tpController->requestRosters(account);
     mRosters.append(request);
 
-    connect(request, SIGNAL(finished(Tp::PendingOperation *)),
-            this,    SLOT(onFinished(Tp::PendingOperation *)));
+    connect(request, SIGNAL(finished(PendingRosters *)),
+            this,    SLOT(onFinished(PendingRosters *)));
     Tp::Features features;
     features << Tp::Account::FeatureAvatar
         << Tp::Account::FeatureCore
@@ -95,8 +95,8 @@ void TelepathyPlugin::onAccountManagerReady(Tp::PendingOperation* op)
     foreach (Tp::AccountPtr account, mAm->validAccounts() ) {
         PendingRosters* request = m_tpController->requestRosters(account);
         mRosters.append(request);
-        connect(request, SIGNAL(finished(Tp::PendingOperation *)),
-                this,    SLOT(onFinished(Tp::PendingOperation *)));
+        connect(request, SIGNAL(finished(PendingRosters *)),
+                this,    SLOT(onFinished(PendingRosters *)));
         
      Tp::Features features;
      features << Tp::Account::FeatureAvatar
@@ -168,7 +168,7 @@ void TelepathyPlugin::onAccountRemoved()
     }
 }
 
-void TelepathyPlugin::onFinished(Tp::PendingOperation* op)
+void TelepathyPlugin::onFinished(PendingRosters* op)
 {
     qDebug() << Q_FUNC_INFO << ": Request roster operation finished.";
 
@@ -191,9 +191,6 @@ void TelepathyPlugin::onFinished(Tp::PendingOperation* op)
             }
         }
     }
-    int index = mRosters.indexOf(roster);
-    mRosters.removeAt(index);
-    roster->deleteLater();
 }
 
 void TelepathyPlugin::onContactsChanged(const Tp::Contacts& contactsAdded, const Tp::Contacts& contactsRemoved)

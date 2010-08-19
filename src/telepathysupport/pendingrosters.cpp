@@ -37,10 +37,11 @@
 */
 
 
-PendingRosters::PendingRosters(QObject * parent):Tp::PendingOperation(parent)
+PendingRosters::PendingRosters(QObject * parent):QObject(parent)
 {
     mCapCount = 0;
     mWasOnline = false;
+    mHasError = false;
 }
 
 void PendingRosters::addRequestForAccount(Tp::AccountPtr account)
@@ -137,10 +138,45 @@ void PendingRosters::onConnectionReady(Tp::PendingOperation * op)
                 }
 
             }
+       connect(conn.data(), SIGNAL(allKnownContactsChanged(const Tp::Contacts&, const Tp::Contacts&)), this, SLOT(onAllKnownContactsChanged(const Tp::Contacts&, const Tp::Contacts&)));
     }
     qDebug() << Q_FUNC_INFO << ": Connection ready for account: " << mAccount->objectPath();
 
     setFinished();
+}
+
+void PendingRosters::setFinished()
+{
+    mHasError = false;
+    emit finished(this);
+}
+
+void PendingRosters::setFinishedWithError(const QString& name, const QString& message)
+{
+   mHasError = true;
+   mErrorName = name;
+   mErrorMessage = message;
+   emit finished(this);
+}
+
+bool PendingRosters::isError() const
+{
+    return mHasError;
+}
+
+QString PendingRosters::errorName() const
+{
+    return mErrorName;
+}
+
+QString PendingRosters::errorMessage() const
+{
+    return mErrorMessage;
+}
+
+void PendingRosters::onAllKnownContactsChanged(const Tp::Contacts& contactsAdded, const Tp::Contacts& contactsRemoved)
+{
+
 }
 /*!
 \fn Tp::Contacts PendingRosters::rosterList()

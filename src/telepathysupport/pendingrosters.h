@@ -34,7 +34,7 @@
 
 class TelepathyController;
 
-class PendingRosters : public Tp::PendingOperation
+class PendingRosters : public QObject
 {
     Q_OBJECT
 public:
@@ -42,17 +42,25 @@ public:
     Tp::Contacts rosterList() const;
     QList<QSharedPointer<TpContact> > telepathyRosterList() const;
     QList<Tp::ConnectionPtr> contactConnections();
+    QList<QSharedPointer<TpContact> > newRosters() const;
+    bool isError() const;
+    QString errorName() const;
+    QString errorMessage() const;
 Q_SIGNALS:
     void contact(QSharedPointer<TpContact>);
+    void finished (PendingRosters *operation);
 private Q_SLOTS:
     void onConnectionReady(Tp::PendingOperation * po);
     void onAccountReady(Tp::PendingOperation* op);
     void onHaveConnectionChanged(bool);
     void onConnectionStatusChanged(Tp::ConnectionStatus status, Tp::ConnectionStatusReason reason);
+    void onAllKnownContactsChanged(const Tp::Contacts& added, const Tp::Contacts& removed) ;
 private:
     Q_DISABLE_COPY(PendingRosters)
     friend class TelepathyController;
     void addRequestForAccount(Tp::AccountPtr);
+    void setFinished();
+    void setFinishedWithError(const QString&, const QString&);
 
     Tp::Contacts mContacts;
     QList<QSharedPointer<TpContact> >  mTpContacts;
@@ -60,6 +68,9 @@ private:
     Tp::AccountPtr mAccount;
     int mCapCount;
     bool mWasOnline;
+    bool mHasError;
+    QString mErrorName;
+    QString mErrorMessage;
 
 };
 
