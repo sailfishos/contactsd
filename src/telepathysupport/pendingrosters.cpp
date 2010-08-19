@@ -145,6 +145,32 @@ void PendingRosters::onConnectionReady(Tp::PendingOperation * op)
     setFinished();
 }
 
+void PendingRosters::onAllKnownContactsChanged(const Tp::Contacts& rostersAdded, const Tp::Contacts& rostersRemoved)
+{
+    QList<QSharedPointer<TpContact> > newContacts;
+    QList<QSharedPointer<TpContact> > deletedContacts;
+    foreach (Tp::ContactPtr contact, rostersAdded) {
+         QSharedPointer<TpContact> obj =
+                        QSharedPointer<TpContact>(new TpContact(contact),
+                                                         &QObject::deleteLater);
+        obj->setAccountPath(mAccount->objectPath());
+        mTpContacts.append(obj);
+        newContacts.append(obj);
+    }
+
+    emit contactsAdded(newContacts);
+
+    foreach (Tp::ContactPtr contact, rostersRemoved) {
+        QSharedPointer<TpContact> obj =
+                        QSharedPointer<TpContact>(new TpContact(contact),
+                                                         &QObject::deleteLater);
+        obj->setAccountPath(mAccount->objectPath());
+        deletedContacts.append(obj);
+    }
+
+    emit contactsRemoved(deletedContacts);
+}
+
 void PendingRosters::setFinished()
 {
     mHasError = false;
@@ -172,11 +198,6 @@ QString PendingRosters::errorName() const
 QString PendingRosters::errorMessage() const
 {
     return mErrorMessage;
-}
-
-void PendingRosters::onAllKnownContactsChanged(const Tp::Contacts& contactsAdded, const Tp::Contacts& contactsRemoved)
-{
-
 }
 /*!
 \fn Tp::Contacts PendingRosters::rosterList()

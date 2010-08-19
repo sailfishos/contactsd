@@ -47,7 +47,9 @@ public:
     QString errorName() const;
     QString errorMessage() const;
 Q_SIGNALS:
-    void contact(QSharedPointer<TpContact>);
+    void contact(QSharedPointer<TpContact>&);
+    void contactsAdded(QList<QSharedPointer<TpContact> >);
+    void contactsRemoved(QList<QSharedPointer<TpContact> >);
     void finished (PendingRosters *operation);
 private Q_SLOTS:
     void onConnectionReady(Tp::PendingOperation * po);
