@@ -1,6 +1,7 @@
 contactsd (0.5.33~1) UNRELEASED; urgency=low
 
   * Fixes: NB#180541 - Voice mail is not saved automatically to contact-list
+  * Fixes: NB#183241
 
  -- Aleksandar Stojiljkovic <aleksandar.stojiljkovic@nokia.com>  Fri, 13 Aug 2010 17:46:19 +0300
 
