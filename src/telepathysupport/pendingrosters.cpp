@@ -147,6 +147,7 @@ void PendingRosters::onConnectionReady(Tp::PendingOperation * op)
 
 void PendingRosters::onAllKnownContactsChanged(const Tp::Contacts& rostersAdded, const Tp::Contacts& rostersRemoved)
 {
+    qDebug() << Q_FUNC_INFO << "Contact Added";
     QList<QSharedPointer<TpContact> > newContacts;
     QList<QSharedPointer<TpContact> > deletedContacts;
     foreach (Tp::ContactPtr contact, rostersAdded) {

@@ -491,7 +491,7 @@ void TrackerSink::deleteContacts(const QString& path)
 
 }
 
-void TrackerSink::deleteContact(const Tp::ContactPtr contact)
+void TrackerSink::deleteContact(const QSharedPointer<TpContact>&)
 {
 
 }

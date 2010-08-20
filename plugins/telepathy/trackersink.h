@@ -70,7 +70,7 @@ public:
     void takeAllOffline(const QString& path);
     void clearContacts(const QString& path);
     void deleteContacts(const QString& path);
-    void deleteContact(const Tp::ContactPtr);
+    void deleteContact(const QSharedPointer<TpContact>& contact);
     
 
     void getIMContacts(const QString&);

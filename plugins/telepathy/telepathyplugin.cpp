@@ -182,15 +182,34 @@ void TelepathyPlugin::onFinished(PendingRosters* op)
         mStore->sinkToStorage(c);
     }
 
-    mConnections = roster->contactConnections();
-    for (int i = 0 ; i < mConnections.count() ; i++) {
-        Tp::ConnectionPtr conn = mConnections.value(i);
-        if (conn) {
-            if (conn.data()) {
-                connect(conn.data(), SIGNAL(allKnownContactsChanged(const Tp::Contacts& , const Tp::Contacts&)), this, SLOT(onContactsChanged(const Tp::Contacts&, const Tp::Contacts&)));
-            }
-        }
-    }
+    connect(roster, SIGNAL(contactsAdded(QList<QSharedPointer<TpContact> >)), this, SLOT(onContactsAdded(QList<QSharedPointer<TpContact> >)));
+    connect(roster, SIGNAL(contactsRemoved(QList<QSharedPointer<TpContact> >)), this, SLOT(onContactsRemoved(QList<QSharedPointer<TpContact> >)));
+    
+}
+
+void TelepathyPlugin::onContactsRemoved(QList<QSharedPointer<TpContact> > list)
+{
+   for (int i = 0 ; i < list.count() ; i++) {
+       QSharedPointer<TpContact> contact = list.value(i);
+       if (contact) {
+           if (contact.data()) {
+               mStore->deleteContact(contact);
+           }
+       }
+   }
+}
+
+void TelepathyPlugin::onContactsAdded(QList<QSharedPointer<TpContact> > list)
+{
+    qDebug() << Q_FUNC_INFO << list.count();
+   for (int i = 0 ; i < list.count() ; i++) {
+       QSharedPointer<TpContact> contact = list.value(i);
+       if (contact) {
+           if (contact.data()) {
+               mStore->sinkToStorage(contact);
+           }
+       }
+   }
 }
 
 void TelepathyPlugin::onContactsChanged(const Tp::Contacts& contactsAdded, const Tp::Contacts& contactsRemoved)
@@ -220,6 +239,11 @@ void TelepathyPlugin::onAccountChanged(TelepathyAccount* account, TelepathyAccou
         mRosters.append(request);
         connect(request, SIGNAL(finished(Tp::PendingOperation *)),
                 this,    SLOT(onFinished(Tp::PendingOperation *)));
+
+       connect(request, SIGNAL(contactsAdded(QList<QSharedPointer<TpContact> >)), this, SLOT(onContactsAdded(QList<QSharedPointer<TpContact> >)));
+       connect(request, SIGNAL(contactsRemoved(QList<QSharedPointer<TpContact> >)), this, SLOT(onContactsRemoved(QList<QSharedPointer<TpContact> >)));
+    
+
     }
 }
 //TODO

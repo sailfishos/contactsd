@@ -65,6 +65,8 @@ private Q_SLOTS:
     void onOnlinenessChanged(bool online);
     void onConnectionChanged(bool connection);
     void onContactsChanged(const Tp::Contacts& added, const Tp::Contacts& removed);
+    void onContactsRemoved(QList<QSharedPointer<TpContact> > list);
+    void onContactsAdded(QList<QSharedPointer<TpContact> > list);
 
 private:
     void saveIMAccount(Tp::AccountPtr account, TelepathyAccount::Changes changes);
