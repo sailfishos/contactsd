@@ -24,6 +24,9 @@
 #include <QObject>
 #include <QMap>
 
+//contactsd
+#include "importnotifierdbusadaptor.h"
+
 class QPluginLoader;
 class QString;
 class QStringList;
@@ -42,12 +45,18 @@ public:
     ~ContactsdPluginLoader();
     QStringList validPlugins() const;
 
+public Q_SLOTS:
+    bool hasActiveImports();
+
 private:
     typedef QMap<QString, QPluginLoader*> PluginStore;
     PluginStore m_pluginStore;
+    ImportNotifierAdaptor* mDbusNotifierAdaptor;
 
     void loadPlugins(const QStringList &plugins, const QStringList &banList);
     bool reloadPlugin(const QString &plugin);
+    void startNotificationService();
+    bool hasMethod(QPluginLoader* obj, const QString& method);
 
 Q_SIGNALS:
     void pluginsLoaded();

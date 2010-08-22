@@ -21,8 +21,12 @@
 
 // contactd
 #include "contactsdpluginloader.h"
+
 // Qt
 #include <QSettings>
+#include <QDBusConnection>
+#include <QDBusError>
+#include <QDebug>
 
 /*!
   \class ContactsDaemon
@@ -116,3 +120,4 @@ QStringList ContactsDaemon::validPlugins() const
     }
     return QStringList();
 }
+

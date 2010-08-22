@@ -67,6 +67,7 @@ private Q_SLOTS:
     void onContactsChanged(const Tp::Contacts& added, const Tp::Contacts& removed);
     void onContactsRemoved(QList<QSharedPointer<TpContact> > list);
     void onContactsAdded(QList<QSharedPointer<TpContact> > list);
+    bool hasActiveImports() { return true;}
 
 private:
     void saveIMAccount(Tp::AccountPtr account, TelepathyAccount::Changes changes);

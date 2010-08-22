@@ -23,10 +23,12 @@ TESTS_DIR = $$PWD/../tests
 HEADERS += contactsdaemon.h \
     contactsdpluginloader.h \
     contactsdplugininterface.h \
+    importnotifierdbusadaptor.h \
     logger.h
 SOURCES += main.cpp \
     contactsdaemon.cpp \
     contactsdpluginloader.cpp \
+    importnotifierdbusadaptor.cpp \
     logger.cpp
 
 unix {

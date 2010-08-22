@@ -6,6 +6,7 @@ QMAKE_EXTRA_TARGETS += test
 
 CONFIG += test
 QT += testlib
+QT += dbus
 
 SOURCE_DIR = $$PWD/../../src
 

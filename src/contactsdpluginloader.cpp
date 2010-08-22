@@ -76,8 +76,10 @@ void ContactsdPluginLoader::loadPlugins(const QStringList &plugins, const QStrin
 
 ContactsdPluginLoader::ContactsdPluginLoader(const QStringList &plugins, const QStringList &banList)
 {
+    mDbusNotifierAdaptor = new ImportNotifierAdaptor(this);
     loadPlugins(plugins, banList);
     Q_EMIT pluginsLoaded();
+    startNotificationService();
 }
 
 ContactsdPluginLoader::~ContactsdPluginLoader()
@@ -123,4 +125,57 @@ bool ContactsdPluginLoader::reloadPlugin(const QString &plugin)
     instance->init();
 
     return true;
+}
+
+void ContactsdPluginLoader::startNotificationService()
+{
+    QDBusConnection connection = QDBusConnection::sessionBus();
+    if(!connection.isConnected()) {
+        qWarning() << "Could not connect to DBus: " << connection.lastError();
+    }
+
+    if(!connection.registerService("com.nokia.contacts.importprogress")) {
+        qWarning() << "Could not register DBus service 'com.nokia.contacts.importprogress': " << connection.lastError();
+
+    }
+
+    if(!connection.registerObject("/", this)) {
+        qWarning() << "Could not register DBus object '/': " << connection.lastError();
+    }
+}
+bool ContactsdPluginLoader::hasMethod(QPluginLoader* obj, const QString& method)
+{
+    QObject* base_object = obj->instance();
+    const QMetaObject* metaObj = base_object->metaObject();
+
+    for (int i = 0; i < metaObj->methodCount() ; i++) {
+        qDebug() << metaObj->method(i).signature();
+        if (metaObj->method(i).signature() == method) {
+            
+            return true;
+        }
+    }
+    return false;
+}
+
+bool ContactsdPluginLoader::hasActiveImports()
+{
+    bool _rv = false;
+    foreach (const QString& pluginName, validPlugins()) {
+      QPluginLoader * plugin = m_pluginStore[pluginName];
+       if (plugin) {
+           if (hasMethod(plugin, "hasActiveImports()")) {
+              QObject* base_object = plugin->instance();
+              ContactsdPluginInterface * plugin_obj = qobject_cast<ContactsdPluginInterface *>(base_object);
+              if (plugin_obj) {
+                  QMetaObject::invokeMethod(base_object, "hasActiveImports", Q_RETURN_ARG(bool, _rv));
+                  if (_rv) {
+                      return _rv;
+                  }
+              }
+           }
+       }
+     }
+
+    return _rv;
 }
