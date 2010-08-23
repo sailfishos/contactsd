@@ -1,4 +1,5 @@
 #!/bin/bash -e
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/contactsd-1.0/plugins
 
 testdir=`dirname "$0"`
 testdir=`cd "$testdir" && pwd`
@@ -14,4 +15,4 @@ run() {
 }
 
 run ut_contactsd
-# run ut_trackersink 'query-builder=fetch,save'
+run ut_trackersink

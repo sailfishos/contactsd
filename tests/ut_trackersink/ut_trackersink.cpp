@@ -38,6 +38,48 @@ ut_trackersink::ut_trackersink() :
 {
 }
 
+static int
+availability(QContactPresence::PresenceState state)
+{
+    switch(state) {
+    case QContactPresence::PresenceUnknown:
+        return 0;
+    case QContactPresence::PresenceHidden:
+    case QContactPresence::PresenceOffline:
+        return 1;
+    case QContactPresence::PresenceAway:
+    case QContactPresence::PresenceExtendedAway:
+        return 2;
+    case QContactPresence::PresenceBusy:
+        return 3;
+    case QContactPresence::PresenceAvailable:
+        return 4;
+    }
+
+    return availability(QContactPresence::PresenceUnknown);
+}
+
+static QContactPresence::PresenceState presenceStateForPresence(const unsigned int state) {
+    switch(state) {
+        case Tp::ConnectionPresenceTypeUnknown:
+        case Tp::ConnectionPresenceTypeUnset:
+            return QContactPresence::PresenceUnknown;
+        case Tp::ConnectionPresenceTypeAvailable:
+            return QContactPresence::PresenceAvailable;
+        case Tp::ConnectionPresenceTypeHidden:
+            return QContactPresence::PresenceHidden;
+        case Tp::ConnectionPresenceTypeBusy:
+            return QContactPresence::PresenceBusy;
+        case Tp::ConnectionPresenceTypeAway:
+            return QContactPresence::PresenceAway;
+        case Tp::ConnectionPresenceTypeExtendedAway:
+            return QContactPresence::PresenceExtendedAway;
+        case Tp::ConnectionPresenceTypeOffline:
+            return QContactPresence::PresenceOffline;
+    }
+    return QContactPresence::PresenceUnknown;
+}
+
 void ut_trackersink::initTestCase()
 {
     manager = new QContactManager(QLatin1String("tracker"));
@@ -54,10 +96,11 @@ void ut_trackersink::initTestCase()
 
 void ut_trackersink::testSinkToStorage()
 {
-    QDateTime datetime = QDateTime::currentDateTime();
+    QDateTime datetime = QDateTime::currentDateTime().addSecs(-1);
     // continue with telepathier sink
     sink->saveToTracker(telepathier->id(), telepathier);
     // check what was written
+
 
     QContactDetailFilter filter;
     filter.setDetailDefinitionName(QContactOnlineAccount::DefinitionName, QContactOnlineAccount::FieldAccountUri);
@@ -86,9 +129,9 @@ void ut_trackersink::testSinkToStorage()
     QVERIFY(contact.detail<QContactPresence>().nickname() == telepathier->alias());
     QVERIFY((unsigned int)contact.detail<QContactPresence>().presenceState() == telepathier->presenceType());
     QVERIFY(contact.detail(QContactOnlineAccount::DefinitionName).value("AccountPath") == telepathier->accountPath());
-    QVERIFY(contact.detail<QContactPresence>().timestamp() > datetime);
+    qDebug() << contact.detail<QContactPresence>().timestamp() << datetime;
+    QVERIFY(datetime <= contact.detail<QContactPresence>().timestamp());
 }
-
 
 void ut_trackersink::testOnSimplePresenceChanged()
 {
@@ -99,14 +142,15 @@ void ut_trackersink::testOnSimplePresenceChanged()
         telepathier->setPresenceMessage(presenceMessage);
         unsigned int presenceType = (telepathier->presenceType() + 1) % 7;
         telepathier->setPresenceType(presenceType);
+        QTest::qWait(1000);
         sink->onSimplePresenceChanged(telepathier);
         QContact contact = manager->contact(contactInTrackerUID);
         QVERIFY(telepathier->presenceMessage() == presenceMessage);
         QVERIFY(telepathier->presenceType() == presenceType);
 
         QVERIFY(contact.detail<QContactPresence>().customMessage() == telepathier->presenceMessage());
-        QVERIFY(contact.detail<QContactPresence>().presenceState() == telepathier->presenceType());
-        QVERIFY(contact.detail<QContactPresence>().timestamp() > datetime);
+        QVERIFY((unsigned int)contact.detail<QContactPresence>().presenceState() == presenceStateForPresence(telepathier->presenceType()));
+        QVERIFY(contact.detail<QContactPresence>().timestamp() >= datetime);
         datetime = QDateTime::currentDateTime();
     }
 }

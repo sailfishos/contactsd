@@ -147,7 +147,7 @@ void TrackerSink::onChange(uint uniqueId, TpContact::ChangeType type)
 
     switch (type) {
     case TpContact::AVATAR_TOKEN:
-        onAvatarUpdated(contact->contact()->id(), contact->avatar(), contact->avatarMime());
+        onAvatarUpdated(contact->id(), contact->avatar(), contact->avatarMime());
         break;
     case TpContact::SIMPLE_PRESENCE:
         onSimplePresenceChanged(contact);
@@ -191,7 +191,6 @@ void TrackerSink::saveToTracker(const QString& contactLocalId, const TpContact *
 
     const QString id(QString::number(TpContact::buildUniqueId(accountpath, imId)));
     const RDFVariable imAddress(TpContact::buildImAddress(accountpath, imId));
-    qDebug() << Q_FUNC_INFO << accountpath;
     const RDFVariable imAccount(QUrl(QString::fromLatin1("telepathy:") + accountpath));
     const RDFVariable imInfo(QUrl(TpContact::buildImAddress(accountpath, imId)));
     const QDateTime datetime = QDateTime::currentDateTime();
@@ -320,7 +319,7 @@ void TrackerSink::onSimplePresenceChanged(TpContact* obj)
     }
 
     const RDFVariable imAddress(obj->imAddress());
-    const RDFVariable imInfo(QUrl(TpContact::buildImAddress(obj->accountPath(), obj->contact()->id())));
+    const RDFVariable imInfo(QUrl(TpContact::buildImAddress(obj->accountPath(), obj->id())));
     const QDateTime datetime = QDateTime::currentDateTime();
 
     RDFUpdate addressUpdate;
@@ -329,15 +328,11 @@ void TrackerSink::onSimplePresenceChanged(TpContact* obj)
     addressUpdate.addDeletion(imAddress, nco::imStatusMessage::iri());
     addressUpdate.addDeletion(imInfo, nie::contentLastModified::iri());
 
-    const QSharedPointer<const Tp::Contact> tcontact = obj->contact();
-
-    qDebug() << Q_FUNC_INFO << toTrackerStatus(tcontact->presenceType());
-
     RDFStatementList insertions;
     insertions << RDFStatement(imAddress, nco::imStatusMessage::iri(),
-                               LiteralValue(tcontact->presenceMessage()));
+                               LiteralValue(obj->presenceMessage()));
     insertions << RDFStatement(imAddress, nco::imPresence::iri(),
-                               toTrackerStatus(tcontact->presenceType()));
+                               toTrackerStatus(obj->presenceType()));
     addressUpdate.addInsertion(insertions);
 
     addressUpdate.addInsertion(RDFStatementList() <<
@@ -548,7 +543,7 @@ void TrackerSink::takeAllOffline(const QString& path)
         }
 
         const RDFVariable imAddress(obj->imAddress());
-        const RDFVariable imInfo(QUrl(TpContact::buildImAddress(obj->accountPath(), obj->contact()->id())));
+        const RDFVariable imInfo(QUrl(TpContact::buildImAddress(obj->accountPath(), obj->id())));
 
         addressUpdate.addDeletion(imAddress, nco::imPresence::iri());
         addressUpdate.addDeletion(imAddress, nco::imStatusMessage::iri());

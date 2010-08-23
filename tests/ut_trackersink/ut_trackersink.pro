@@ -13,24 +13,33 @@ PKGCONFIG += TelepathyQt4 qttracker
 
 OBJECTS_DIR = .obj
 
-INCLUDEPATH += $$TELEPATHY_SUPPORT_DIR 
-INCLUDEPATH += $$TELEPATHY_PLUGIN_DIR 
+INCLUDEPATH += $$TELEPATHY_SUPPORT_DIR
+INCLUDEPATH = $$TELEPATHY_PLUGIN_DIR
+
+# linking instead of compiling in - bug 186193
+LIBS += -L$$TELEPATHY_PLUGIN_DIR
+LIBS += -lcontactstelepathysupport
+
+LIBS += -L../../plugins/telepathy
+LIBS += -L/usr/lib/contactsd-1.0/plugins
+LIBS += -ltelepathycollectorplugin
 
 include($$PWD/../common/common.pri)
 
 ## Include source files under test.
-HEADERS += $$TELEPATHY_PLUGIN_DIR/trackersink.h \
-           $$TELEPATHY_SUPPORT_DIR/telepathycontroller.h  \
-           $$TELEPATHY_SUPPORT_DIR/contactphotocopy.h  \
-           $$TELEPATHY_SUPPORT_DIR/tpcontact.h  \
-           $$TELEPATHY_SUPPORT_DIR/pendingrosters.h
+# Files are not compiled in until  Bug 186193 -  
+# libqttracker asserts when application directly link to it and uses if from libqtcontacts-tracker plugin 
+#HEADERS += $$TELEPATHY_PLUGIN_DIR/trackersink.h \
+#           $$TELEPATHY_SUPPORT_DIR/telepathycontroller.h  \
+#           $$TELEPATHY_SUPPORT_DIR/contactphotocopy.h  \
+#           $$TELEPATHY_SUPPORT_DIR/tpcontact.h  \
+#           $$TELEPATHY_SUPPORT_DIR/pendingrosters.h
 
-SOURCES += $$TELEPATHY_PLUGIN_DIR/trackersink.cpp \
-           $$TELEPATHY_SUPPORT_DIR/telepathycontroller.cpp  \
-           $$TELEPATHY_SUPPORT_DIR/contactphotocopy.cpp  \
-           $$TELEPATHY_SUPPORT_DIR/tpcontact.cpp  \
-           $$TELEPATHY_SUPPORT_DIR/pendingrosters.cpp
-
+#SOURCES += $$TELEPATHY_PLUGIN_DIR/trackersink.cpp \
+#           $$TELEPATHY_SUPPORT_DIR/telepathycontroller.cpp  \
+#           $$TELEPATHY_SUPPORT_DIR/contactphotocopy.cpp  \
+#           $$TELEPATHY_SUPPORT_DIR/tpcontact.cpp  \
+#           $$TELEPATHY_SUPPORT_DIR/pendingrosters.cpp
 
 ## Include unit test files
 HEADERS += ut_trackersink.h
