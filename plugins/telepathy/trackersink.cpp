@@ -491,9 +491,9 @@ void TrackerSink::deleteContacts(const QString& path)
 
 }
 
-void TrackerSink::deleteContact(const QSharedPointer<TpContact>&)
+void TrackerSink::deleteContact(const QSharedPointer<TpContact>& c)
 {
-
+    qDebug() << Q_FUNC_INFO;
 }
 
 void TrackerSink::onDeleteModelReady()

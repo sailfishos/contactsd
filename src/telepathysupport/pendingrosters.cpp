@@ -138,7 +138,7 @@ void PendingRosters::onConnectionReady(Tp::PendingOperation * op)
                 }
 
             }
-       connect(conn.data(), SIGNAL(allKnownContactsChanged(const Tp::Contacts&, const Tp::Contacts&)), this, SLOT(onAllKnownContactsChanged(const Tp::Contacts&, const Tp::Contacts&)));
+       connect(conn->contactManager(), SIGNAL(allKnownContactsChanged(const Tp::Contacts&, const Tp::Contacts&)), this, SLOT(onAllKnownContactsChanged(const Tp::Contacts&, const Tp::Contacts&)));
     }
     qDebug() << Q_FUNC_INFO << ": Connection ready for account: " << mAccount->objectPath();
 
