@@ -33,7 +33,8 @@ using namespace SopranoLive;
 
 TelepathyPlugin::TelepathyPlugin():
         m_tpController( new TelepathyController( this, false ) ),
-        mStore(TrackerSink::instance())
+        mStore(TrackerSink::instance()),
+        mImportActive(false)
 {}
 
 TelepathyPlugin::~TelepathyPlugin()
@@ -177,10 +178,15 @@ void TelepathyPlugin::onFinished(PendingRosters* op)
     }
     
     PendingRosters * roster = qobject_cast<PendingRosters*>(op);
+    emit importStarted();
+    mImportActive = true;
     foreach (QSharedPointer<TpContact> c, roster->telepathyRosterList()) {
         qDebug() << Q_FUNC_INFO << "Adding Contacts";
         mStore->sinkToStorage(c);
     }
+
+    emit importEnded(roster->telepathyRosterList().count(), 0, 0);
+    mImportActive = false;
 
     connect(roster, SIGNAL(contactsAdded(QList<QSharedPointer<TpContact> >)), this, SLOT(onContactsAdded(QList<QSharedPointer<TpContact> >)));
     connect(roster, SIGNAL(contactsRemoved(QList<QSharedPointer<TpContact> >)), this, SLOT(onContactsRemoved(QList<QSharedPointer<TpContact> >)));
@@ -367,5 +373,9 @@ bool TelepathyPlugin::saveAvatar(const QByteArray& data, const QString& mime, co
     return true;
 }
 
+bool TelepathyPlugin::hasActiveImports()
+{
+    return mImportActive;
+}
 
 Q_EXPORT_PLUGIN2(TpPlugin, TelepathyPlugin)

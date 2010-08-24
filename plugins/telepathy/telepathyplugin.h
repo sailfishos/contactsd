@@ -53,6 +53,8 @@ public:
 
 Q_SIGNALS:
     void error(const QString &, const QString &, const QString &);
+    void importStarted();
+    void importEnded(int contactsAdded, int contactsRemoved, int contactsMerged);
 
 private Q_SLOTS:
     void onFinished(PendingRosters* op);
@@ -67,7 +69,7 @@ private Q_SLOTS:
     void onContactsChanged(const Tp::Contacts& added, const Tp::Contacts& removed);
     void onContactsRemoved(QList<QSharedPointer<TpContact> > list);
     void onContactsAdded(QList<QSharedPointer<TpContact> > list);
-    bool hasActiveImports() { return true;}
+    bool hasActiveImports();
 
 private:
     void saveIMAccount(Tp::AccountPtr account, TelepathyAccount::Changes changes);
@@ -80,4 +82,5 @@ private:
     QList<TelepathyAccount*> mAccounts;
     QList<Tp::ConnectionPtr> mConnections;
     AccountServiceMapper accountServiceMapper;
+    bool mImportActive;
 };

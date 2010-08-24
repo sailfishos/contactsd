@@ -66,6 +66,9 @@ void ContactsdPluginLoader::loadPlugins(const QStringList &plugins, const QStrin
             connect (base_plugin, SIGNAL (error (const QString &, const QString &, const QString &)),
                     this, SLOT (onPluginError (const QString &, const QString &, const QString &)),
                     Qt::UniqueConnection);
+            connect(base_plugin, SIGNAL(importStarted()), this, SIGNAL(importStarted()));
+            connect(base_plugin, SIGNAL(importEnded(int, int, int)), this, SIGNAL(importEnded(int, int, int)));
+                
         } else {
             loader->unload();
             delete loader;
@@ -149,9 +152,7 @@ bool ContactsdPluginLoader::hasMethod(QPluginLoader* obj, const QString& method)
     const QMetaObject* metaObj = base_object->metaObject();
 
     for (int i = 0; i < metaObj->methodCount() ; i++) {
-        qDebug() << metaObj->method(i).signature();
-        if (metaObj->method(i).signature() == method) {
-            
+        if (metaObj->normalizedSignature(method.toLatin1().constData()) == method) {
             return true;
         }
     }

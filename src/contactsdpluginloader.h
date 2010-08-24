@@ -45,6 +45,10 @@ public:
     ~ContactsdPluginLoader();
     QStringList validPlugins() const;
 
+Q_SIGNALS:
+        void importStarted();
+        void importEnded(int contactsAdded, int contactsRemoved, int contactsMerged);
+
 public Q_SLOTS:
     bool hasActiveImports();
 
