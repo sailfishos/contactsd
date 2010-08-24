@@ -493,7 +493,12 @@ void TrackerSink::deleteContacts(const QString& path)
 
 void TrackerSink::deleteContact(const QSharedPointer<TpContact>& c)
 {
-    qDebug() << Q_FUNC_INFO;
+    const RDFVariable imAddress(TpContact::buildImAddress(c->accountPath(), c->id()));
+
+    RDFUpdate deleteContact;
+    deleteContact.addDeletion(imAddress, rdf::type::iri());
+
+    service()->executeQuery(deleteContact);
 }
 
 void TrackerSink::onDeleteModelReady()

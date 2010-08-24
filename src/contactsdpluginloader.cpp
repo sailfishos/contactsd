@@ -151,12 +151,7 @@ bool ContactsdPluginLoader::hasMethod(QPluginLoader* obj, const QString& method)
     QObject* base_object = obj->instance();
     const QMetaObject* metaObj = base_object->metaObject();
 
-    for (int i = 0; i < metaObj->methodCount() ; i++) {
-        if (metaObj->normalizedSignature(method.toLatin1().constData()) == method) {
-            return true;
-        }
-    }
-    return false;
+    return (metaObj->indexOfMethod(QMetaObject::normalizedSignature(method.toLatin1().constData())) > -1);
 }
 
 bool ContactsdPluginLoader::hasActiveImports()
