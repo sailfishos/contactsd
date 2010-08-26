@@ -1,4 +1,6 @@
-contactsd (0.5.33~1) UNRELEASED; urgency=low
+ -- Siraj Razick <siraj.razick@collabora.co.uk> Thu, Aug 26 14:12:53 IST 2010
+
+contactsd (0.5.33-1) unstable; urgency=low
 
   * Fixes: NB#180541 - Voice mail is not saved automatically to contact-list
   * Fixes: NB#183241
