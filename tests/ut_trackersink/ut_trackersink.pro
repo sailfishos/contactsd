@@ -17,11 +17,10 @@ INCLUDEPATH += $$TELEPATHY_SUPPORT_DIR
 INCLUDEPATH = $$TELEPATHY_PLUGIN_DIR
 
 # linking instead of compiling in - bug 186193
-LIBS += -L$$TELEPATHY_PLUGIN_DIR
-LIBS += -lcontactstelepathysupport
+# force linking against local version
+LIBS +=  ../../src/telepathysupport/libcontactstelepathysupport.so
 
 LIBS += -L../../plugins/telepathy
-LIBS += -L/usr/lib/contactsd-1.0/plugins
 LIBS += -ltelepathycollectorplugin
 
 include($$PWD/../common/common.pri)
