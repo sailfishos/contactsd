@@ -192,7 +192,6 @@ void TrackerSink::saveToTracker(const QString& contactLocalId, const TpContact *
     const QString id(QString::number(TpContact::buildUniqueId(accountpath, imId)));
     const RDFVariable imAddress(TpContact::buildImAddress(accountpath, imId));
     const RDFVariable imAccount(QUrl(QString::fromLatin1("telepathy:") + accountpath));
-    const RDFVariable imInfo(QUrl(TpContact::buildImAddress(accountpath, imId)));
     const QDateTime datetime = QDateTime::currentDateTime();
 
     RDFUpdate addressUpdate;
@@ -201,14 +200,16 @@ void TrackerSink::saveToTracker(const QString& contactLocalId, const TpContact *
     addressUpdate.addDeletion(imAddress, nco::imPresence::iri());
     addressUpdate.addDeletion(imAddress, nco::imStatusMessage::iri());
     addressUpdate.addDeletion(contact, nie::contentLastModified::iri());
-    addressUpdate.addDeletion(imInfo, nie::contentLastModified::iri());
+    addressUpdate.addDeletion(imAddress, nco::presenceLastModified::iri());
+    addressUpdate.addDeletion(imAddress, nco::imCapability::iri());
 
     addressUpdate.addInsertion(RDFStatementList() <<
                                RDFStatement(imAddress, rdf::type::iri(), nco::IMAddress::iri()) <<
                                RDFStatement(imAddress, nco::imNickname::iri(), LiteralValue(nick)) <<
                                RDFStatement(imAddress, nco::imStatusMessage::iri(), LiteralValue((msg))) <<
                                RDFStatement(imAddress, nco::imPresence::iri(), status) <<
-                               RDFStatement(imAddress, nco::imID::iri(), LiteralValue(imId)) );
+                               RDFStatement(imAddress, nco::imID::iri(), LiteralValue(imId)) <<
+                               RDFStatement(imAddress, nco::presenceLastModified::iri(), RDFVariable(datetime)));
 
     addressUpdate.addInsertion(RDFStatementList() <<
                                RDFStatement(contact, rdf::type::iri(), nco::PersonContact::iri()) <<
@@ -221,13 +222,6 @@ void TrackerSink::saveToTracker(const QString& contactLocalId, const TpContact *
                                RDFStatement(imAccount, nco::hasIMContact::iri(), imAddress));
 
     addressUpdate.addInsertion(contact, nie::contentLastModified::iri(), RDFVariable(datetime));
-    addressUpdate.addInsertion(RDFStatementList() <<
-            RDFStatement(imInfo, rdf::type::iri(), nie::InformationElement::iri()) <<
-            RDFStatement(imInfo, nie::contentLastModified::iri(), RDFVariable(datetime)));
-
-    addressUpdate.addDeletion(imAddress, nco::imCapability::iri());
-
-
 
     if (tpContact->supportsMediaCalls() || tpContact->supportsAudioCalls())  {
         addressUpdate.addInsertion( RDFStatementList() <<
@@ -243,7 +237,6 @@ void TrackerSink::saveToTracker(const QString& contactLocalId, const TpContact *
     }
 
     service()->executeQuery(addressUpdate);
-
 }
 
 void TrackerSink::sinkToStorage(const QSharedPointer<TpContact>& obj)
@@ -319,26 +312,22 @@ void TrackerSink::onSimplePresenceChanged(TpContact* obj)
     }
 
     const RDFVariable imAddress(obj->imAddress());
-    const RDFVariable imInfo(QUrl(TpContact::buildImAddress(obj->accountPath(), obj->id())));
     const QDateTime datetime = QDateTime::currentDateTime();
 
     RDFUpdate addressUpdate;
 
     addressUpdate.addDeletion(imAddress, nco::imPresence::iri());
     addressUpdate.addDeletion(imAddress, nco::imStatusMessage::iri());
-    addressUpdate.addDeletion(imInfo, nie::contentLastModified::iri());
+    addressUpdate.addDeletion(imAddress, nco::presenceLastModified::iri());
 
     RDFStatementList insertions;
     insertions << RDFStatement(imAddress, nco::imStatusMessage::iri(),
                                LiteralValue(obj->presenceMessage()));
     insertions << RDFStatement(imAddress, nco::imPresence::iri(),
                                toTrackerStatus(obj->presenceType()));
+    insertions << RDFStatement(imAddress, nco::presenceLastModified::iri(),
+                               RDFVariable(datetime));
     addressUpdate.addInsertion(insertions);
-
-    addressUpdate.addInsertion(RDFStatementList() <<
-            RDFStatement(imInfo, rdf::type::iri(), nie::InformationElement::iri()) <<
-            RDFStatement(imInfo, nie::contentLastModified::iri(), RDFVariable(datetime)));
-
 
     service()->executeQuery(addressUpdate);
 }
@@ -391,12 +380,6 @@ void TrackerSink::saveAvatarToken(const QString& id, const QString& token, const
             const QUrl tpUrl = c->imAddress();
             Live<nco::IMAddress> address = service()->liveNode(tpUrl);
 
-            //TODO: Can this be moved to later, where it is first used?
-            // It has not been moved yet, because some
-            // of these liveNode() calls actually set RDF triples,
-            // though the libqtttracker maintainer agrees that it's bad API.
-            Live<nie::InformationElement> info = service()->liveNode(tpUrl);
-
             const unsigned int contactLocalId = contactLocalUID(c.data());
             const QString contactLocalIdString = QString::number(contactLocalId);
             Live<nco::PersonContact> photoAccount = service()->liveNode(buildContactIri(contactLocalId));
@@ -408,7 +391,7 @@ void TrackerSink::saveAvatarToken(const QString& id, const QString& token, const
 
             const QDateTime datetime = QDateTime::currentDateTime();
             photoAccount->setContentCreated(datetime);
-            info->setContentLastModified(datetime);
+            address->setPresenceLastModified(datetime);
 
             //FIXME:
             //To be removed once tracker plugin reads imaddress photo url's
@@ -553,11 +536,10 @@ void TrackerSink::takeAllOffline(const QString& path)
         }
 
         const RDFVariable imAddress(obj->imAddress());
-        const RDFVariable imInfo(QUrl(TpContact::buildImAddress(obj->accountPath(), obj->id())));
 
         addressUpdate.addDeletion(imAddress, nco::imPresence::iri());
         addressUpdate.addDeletion(imAddress, nco::imStatusMessage::iri());
-        addressUpdate.addDeletion(imInfo, nie::contentLastModified::iri());
+        addressUpdate.addDeletion(imAddress, nco::presenceLastModified::iri());
 
         const QLatin1String status("unknown");
         addressUpdate.addInsertion(RDFStatementList() <<
@@ -566,7 +548,7 @@ void TrackerSink::takeAllOffline(const QString& path)
                                    RDFStatement(imAddress, nco::imPresence::iri(),
                                                 toTrackerStatus(status)));
 
-        addressUpdate.addInsertion(imInfo, nie::contentLastModified::iri(),
+        addressUpdate.addInsertion(imAddress, nco::presenceLastModified::iri(),
                                    RDFVariable(QDateTime::currentDateTime()));
     }
 

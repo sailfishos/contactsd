@@ -303,8 +303,7 @@ void TelepathyPlugin::accountModelReady(Tp::AccountPtr account)
      addressInfo->setImNickname(account->nickname());
      const QDateTime datetime = QDateTime::currentDateTime();
 
-     Live<nie::InformationElement> info = ::tracker()->liveNode(imAddressUrl);
-     info->setContentLastModified(datetime);
+     addressInfo->setPresenceLastModified(datetime);
      liveAccount->addImAccountAddress(addressInfo);
 
      Tp::SimplePresence presence = account->currentPresence();
