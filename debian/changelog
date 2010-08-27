@@ -1,8 +1,8 @@
-contactsd (0.5.33~1) UNRELEASED; urgency=low
+contactsd (0.5.34~1) UNRELEASED; urgency=low
 
-  *
+  * 
 
- -- Siraj Razick <siraj.razick@collabora.co.uk> Thu, Aug 26 14:12:53 IST 2010
+ -- Siraj Razick <siraj.razick@collabora.co.uk> Thu, 26 Aug 2010 14:12:53 +0530
 
 contactsd (0.5.33-1) unstable; urgency=low
 
