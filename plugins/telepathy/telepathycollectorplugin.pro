@@ -29,7 +29,6 @@ HEADERS  = telepathyplugin.h \
 SOURCES  = telepathyplugin.cpp \
            trackersink.cpp \
            accountservicemapper.cpp \
-           accountservicemapper.cpp \
            contactphotocopy.cpp \
            pendingrosters.cpp \
            telepathyaccount.cpp \
