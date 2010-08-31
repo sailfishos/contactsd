@@ -3,7 +3,7 @@ TEMPLATE = lib
 QT += dbus xml
 CONFIG	+= plugin
 
-QMAKE_LIBDIR += ../../src/telepathysupport
+#QMAKE_LIBDIR += ../../src/telepathysupport
 
 
 CONFIG += link_pkgconfig
@@ -11,19 +11,31 @@ PKGCONFIG += TelepathyQt4 \
              accounts-qt \
 	     qttracker
 
-LIBS += -lcontactstelepathysupport
-
 INCLUDEPATH += $$PWD/../../src/telepathysupport/
 INCLUDEPATH += $$PWD/../../src
 
 #DESTDIR	 = 
 HEADERS  = telepathyplugin.h \
            trackersink.h \
-           accountservicemapper.h
+           accountservicemapper.h \
+           contactphotocopy.h \
+           pendingrosters.h \
+           telepathyaccount.h \
+           telepathycontroller.h \
+           telepathyplugin.h \
+           tpcontact.h
+
 	   
 SOURCES  = telepathyplugin.cpp \
            trackersink.cpp \
-           accountservicemapper.cpp
+           accountservicemapper.cpp \
+           accountservicemapper.cpp \
+           contactphotocopy.cpp \
+           pendingrosters.cpp \
+           telepathyaccount.cpp \
+           telepathycontroller.cpp \
+           tpcontact.cpp \
+
 
 TARGET = telepathycollectorplugin
 target.path = /usr/lib/contactsd-1.0/plugins
