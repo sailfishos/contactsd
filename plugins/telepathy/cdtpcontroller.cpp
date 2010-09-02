@@ -17,17 +17,19 @@
 **
 ****************************************************************************/
 
-#include "telepathycontroller.h"
-#include <QtDebug>
-#include <QDir>
-#include <QQueue>
-//telepathy includes
-#include <TelepathyQt4/Types>
+#include "cdtpcontroller.h"
+
+#include "cdtppendingrosters.h"
+
 #include <TelepathyQt4/Account>
 #include <TelepathyQt4/AccountManager>
-#include <TelepathyQt4/PendingReady>
 #include <TelepathyQt4/PendingContacts>
+#include <TelepathyQt4/PendingReady>
+#include <TelepathyQt4/Types>
 
+#include <QDir>
+#include <QQueue>
+#include <QtDebug>
 
 class TelepathyController::Private
 {

@@ -17,15 +17,14 @@
 **
 ****************************************************************************/
 
-// this plugin
-#include "accountservicemapper.h"
-// contactsd
 #include <contactsdplugininterface.h>
-// telepathy support
-#include <telepathyaccount.h>
-// TelepathyQt4
+
+#include "cdtpaccountservicemapper.h"
+#include "cdtpaccount.h"
+#include "cdtpcontact.h"
+
 #include <TelepathyQt4/Types>
-// Qt
+
 #include <QObject>
 
 class TrackerSink;

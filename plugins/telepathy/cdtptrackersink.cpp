@@ -17,15 +17,13 @@
 **
 ****************************************************************************/
 
-#include "trackersink.h"
+#include "cdtptrackersink.h"
 
-// contactsd
-#include <contactphotocopy.h>
-// QtTracker
-#include <QtTracker/Tracker>
-#include <QtTracker/QLive>
+#include "cdtpcontactphotocopy.h"
+
 #include <QtTracker/ontologies/nco.h>
-
+#include <QtTracker/QLive>
+#include <QtTracker/Tracker>
 
 typedef QHash<uint, QSharedPointer<TpContact> > ContactMapHash;
 

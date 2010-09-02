@@ -20,11 +20,10 @@
 #ifndef ACCOUNTSERVICEMAPPER_H
 #define ACCOUNTSERVICEMAPPER_H
 
-// Accounts
-#include <accounts-qt/manager.h>
-// Qt
-#include <QObject>
 #include <QMap>
+#include <QObject>
+
+#include <accounts-qt/manager.h>
 
 class QXmlStreamReader;
 class ServiceMapData;

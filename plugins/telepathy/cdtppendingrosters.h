@@ -20,17 +20,19 @@
 #ifndef PENDINGROSTERS_H
 #define PENDINGROSTERS_H
 
-#include <TelepathyQt4/PendingOperation>
-#include <TelepathyQt4/Types>
+#include "cdtpcontact.h"
+
 #include <TelepathyQt4/Account>
 #include <TelepathyQt4/AccountManager>
-#include <TelepathyQt4/PendingReady>
-#include <TelepathyQt4/PendingContacts>
-#include <TelepathyQt4/PendingAccount>
-#include <TelepathyQt4/ContactManager>
 #include <TelepathyQt4/ConnectionManager>
+#include <TelepathyQt4/ContactManager>
+#include <TelepathyQt4/PendingAccount>
+#include <TelepathyQt4/PendingContacts>
+#include <TelepathyQt4/PendingOperation>
+#include <TelepathyQt4/PendingReady>
+#include <TelepathyQt4/Types>
+
 #include <QList>
-#include <tpcontact.h>
 
 class TelepathyController;
 

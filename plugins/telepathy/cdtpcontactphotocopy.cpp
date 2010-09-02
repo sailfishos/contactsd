@@ -17,10 +17,11 @@
 **
 ****************************************************************************/
 
-#include <QDir>
+#include "cdtpcontactphotocopy.h"
+
 #include <QDebug>
+#include <QDir>
 #include <QImage>
-#include "contactphotocopy.h"
 
 QStringList ContactPhotoCopy::avatarSearchPaths;
 

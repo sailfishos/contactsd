@@ -1,4 +1,4 @@
 TEMPLATE = subdirs
-SUBDIRS += telepathy/telepathycollectorplugin.pro
+SUBDIRS += telepathy/cdtpplugin.pro
 SUBDIRS += helloworld/helloworld.pro
 SUBDIRS += ring/ringplugin.pro

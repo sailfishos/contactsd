@@ -20,11 +20,10 @@
 #ifndef TP_CONTACT_H
 #define TP_CONTACT_H
 
-// Telepathy
+#include <TelepathyQt4/ContactCapabilities>
 #include <TelepathyQt4/ContactManager>
 #include <TelepathyQt4/Connection>
-#include <TelepathyQt4/ContactCapabilities>
-// Qt
+
 #include <QObject>
 
 /** A class which wrapps a telepathy contact

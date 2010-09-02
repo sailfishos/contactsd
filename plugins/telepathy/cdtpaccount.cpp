@@ -17,12 +17,17 @@
 **
 ****************************************************************************/
 
-#include "telepathyaccount.h"
-#include <QtTracker/Tracker>
-#include <QtTracker/QLive>
-#include <QtTracker/ontologies/nco.h>
+#include "cdtpaccount.h"
+
 #include <TelepathyQt4/Account>
+#include <TelepathyQt4/PendingReady>
+
+#include <QtTracker/ontologies/nco.h>
+#include <QtTracker/QLive>
+#include <QtTracker/Tracker>
+
 #include <QImage>
+
 using namespace SopranoLive;
 
 

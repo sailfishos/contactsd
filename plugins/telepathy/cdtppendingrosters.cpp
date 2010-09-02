@@ -17,7 +17,7 @@
 **
 ****************************************************************************/
 
-#include "pendingrosters.h"
+#include "cdtppendingrosters.h"
 
 /*! \class PendingRosters
  * \brief Pending Operation for getting the roster contacts from a given account

@@ -17,12 +17,15 @@
 **
 ****************************************************************************/
 
-#include "tpcontact.h"
-#include <QtCore>
-#include <QImage>
-#include <TelepathyQt4/Types>
+#include "cdtpcontact.h"
+
+#include "cdtpcontactphotocopy.h"
+
 #include <TelepathyQt4/PendingContacts>
-#include <contactphotocopy.h>
+#include <TelepathyQt4/Types>
+
+#include <QImage>
+#include <QtCore>
 
 /*!
  * utility method just for usage here

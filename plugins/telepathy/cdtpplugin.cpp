@@ -17,17 +17,18 @@
 **
 ****************************************************************************/
 
-#include "telepathyplugin.h"
+#include "cdtpplugin.h"
 
-// this plugin
-#include "trackersink.h"
-// Telepathy support
-#include <telepathycontroller.h>
-// Qt Tracker
-#include <QtTracker/Tracker>
-#include <QtTracker/QLive>
+#include "cdtpcontroller.h"
+#include "cdtppendingrosters.h"
+#include "cdtptrackersink.h"
+
+#include <TelepathyQt4/AccountManager>
+#include <TelepathyQt4/PendingReady>
+
 #include <QtTracker/ontologies/nco.h>
-
+#include <QtTracker/QLive>
+#include <QtTracker/Tracker>
 
 using namespace SopranoLive;
 

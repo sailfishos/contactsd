@@ -20,18 +20,17 @@
 #ifndef TELEPATHY_CONTROLLER_H
 #define TELEPATHY_CONTROLLER_H
 
-// this lib
-#include "pendingrosters.h"
-// TelepathyQt4
-#include <TelepathyQt4/PendingOperation>
 #include <TelepathyQt4/Account>
 #include <TelepathyQt4/ContactManager>
-// Qt
+#include <TelepathyQt4/PendingOperation>
+
 #include <QObject>
 
 /**
  * Provides access to Telepathy Contacts
 **/
+
+class PendingRosters;
 
 class TelepathyController : public QObject
 {

@@ -17,12 +17,11 @@
 **
 ****************************************************************************/
 
-#include "accountservicemapper.h"
+#include "cdtpaccountservicemapper.h"
 
-// Qt
-#include <QXmlStreamReader>
-#include <QUrl>
 #include <QDebug>
+#include <QUrl>
+#include <QXmlStreamReader>
 
 class ServiceMapData
 {

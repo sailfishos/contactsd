@@ -20,8 +20,7 @@
 #ifndef TRACKERSINK_H
 #define TRACKERSINK_H
 
-// telepathy support
-#include <tpcontact.h>
+#include "cdtpcontact.h"
 
 namespace SopranoLive {
     class RDFService;

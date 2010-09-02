@@ -20,8 +20,8 @@
 #ifndef CONTACTPHOTOCOPY_H
 #define CONTACTPHOTOCOPY_H
 
-#include <QStringList>
 #include <QSize>
+#include <QStringList>
 
 /**
  * ContactPhotoCopy handles handling contact's local photo copying to

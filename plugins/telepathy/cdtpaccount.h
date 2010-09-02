@@ -20,13 +20,12 @@
 #ifndef TELEPATHY_ACCOUNT_H
 #define TELEPATHY_ACCOUNT_H
 
-#include <QtCore/QDebug>
-#include <QtCore/QObject>
-
-#include <TelepathyQt4/PendingOperation>
 #include <TelepathyQt4/Account>
 #include <TelepathyQt4/ContactManager>
-#include "pendingrosters.h"
+#include <TelepathyQt4/PendingOperation>
+
+#include <QDebug>
+#include <QObject>
 
 /**
  * Wraps Tp::Account to monitor signals
