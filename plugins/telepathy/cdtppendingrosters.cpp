@@ -19,7 +19,7 @@
 
 #include "cdtppendingrosters.h"
 
-/*! \class PendingRosters
+/*! \class CDTpPendingRosters
  * \brief Pending Operation for getting the roster contacts from a given account
  *
  * This class works like another PendingOperation from Telepathy Qt4, When finished
@@ -28,23 +28,23 @@
  * */
 
 
-/*! \fn PendingRosters::addRequestForAccount(Tp::AccountPtr account)
+/*! \fn CDTpPendingRosters::addRequestForAccount(Tp::AccountPtr account)
 
   \brief Adds a pending Roster request for a given account
 
   \param account Account to get the Rosters from
-  \sa TelepathyController::requestRosters(Tp::AccountPtr account)
+  \sa CDTpController::requestRosters(Tp::AccountPtr account)
 */
 
 
-PendingRosters::PendingRosters(QObject * parent):QObject(parent)
+CDTpPendingRosters::CDTpPendingRosters(QObject * parent):QObject(parent)
 {
     mCapCount = 0;
     mWasOnline = false;
     mHasError = false;
 }
 
-void PendingRosters::addRequestForAccount(Tp::AccountPtr account)
+void CDTpPendingRosters::addRequestForAccount(Tp::AccountPtr account)
 {
     mAccount = account;
     qDebug() << Q_FUNC_INFO << ": Waiting for account to become ready: " << account->objectPath();
@@ -52,7 +52,7 @@ void PendingRosters::addRequestForAccount(Tp::AccountPtr account)
             this, SLOT(onAccountReady(Tp::PendingOperation *)));
 }
 
-void PendingRosters::onAccountReady(Tp::PendingOperation* op)
+void CDTpPendingRosters::onAccountReady(Tp::PendingOperation* op)
 {
     if (op->isError()) {
         setFinishedWithError(op->errorName(), op->errorMessage());
@@ -89,7 +89,7 @@ void PendingRosters::onAccountReady(Tp::PendingOperation* op)
 
 }
 
-void PendingRosters::onConnectionStatusChanged(Tp::ConnectionStatus status, Tp::ConnectionStatusReason reason)
+void CDTpPendingRosters::onConnectionStatusChanged(Tp::ConnectionStatus status, Tp::ConnectionStatusReason reason)
 {
     Q_UNUSED(reason)
 
@@ -102,7 +102,7 @@ void PendingRosters::onConnectionStatusChanged(Tp::ConnectionStatus status, Tp::
         //setFinishedWithError("PendingRoster Account Error", "Account Did not go onlne");
     }
 }
-void PendingRosters::onHaveConnectionChanged(bool stat)
+void CDTpPendingRosters::onHaveConnectionChanged(bool stat)
 {
     Q_UNUSED(stat);
     if (mAccount->haveConnection() ) {
@@ -112,7 +112,7 @@ void PendingRosters::onHaveConnectionChanged(bool stat)
                 SLOT(onConnectionReady(Tp::PendingOperation *)));
     }
 }
-void PendingRosters::onConnectionReady(Tp::PendingOperation * op)
+void CDTpPendingRosters::onConnectionReady(Tp::PendingOperation * op)
 {
     if (op->isError()) {
         qWarning() << Q_FUNC_INFO << ": Connection ready failed for account: " << mAccount->objectPath();
@@ -130,11 +130,11 @@ void PendingRosters::onConnectionReady(Tp::PendingOperation * op)
 
             if (mAccount->connection() == conn.data() ) {
                 foreach (Tp::ContactPtr contact, mContacts) {
-                    QSharedPointer<TpContact> obj =
-                        QSharedPointer<TpContact>(new TpContact(contact),
+                    QSharedPointer<CDTpContact> obj =
+                        QSharedPointer<CDTpContact>(new CDTpContact(contact),
                                                          &QObject::deleteLater);
                     obj->setAccountPath(mAccount->objectPath());
-                    mTpContacts.append(obj);
+                    mCDTpContacts.append(obj);
                 }
 
             }
@@ -145,25 +145,25 @@ void PendingRosters::onConnectionReady(Tp::PendingOperation * op)
     setFinished();
 }
 
-void PendingRosters::onAllKnownContactsChanged(const Tp::Contacts& rostersAdded, const Tp::Contacts& rostersRemoved)
+void CDTpPendingRosters::onAllKnownContactsChanged(const Tp::Contacts& rostersAdded, const Tp::Contacts& rostersRemoved)
 {
     qDebug() << Q_FUNC_INFO << "Contact Added";
-    QList<QSharedPointer<TpContact> > newContacts;
-    QList<QSharedPointer<TpContact> > deletedContacts;
+    QList<QSharedPointer<CDTpContact> > newContacts;
+    QList<QSharedPointer<CDTpContact> > deletedContacts;
     foreach (Tp::ContactPtr contact, rostersAdded) {
-         QSharedPointer<TpContact> obj =
-                        QSharedPointer<TpContact>(new TpContact(contact),
+         QSharedPointer<CDTpContact> obj =
+                        QSharedPointer<CDTpContact>(new CDTpContact(contact),
                                                          &QObject::deleteLater);
         obj->setAccountPath(mAccount->objectPath());
-        mTpContacts.append(obj);
+        mCDTpContacts.append(obj);
         newContacts.append(obj);
     }
 
     emit contactsAdded(newContacts);
 
     foreach (Tp::ContactPtr contact, rostersRemoved) {
-        QSharedPointer<TpContact> obj =
-                        QSharedPointer<TpContact>(new TpContact(contact),
+        QSharedPointer<CDTpContact> obj =
+                        QSharedPointer<CDTpContact>(new CDTpContact(contact),
                                                          &QObject::deleteLater);
         obj->setAccountPath(mAccount->objectPath());
         deletedContacts.append(obj);
@@ -172,13 +172,13 @@ void PendingRosters::onAllKnownContactsChanged(const Tp::Contacts& rostersAdded,
     emit contactsRemoved(deletedContacts);
 }
 
-void PendingRosters::setFinished()
+void CDTpPendingRosters::setFinished()
 {
     mHasError = false;
     emit finished(this);
 }
 
-void PendingRosters::setFinishedWithError(const QString& name, const QString& message)
+void CDTpPendingRosters::setFinishedWithError(const QString& name, const QString& message)
 {
    mHasError = true;
    mErrorName = name;
@@ -186,47 +186,47 @@ void PendingRosters::setFinishedWithError(const QString& name, const QString& me
    emit finished(this);
 }
 
-bool PendingRosters::isError() const
+bool CDTpPendingRosters::isError() const
 {
     return mHasError;
 }
 
-QString PendingRosters::errorName() const
+QString CDTpPendingRosters::errorName() const
 {
     return mErrorName;
 }
 
-QString PendingRosters::errorMessage() const
+QString CDTpPendingRosters::errorMessage() const
 {
     return mErrorMessage;
 }
 /*!
-\fn Tp::Contacts PendingRosters::rosterList()
+\fn Tp::Contacts CDTpPendingRosters::rosterList()
  \brief Returns the Telepathy rosters of the account when the operation has finished.
 
  \return Tp::Contacts
 */
 
-Tp::Contacts PendingRosters::rosterList() const
+Tp::Contacts CDTpPendingRosters::rosterList() const
 {
     return mContacts;
 }
 
-QList<Tp::ConnectionPtr> PendingRosters::contactConnections()
+QList<Tp::ConnectionPtr> CDTpPendingRosters::contactConnections()
 {
     return mConnectionList;
 }
 
 /*!
 
-\fn QList<QSharedPointer<TpContact> > PendingRosters::telepathyRosterList()
+\fn QList<QSharedPointer<CDTpContact> > CDTpPendingRosters::telepathyRosterList()
 
 \brief Returns rosters with extra features when when the operation has finished
 \return a list of rosters
-\sa PendingRosters::rosterList
+\sa CDTpPendingRosters::rosterList
 */
-QList<QSharedPointer<TpContact> > PendingRosters::telepathyRosterList() const
+QList<QSharedPointer<CDTpContact> > CDTpPendingRosters::telepathyRosterList() const
 {
-    qDebug() << Q_FUNC_INFO << "Found number of rosters for account " << mAccount->objectPath() << ": " << mTpContacts.count();
-    return mTpContacts;
+    qDebug() << Q_FUNC_INFO << "Found number of rosters for account " << mAccount->objectPath() << ": " << mCDTpContacts.count();
+    return mCDTpContacts;
 }

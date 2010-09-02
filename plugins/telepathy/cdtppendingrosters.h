@@ -34,25 +34,25 @@
 
 #include <QList>
 
-class TelepathyController;
+class CDTpController;
 
-class PendingRosters : public QObject
+class CDTpPendingRosters : public QObject
 {
     Q_OBJECT
 public:
-    explicit PendingRosters(QObject *parent = 0);
+    explicit CDTpPendingRosters(QObject *parent = 0);
     Tp::Contacts rosterList() const;
-    QList<QSharedPointer<TpContact> > telepathyRosterList() const;
+    QList<QSharedPointer<CDTpContact> > telepathyRosterList() const;
     QList<Tp::ConnectionPtr> contactConnections();
-    QList<QSharedPointer<TpContact> > newRosters() const;
+    QList<QSharedPointer<CDTpContact> > newRosters() const;
     bool isError() const;
     QString errorName() const;
     QString errorMessage() const;
 Q_SIGNALS:
-    void contact(QSharedPointer<TpContact>&);
-    void contactsAdded(QList<QSharedPointer<TpContact> >);
-    void contactsRemoved(QList<QSharedPointer<TpContact> >);
-    void finished (PendingRosters *operation);
+    void contact(QSharedPointer<CDTpContact>&);
+    void contactsAdded(QList<QSharedPointer<CDTpContact> >);
+    void contactsRemoved(QList<QSharedPointer<CDTpContact> >);
+    void finished (CDTpPendingRosters *operation);
 private Q_SLOTS:
     void onConnectionReady(Tp::PendingOperation * po);
     void onAccountReady(Tp::PendingOperation* op);
@@ -60,14 +60,14 @@ private Q_SLOTS:
     void onConnectionStatusChanged(Tp::ConnectionStatus status, Tp::ConnectionStatusReason reason);
     void onAllKnownContactsChanged(const Tp::Contacts& added, const Tp::Contacts& removed) ;
 private:
-    Q_DISABLE_COPY(PendingRosters)
-    friend class TelepathyController;
+    Q_DISABLE_COPY(CDTpPendingRosters)
+    friend class CDTpController;
     void addRequestForAccount(Tp::AccountPtr);
     void setFinished();
     void setFinishedWithError(const QString&, const QString&);
 
     Tp::Contacts mContacts;
-    QList<QSharedPointer<TpContact> >  mTpContacts;
+    QList<QSharedPointer<CDTpContact> >  mCDTpContacts;
     QList<Tp::ConnectionPtr> mConnectionList;
     Tp::AccountPtr mAccount;
     int mCapCount;

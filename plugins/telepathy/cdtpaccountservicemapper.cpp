@@ -40,7 +40,7 @@ public:
     QString serviceName;
 };
 
-AccountServiceMapper::AccountServiceMapper(QObject *parent)
+CDTpAccountServiceMapper::CDTpAccountServiceMapper(QObject *parent)
     : QObject(parent),
       KeyUserName(QLatin1String("username"))
 {
@@ -48,11 +48,11 @@ AccountServiceMapper::AccountServiceMapper(QObject *parent)
             this, SLOT(onAccountCreated(Accounts::AccountId)));
 }
 
-AccountServiceMapper::~AccountServiceMapper()
+CDTpAccountServiceMapper::~CDTpAccountServiceMapper()
 {
 }
 
-void AccountServiceMapper::initialize()
+void CDTpAccountServiceMapper::initialize()
 {
     const Accounts::AccountIdList accounts = mAccountManager.accountList();
     QMap<QString, QList<ServiceMapData*> > serviceMap;
@@ -72,7 +72,7 @@ void AccountServiceMapper::initialize()
     serviceMap.clear();
 }
 
-QList<ServiceMapData*> AccountServiceMapper::serviceMapData(const Accounts::Account *account) const
+QList<ServiceMapData*> CDTpAccountServiceMapper::serviceMapData(const Accounts::Account *account) const
 {
     QList<ServiceMapData*> result;
     const Accounts::ServiceList services = account->services();
@@ -88,7 +88,7 @@ QList<ServiceMapData*> AccountServiceMapper::serviceMapData(const Accounts::Acco
     return result;
 }
 
-QString AccountServiceMapper::serviceForAccountPath(const QString &accountPath) const
+QString CDTpAccountServiceMapper::serviceForAccountPath(const QString &accountPath) const
 {
     foreach (const QString &key, mAccountServiceMap.keys()) {
         QString accountPathCopy(accountPath);
@@ -100,7 +100,7 @@ QString AccountServiceMapper::serviceForAccountPath(const QString &accountPath) 
     return QString();
 }
 
-void AccountServiceMapper::onAccountCreated(Accounts::AccountId id)
+void CDTpAccountServiceMapper::onAccountCreated(Accounts::AccountId id)
 {
     QMap<QString, QList<ServiceMapData*> > serviceMap;
     Accounts::Account *account = mAccountManager.account(id);
@@ -124,7 +124,7 @@ void AccountServiceMapper::onAccountCreated(Accounts::AccountId id)
     serviceMap.clear();
 }
 
-bool AccountServiceMapper::parseServiceXml(QXmlStreamReader *xml, ServiceMapData *serviceMapData) const
+bool CDTpAccountServiceMapper::parseServiceXml(QXmlStreamReader *xml, ServiceMapData *serviceMapData) const
 {
     if (!xml) {
         return false;
@@ -165,7 +165,7 @@ bool AccountServiceMapper::parseServiceXml(QXmlStreamReader *xml, ServiceMapData
 }
 
 QMap<QString, QString>
-AccountServiceMapper::buildAccountServiceMap(const QMap<QString, QList<ServiceMapData*> > &serviceMap) const
+CDTpAccountServiceMapper::buildAccountServiceMap(const QMap<QString, QList<ServiceMapData*> > &serviceMap) const
 {
     QMap<QString, QString> accountServiceMapTemp;
     foreach (const QString &account, serviceMap.keys()) {

@@ -30,19 +30,19 @@
  * Provides access to Telepathy Contacts
 **/
 
-class PendingRosters;
+class CDTpPendingRosters;
 
-class TelepathyController : public QObject
+class CDTpController : public QObject
 {
     Q_OBJECT
 public:
-    explicit TelepathyController(QObject * parent = 0,  bool cache = false);
-    virtual ~TelepathyController();
+    explicit CDTpController(QObject * parent = 0,  bool cache = false);
+    virtual ~CDTpController();
     /*!
      *\brief Provides a set of pending roster contats, from all accounts
      *\returns Pointer to a Pending Roster
      */
-    PendingRosters* requestRosters(Tp::AccountPtr account);
+    CDTpPendingRosters* requestRosters(Tp::AccountPtr account);
 
     QList<Tp::AccountPtr> getIMAccount(const QString& cmName);
 

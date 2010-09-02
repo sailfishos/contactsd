@@ -31,7 +31,7 @@
  * Wraps Tp::Account to monitor signals
 **/
 
-class TelepathyAccount : public QObject
+class CDTpAccount : public QObject
 {
     Q_OBJECT
 public:
@@ -47,12 +47,12 @@ public:
 
     Q_DECLARE_FLAGS(Changes, Change)
 
-    explicit TelepathyAccount(Tp::AccountPtr, QObject* parent = 0 );
-    virtual ~TelepathyAccount();
+    explicit CDTpAccount(Tp::AccountPtr, QObject* parent = 0 );
+    virtual ~CDTpAccount();
     Tp::AccountPtr account() const;
 
 Q_SIGNALS:
-    void accountChanged(TelepathyAccount*, TelepathyAccount::Changes);
+    void accountChanged(CDTpAccount*, CDTpAccount::Changes);
 
 private Q_SLOTS:
     void onAccountReady(Tp::PendingOperation*);
@@ -69,8 +69,8 @@ private:
 
 QDebug operator<<(QDebug dbg, const Tp::Account &account);
 QDebug operator<<(QDebug dbg, const Tp::AccountPtr &accountPtr);
-QDebug operator<<(QDebug dbg, const TelepathyAccount &account);
+QDebug operator<<(QDebug dbg, const CDTpAccount &account);
 
-Q_DECLARE_OPERATORS_FOR_FLAGS(TelepathyAccount::Changes)
+Q_DECLARE_OPERATORS_FOR_FLAGS(CDTpAccount::Changes)
 
 #endif // CDTPACCOUNT_H

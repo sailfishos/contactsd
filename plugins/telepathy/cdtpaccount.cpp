@@ -31,7 +31,7 @@
 using namespace SopranoLive;
 
 
-class TelepathyAccount::Private
+class CDTpAccount::Private
 {
     public:
         Private() {}
@@ -55,12 +55,12 @@ QDebug operator<<(QDebug dbg, const Tp::AccountPtr &accountPtr)
     return dbg.nospace() << *(accountPtr.constData());
 }
 
-QDebug operator<<(QDebug dbg, const TelepathyAccount &account)
+QDebug operator<<(QDebug dbg, const CDTpAccount &account)
 {
     return dbg.nospace() << account.account();
 }
 
-TelepathyAccount::TelepathyAccount(Tp::AccountPtr account, QObject* parent) : QObject(parent), d(new Private)
+CDTpAccount::CDTpAccount(Tp::AccountPtr account, QObject* parent) : QObject(parent), d(new Private)
 {
      d->mAccount = account;
      connect(d->mAccount->becomeReady(Tp::Account::FeatureCore | Tp::Account::FeatureAvatar), SIGNAL(finished(Tp::PendingOperation*)),
@@ -68,12 +68,12 @@ TelepathyAccount::TelepathyAccount(Tp::AccountPtr account, QObject* parent) : QO
 }
 
 
-TelepathyAccount::~TelepathyAccount()
+CDTpAccount::~CDTpAccount()
 {
     delete d;
 }
 
-void TelepathyAccount::onAccountReady(Tp::PendingOperation* op)
+void CDTpAccount::onAccountReady(Tp::PendingOperation* op)
 {
     if (op->isError()) {
         return;
@@ -95,34 +95,34 @@ void TelepathyAccount::onAccountReady(Tp::PendingOperation* op)
 
 }
 
-Tp::AccountPtr TelepathyAccount::account() const
+Tp::AccountPtr CDTpAccount::account() const
 {
     return d->mAccount;
 }
 
-void TelepathyAccount::onCurrentPresenceChanged(const Tp::SimplePresence& presence)
+void CDTpAccount::onCurrentPresenceChanged(const Tp::SimplePresence& presence)
 {
      Q_UNUSED(presence);
      Q_EMIT accountChanged(this, Presence);
 }
-void TelepathyAccount::onDisplayNameChanged(const QString& name)
+void CDTpAccount::onDisplayNameChanged(const QString& name)
 {
     Q_UNUSED(name);
     Q_EMIT  accountChanged(this, Alias);
 }
 
-void TelepathyAccount::onIconChanged(const QString& icon)
+void CDTpAccount::onIconChanged(const QString& icon)
 {
     Q_UNUSED(icon);
     Q_EMIT accountChanged(this, Icon);
 }
-void TelepathyAccount::onNicknameChanged(const QString& nick)
+void CDTpAccount::onNicknameChanged(const QString& nick)
 {
     Q_UNUSED(nick);
     Q_EMIT accountChanged(this, NickName);
 }
 
-void TelepathyAccount::onAvatarUpdated(const Tp::Avatar& avatar)
+void CDTpAccount::onAvatarUpdated(const Tp::Avatar& avatar)
 {
     Q_UNUSED(avatar);
     Q_EMIT accountChanged(this, Avatar);

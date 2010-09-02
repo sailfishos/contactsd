@@ -23,19 +23,19 @@
 #include <QDir>
 #include <QImage>
 
-QStringList ContactPhotoCopy::avatarSearchPaths;
+QStringList CDTpContactPhotoCopy::avatarSearchPaths;
 
-bool ContactPhotoCopy::copyToAvatarDir(const QString &fullFilePath, QString &newFileName)
+bool CDTpContactPhotoCopy::copyToAvatarDir(const QString &fullFilePath, QString &newFileName)
 {
-    return ContactPhotoCopy::copyToAvatarDir(fullFilePath, QSize(), ContactPhotoCopy::PhotoEditLeaveUntouched, newFileName);
+    return CDTpContactPhotoCopy::copyToAvatarDir(fullFilePath, QSize(), CDTpContactPhotoCopy::PhotoEditLeaveUntouched, newFileName);
 }
 
-bool ContactPhotoCopy::copyToAvatarDir(const QString& fullFilePath, const QSize& scaledSize, QString& newFileName)
+bool CDTpContactPhotoCopy::copyToAvatarDir(const QString& fullFilePath, const QSize& scaledSize, QString& newFileName)
 {
-    return ContactPhotoCopy::copyToAvatarDir(fullFilePath, scaledSize, ContactPhotoCopy::PhotoEditCropAndScale, newFileName);
+    return CDTpContactPhotoCopy::copyToAvatarDir(fullFilePath, scaledSize, CDTpContactPhotoCopy::PhotoEditCropAndScale, newFileName);
 }
 
-bool ContactPhotoCopy::copyToAvatarDir(const QString& fullFilePath, const QSize& scaledSize,
+bool CDTpContactPhotoCopy::copyToAvatarDir(const QString& fullFilePath, const QSize& scaledSize,
                                        PhotoEditType photoEditType, QString& newFileName)
 {
     initializeSearchPaths();
@@ -57,11 +57,11 @@ bool ContactPhotoCopy::copyToAvatarDir(const QString& fullFilePath, const QSize&
     else {
         return false;
     }
-    if ( photoEditType == ContactPhotoCopy::PhotoEditLeaveUntouched) {
+    if ( photoEditType == CDTpContactPhotoCopy::PhotoEditLeaveUntouched) {
         return QFile::copy(fullFilePath, dir.absoluteFilePath(newFileName));
     }
     else {
-        if (photoEditType == ContactPhotoCopy::PhotoEditCropAndScale &&
+        if (photoEditType == CDTpContactPhotoCopy::PhotoEditCropAndScale &&
             scaledSize.height() != scaledSize.width()) {
             qDebug() << "\t" << Q_FUNC_INFO << "supports only square scaling when cropping";
         }
@@ -90,25 +90,25 @@ bool ContactPhotoCopy::copyToAvatarDir(const QString& fullFilePath, const QSize&
     }
 }
 
-void ContactPhotoCopy::removeFromAvatarDir(const QString &fileName)
+void CDTpContactPhotoCopy::removeFromAvatarDir(const QString &fileName)
 {
     initializeSearchPaths();
     QFile::remove(avatarDir() + '/' + fileName);
 }
 
-QString ContactPhotoCopy::avatarDir()
+QString CDTpContactPhotoCopy::avatarDir()
 {
     initializeSearchPaths();
     return avatarSearchPaths.at(0);
 }
 
-QStringList ContactPhotoCopy::searchPaths()
+QStringList CDTpContactPhotoCopy::searchPaths()
 {
     initializeSearchPaths();
     return avatarSearchPaths;
 }
 
-void ContactPhotoCopy::initializeSearchPaths()
+void CDTpContactPhotoCopy::initializeSearchPaths()
 {
     if ( avatarSearchPaths.isEmpty() ) {
         avatarSearchPaths << QDir::homePath()  + "/.contacts/avatars"

@@ -28,12 +28,12 @@
 class QXmlStreamReader;
 class ServiceMapData;
 
-class AccountServiceMapper : public QObject
+class CDTpAccountServiceMapper : public QObject
 {
     Q_OBJECT
 public:
-    AccountServiceMapper(QObject *parent = 0);
-    virtual ~AccountServiceMapper();
+    CDTpAccountServiceMapper(QObject *parent = 0);
+    virtual ~CDTpAccountServiceMapper();
     void initialize();
     QString serviceForAccountPath(const QString &accountPath) const;
 private Q_SLOTS:

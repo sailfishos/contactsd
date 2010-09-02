@@ -32,13 +32,13 @@
 
 using namespace SopranoLive;
 
-TelepathyPlugin::TelepathyPlugin():
-        m_tpController( new TelepathyController( this, false ) ),
-        mStore(TrackerSink::instance()),
+CDTpPlugin::CDTpPlugin():
+        m_tpController( new CDTpController( this, false ) ),
+        mStore(CDTpTrackerSink::instance()),
         mImportActive(false)
 {}
 
-TelepathyPlugin::~TelepathyPlugin()
+CDTpPlugin::~CDTpPlugin()
 {
     delete m_tpController;
     qDeleteAll(mAccounts);
@@ -46,9 +46,9 @@ TelepathyPlugin::~TelepathyPlugin()
 }
 
 
-void TelepathyPlugin::init()
+void CDTpPlugin::init()
 {
-    qDebug() << Q_FUNC_INFO << "Initializing TelepathyPlugin.";
+    qDebug() << Q_FUNC_INFO << "Initializing CDTpPlugin.";
     mAm = Tp::AccountManager::create();
     connect(mAm->becomeReady(), SIGNAL(finished(Tp::PendingOperation*)),
             this,SLOT(onAccountManagerReady(Tp::PendingOperation*)));
@@ -58,7 +58,7 @@ void TelepathyPlugin::init()
     accountServiceMapper.initialize();
 }
 
-QMap<QString, QVariant> TelepathyPlugin::metaData()
+QMap<QString, QVariant> CDTpPlugin::metaData()
 {
     QMap<QString, QVariant> data;
     data["name"]= QVariant(QString("telepathy"));
@@ -68,14 +68,14 @@ QMap<QString, QVariant> TelepathyPlugin::metaData()
     return data;
 }
 
-void TelepathyPlugin::onAccountCreated(const QString& path)
+void CDTpPlugin::onAccountCreated(const QString& path)
 {
     Tp::AccountPtr account = Tp::Account::create(mAm->busName(), path);
-    PendingRosters* request = m_tpController->requestRosters(account);
+    CDTpPendingRosters* request = m_tpController->requestRosters(account);
     mRosters.append(request);
 
-    connect(request, SIGNAL(finished(PendingRosters *)),
-            this,    SLOT(onFinished(PendingRosters *)));
+    connect(request, SIGNAL(finished(CDTpPendingRosters *)),
+            this,    SLOT(onFinished(CDTpPendingRosters *)));
     Tp::Features features;
     features << Tp::Account::FeatureAvatar
         << Tp::Account::FeatureCore
@@ -85,7 +85,7 @@ void TelepathyPlugin::onAccountCreated(const QString& path)
 
 }
 
-void TelepathyPlugin::onAccountManagerReady(Tp::PendingOperation* op)
+void CDTpPlugin::onAccountManagerReady(Tp::PendingOperation* op)
 {
     qDebug() << Q_FUNC_INFO << "Account manager ready.";
 
@@ -95,10 +95,10 @@ void TelepathyPlugin::onAccountManagerReady(Tp::PendingOperation* op)
     }
 
     foreach (Tp::AccountPtr account, mAm->validAccounts() ) {
-        PendingRosters* request = m_tpController->requestRosters(account);
+        CDTpPendingRosters* request = m_tpController->requestRosters(account);
         mRosters.append(request);
-        connect(request, SIGNAL(finished(PendingRosters *)),
-                this,    SLOT(onFinished(PendingRosters *)));
+        connect(request, SIGNAL(finished(CDTpPendingRosters *)),
+                this,    SLOT(onFinished(CDTpPendingRosters *)));
         
      Tp::Features features;
      features << Tp::Account::FeatureAvatar
@@ -110,7 +110,7 @@ void TelepathyPlugin::onAccountManagerReady(Tp::PendingOperation* op)
     }
 }
 
-void TelepathyPlugin::onAccountReady(Tp::PendingOperation* op)
+void CDTpPlugin::onAccountReady(Tp::PendingOperation* op)
 {
     if (op->isError()) {
         return;
@@ -125,9 +125,9 @@ void TelepathyPlugin::onAccountReady(Tp::PendingOperation* op)
 
     qDebug() << Q_FUNC_INFO << ": Account ready: " << account->objectPath();
 
-    TelepathyAccount * tpaccount = new TelepathyAccount(account);
-    connect(tpaccount, SIGNAL(accountChanged(TelepathyAccount*,TelepathyAccount::Changes)),
-            this, SLOT(onAccountChanged(TelepathyAccount*,TelepathyAccount::Changes)));
+    CDTpAccount * tpaccount = new CDTpAccount(account);
+    connect(tpaccount, SIGNAL(accountChanged(CDTpAccount*,CDTpAccount::Changes)),
+            this, SLOT(onAccountChanged(CDTpAccount*,CDTpAccount::Changes)));
     mAccounts.append(tpaccount);
     saveSelfContact(account);
     
@@ -136,7 +136,7 @@ void TelepathyPlugin::onAccountReady(Tp::PendingOperation* op)
     connect(account.data(), SIGNAL(haveConnectionChanged(bool)), this, SLOT(onConnectionChanged(bool)));
 }
 
-void TelepathyPlugin::onConnectionChanged(bool connection)
+void CDTpPlugin::onConnectionChanged(bool connection)
 {
     qDebug() << Q_FUNC_INFO << connection;
     if (!connection) {
@@ -146,7 +146,7 @@ void TelepathyPlugin::onConnectionChanged(bool connection)
         }
     }
 }
-void TelepathyPlugin::onOnlinenessChanged(bool online)
+void CDTpPlugin::onOnlinenessChanged(bool online)
 {
     qDebug() << Q_FUNC_INFO << online;
     if (!online) {
@@ -159,7 +159,7 @@ void TelepathyPlugin::onOnlinenessChanged(bool online)
         }
     }
 }
-void TelepathyPlugin::onAccountRemoved()
+void CDTpPlugin::onAccountRemoved()
 {
     if (sender()) {
         Tp::Account*  account = qobject_cast<Tp::Account *>(sender());
@@ -170,7 +170,7 @@ void TelepathyPlugin::onAccountRemoved()
     }
 }
 
-void TelepathyPlugin::onFinished(PendingRosters* op)
+void CDTpPlugin::onFinished(CDTpPendingRosters* op)
 {
     qDebug() << Q_FUNC_INFO << ": Request roster operation finished.";
 
@@ -178,10 +178,10 @@ void TelepathyPlugin::onFinished(PendingRosters* op)
         emit error("libtelepathycollectorplugin", op->errorName(), op->errorMessage());
     }
     
-    PendingRosters * roster = qobject_cast<PendingRosters*>(op);
+    CDTpPendingRosters * roster = qobject_cast<CDTpPendingRosters*>(op);
     emit importStarted();
     mImportActive = true;
-    foreach (QSharedPointer<TpContact> c, roster->telepathyRosterList()) {
+    foreach (QSharedPointer<CDTpContact> c, roster->telepathyRosterList()) {
         qDebug() << Q_FUNC_INFO << "Adding Contacts";
         mStore->sinkToStorage(c);
     }
@@ -189,15 +189,15 @@ void TelepathyPlugin::onFinished(PendingRosters* op)
     emit importEnded(roster->telepathyRosterList().count(), 0, 0);
     mImportActive = false;
 
-    connect(roster, SIGNAL(contactsAdded(QList<QSharedPointer<TpContact> >)), this, SLOT(onContactsAdded(QList<QSharedPointer<TpContact> >)));
-    connect(roster, SIGNAL(contactsRemoved(QList<QSharedPointer<TpContact> >)), this, SLOT(onContactsRemoved(QList<QSharedPointer<TpContact> >)));
+    connect(roster, SIGNAL(contactsAdded(QList<QSharedPointer<CDTpContact> >)), this, SLOT(onContactsAdded(QList<QSharedPointer<CDTpContact> >)));
+    connect(roster, SIGNAL(contactsRemoved(QList<QSharedPointer<CDTpContact> >)), this, SLOT(onContactsRemoved(QList<QSharedPointer<CDTpContact> >)));
     
 }
 
-void TelepathyPlugin::onContactsRemoved(QList<QSharedPointer<TpContact> > list)
+void CDTpPlugin::onContactsRemoved(QList<QSharedPointer<CDTpContact> > list)
 {
    for (int i = 0 ; i < list.count() ; i++) {
-       QSharedPointer<TpContact> contact = list.value(i);
+       QSharedPointer<CDTpContact> contact = list.value(i);
        if (contact) {
            if (contact.data()) {
                mStore->deleteContact(contact);
@@ -206,11 +206,11 @@ void TelepathyPlugin::onContactsRemoved(QList<QSharedPointer<TpContact> > list)
    }
 }
 
-void TelepathyPlugin::onContactsAdded(QList<QSharedPointer<TpContact> > list)
+void CDTpPlugin::onContactsAdded(QList<QSharedPointer<CDTpContact> > list)
 {
     qDebug() << Q_FUNC_INFO << list.count();
    for (int i = 0 ; i < list.count() ; i++) {
-       QSharedPointer<TpContact> contact = list.value(i);
+       QSharedPointer<CDTpContact> contact = list.value(i);
        if (contact) {
            if (contact.data()) {
                mStore->sinkToStorage(contact);
@@ -219,10 +219,10 @@ void TelepathyPlugin::onContactsAdded(QList<QSharedPointer<TpContact> > list)
    }
 }
 
-void TelepathyPlugin::onContactsChanged(const Tp::Contacts& contactsAdded, const Tp::Contacts& contactsRemoved)
+void CDTpPlugin::onContactsChanged(const Tp::Contacts& contactsAdded, const Tp::Contacts& contactsRemoved)
 {
     foreach (const Tp::ContactPtr contact, contactsAdded) {
-        QSharedPointer<TpContact> tpcontact = QSharedPointer<TpContact>(new TpContact(contact), &QObject::deleteLater);
+        QSharedPointer<CDTpContact> tpcontact = QSharedPointer<CDTpContact>(new CDTpContact(contact), &QObject::deleteLater);
         mStore->sinkToStorage(tpcontact);
     }
 
@@ -231,7 +231,7 @@ void TelepathyPlugin::onContactsChanged(const Tp::Contacts& contactsAdded, const
     }
 }
 
-void TelepathyPlugin::onAccountChanged(TelepathyAccount* account, TelepathyAccount::Changes changes)
+void CDTpPlugin::onAccountChanged(CDTpAccount* account, CDTpAccount::Changes changes)
 {
     qDebug() << Q_FUNC_INFO << ": account " << *account << "changed: " << changes;
 
@@ -239,29 +239,29 @@ void TelepathyPlugin::onAccountChanged(TelepathyAccount* account, TelepathyAccou
 
     const Tp::SimplePresence presence (account->account()->currentPresence());
 
-    if (changes == TelepathyAccount::Presence && presence.status != "offline") {
+    if (changes == CDTpAccount::Presence && presence.status != "offline") {
         qDebug() << Q_FUNC_INFO << "Presence Change";
         mStore->clearContacts(account->account()->objectPath());
-        PendingRosters* request = m_tpController->requestRosters(account->account());
+        CDTpPendingRosters* request = m_tpController->requestRosters(account->account());
         mRosters.append(request);
         connect(request, SIGNAL(finished(Tp::PendingOperation *)),
                 this,    SLOT(onFinished(Tp::PendingOperation *)));
 
-       connect(request, SIGNAL(contactsAdded(QList<QSharedPointer<TpContact> >)), this, SLOT(onContactsAdded(QList<QSharedPointer<TpContact> >)));
-       connect(request, SIGNAL(contactsRemoved(QList<QSharedPointer<TpContact> >)), this, SLOT(onContactsRemoved(QList<QSharedPointer<TpContact> >)));
+       connect(request, SIGNAL(contactsAdded(QList<QSharedPointer<CDTpContact> >)), this, SLOT(onContactsAdded(QList<QSharedPointer<CDTpContact> >)));
+       connect(request, SIGNAL(contactsRemoved(QList<QSharedPointer<CDTpContact> >)), this, SLOT(onContactsRemoved(QList<QSharedPointer<CDTpContact> >)));
     
 
     }
 }
 //TODO
 //remove this ?
-void TelepathyPlugin::saveSelfContact(Tp::AccountPtr account)
+void CDTpPlugin::saveSelfContact(Tp::AccountPtr account)
 {
     qDebug() << Q_FUNC_INFO << ": Saving self contact to Tracker. Account is: " << account->objectPath();
-    saveIMAccount(account, TelepathyAccount::All);
+    saveIMAccount(account, CDTpAccount::All);
 }
 
-void TelepathyPlugin::saveIMAccount(Tp::AccountPtr account, TelepathyAccount::Changes changes)
+void CDTpPlugin::saveIMAccount(Tp::AccountPtr account, CDTpAccount::Changes changes)
 {
     qDebug() << Q_FUNC_INFO << ": saving own IM account: " << account->objectPath() << "with changed: " << changes;
 
@@ -280,7 +280,7 @@ void TelepathyPlugin::saveIMAccount(Tp::AccountPtr account, TelepathyAccount::Ch
 // TODO duplicated logic from above (saveIMAccount):
 // creating LiveNode then RDFUpdate then again LiveNode... once
 // instead of 3 times should work
-void TelepathyPlugin::accountModelReady(Tp::AccountPtr account)
+void CDTpPlugin::accountModelReady(Tp::AccountPtr account)
 {
 
      Live<nco::IMAccount> liveAccount = ::tracker()->liveNode(QUrl("telepathy:"+account->objectPath()));
@@ -310,7 +310,7 @@ void TelepathyPlugin::accountModelReady(Tp::AccountPtr account)
      Tp::SimplePresence presence = account->currentPresence();
      addressInfo->setImStatusMessage(presence.statusMessage);
      Live<nco::PresenceStatus> cstatus =
-     ::tracker()->liveNode(TrackerSink::toTrackerStatus(presence.status));
+     ::tracker()->liveNode(CDTpTrackerSink::toTrackerStatus(presence.status));
      addressInfo->setImPresence(cstatus);
      //link the IMAddress to me-contact
      Live<nco::PersonContact> me = ::tracker()->liveResource<nco::default_contact_me>();
@@ -339,7 +339,7 @@ void TelepathyPlugin::accountModelReady(Tp::AccountPtr account)
 
 }
 
-bool TelepathyPlugin::saveAvatar(const QByteArray& data, const QString& mime, const QString& path,
+bool CDTpPlugin::saveAvatar(const QByteArray& data, const QString& mime, const QString& path,
                                  QString& fileName )
 {
     qDebug() << Q_FUNC_INFO << ": Saving avatar image: " << fileName;
@@ -373,9 +373,9 @@ bool TelepathyPlugin::saveAvatar(const QByteArray& data, const QString& mime, co
     return true;
 }
 
-bool TelepathyPlugin::hasActiveImports()
+bool CDTpPlugin::hasActiveImports()
 {
     return mImportActive;
 }
 
-Q_EXPORT_PLUGIN2(TpPlugin, TelepathyPlugin)
+Q_EXPORT_PLUGIN2(TpPlugin, CDTpPlugin)

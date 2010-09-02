@@ -30,24 +30,24 @@
 
 #include <QObject>
 
-class TrackerSink;
-class PendingRosters;
-class TelepathyController;
-class TelepathyAccount;
+class CDTpTrackerSink;
+class CDTpPendingRosters;
+class CDTpController;
+class CDTpAccount;
 namespace Tp
 {
     class PendingOperation;
 }
 
 
-class TelepathyPlugin : public QObject, public ContactsdPluginInterface
+class CDTpPlugin : public QObject, public ContactsdPluginInterface
 {
     Q_OBJECT
     Q_INTERFACES(ContactsdPluginInterface)
 
 public:
-    TelepathyPlugin();
-    ~TelepathyPlugin();
+    CDTpPlugin();
+    ~CDTpPlugin();
 
     void init();
     QMap<QString, QVariant> metaData();
@@ -59,31 +59,31 @@ Q_SIGNALS:
     void importEnded(int contactsAdded, int contactsRemoved, int contactsMerged);
 
 private Q_SLOTS:
-    void onFinished(PendingRosters* op);
+    void onFinished(CDTpPendingRosters* op);
     void onAccountManagerReady(Tp::PendingOperation*);
     void onAccountCreated(const QString &);
     void onAccountReady(Tp::PendingOperation*);
-    void onAccountChanged(TelepathyAccount*, TelepathyAccount::Changes changes);
+    void onAccountChanged(CDTpAccount*, CDTpAccount::Changes changes);
     void accountModelReady(Tp::AccountPtr);
     void onAccountRemoved();
     void onOnlinenessChanged(bool online);
     void onConnectionChanged(bool connection);
     void onContactsChanged(const Tp::Contacts& added, const Tp::Contacts& removed);
-    void onContactsRemoved(QList<QSharedPointer<TpContact> > list);
-    void onContactsAdded(QList<QSharedPointer<TpContact> > list);
+    void onContactsRemoved(QList<QSharedPointer<CDTpContact> > list);
+    void onContactsAdded(QList<QSharedPointer<CDTpContact> > list);
     bool hasActiveImports();
 
 private:
-    void saveIMAccount(Tp::AccountPtr account, TelepathyAccount::Changes changes);
+    void saveIMAccount(Tp::AccountPtr account, CDTpAccount::Changes changes);
     bool saveAvatar(const QByteArray&, const QString&, const QString&, QString&);
 
-    TelepathyController* m_tpController;
-    TrackerSink* mStore;
+    CDTpController* m_tpController;
+    CDTpTrackerSink* mStore;
     Tp::AccountManagerPtr mAm;
-    QList<PendingRosters*> mRosters;
-    QList<TelepathyAccount*> mAccounts;
+    QList<CDTpPendingRosters*> mRosters;
+    QList<CDTpAccount*> mAccounts;
     QList<Tp::ConnectionPtr> mConnections;
-    AccountServiceMapper accountServiceMapper;
+    CDTpAccountServiceMapper accountServiceMapper;
     bool mImportActive;
 };
 

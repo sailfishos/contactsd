@@ -29,28 +29,28 @@ namespace SopranoLive {
 using namespace SopranoLive;
 
 /**
-  * \class TrackerSink
+  * \class CDTpTrackerSink
   * This class saves telepathy contacts into tracker and keeps them in sync
   */
-class TrackerSink : public QObject
+class CDTpTrackerSink : public QObject
 {
     Q_OBJECT
 public:
 
-    static TrackerSink * instance();
+    static CDTpTrackerSink * instance();
     static const QUrl & toTrackerStatus(const QString& tpStatus);
 
-    virtual ~TrackerSink();
+    virtual ~CDTpTrackerSink();
 
      /*! \brief saves a telepathy contact into the database
       * \param contact The telepathy contact you wish to store
       */
-    void sinkToStorage(const QSharedPointer<TpContact>& contact);
+    void sinkToStorage(const QSharedPointer<CDTpContact>& contact);
     /*! \brief retuns the contacts saved in the database
       * \return  the list of contacts ContactList
       */
 
-    TpContactList getFromStorage();
+    CDTpContactList getFromStorage();
     /*! \brief see if a give contact is already in the database
       * \param id The id of the contact ex: you@gmail.com
       * \return true if contact is in the database false otherwise
@@ -59,17 +59,17 @@ public:
 
     bool compareAvatar(const QString& token);
 
-    QSharedPointer<TpContact> getContactFromCache(const QString&);
+    QSharedPointer<CDTpContact> getContactFromCache(const QString&);
 
     void saveAvatarToken(const QString& id, const QString& token, const QString& mime);
 
     // TODO QString contactLocalId to QContactLocalId. Why it is QString?
-    void saveToTracker(const QString& contactLocalId, const TpContact *tpContact);
+    void saveToTracker(const QString& contactLocalId, const CDTpContact *tpContact);
 
     void takeAllOffline(const QString& path);
     void clearContacts(const QString& path);
     void deleteContacts(const QString& path);
-    void deleteContact(const QSharedPointer<TpContact>& contact);
+    void deleteContact(const QSharedPointer<CDTpContact>& contact);
     
 
     void getIMContacts(const QString&);
@@ -84,7 +84,7 @@ public:
      *
      * \a existing - false for not existing contacts
      */
-    unsigned int contactLocalUID(const TpContact* const tpContact, bool *existing = 0) const;
+    unsigned int contactLocalUID(const CDTpContact* const tpContact, bool *existing = 0) const;
 
 Q_SIGNALS:
     /*! \brief Signal which is emmited when a new avatar is added to the storage
@@ -93,28 +93,28 @@ Q_SIGNALS:
 
 private Q_SLOTS:
    void onAvatarUpdated(const QString&, const QString&, const QString&);
-   void onSimplePresenceChanged(TpContact* contact);
-   void onCapabilities(TpContact*);
-   void onFeaturesReady(TpContact*);
-   void onChange(uint uniqueId, TpContact::ChangeType type);
+   void onSimplePresenceChanged(CDTpContact* contact);
+   void onCapabilities(CDTpContact*);
+   void onFeaturesReady(CDTpContact*);
+   void onChange(uint uniqueId, CDTpContact::ChangeType type);
    void onModelUpdate();
    void onDeleteModelReady();
 
 private:
-    void connectOnSignals(TpContactPtr contact);
+    void connectOnSignals(CDTpContactPtr contact);
     const QUrl& toTrackerStatus(const uint stat);
 
 
 private:
-    TrackerSink();
+    CDTpTrackerSink();
     /**
      * Return a service pointer: if transaction is on - from transaction.
      * If transactions is committed - returns tracker.
      */
     RDFServicePtr service();
-    TpContact* find(uint id);
+    CDTpContact* find(uint id);
 
-    bool isValidTpContact(const TpContact *tpContact);
+    bool isValidCDTpContact(const CDTpContact *tpContact);
     class Private;
     Private * const d;
     friend class ut_trackersink;

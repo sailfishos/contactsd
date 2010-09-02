@@ -32,16 +32,16 @@
  */
 const QString FilePath(QString avatarToken, QString extension)
 {
-    return ContactPhotoCopy::avatarDir()+"/telepathy_cache"+avatarToken+'.'+extension;
+    return CDTpContactPhotoCopy::avatarDir()+"/telepathy_cache"+avatarToken+'.'+extension;
 }
 
-class TpContact::TpContactPrivate
+class CDTpContact::CDTpContactPrivate
 {
     public:
-    TpContactPrivate() :
+    CDTpContactPrivate() :
             mHasCaps(false),
             mReady(false) {}
-    ~TpContactPrivate() {}
+    ~CDTpContactPrivate() {}
 
         Tp::ContactPtr mContact;
         Tp::ConnectionPtr mConnection;
@@ -53,8 +53,8 @@ class TpContact::TpContactPrivate
         bool mReady;
 };
 
-TpContact::TpContact(Tp::ContactPtr contact, QObject* parent) : QObject(parent)
-    , d(new TpContactPrivate)
+CDTpContact::CDTpContact(Tp::ContactPtr contact, QObject* parent) : QObject(parent)
+    , d(new CDTpContactPrivate)
 {
 
     d->mContact = contact;
@@ -66,18 +66,18 @@ TpContact::TpContact(Tp::ContactPtr contact, QObject* parent) : QObject(parent)
 
 }
 
-TpContact::TpContact(QObject * parent) : QObject(parent),
-        d(new TpContactPrivate)
+CDTpContact::CDTpContact(QObject * parent) : QObject(parent),
+        d(new CDTpContactPrivate)
 {
 }
 
-TpContact::~TpContact()
+CDTpContact::~CDTpContact()
 {
     delete d;
 }
 
 
-void TpContact::reqestFeatures(Tp::ContactPtr contact)
+void CDTpContact::reqestFeatures(Tp::ContactPtr contact)
 {
     QSet<Tp::Contact::Feature> feature;
     feature << Tp::Contact::FeatureAlias
@@ -92,7 +92,7 @@ void TpContact::reqestFeatures(Tp::ContactPtr contact)
                SLOT(onFeaturesReady(Tp::PendingOperation *)));
 }
 
-void TpContact::requestAvatar(Tp::ContactPtr contact)
+void CDTpContact::requestAvatar(Tp::ContactPtr contact)
 {
     if (contact->manager()->connection()->avatarsInterface() == 0) {
         return;
@@ -114,7 +114,7 @@ void TpContact::requestAvatar(Tp::ContactPtr contact)
 
 }
 
-void TpContact::onFeaturesReady(Tp::PendingOperation * op)
+void CDTpContact::onFeaturesReady(Tp::PendingOperation * op)
 {
     Tp::PendingContacts * pa = qobject_cast<Tp::PendingContacts *>(op);
     Tp::ContactPtr contact = pa->contacts().at(0);
@@ -136,7 +136,7 @@ void TpContact::onFeaturesReady(Tp::PendingOperation * op)
     }
 }
 
-void TpContact::onSimplePresenceChanged(const QString & status , uint stat, const QString & message)
+void CDTpContact::onSimplePresenceChanged(const QString & status , uint stat, const QString & message)
 {
     Q_UNUSED(stat)
     Q_UNUSED(status)
@@ -145,7 +145,7 @@ void TpContact::onSimplePresenceChanged(const QString & status , uint stat, cons
     Q_EMIT change(uniqueId(), SIMPLE_PRESENCE);
 }
 
-void TpContact::onAvatarRetrieved(uint contact, const QString& token,
+void CDTpContact::onAvatarRetrieved(uint contact, const QString& token,
         const QByteArray& data, const QString& mime)
 {
     Q_UNUSED(mime);
@@ -166,7 +166,7 @@ void TpContact::onAvatarRetrieved(uint contact, const QString& token,
 
 }
 
-void TpContact::onAvatarUpdated (uint contact, const QString &newAvatarToken)
+void CDTpContact::onAvatarUpdated (uint contact, const QString &newAvatarToken)
 {
     if(d->mContact->handle()[0] == contact && newAvatarToken != avatar()){
        Tp::UIntList tokenRequest;
@@ -177,116 +177,116 @@ void TpContact::onAvatarUpdated (uint contact, const QString &newAvatarToken)
 }
 
 
-QString TpContact::avatar() const
+QString CDTpContact::avatar() const
 {
     return d->mAvatar;
 }
 
-void TpContact::onExtCapFinished(Tp::ContactCapabilities* caps)
+void CDTpContact::onExtCapFinished(Tp::ContactCapabilities* caps)
 {
     Q_UNUSED(caps);
     Q_EMIT change(uniqueId(), CAPABILITIES);
 }
 
-void TpContact::setAccountPath(const QString& paths)
+void CDTpContact::setAccountPath(const QString& paths)
 {
     d->mAccountPath = paths;
 }
 
-QString TpContact::accountPath() const
+QString CDTpContact::accountPath() const
 {
     return d->mAccountPath;
 }
 
 //Not that libtelepathy-qt doesn't have a ContactConstPtr because it doesn't
 //seem to really understand the use of const and (smart) pointers. const ContactPtr would not be the same.
-QSharedPointer<const Tp::Contact> TpContact::contact() const
+QSharedPointer<const Tp::Contact> CDTpContact::contact() const
 {
     return d->mContact;
 }
 
-QString TpContact::id() const
+QString CDTpContact::id() const
 {
     return d->mContact->id();
 }
 
-QString TpContact::alias() const
+QString CDTpContact::alias() const
 {
     return d->mContact->alias();
 }
 
-unsigned int TpContact::presenceType() const
+unsigned int CDTpContact::presenceType() const
 {
     return d->mContact->presenceType();
 }
 
-QString TpContact::presenceMessage() const
+QString CDTpContact::presenceMessage() const
 {
     return d->mContact->presenceMessage();
 }
 
-Tp::ContactCapabilities *TpContact::capabilities() const
+Tp::ContactCapabilities *CDTpContact::capabilities() const
 {
     return d->mContact->capabilities();
 }
 
-bool TpContact::supportsTextChats() const
+bool CDTpContact::supportsTextChats() const
 {
     const Tp::ContactCapabilities *caps = capabilities();
     return caps && caps->supportsTextChats();
 }
 
-bool TpContact::supportsMediaCalls() const
+bool CDTpContact::supportsMediaCalls() const
 {
     const Tp::ContactCapabilities *caps = capabilities();
     return caps && caps->supportsMediaCalls();
 }
 
-bool TpContact::supportsAudioCalls() const
+bool CDTpContact::supportsAudioCalls() const
 {
     const Tp::ContactCapabilities *caps = capabilities();
     return caps && caps->supportsAudioCalls();
 }
 
-bool TpContact::supportsVideoCalls(bool withAudio) const
+bool CDTpContact::supportsVideoCalls(bool withAudio) const
 {
     const Tp::ContactCapabilities *caps = capabilities();
     return caps && caps->supportsVideoCalls(withAudio);
 }
 
-bool TpContact::supportsUpgradingCalls() const
+bool CDTpContact::supportsUpgradingCalls() const
 {
     const Tp::ContactCapabilities *caps = capabilities();
     return caps && caps->supportsUpgradingCalls();
 }
 
 
-unsigned int TpContact::uniqueId() const
+unsigned int CDTpContact::uniqueId() const
 {
     return buildUniqueId(this->accountPath(), id());
 }
 
-unsigned int TpContact::buildUniqueId(const QString& accountPath, const QString& imId)
+unsigned int CDTpContact::buildUniqueId(const QString& accountPath, const QString& imId)
 {
         return qHash(accountPath + '!' +  imId);
 }
 
-QUrl TpContact::imAddress() const
+QUrl CDTpContact::imAddress() const
 {
     return buildImAddress(this->accountPath(), id());
 }
 
-QUrl TpContact::buildImAddress(const QString& accountPath, const QString& imId)
+QUrl CDTpContact::buildImAddress(const QString& accountPath, const QString& imId)
 {
     return QUrl("telepathy:" + accountPath + '!' +  imId);
 }
 
-bool TpContact::isReady() const
+bool CDTpContact::isReady() const
 {
     return d->mReady;
 }
 
-QString TpContact::avatarMime() const
+QString CDTpContact::avatarMime() const
 {
     return d->mAvatarMime;
 }

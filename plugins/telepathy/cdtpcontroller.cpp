@@ -31,7 +31,7 @@
 #include <QQueue>
 #include <QtDebug>
 
-class TelepathyController::Private
+class CDTpController::Private
 {
 
 public:
@@ -46,7 +46,7 @@ public:
 };
 
 
-TelepathyController::TelepathyController(QObject * parent, bool cache): QObject(parent), d(new Private)
+CDTpController::CDTpController(QObject * parent, bool cache): QObject(parent), d(new Private)
 {
     Q_UNUSED(cache);
     qDebug() << Q_FUNC_INFO;
@@ -55,12 +55,12 @@ TelepathyController::TelepathyController(QObject * parent, bool cache): QObject(
     d->error = true;
 }
 
-TelepathyController::~TelepathyController()
+CDTpController::~CDTpController()
 {
     delete d;
 }
 
-void TelepathyController::requestIMAccounts()
+void CDTpController::requestIMAccounts()
 {
    if (d->accountManager->isReady()) {
        emit finished();
@@ -71,7 +71,7 @@ void TelepathyController::requestIMAccounts()
            this, SLOT(onAmFinished(Tp::PendingOperation*)));
 }
 
-QList<Tp::AccountPtr> TelepathyController::getIMAccount(const QString& protocol)
+QList<Tp::AccountPtr> CDTpController::getIMAccount(const QString& protocol)
 {
     QList<Tp::AccountPtr> rv;
 
@@ -84,7 +84,7 @@ QList<Tp::AccountPtr> TelepathyController::getIMAccount(const QString& protocol)
     return rv;
 }
 
-void TelepathyController::onAmFinished(Tp::PendingOperation* op)
+void CDTpController::onAmFinished(Tp::PendingOperation* op)
 {
     if (op->isError()) {
         qDebug() << Q_FUNC_INFO << op->errorName() << op->errorMessage() ;
@@ -94,15 +94,15 @@ void TelepathyController::onAmFinished(Tp::PendingOperation* op)
 
     emit finished();
 }
-PendingRosters * TelepathyController::requestRosters(Tp::AccountPtr account)
+CDTpPendingRosters * CDTpController::requestRosters(Tp::AccountPtr account)
 {
     qDebug() << Q_FUNC_INFO << ": Requesting roster for account: " << account->objectPath();
-    PendingRosters * roster = new PendingRosters(this);
+    CDTpPendingRosters * roster = new CDTpPendingRosters(this);
     roster->addRequestForAccount(account);
     return roster;
 }
 
-bool TelepathyController::isError() const
+bool CDTpController::isError() const
 {
     if (!d->accountManager->isReady()) {
         return true;

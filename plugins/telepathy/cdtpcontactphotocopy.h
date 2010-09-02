@@ -24,10 +24,10 @@
 #include <QStringList>
 
 /**
- * ContactPhotoCopy handles handling contact's local photo copying to
+ * CDTpContactPhotoCopy handles handling contact's local photo copying to
  * a correct avatar directory.
  */
-class ContactPhotoCopy
+class CDTpContactPhotoCopy
 {
 public:
     /**

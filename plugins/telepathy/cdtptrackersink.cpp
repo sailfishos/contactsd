@@ -25,9 +25,9 @@
 #include <QtTracker/QLive>
 #include <QtTracker/Tracker>
 
-typedef QHash<uint, QSharedPointer<TpContact> > ContactMapHash;
+typedef QHash<uint, QSharedPointer<CDTpContact> > ContactMapHash;
 
-class TrackerSink::Private
+class CDTpTrackerSink::Private
 {
 public:
     Private():transaction_(0) {}
@@ -41,23 +41,23 @@ public:
 
 };
 
-TrackerSink* TrackerSink::instance()
+CDTpTrackerSink* CDTpTrackerSink::instance()
 {
-    static TrackerSink instance_;
+    static CDTpTrackerSink instance_;
     return &instance_;
 }
 
-TrackerSink::TrackerSink(): d(new Private)
+CDTpTrackerSink::CDTpTrackerSink(): d(new Private)
 {
 }
 
-TrackerSink::~TrackerSink()
+CDTpTrackerSink::~CDTpTrackerSink()
 {
     delete d;
 }
 
 // TODO dead code
-void TrackerSink::getIMContacts(const QString& /* contact_iri */)
+void CDTpTrackerSink::getIMContacts(const QString& /* contact_iri */)
 {
     RDFSelect select;
 
@@ -74,7 +74,7 @@ void TrackerSink::getIMContacts(const QString& /* contact_iri */)
 }
 
 // TODO this is dead code - needed in future for merging?
-void TrackerSink::onModelUpdate()
+void CDTpTrackerSink::onModelUpdate()
 {
     QStringList idList;
 
@@ -87,11 +87,11 @@ void TrackerSink::onModelUpdate()
 
         ContactMapHash::const_iterator it = d->contactMap.find(localId);
         if (it == d->contactMap.end()) {
-            qWarning() << "cannot find TpContact for" << imAddress << localId;
+            qWarning() << "cannot find CDTpContact for" << imAddress << localId;
             continue;
         }
 
-        const QSharedPointer<const TpContact> contact = it.value();
+        const QSharedPointer<const CDTpContact> contact = it.value();
         qDebug() << Q_FUNC_INFO << imAddress << imLocalId << ":" << contact;
 
         saveToTracker(imLocalId, contact.data());
@@ -100,7 +100,7 @@ void TrackerSink::onModelUpdate()
 
     // TODO unclear logic in this part of dead code. Document.
     if (d->livenode->rowCount() <= 0) {
-        foreach (const QSharedPointer<TpContact>& contact, d->contactMap.values()) {
+        foreach (const QSharedPointer<CDTpContact>& contact, d->contactMap.values()) {
             if (contact.isNull()) {
                 continue;
             }
@@ -120,13 +120,13 @@ void TrackerSink::onModelUpdate()
     }
 }
 
-void TrackerSink::connectOnSignals(TpContactPtr contact)
+void CDTpTrackerSink::connectOnSignals(CDTpContactPtr contact)
 {
-    connect(contact.data(), SIGNAL(change(uint, TpContact::ChangeType)),
-            this, SLOT(onChange(uint, TpContact::ChangeType)));
+    connect(contact.data(), SIGNAL(change(uint, CDTpContact::ChangeType)),
+            this, SLOT(onChange(uint, CDTpContact::ChangeType)));
 }
 
-TpContact* TrackerSink::find(uint id)
+CDTpContact* CDTpTrackerSink::find(uint id)
 {
     if (d->contactMap.keys().contains(id) ) {
         return d->contactMap[id].data();
@@ -135,32 +135,32 @@ TpContact* TrackerSink::find(uint id)
     return 0;
 }
 
-void TrackerSink::onChange(uint uniqueId, TpContact::ChangeType type)
+void CDTpTrackerSink::onChange(uint uniqueId, CDTpContact::ChangeType type)
 {
 
-    TpContact* contact = find(uniqueId);
+    CDTpContact* contact = find(uniqueId);
     if (!contact) {
         return;
     }
 
     switch (type) {
-    case TpContact::AVATAR_TOKEN:
+    case CDTpContact::AVATAR_TOKEN:
         onAvatarUpdated(contact->id(), contact->avatar(), contact->avatarMime());
         break;
-    case TpContact::SIMPLE_PRESENCE:
+    case CDTpContact::SIMPLE_PRESENCE:
         onSimplePresenceChanged(contact);
         break;
-    case TpContact::CAPABILITIES:
+    case CDTpContact::CAPABILITIES:
         onCapabilities(contact);
         break;
-    case TpContact::FEATURES:
+    case CDTpContact::FEATURES:
         qDebug() << Q_FUNC_INFO;
         break;
     }
 }
-void TrackerSink::onFeaturesReady(TpContact* tpContact)
+void CDTpTrackerSink::onFeaturesReady(CDTpContact* tpContact)
 {
-    foreach (TpContactPtr contact, d->contactMap) {
+    foreach (CDTpContactPtr contact, d->contactMap) {
         if (contact.data() == tpContact) {
             sinkToStorage(contact);
         }
@@ -177,7 +177,7 @@ static QUrl buildContactIri(unsigned int contactLocalId)
   return buildContactIri(QString::number(contactLocalId));
 }
 
-void TrackerSink::saveToTracker(const QString& contactLocalId, const TpContact *tpContact)
+void CDTpTrackerSink::saveToTracker(const QString& contactLocalId, const CDTpContact *tpContact)
 {
     const QString& imId = tpContact->id();
     const QString& nick = tpContact->alias();
@@ -187,8 +187,8 @@ void TrackerSink::saveToTracker(const QString& contactLocalId, const TpContact *
 
     const RDFVariable contact(buildContactIri(contactLocalId));
 
-    const QString id(QString::number(TpContact::buildUniqueId(accountpath, imId)));
-    const RDFVariable imAddress(TpContact::buildImAddress(accountpath, imId));
+    const QString id(QString::number(CDTpContact::buildUniqueId(accountpath, imId)));
+    const RDFVariable imAddress(CDTpContact::buildImAddress(accountpath, imId));
     const RDFVariable imAccount(QUrl(QString::fromLatin1("telepathy:") + accountpath));
     const QDateTime datetime = QDateTime::currentDateTime();
 
@@ -237,7 +237,7 @@ void TrackerSink::saveToTracker(const QString& contactLocalId, const TpContact *
     service()->executeQuery(addressUpdate);
 }
 
-void TrackerSink::sinkToStorage(const QSharedPointer<TpContact>& obj)
+void CDTpTrackerSink::sinkToStorage(const QSharedPointer<CDTpContact>& obj)
 {
     if (obj->contact() && obj->contact()->isBlocked()) {
         return;
@@ -251,8 +251,8 @@ void TrackerSink::sinkToStorage(const QSharedPointer<TpContact>& obj)
 
 
     if (!obj->isReady()) {
-        connect(obj.data(), SIGNAL(ready(TpContact*)),
-                this, SLOT(onFeaturesReady(TpContact*)));
+        connect(obj.data(), SIGNAL(ready(CDTpContact*)),
+                this, SLOT(onFeaturesReady(CDTpContact*)));
         return;
     }
 
@@ -269,9 +269,9 @@ void TrackerSink::sinkToStorage(const QSharedPointer<TpContact>& obj)
     saveToTracker(id, obj.data());
 }
 
-void TrackerSink::onCapabilities(TpContact* obj)
+void CDTpTrackerSink::onCapabilities(CDTpContact* obj)
 {
-    if (!isValidTpContact(obj)) {
+    if (!isValidCDTpContact(obj)) {
         qDebug() << Q_FUNC_INFO << "Invalid Telepathy Contact";
         return;
     }
@@ -300,11 +300,11 @@ void TrackerSink::onCapabilities(TpContact* obj)
     service()->executeQuery(addressUpdate);
 }
 
-// uniqueId - QContactLocalId calculated as TpContact::uniqueId() in TpContact::onSimplePresenceChanged
-void TrackerSink::onSimplePresenceChanged(TpContact* obj)
+// uniqueId - QContactLocalId calculated as CDTpContact::uniqueId() in CDTpContact::onSimplePresenceChanged
+void CDTpTrackerSink::onSimplePresenceChanged(CDTpContact* obj)
 {
     qDebug() << Q_FUNC_INFO;
-    if (!isValidTpContact(obj)) {
+    if (!isValidCDTpContact(obj)) {
         qDebug() << Q_FUNC_INFO << "Invalid Telepathy Contact";
         return;
     }
@@ -330,12 +330,12 @@ void TrackerSink::onSimplePresenceChanged(TpContact* obj)
     service()->executeQuery(addressUpdate);
 }
 
-QList<QSharedPointer<TpContact> > TrackerSink::getFromStorage()
+QList<QSharedPointer<CDTpContact> > CDTpTrackerSink::getFromStorage()
 {
     return  d->contactMap.values();
 }
 
-bool TrackerSink::contains(const QString& aId)
+bool CDTpTrackerSink::contains(const QString& aId)
 {
     if (aId.isEmpty()) {
         return false;
@@ -355,23 +355,23 @@ bool TrackerSink::contains(const QString& aId)
 
 }
 
-bool TrackerSink::compareAvatar(const QString& token)
+bool CDTpTrackerSink::compareAvatar(const QString& token)
 {
     Q_UNUSED(token)
     return false;
 }
 
 
-void TrackerSink::saveAvatarToken(const QString& id, const QString& token, const QString& mime)
+void CDTpTrackerSink::saveAvatarToken(const QString& id, const QString& token, const QString& mime)
 {
-    const QString avatarPath = ContactPhotoCopy::avatarDir()+"/telepathy_cache"+token+'.'+ mime;
+    const QString avatarPath = CDTpContactPhotoCopy::avatarDir()+"/telepathy_cache"+token+'.'+ mime;
     qDebug() << Q_FUNC_INFO << token;
 
-    foreach (const QSharedPointer<const TpContact>& c, d->contactMap) {
+    foreach (const QSharedPointer<const CDTpContact>& c, d->contactMap) {
         const QSharedPointer<const Tp::Contact> tcontact = c->contact();
         if (tcontact && id == tcontact->id() ) {
             using namespace SopranoLive;
-            if (!isValidTpContact(c.data())) {
+            if (!isValidCDTpContact(c.data())) {
                 continue;
             }
 
@@ -402,14 +402,14 @@ void TrackerSink::saveAvatarToken(const QString& id, const QString& token, const
     }
 }
 
-void TrackerSink::onAvatarUpdated(const QString& id, const QString& token, const QString& mime)
+void CDTpTrackerSink::onAvatarUpdated(const QString& id, const QString& token, const QString& mime)
 {
     if (!compareAvatar(token))
         saveAvatarToken(id, token, mime);
 }
 
 //TODO: This seems to be useless:
-bool TrackerSink::isValidTpContact(const TpContact *tpContact) {
+bool CDTpTrackerSink::isValidCDTpContact(const CDTpContact *tpContact) {
     if (tpContact != 0) {
         return true;
     }
@@ -417,7 +417,7 @@ bool TrackerSink::isValidTpContact(const TpContact *tpContact) {
     return false;
 }
 
-RDFServicePtr TrackerSink::service()
+RDFServicePtr CDTpTrackerSink::service()
 {
     if (d->transaction_)
     {
@@ -431,7 +431,7 @@ RDFServicePtr TrackerSink::service()
     }
 }
 
-void TrackerSink::commitTrackerTransaction() {
+void CDTpTrackerSink::commitTrackerTransaction() {
     if ( d->transaction_)
     {
         d->transaction_->commit();
@@ -439,14 +439,14 @@ void TrackerSink::commitTrackerTransaction() {
     }
 }
 
-void TrackerSink::initiateTrackerTransaction()
+void CDTpTrackerSink::initiateTrackerTransaction()
 {
     if ( !d->transaction_ )
         d->transaction_ = ::tracker()->createTransaction();
 }
 
 
-void TrackerSink::deleteContacts(const QString& path)
+void CDTpTrackerSink::deleteContacts(const QString& path)
 {
     //TODO: 
     //Fix the query when doing contact merging
@@ -472,9 +472,9 @@ void TrackerSink::deleteContacts(const QString& path)
 
 }
 
-void TrackerSink::deleteContact(const QSharedPointer<TpContact>& c)
+void CDTpTrackerSink::deleteContact(const QSharedPointer<CDTpContact>& c)
 {
-    const RDFVariable imAddress(TpContact::buildImAddress(c->accountPath(), c->id()));
+    const RDFVariable imAddress(CDTpContact::buildImAddress(c->accountPath(), c->id()));
 
     RDFUpdate deleteContact;
     deleteContact.addDeletion(imAddress, rdf::type::iri());
@@ -482,7 +482,7 @@ void TrackerSink::deleteContact(const QSharedPointer<TpContact>& c)
     service()->executeQuery(deleteContact);
 }
 
-void TrackerSink::onDeleteModelReady()
+void CDTpTrackerSink::onDeleteModelReady()
 {
      for (int i = 0 ; i < d->livenode->rowCount() ; i ++) {
         const QString imAddress = d->livenode->index(i, 1).data().toString();
@@ -500,12 +500,12 @@ void TrackerSink::onDeleteModelReady()
 
 }
 
-void TrackerSink::clearContacts(const QString& path)
+void CDTpTrackerSink::clearContacts(const QString& path)
 {
     const QList<uint> list (d->contactMap.keys());
     
     foreach (uint index, list) {
-        QSharedPointer<TpContact> contact = d->contactMap[index];
+        QSharedPointer<CDTpContact> contact = d->contactMap[index];
         
         if (!contact) {
             continue;
@@ -525,10 +525,10 @@ void TrackerSink::clearContacts(const QString& path)
    this is a specification requirement
    */
 
-void TrackerSink::takeAllOffline(const QString& path)
+void CDTpTrackerSink::takeAllOffline(const QString& path)
 {
     RDFUpdate addressUpdate;
-    foreach (TpContactPtr obj, getFromStorage()) {
+    foreach (CDTpContactPtr obj, getFromStorage()) {
         if (obj->accountPath() != path) {
             continue;
         }
@@ -553,7 +553,7 @@ void TrackerSink::takeAllOffline(const QString& path)
     service()->executeQuery(addressUpdate);
 }
 
-const QUrl & TrackerSink::toTrackerStatus(const uint stat)
+const QUrl & CDTpTrackerSink::toTrackerStatus(const uint stat)
 {
    switch (stat) {
        case Tp::ConnectionPresenceTypeUnset: return nco::presence_status_unknown::iri();
@@ -572,7 +572,7 @@ const QUrl & TrackerSink::toTrackerStatus(const uint stat)
    return nco::presence_status_error::iri();
 }
 
-const QUrl & TrackerSink::toTrackerStatus(const QString& status)
+const QUrl & CDTpTrackerSink::toTrackerStatus(const QString& status)
 {
     static QHash<QString, QUrl> mapping;
 
@@ -596,7 +596,7 @@ const QUrl & TrackerSink::toTrackerStatus(const QString& status)
     return nco::presence_status_error::iri();
 }
 
-unsigned int TrackerSink::contactLocalUID(const TpContact* const tpContact, bool *existing) const
+unsigned int CDTpTrackerSink::contactLocalUID(const CDTpContact* const tpContact, bool *existing) const
 {
     Q_UNUSED(existing)
     return tpContact->uniqueId();

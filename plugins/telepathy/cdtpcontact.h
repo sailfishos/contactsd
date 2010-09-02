@@ -32,7 +32,7 @@
   of this and also read and write from it
   **/
 
-class TpContact : public QObject
+class CDTpContact : public QObject
 {
     Q_OBJECT
 public:
@@ -42,9 +42,9 @@ public:
                    , CAPABILITIES
                  } ChangeType;
 
-    explicit TpContact(Tp::ContactPtr contact, QObject* parent = 0);
-    explicit TpContact(QObject * parent = 0);
-    virtual ~TpContact();
+    explicit CDTpContact(Tp::ContactPtr contact, QObject* parent = 0);
+    explicit CDTpContact(QObject * parent = 0);
+    virtual ~CDTpContact();
 
     QSharedPointer<const Tp::Contact> contact() const;
 
@@ -78,8 +78,8 @@ public:
     bool isReady() const;
 
 Q_SIGNALS:
-    void ready(TpContact*);
-    void change(uint uniqueId, TpContact::ChangeType type);
+    void ready(CDTpContact*);
+    void change(uint uniqueId, CDTpContact::ChangeType type);
 
 private Q_SLOTS:
     void onSimplePresenceChanged(const QString & status , uint stat, const QString & message);
@@ -93,13 +93,13 @@ private:
     void requestAvatar(Tp::ContactPtr);
     void requestCapabilities();
 
-    class TpContactPrivate;
-    TpContactPrivate* const d;
+    class CDTpContactPrivate;
+    CDTpContactPrivate* const d;
 
     friend class ut_trackersink;
 };
 
-typedef QList<QSharedPointer<TpContact> > TpContactList;
-typedef QSharedPointer<TpContact> TpContactPtr;
+typedef QList<QSharedPointer<CDTpContact> > CDTpContactList;
+typedef QSharedPointer<CDTpContact> CDTpContactPtr;
 
 #endif // CDTPCONTACT_H
