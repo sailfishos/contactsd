@@ -27,6 +27,6 @@ SOURCES  = cdtpaccount.cpp \
            cdtpplugin.cpp \
            cdtptrackersink.cpp
 
-TARGET = telepathycollectorplugin
+TARGET = telepathyplugin
 target.path = /usr/lib/contactsd-1.0/plugins
 INSTALLS += target
