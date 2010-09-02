@@ -33,20 +33,16 @@
 
 class CDTpController::Private
 {
-
 public:
-    Private() :
-            error(false) {}
-
-    ~Private() {
-    }
+    Private() : error(false) {}
 
     Tp::AccountManagerPtr accountManager;
     bool error;
 };
 
-
-CDTpController::CDTpController(QObject * parent, bool cache): QObject(parent), d(new Private)
+CDTpController::CDTpController(QObject *parent, bool cache)
+    : QObject(parent),
+      d(new Private)
 {
     Q_UNUSED(cache);
     qDebug() << Q_FUNC_INFO;
@@ -62,20 +58,22 @@ CDTpController::~CDTpController()
 
 void CDTpController::requestIMAccounts()
 {
-   if (d->accountManager->isReady()) {
-       emit finished();
-       return;
-   }
+    if (d->accountManager->isReady()) {
+        emit finished();
+        return;
+    }
 
-   connect(d->accountManager->becomeReady(), SIGNAL(finished(Tp::PendingOperation*)),
-           this, SLOT(onAmFinished(Tp::PendingOperation*)));
+    connect(d->accountManager->becomeReady(),
+            SIGNAL(finished(Tp::PendingOperation *)),
+            this,
+            SLOT(onAmFinished(Tp::PendingOperation *)));
 }
 
-QList<Tp::AccountPtr> CDTpController::getIMAccount(const QString& protocol)
+QList<Tp::AccountPtr> CDTpController::getIMAccount(const QString &protocol)
 {
     QList<Tp::AccountPtr> rv;
 
-    foreach (Tp::AccountPtr account, d->accountManager->validAccounts() ) {
+    foreach(Tp::AccountPtr account, d->accountManager->validAccounts()) {
         if (account->protocol() == protocol) {
             rv.append(account);
         }
@@ -84,31 +82,30 @@ QList<Tp::AccountPtr> CDTpController::getIMAccount(const QString& protocol)
     return rv;
 }
 
-void CDTpController::onAmFinished(Tp::PendingOperation* op)
+void CDTpController::onAmFinished(Tp::PendingOperation *op)
 {
     if (op->isError()) {
         qDebug() << Q_FUNC_INFO << op->errorName() << op->errorMessage() ;
         d->error = true;
-        qWarning() << Q_FUNC_INFO << ": Account manager error: " << op->errorName() << ": " << op->errorMessage();
+        qWarning() << Q_FUNC_INFO << ": Account manager error: " <<
+            op->errorName() << ": " << op->errorMessage();
     }
 
     emit finished();
 }
-CDTpPendingRosters * CDTpController::requestRosters(Tp::AccountPtr account)
+
+CDTpPendingRosters *CDTpController::requestRosters(Tp::AccountPtr account)
 {
-    qDebug() << Q_FUNC_INFO << ": Requesting roster for account: " << account->objectPath();
-    CDTpPendingRosters * roster = new CDTpPendingRosters(this);
+    qDebug() << Q_FUNC_INFO << ": Requesting roster for account: " <<
+        account->objectPath();
+    CDTpPendingRosters *roster = new CDTpPendingRosters(this);
     roster->addRequestForAccount(account);
     return roster;
 }
 
 bool CDTpController::isError() const
 {
-    if (!d->accountManager->isReady()) {
-        return true;
-    }
-
-    if (d->error) {
+    if (!d->accountManager->isReady() || d->error) {
         return true;
     }
 

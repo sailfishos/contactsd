@@ -31,19 +31,25 @@ class ServiceMapData;
 class CDTpAccountServiceMapper : public QObject
 {
     Q_OBJECT
+
 public:
     CDTpAccountServiceMapper(QObject *parent = 0);
     virtual ~CDTpAccountServiceMapper();
+
     void initialize();
+
     QString serviceForAccountPath(const QString &accountPath) const;
+
 private Q_SLOTS:
     void onAccountCreated(Accounts::AccountId id);
+
 private:
     QList<ServiceMapData*> serviceMapData(const Accounts::Account *account) const;
     bool parseServiceXml(QXmlStreamReader *xml, ServiceMapData *serviceMapData) const;
-    QMap<QString, QString> buildAccountServiceMap(const QMap<QString, QList<ServiceMapData*> > &serviceMap) const;
+    QMap<QString, QString> buildAccountServiceMap(const QMap<QString,
+            QList<ServiceMapData*> > &serviceMap) const;
+
     const QString KeyUserName;
-private:
     QMap<QString, QString> mAccountServiceMap;
     Accounts::Manager mAccountManager;
 };

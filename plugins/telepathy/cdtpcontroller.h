@@ -26,32 +26,35 @@
 
 #include <QObject>
 
-/**
- * Provides access to Telepathy Contacts
-**/
-
 class CDTpPendingRosters;
 
+/*
+ * Provides access to Telepathy Contacts
+ */
 class CDTpController : public QObject
 {
     Q_OBJECT
+
 public:
-    explicit CDTpController(QObject * parent = 0,  bool cache = false);
+    explicit CDTpController(QObject *parent = 0,  bool cache = false);
     virtual ~CDTpController();
+
     /*!
      *\brief Provides a set of pending roster contats, from all accounts
      *\returns Pointer to a Pending Roster
      */
-    CDTpPendingRosters* requestRosters(Tp::AccountPtr account);
+    CDTpPendingRosters *requestRosters(Tp::AccountPtr account);
 
-    QList<Tp::AccountPtr> getIMAccount(const QString& cmName);
+    QList<Tp::AccountPtr> getIMAccount(const QString &cmName);
 
     void requestIMAccounts();
     bool isError() const;
+
 Q_SIGNALS:
     void finished();
+
 public Q_SLOTS:
-    void onAmFinished(Tp::PendingOperation* op);
+    void onAmFinished(Tp::PendingOperation *op);
 
 private:
     class Private;

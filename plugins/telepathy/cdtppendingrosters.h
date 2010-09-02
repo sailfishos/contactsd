@@ -41,6 +41,7 @@ class CDTpPendingRosters : public QObject
     Q_OBJECT
 public:
     explicit CDTpPendingRosters(QObject *parent = 0);
+
     Tp::Contacts rosterList() const;
     QList<QSharedPointer<CDTpContact> > telepathyRosterList() const;
     QList<Tp::ConnectionPtr> contactConnections();
@@ -48,23 +49,27 @@ public:
     bool isError() const;
     QString errorName() const;
     QString errorMessage() const;
+
 Q_SIGNALS:
-    void contact(QSharedPointer<CDTpContact>&);
+    void contact(QSharedPointer<CDTpContact> &);
     void contactsAdded(QList<QSharedPointer<CDTpContact> >);
     void contactsRemoved(QList<QSharedPointer<CDTpContact> >);
-    void finished (CDTpPendingRosters *operation);
+    void finished(CDTpPendingRosters *op);
+
 private Q_SLOTS:
-    void onConnectionReady(Tp::PendingOperation * po);
-    void onAccountReady(Tp::PendingOperation* op);
-    void onHaveConnectionChanged(bool);
-    void onConnectionStatusChanged(Tp::ConnectionStatus status, Tp::ConnectionStatusReason reason);
-    void onAllKnownContactsChanged(const Tp::Contacts& added, const Tp::Contacts& removed) ;
+    void onConnectionReady(Tp::PendingOperation *op);
+    void onAccountReady(Tp::PendingOperation *op);
+    void onHaveConnectionChanged(bool haveConnection);
+    void onConnectionStatusChanged(Tp::ConnectionStatus status,
+            Tp::ConnectionStatusReason reason);
+    void onAllKnownContactsChanged(const Tp::Contacts &added,
+            const Tp::Contacts &removed);
 private:
-    Q_DISABLE_COPY(CDTpPendingRosters)
     friend class CDTpController;
+
     void addRequestForAccount(Tp::AccountPtr);
     void setFinished();
-    void setFinishedWithError(const QString&, const QString&);
+    void setFinishedWithError(const QString &, const QString &);
 
     Tp::Contacts mContacts;
     QList<QSharedPointer<CDTpContact> >  mCDTpContacts;
@@ -75,7 +80,6 @@ private:
     bool mHasError;
     QString mErrorName;
     QString mErrorMessage;
-
 };
 
 #endif // CDTPPENDINGROSTERS_H

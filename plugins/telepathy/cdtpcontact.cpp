@@ -32,42 +32,42 @@
  */
 const QString FilePath(QString avatarToken, QString extension)
 {
-    return CDTpContactPhotoCopy::avatarDir()+"/telepathy_cache"+avatarToken+'.'+extension;
+    return CDTpContactPhotoCopy::avatarDir() + "/telepathy_cache" +
+        avatarToken + '.' + extension;
 }
 
 class CDTpContact::CDTpContactPrivate
 {
-    public:
-    CDTpContactPrivate() :
-            mHasCaps(false),
-            mReady(false) {}
-    ~CDTpContactPrivate() {}
+public:
+    CDTpContactPrivate()
+        : mHasCaps(false), mReady(false)
+    {
+    }
 
-        Tp::ContactPtr mContact;
-        Tp::ConnectionPtr mConnection;
-        QSharedPointer<QDBusPendingCallWatcher> mWatcher;
-        QString mAccountPath;
-        QString mAvatar;
-        QString mAvatarMime;
-        bool mHasCaps;
-        bool mReady;
+    Tp::ContactPtr mContact;
+    Tp::ConnectionPtr mConnection;
+    QSharedPointer<QDBusPendingCallWatcher> mWatcher;
+    QString mAccountPath;
+    QString mAvatar;
+    QString mAvatarMime;
+    bool mHasCaps;
+    bool mReady;
 };
 
-CDTpContact::CDTpContact(Tp::ContactPtr contact, QObject* parent) : QObject(parent)
-    , d(new CDTpContactPrivate)
+CDTpContact::CDTpContact(Tp::ContactPtr contact, QObject *parent)
+    : QObject(parent),
+      d(new CDTpContactPrivate)
 {
-
     d->mContact = contact;
     reqestFeatures(contact);
 
     connect(contact.data(),
-            SIGNAL(capabilitiesChanged(Tp::ContactCapabilities*)),
-            this, SLOT(onExtCapFinished(Tp::ContactCapabilities*)));
-
+            SIGNAL(capabilitiesChanged(Tp::ContactCapabilities *)),
+            this, SLOT(onExtCapFinished(Tp::ContactCapabilities *)));
 }
 
-CDTpContact::CDTpContact(QObject * parent) : QObject(parent),
-        d(new CDTpContactPrivate)
+CDTpContact::CDTpContact(QObject *parent)
+    : QObject(parent), d(new CDTpContactPrivate)
 {
 }
 
@@ -76,20 +76,19 @@ CDTpContact::~CDTpContact()
     delete d;
 }
 
-
 void CDTpContact::reqestFeatures(Tp::ContactPtr contact)
 {
     QSet<Tp::Contact::Feature> feature;
     feature << Tp::Contact::FeatureAlias
-        << Tp::Contact::FeatureAvatarToken
-        << Tp::Contact::FeatureSimplePresence
-        << Tp::Contact::FeatureCapabilities;
+            << Tp::Contact::FeatureAvatarToken
+            << Tp::Contact::FeatureSimplePresence
+            << Tp::Contact::FeatureCapabilities;
 
-    Tp::PendingContacts * pc = contact->manager()->upgradeContacts (QList<Tp::ContactPtr>()<<contact, feature);
-
+    Tp::PendingContacts *pc = contact->manager()->upgradeContacts(
+            QList<Tp::ContactPtr>() << contact, feature);
     connect(pc,
-               SIGNAL(finished(Tp::PendingOperation *)),
-               SLOT(onFeaturesReady(Tp::PendingOperation *)));
+            SIGNAL(finished(Tp::PendingOperation *)),
+            SLOT(onFeaturesReady(Tp::PendingOperation *)));
 }
 
 void CDTpContact::requestAvatar(Tp::ContactPtr contact)
@@ -106,37 +105,35 @@ void CDTpContact::requestAvatar(Tp::ContactPtr contact)
     connect(d->mConnection->avatarsInterface(),
             SIGNAL(AvatarRetrieved(uint, const QString&, const QByteArray&, const QString&)),
             this,
-            SLOT( onAvatarRetrieved(uint, const QString&, const QByteArray&, const QString&)));
+            SLOT(onAvatarRetrieved(uint, const QString&, const QByteArray&, const QString&)));
     connect(d->mConnection->avatarsInterface(),
             SIGNAL(AvatarUpdated(uint, const QString&)),
             this,
             SLOT(onAvatarUpdated(uint, const QString&)));
-
 }
 
-void CDTpContact::onFeaturesReady(Tp::PendingOperation * op)
+void CDTpContact::onFeaturesReady(Tp::PendingOperation *op)
 {
-    Tp::PendingContacts * pa = qobject_cast<Tp::PendingContacts *>(op);
+    Tp::PendingContacts *pa = qobject_cast<Tp::PendingContacts *>(op);
     Tp::ContactPtr contact = pa->contacts().at(0);
 
     if (contact) {
         d->mReady = true;
         d->mHasCaps = true;
         if (contact->actualFeatures().contains(Tp::Contact::FeatureAvatarToken)) {
-           requestAvatar(contact);
+            requestAvatar(contact);
         } else {
             qDebug() << Q_FUNC_INFO << "contact: Does not support avatars";
         }
         Q_EMIT ready(this);
 
         connect(contact.data(),
-            SIGNAL(simplePresenceChanged(const QString &, uint, const QString &)),
-            this, SLOT(onSimplePresenceChanged(const QString &, uint, const QString &)));
-
+                SIGNAL(simplePresenceChanged(const QString &, uint, const QString &)),
+                this, SLOT(onSimplePresenceChanged(const QString &, uint, const QString &)));
     }
 }
 
-void CDTpContact::onSimplePresenceChanged(const QString & status , uint stat, const QString & message)
+void CDTpContact::onSimplePresenceChanged(const QString &status , uint stat, const QString &message)
 {
     Q_UNUSED(stat)
     Q_UNUSED(status)
@@ -145,50 +142,48 @@ void CDTpContact::onSimplePresenceChanged(const QString & status , uint stat, co
     Q_EMIT change(uniqueId(), SIMPLE_PRESENCE);
 }
 
-void CDTpContact::onAvatarRetrieved(uint contact, const QString& token,
-        const QByteArray& data, const QString& mime)
+void CDTpContact::onAvatarRetrieved(uint contact, const QString &token,
+                                    const QByteArray &data, const QString &mime)
 {
     Q_UNUSED(mime);
 
-    if( d->mContact->handle()[0] == contact )
-    {   //every contact receives signals for every avatar retrieved, have to distinguish
-        //which one is for us
-        QString extension =  mime.split("/").value(1); //sometimes its an empty mime, using .value
+    if (d->mContact->handle()[0] == contact) {
+        // every contact receives signals for every avatar retrieved, have to
+        // distinguish which one is for us
+        QString extension =  mime.split("/").value(1);
+        // sometimes its an empty mime, using .value
         QImage Avatar;
         d->mAvatarMime = extension;
         d->mAvatar = token;
-        if (Avatar.loadFromData(data))
-        {
+        if (Avatar.loadFromData(data)) {
             Avatar.save(::FilePath(token, extension));
         }
         Q_EMIT change(uniqueId(), AVATAR_TOKEN);
     }
-
 }
 
-void CDTpContact::onAvatarUpdated (uint contact, const QString &newAvatarToken)
+void CDTpContact::onAvatarUpdated(uint contact, const QString &newAvatarToken)
 {
-    if(d->mContact->handle()[0] == contact && newAvatarToken != avatar()){
-       Tp::UIntList tokenRequest;
-       tokenRequest.append(d->mContact->handle()[0]);
-       d->mConnection =  d->mContact->manager()->connection();
-       d->mConnection->avatarsInterface()->RequestAvatars(tokenRequest);
+    if (d->mContact->handle()[0] == contact && newAvatarToken != avatar()) {
+        Tp::UIntList tokenRequest;
+        tokenRequest.append(d->mContact->handle()[0]);
+        d->mConnection =  d->mContact->manager()->connection();
+        d->mConnection->avatarsInterface()->RequestAvatars(tokenRequest);
     }
 }
-
 
 QString CDTpContact::avatar() const
 {
     return d->mAvatar;
 }
 
-void CDTpContact::onExtCapFinished(Tp::ContactCapabilities* caps)
+void CDTpContact::onExtCapFinished(Tp::ContactCapabilities *caps)
 {
     Q_UNUSED(caps);
     Q_EMIT change(uniqueId(), CAPABILITIES);
 }
 
-void CDTpContact::setAccountPath(const QString& paths)
+void CDTpContact::setAccountPath(const QString &paths)
 {
     d->mAccountPath = paths;
 }
@@ -198,8 +193,9 @@ QString CDTpContact::accountPath() const
     return d->mAccountPath;
 }
 
-//Not that libtelepathy-qt doesn't have a ContactConstPtr because it doesn't
-//seem to really understand the use of const and (smart) pointers. const ContactPtr would not be the same.
+// Not that libtelepathy-qt doesn't have a ContactConstPtr because it doesn't
+// seem to really understand the use of const and (smart) pointers.
+// const ContactPtr would not be the same.
 QSharedPointer<const Tp::Contact> CDTpContact::contact() const
 {
     return d->mContact;
@@ -260,15 +256,15 @@ bool CDTpContact::supportsUpgradingCalls() const
     return caps && caps->supportsUpgradingCalls();
 }
 
-
 unsigned int CDTpContact::uniqueId() const
 {
     return buildUniqueId(this->accountPath(), id());
 }
 
-unsigned int CDTpContact::buildUniqueId(const QString& accountPath, const QString& imId)
+unsigned int CDTpContact::buildUniqueId(const QString &accountPath,
+        const QString &imId)
 {
-        return qHash(accountPath + '!' +  imId);
+    return qHash(accountPath + '!' +  imId);
 }
 
 QUrl CDTpContact::imAddress() const
@@ -276,7 +272,8 @@ QUrl CDTpContact::imAddress() const
     return buildImAddress(this->accountPath(), id());
 }
 
-QUrl CDTpContact::buildImAddress(const QString& accountPath, const QString& imId)
+QUrl CDTpContact::buildImAddress(const QString &accountPath,
+        const QString &imId)
 {
     return QUrl("telepathy:" + accountPath + '!' +  imId);
 }

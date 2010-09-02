@@ -26,24 +26,24 @@
 
 #include <QObject>
 
-/** A class which wrapps a telepathy contact
-  and also supports caching of avatars and
-  the contact it self. you can create instance
-  of this and also read and write from it
-  **/
-
+/*
+ * Wraps a telepathy contact and also supports caching of
+ * avatars and the contact itself.
+ */
 class CDTpContact : public QObject
 {
     Q_OBJECT
-public:
-    typedef enum { SIMPLE_PRESENCE = 0
-                   , AVATAR_TOKEN
-                   , FEATURES
-                   , CAPABILITIES
-                 } ChangeType;
 
-    explicit CDTpContact(Tp::ContactPtr contact, QObject* parent = 0);
-    explicit CDTpContact(QObject * parent = 0);
+public:
+    typedef enum {
+        SIMPLE_PRESENCE = 0,
+        AVATAR_TOKEN,
+        FEATURES,
+        CAPABILITIES
+    } ChangeType;
+
+    explicit CDTpContact(Tp::ContactPtr contact, QObject *parent = 0);
+    explicit CDTpContact(QObject *parent = 0);
     virtual ~CDTpContact();
 
     QSharedPointer<const Tp::Contact> contact() const;
@@ -62,41 +62,41 @@ public:
     virtual bool supportsUpgradingCalls() const;
     Tp::ContactCapabilities *capabilities() const;
 
-
     QString accountPath() const;
-    void setAccountPath(const QString&);
+    void setAccountPath(const QString &accountPath);
 
     QString avatar() const;
     QString avatarMime() const;
 
     unsigned int uniqueId() const;
-    static unsigned int buildUniqueId(const QString& accountPath, const QString& imId);
+    static unsigned int buildUniqueId(const QString &accountPath,
+            const QString &imId);
 
     QUrl imAddress() const;
-    static QUrl buildImAddress(const QString& accountPath, const QString& imId);
+    static QUrl buildImAddress(const QString &accountPath, const QString &imId);
 
     bool isReady() const;
 
 Q_SIGNALS:
-    void ready(CDTpContact*);
+    void ready(CDTpContact *);
     void change(uint uniqueId, CDTpContact::ChangeType type);
 
 private Q_SLOTS:
-    void onSimplePresenceChanged(const QString & status , uint stat, const QString & message);
-    void onAvatarRetrieved(uint, const QString&, const QByteArray&, const QString&);
-    void onAvatarUpdated(uint, const QString&);
-    void onExtCapFinished(Tp::ContactCapabilities* caps);
-    void onFeaturesReady(Tp::PendingOperation*);
+    void onSimplePresenceChanged(const QString &status , uint stat, const QString &message);
+    void onAvatarRetrieved(uint, const QString &, const QByteArray &, const QString &);
+    void onAvatarUpdated(uint, const QString &);
+    void onExtCapFinished(Tp::ContactCapabilities *caps);
+    void onFeaturesReady(Tp::PendingOperation *op);
 
 private:
+    friend class ut_trackersink;
+
     void reqestFeatures(Tp::ContactPtr);
     void requestAvatar(Tp::ContactPtr);
     void requestCapabilities();
 
     class CDTpContactPrivate;
     CDTpContactPrivate* const d;
-
-    friend class ut_trackersink;
 };
 
 typedef QList<QSharedPointer<CDTpContact> > CDTpContactList;
