@@ -17,6 +17,9 @@
 **
 ****************************************************************************/
 
+#ifndef CDTPPLUGIN_H
+#define CDTPPLUGIN_H
+
 #include <contactsdplugininterface.h>
 
 #include "cdtpaccountservicemapper.h"
@@ -83,3 +86,5 @@ private:
     AccountServiceMapper accountServiceMapper;
     bool mImportActive;
 };
+
+#endif // CDTPPLUGIN_H

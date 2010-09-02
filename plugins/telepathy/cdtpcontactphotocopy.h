@@ -17,8 +17,8 @@
 **
 ****************************************************************************/
 
-#ifndef CONTACTPHOTOCOPY_H
-#define CONTACTPHOTOCOPY_H
+#ifndef CDTPCONTACTPHOTOCOPY_H
+#define CDTPCONTACTPHOTOCOPY_H
 
 #include <QSize>
 #include <QStringList>
@@ -82,4 +82,4 @@ private:
     static QStringList avatarSearchPaths;
 };
 
-#endif //CONTACTPHOTOCOPY_H
+#endif // CDTPCONTACTPHOTOCOPY_H

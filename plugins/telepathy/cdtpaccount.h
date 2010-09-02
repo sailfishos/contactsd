@@ -17,8 +17,8 @@
 **
 ****************************************************************************/
 
-#ifndef TELEPATHY_ACCOUNT_H
-#define TELEPATHY_ACCOUNT_H
+#ifndef CDTPACCOUNT_H
+#define CDTPACCOUNT_H
 
 #include <TelepathyQt4/Account>
 #include <TelepathyQt4/ContactManager>
@@ -73,4 +73,4 @@ QDebug operator<<(QDebug dbg, const TelepathyAccount &account);
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(TelepathyAccount::Changes)
 
-#endif // TELEPATHY_ACCOUNT_H
+#endif // CDTPACCOUNT_H

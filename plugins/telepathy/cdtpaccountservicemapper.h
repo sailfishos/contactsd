@@ -17,8 +17,8 @@
 **
 ****************************************************************************/
 
-#ifndef ACCOUNTSERVICEMAPPER_H
-#define ACCOUNTSERVICEMAPPER_H
+#ifndef CDTPACCOUNTSERVICEMAPPER_H
+#define CDTPACCOUNTSERVICEMAPPER_H
 
 #include <QMap>
 #include <QObject>
@@ -48,4 +48,4 @@ private:
     Accounts::Manager mAccountManager;
 };
 
-#endif
+#endif // CDTPACCOUNTSERVICEMAPPER_H

@@ -17,8 +17,8 @@
 **
 ****************************************************************************/
 
-#ifndef TRACKERSINK_H
-#define TRACKERSINK_H
+#ifndef CDTPTRACKERSINK_H
+#define CDTPTRACKERSINK_H
 
 #include "cdtpcontact.h"
 
@@ -120,4 +120,4 @@ private:
     friend class ut_trackersink;
 };
 
-#endif // TRACKERSINK_H
+#endif // CDTPTRACKERSINK_H

@@ -17,8 +17,8 @@
 **
 ****************************************************************************/
 
-#ifndef TP_CONTACT_H
-#define TP_CONTACT_H
+#ifndef CDTPCONTACT_H
+#define CDTPCONTACT_H
 
 #include <TelepathyQt4/ContactCapabilities>
 #include <TelepathyQt4/ContactManager>
@@ -102,4 +102,4 @@ private:
 typedef QList<QSharedPointer<TpContact> > TpContactList;
 typedef QSharedPointer<TpContact> TpContactPtr;
 
-#endif
+#endif // CDTPCONTACT_H

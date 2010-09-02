@@ -17,8 +17,8 @@
 **
 ****************************************************************************/
 
-#ifndef PENDINGROSTERS_H
-#define PENDINGROSTERS_H
+#ifndef CDTPPENDINGROSTERS_H
+#define CDTPPENDINGROSTERS_H
 
 #include "cdtpcontact.h"
 
@@ -78,4 +78,4 @@ private:
 
 };
 
-#endif // PENDINGROSTERS_H
+#endif // CDTPPENDINGROSTERS_H

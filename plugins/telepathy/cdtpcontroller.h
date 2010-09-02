@@ -17,8 +17,8 @@
 **
 ****************************************************************************/
 
-#ifndef TELEPATHY_CONTROLLER_H
-#define TELEPATHY_CONTROLLER_H
+#ifndef CDTPCONTROLLER_H
+#define CDTPCONTROLLER_H
 
 #include <TelepathyQt4/Account>
 #include <TelepathyQt4/ContactManager>
@@ -58,4 +58,4 @@ private:
     Private * const d;
 };
 
-#endif // TELEPATHY_CONTROLLER_H
+#endif // CDTPCONTROLLER_H
