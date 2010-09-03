@@ -1,14 +1,15 @@
-contactsd (0.5.34~1) UNRELEASED; urgency=low
+contactsd (0.5.34-1) unstable; urgency=low
 
-  * 
+  * Use nco:presenceLastModified in contactsd and tracker plugin
+  * Fix linkage for workaround of NB#186193
 
- -- Siraj Razick <siraj.razick@collabora.co.uk> Thu, 26 Aug 2010 14:12:53 +0530
+ -- Mathias Hasselmann <mathias@openismus.com>  Fri, 03 Sep 2010 10:12:21 +0200
 
 contactsd (0.5.33-1) unstable; urgency=low
 
   * Fixes: NB#180541 - Voice mail is not saved automatically to contact-list
-  * Fixes: NB#183241
-  * Fixes: NB#178841 Newly added/deleted Serivce contact from remote machine is not displaying in device contacts list
+  * Fixes: NB#183241 - Internet call (VOIP) shortcut button does not displayed in contact card (edit)
+  * Fixes: NB#178841 - Newly added/deleted Serivce contact from remote machine is not displaying in device contacts list
 
  -- Aleksandar Stojiljkovic <aleksandar.stojiljkovic@nokia.com>  Fri, 13 Aug 2010 17:46:19 +0300
 
@@ -35,5 +36,5 @@ contactsd (0.5.30-2) unstable; urgency=low
 contactsd (0.5.30-1) unstable; urgency=low
 
   * Initial version
-	
+
  -- Aleksandar Stojiljkovic <aleksandar.stojiljkovic@nokia.com>  Mon, 12 Jul 2010 11:09:01 +0300
