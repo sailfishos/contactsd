@@ -3,8 +3,12 @@
 %:
 	dh $@
 
+override_dh_auto_configure:
+	qmake -r $(QMAKE_OPTIONS) contactsd.pro
+
 # Workaround a bug in that debhelper package version
 override_dh_install:
+	INSTALL_ROOT=$(CURDIR)/debian/tmp $(MAKE) install
 	dh_install --sourcedir=debian/tmp
 
 override_dh_strip:
