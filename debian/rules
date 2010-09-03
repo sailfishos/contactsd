@@ -1,14 +1,20 @@
 #!/usr/bin/make -f
 
+export DH_VERBOSE=1
+
 %:
 	dh $@
 
 override_dh_auto_configure:
-	qmake -r $(QMAKE_OPTIONS) contactsd.pro
+	dh_auto_configure -- $(QMAKE_OPTIONS) contactsd.pro
+
+# Work-around for some machines where INSTALL_ROOT is not set properly by
+# dh_auto_install
+override_dh_auto_install:
+	dh_auto_install -- INSTALL_ROOT=$(CURDIR)/debian/tmp
 
 # Workaround a bug in that debhelper package version
 override_dh_install:
-	INSTALL_ROOT=$(CURDIR)/debian/tmp $(MAKE) install
 	dh_install --sourcedir=debian/tmp
 
 override_dh_strip:
