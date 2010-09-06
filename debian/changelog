@@ -1,8 +1,10 @@
 contactsd (0.5.35~1) UNRELEASED; urgency=low
 
-  *
+  * Fixes: NB#189561 -  contactsd telepathy plugin is requesting a wrong property to tracker
+  * Fixes: NB#180366 - Change in avatar from assigned to default does not get reflected for an imported gtalk contact
+  * Remove saving nco:photo for me contact and add them to imAvatar
 
- -- Mathias Hasselmann <mathias@openismus.com>  Fri, 03 Sep 2010 10:39:14
+ -- Mathias Hasselmann <mathias@openismus.com>  Fri, 03 Sep 2010 10:39:14 +0200
 
 contactsd (0.5.34-3) unstable; urgency=low
 
