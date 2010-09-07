@@ -29,7 +29,7 @@ contactsd (0.5.34-1) unstable; urgency=low
 contactsd (0.5.33-1) unstable; urgency=low
 
   * Fixes: NB#180541 - Voice mail is not saved automatically to contact-list
-  * Fixes: NB#183241 - Internet call (VOIP) shortcut button does not displayed in contact card (edit)
+  * Changes: Internet call (VOIP) shortcut button does not displayed in contact card (edit)
   * Fixes: NB#178841 - Newly added/deleted Serivce contact from remote machine is not displaying in device contacts list
 
  -- Aleksandar Stojiljkovic <aleksandar.stojiljkovic@nokia.com>  Fri, 13 Aug 2010 17:46:19 +0300
