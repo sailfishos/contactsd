@@ -1,6 +1,5 @@
 test.depends = all
 QMAKE_EXTRA_TARGETS += test
-TELEPATHY_SUPPORT_DIR = $$PWD/../../src/telepathysupport
 TELEPATHY_PLUGIN_DIR = $$PWD/../../plugins/telepathy
 
 CONFIG += test mobility
@@ -15,10 +14,6 @@ OBJECTS_DIR = .obj
 
 INCLUDEPATH += $$TELEPATHY_SUPPORT_DIR
 INCLUDEPATH = $$TELEPATHY_PLUGIN_DIR
-
-# linking instead of compiling in - bug 186193
-# force linking against local version
-LIBS +=  ../../src/telepathysupport/libcontactstelepathysupport.so
 
 LIBS += -L../../plugins/telepathy
 LIBS += -ltelepathycollectorplugin

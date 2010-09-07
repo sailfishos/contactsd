@@ -4,15 +4,9 @@ TEMPLATE = lib
 QT += dbus 
 CONFIG += plugin
 
-QMAKE_LIBDIR += ../../src/telepathysupport
-
-
 CONFIG += link_pkgconfig
 PKGCONFIG += TelepathyQt4
 
-LIBS += -lcontactstelepathysupport
-
-INCLUDEPATH += $$PWD/../../src/telepathysupport/
 INCLUDEPATH += $$PWD/../../src
 
 HEADERS  = ringplugin.h

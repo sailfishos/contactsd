@@ -4,7 +4,6 @@ message("common.pri")
     message(" ^ included")
     
     INCLUDEPATH += $$PWD
-    INCLUDEPATH += $$PWD/../../src/telepathysupport
     
     HEADERS += 	$$PWD/tpcontactstub.h 
     

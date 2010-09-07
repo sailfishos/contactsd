@@ -3,15 +3,11 @@ TEMPLATE = lib
 QT += dbus xml
 CONFIG	+= plugin
 
-#QMAKE_LIBDIR += ../../src/telepathysupport
-
-
 CONFIG += link_pkgconfig
 PKGCONFIG += TelepathyQt4 \
              accounts-qt \
 	     qttracker
 
-INCLUDEPATH += $$PWD/../../src/telepathysupport/
 INCLUDEPATH += $$PWD/../../src
 
 #DESTDIR	 = 
