@@ -21,6 +21,8 @@
 
 #include "cdtpcontroller.h"
 
+#include <TelepathyQt4/Debug>
+
 CDTpPlugin::CDTpPlugin()
     : mController(0)
 {
@@ -35,6 +37,8 @@ void CDTpPlugin::init()
     qDebug() << "Initializing contactsd telepathy plugin";
 
     Tp::registerTypes();
+    Tp::enableDebug(true);
+    Tp::enableWarnings(true);
 
     qDebug() << "Creating controller";
     mController = new CDTpController(this);
