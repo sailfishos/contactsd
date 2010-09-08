@@ -68,6 +68,9 @@ private:
     void addContactCapabilitiesInfoToQuery(RDFUpdate &query,
             const RDFVariable &imAddress,
             CDTpContact *contactWrapper);
+    void addContactAvatarInfoToQuery(RDFUpdate &query,
+            const RDFVariable &imAddress,
+            CDTpContact *contactWrapper);
 
     QString contactLocalId(const QString &contactAccountObjectPath,
             const QString &contactId) const;

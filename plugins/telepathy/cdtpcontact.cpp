@@ -37,10 +37,9 @@ CDTpContact::CDTpContact(Tp::ContactPtr contact, CDTpAccount *accountWrapper)
     connect(contact.data(),
             SIGNAL(capabilitiesChanged(Tp::ContactCapabilities *)),
             SLOT(onContactCapabilitiesChanged()));
-    // TODO: add avatar support
-    // connect(contact.data(),
-    //         SIGNAL(avatarDataChanged(const Tp::AvatarData &)),
-    //         SLOT(onContactAvatarDataChanged(const Tp::AvatarData &)));
+    connect(contact.data(),
+            SIGNAL(avatarDataChanged(const Tp::AvatarData &)),
+            SLOT(onContactAvatarDataChanged()));
 }
 
 CDTpContact::~CDTpContact()
@@ -62,8 +61,7 @@ void CDTpContact::onContactCapabilitiesChanged()
     emit changed(this, Capabilities);
 }
 
-// TODO: add avatar support
-// void CDTpContact::onContactAvatarDataChanged()
-// {
-//     emit changed(this, Avatar);
-// }
+void CDTpContact::onContactAvatarDataChanged()
+{
+    emit changed(this, Avatar);
+}

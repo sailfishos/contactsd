@@ -55,6 +55,7 @@ private Q_SLOTS:
     void onContactAliasChanged();
     void onContactPresenceChanged();
     void onContactCapabilitiesChanged();
+    void onContactAvatarDataChanged();
 
 private:
     Tp::ContactPtr mContact;

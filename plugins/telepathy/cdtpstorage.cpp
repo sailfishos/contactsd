@@ -151,8 +151,7 @@ void CDTpStorage::syncAccountContacts(CDTpAccount *accountWrapper,
         addContactAliasInfoToQuery(updateQuery, imAddress, contactWrapper);
         addContactPresenceInfoToQuery(updateQuery, imAddress, contactWrapper);
         addContactCapabilitiesInfoToQuery(updateQuery, imAddress, contactWrapper);
-
-        // TODO add avatar support
+        addContactAvatarInfoToQuery(updateQuery, imAddress, contactWrapper);
     }
     if (!contactsAdded.isEmpty()) {
         ::tracker()->executeQuery(updateQuery);
@@ -200,7 +199,7 @@ void CDTpStorage::syncAccountContact(CDTpAccount *accountWrapper,
     }
     if (changes & CDTpContact::Avatar) {
         qDebug() << "  avatar changed";
-        // TODO: add avatar support
+        addContactAvatarInfoToQuery(updateQuery, imAddress, contactWrapper);
     }
 
     ::tracker()->executeQuery(updateQuery);
@@ -356,6 +355,36 @@ void CDTpStorage::addContactCapabilitiesInfoToQuery(RDFUpdate &query,
         query.addInsertion(RDFStatementList() <<
                 RDFStatement(imAddress, nco::imCapability::iri(),
                     nco::im_capability_video_calls::iri()));
+    }
+}
+
+void CDTpStorage::addContactAvatarInfoToQuery(RDFUpdate &query,
+        const RDFVariable &imAddress,
+        CDTpContact *contactWrapper)
+{
+    Tp::ContactPtr contact = contactWrapper->contact();
+
+    /* If we don't know the avatar token, it is preferable to keep the old
+     * avatar until we get an update. */
+    if (!contact->isAvatarTokenKnown()) {
+        return;
+    }
+
+    /* If we have a token but not an avatar filename, that probably means the
+     * avatar data is being requested and we'll get an update later. */
+    if (!contact->avatarToken().isEmpty() &&
+        contact->avatarData().fileName.isEmpty()) {
+        return;
+    }
+
+    RDFVariable dataObject(QUrl::fromLocalFile(contact->avatarData().fileName));
+
+    query.addDeletion(imAddress, nco::imAvatar::iri());
+    query.addDeletion(dataObject, nie::DataObject::iri());
+
+    if (!contact->avatarToken().isEmpty()) {
+        query.addInsertion(RDFStatement(dataObject, rdf::type::iri(), nie::DataObject::iri()));
+        query.addInsertion(RDFStatement(imAddress, nco::imAvatar::iri(), dataObject));
     }
 }
 

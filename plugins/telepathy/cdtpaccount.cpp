@@ -278,6 +278,7 @@ void CDTpAccount::upgradeContacts(const Tp::Contacts &contacts)
             QSet<Tp::Contact::Feature>() <<
                 Tp::Contact::FeatureAlias <<
                 Tp::Contact::FeatureAvatarToken <<
+                Tp::Contact::FeatureAvatarData <<
                 Tp::Contact::FeatureSimplePresence <<
                 Tp::Contact::FeatureCapabilities);
     connect(pc,
