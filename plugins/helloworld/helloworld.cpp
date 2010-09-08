@@ -19,25 +19,21 @@
 
 #include "helloworld.h"
 
-// Qt
 #include <QDebug>
 #include <QSettings>
 #include <QtPlugin>
 
-
 HelloWorld::HelloWorld()
-    : mCache(0)
 {
 }
 
 HelloWorld::~HelloWorld()
 {
-    delete mCache;
 }
 
 void HelloWorld::init()
 {
-    qDebug() << Q_FUNC_INFO << "Hello World" << "Plugins Has started" ;
+    qDebug() << "Hello World" << "Plugins Has started" ;
 }
 
 QMap<QString, QVariant> HelloWorld::metaData()
@@ -46,7 +42,13 @@ QMap<QString, QVariant> HelloWorld::metaData()
     data[CONTACTSD_PLUGIN_NAME]    = QVariant(QString("hello"));
     data[CONTACTSD_PLUGIN_VERSION] = QVariant(QString("0.1"));
     data[CONTACTSD_PLUGIN_COMMENT] = QVariant(QString("Example plugin for the contactsd"));
-    //TODO: translations ?
+    // TODO: translations ?
     return data;
 }
+
+bool HelloWorld::hasActiveImports() const
+{
+    return false;
+}
+
 Q_EXPORT_PLUGIN2(HwPlugin, HelloWorld)

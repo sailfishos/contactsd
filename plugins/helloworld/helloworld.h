@@ -17,24 +17,22 @@
 **
 ****************************************************************************/
 
-// contactsd
 #include <contactsdplugininterface.h>
-// Qt
+
 #include <QObject>
 
 class QSettings;
-
 
 class HelloWorld : public QObject, public ContactsdPluginInterface
 {
     Q_OBJECT
     Q_INTERFACES(ContactsdPluginInterface)
+
 public:
     HelloWorld();
     ~HelloWorld();
+
     void init();
     QMap<QString, QVariant> metaData();
-
-private:
-    QSettings* mCache;
+    bool hasActiveImports() const;
 };
