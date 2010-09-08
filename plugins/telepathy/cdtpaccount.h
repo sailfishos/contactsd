@@ -20,6 +20,8 @@
 #ifndef CDTPACCOUNT_H
 #define CDTPACCOUNT_H
 
+#include "cdtpcontact.h"
+
 #include <TelepathyQt4/Account>
 #include <TelepathyQt4/Constants>
 #include <TelepathyQt4/Contact>
@@ -31,8 +33,6 @@ namespace Tp
 {
     class PendingOperation;
 }
-
-class CDTpContact;
 
 class CDTpAccount : public QObject
 {
@@ -56,12 +56,14 @@ public:
     QList<CDTpContact *> contacts() const;
 
 Q_SIGNALS:
-    void ready(CDTpAccount *account);
-    void changed(CDTpAccount *account, CDTpAccount::Changes changes);
-    void rosterChanged(CDTpAccount *account, bool haveRoster);
-    void rosterUpdated(CDTpAccount *acconut,
+    void ready(CDTpAccount *accountWrapper);
+    void changed(CDTpAccount *accountWrapper, CDTpAccount::Changes changes);
+    void rosterChanged(CDTpAccount *accountWrapper, bool haveRoster);
+    void rosterUpdated(CDTpAccount *acconutWrapper,
             const QList<CDTpContact *> &contactsAdded,
             const QList<CDTpContact *> &contactsRemoved);
+    void rosterContactChanged(CDTpAccount *accountWrapper,
+            CDTpContact *contactWrapper, CDTpContact::Changes changes);
 
 private Q_SLOTS:
     void onAccountReady(Tp::PendingOperation *op);
@@ -76,6 +78,8 @@ private Q_SLOTS:
     void onAccountContactsUpgraded(Tp::PendingOperation *op);
     void onAccountContactsChanged(const Tp::Contacts &contactsAdded,
             const Tp::Contacts &contactsRemoved);
+    void onAccountContactChanged(CDTpContact *contactWrapper,
+            CDTpContact::Changes changes);
 
 private:
     void introspectAccountConnection();

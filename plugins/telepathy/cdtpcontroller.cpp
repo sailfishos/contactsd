@@ -138,6 +138,13 @@ void CDTpController::insertAccount(const Tp::AccountPtr &account)
             SLOT(onAccountRosterUpdated(CDTpAccount *,
                     const QList<CDTpContact *> &,
                     const QList<CDTpContact *> &)));
+    connect(accountWrapper,
+            SIGNAL(rosterContactChanged(CDTpAccount *,
+                    CDTpContact *, CDTpContact::Changes)),
+            mStorage,
+            SLOT(syncAccountContact(CDTpAccount *,
+                    CDTpContact *, CDTpContact::Changes)));
+
     mAccounts.insert(account, accountWrapper);
 }
 

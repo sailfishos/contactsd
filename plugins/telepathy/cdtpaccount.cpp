@@ -221,6 +221,12 @@ void CDTpAccount::onAccountContactsChanged(const Tp::Contacts &contactsAdded,
     }
 }
 
+void CDTpAccount::onAccountContactChanged(CDTpContact *contactWrapper,
+        CDTpContact::Changes changes)
+{
+    emit rosterContactChanged(this, contactWrapper, changes);
+}
+
 void CDTpAccount::introspectAccountConnection()
 {
     qDebug() << "Trying to make account connection ready";
@@ -260,6 +266,9 @@ void CDTpAccount::upgradeContacts(const Tp::Contacts &contacts)
 CDTpContact *CDTpAccount::insertContact(const Tp::ContactPtr &contact)
 {
     CDTpContact *contactWrapper = new CDTpContact(contact, this);
+    connect(contactWrapper,
+            SIGNAL(changed(CDTpContact *, CDTpContact::Changes)),
+            SLOT(onAccountContactChanged(CDTpContact *, CDTpContact::Changes)));
     mContacts.insert(contact, contactWrapper);
     return contactWrapper;
 }
