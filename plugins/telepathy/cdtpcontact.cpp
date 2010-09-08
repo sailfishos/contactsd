@@ -32,8 +32,7 @@ CDTpContact::CDTpContact(Tp::ContactPtr contact, CDTpAccount *accountWrapper)
             SIGNAL(aliasChanged(const QString &)),
             SLOT(onContactAliasChanged()));
     connect(contact.data(),
-            SIGNAL(simplePresenceChanged(const QString &status, uint type,
-                    const QString &presenceMessage)),
+            SIGNAL(simplePresenceChanged(const QString &, uint, const QString &)),
             SLOT(onContactPresenceChanged()));
     connect(contact.data(),
             SIGNAL(capabilitiesChanged(Tp::ContactCapabilities *)),
