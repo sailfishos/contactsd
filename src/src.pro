@@ -20,19 +20,20 @@ QT += dbus \
 
 TESTS_DIR = $$PWD/../tests 
 
-HEADERS += contactsdaemon.h \
+HEADERS += contactsd.h \
     contactsdpluginloader.h \
     contactsdplugininterface.h \
     importnotifierdbusadaptor.h \
     logger.h
 SOURCES += main.cpp \
-    contactsdaemon.cpp \
+    contactsd.cpp \
     contactsdpluginloader.cpp \
     importnotifierdbusadaptor.cpp \
     logger.cpp
 
 unix {
-    DEFINES += CONTACTSD_PLUGIN_PATH=\\\"/usr/lib/contactsd-1.0/plugins\\\"
+    DEFINES += CONTACTSD_LOG_DIR=\\\"/var/log\\\"
+    DEFINES += CONTACTSD_PLUGINS_DIR=\\\"/usr/lib/contactsd-1.0/plugins\\\"
 }
 
 headers.files = contactsdplugininterface.h

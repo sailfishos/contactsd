@@ -19,124 +19,114 @@
 
 #include "logger.h"
 
-// Qt
 #include <QDir>
 #include <QFileInfo>
 #include <QTime>
 #include <QMutexLocker>
 
-
 // static initialization
-Logger * Logger::instance = 0;
+Logger *Logger::instance = 0;
 
-Logger* Logger::installLogger(const QString & filename, uint size, uint file_count)
+Logger *Logger::installLogger(const QString &fileName, uint size,
+        uint fileCount)
 {
-    // do we have an instance installed?
-    if ( Logger::instance != 0 ) {
-        return 0;
+    if (!instance) {
+        instance = new Logger(fileName, size, fileCount);
     }
-
-    try{
-        Logger::instance = new Logger(filename, size, file_count);
-    }catch( std::bad_alloc & ){
-        // Catch memory allocation error which might be caused by
-        qCritical("Logger::installLogger: memory allocation error");
-        Logger::instance = 0;
-    }
-
-    return Logger::instance;
+    return instance;
 }
 
-Logger::Logger (const QString & filename, uint size, uint file_count)
+Logger::Logger(const QString &fileName, uint size, uint fileCount)
     : err(stderr),
-    logging_level(QtDebugMsg),
-    logged_lines(0),
-    rotation_check_interval(400),
-    log_file_count(file_count),
-    min_size(size * 1024),
-    has_whitelist(false),
-    has_blacklist(false)
+      loggingLevel(QtDebugMsg),
+      loggedLines(0),
+      rotationCheckInterval(400),
+      logFileCount(fileCount),
+      minSize(size * 1024),
+      logToConsole(true),
+      hasWhiteList(false),
+      hasBlackList(false)
 {
-    // log levels
-    log_levels << "debug" << "warn " << "crit " << "fatal";
+    // default log levels
+    logLevels << "debug" << "warning " << "critical " << "fatal";
 
-    // should we log to stdout?
-    log_to_console = true;
-
-    if (filename.isEmpty() == true) {
-        log_to_file = false;
-    }
-    else {
-        // check if given filename was absolute, otherwise lets use home dir
-        if (QDir::isAbsolutePath(filename)) {
-            file.setFileName( filename );
-        }
-        else {
-            file.setFileName(QDir::homePath() + '/' + filename);
+    if (fileName.isEmpty() == true) {
+        logToFile = false;
+    } else {
+        // check if given fileName was absolute, otherwise lets use home dir
+        if (QDir::isAbsolutePath(fileName)) {
+            file.setFileName(fileName);
+        } else {
+            file.setFileName(QDir::homePath() + '/' + fileName);
         }
 
         // check if directories need to be created
         QFileInfo info(file.fileName());
         if (info.dir().exists() == false) {
             QDir dir;
-            dir.mkpath(info.absolutePath ());
+            dir.mkpath(info.absolutePath());
         }
 
         // open the file for appending
-        if ( file.open( QIODevice::WriteOnly | QIODevice::Append ) ) {
+        if (file.open(QIODevice::WriteOnly | QIODevice::Append)) {
             // log file successfully opened
-            log_to_file = true;
+            logToFile = true;
 
             // set a stream to the file too
-            stream.setDevice( &file );
+            stream.setDevice(&file);
         }
         else {
             // failed to open...
-            log_to_file = false;
+            logToFile = false;
 
             writeMessage(QtDebugMsg,
-                         qPrintable(QString("Logger::Logger: failed to open log file: %1").arg(filename)));
+                    qPrintable(QString("Failed to open log file %1 for writing")
+                        .arg(fileName)));
 
-            // still continue, at least we can make nice output if loggin to console gets enabled
+            // still continue, at least we can make nice output if loggin to
+            // console is enabled
         }
     }
 
     // register ourselves as a debug message handler
-    old_msg_handler = qInstallMsgHandler( Logger::messageHandler );
+    oldMsgHandler = qInstallMsgHandler(Logger::messageHandler);
 
     writeMessage(QtDebugMsg,
-                 qPrintable(QString("Logger::Logger: logger installed with output to %1").arg(filename)));
+            qPrintable(QString("Logger installed with log file %1")
+                .arg(fileName)));
 }
 
-Logger::~Logger () {
-    writeMessage(QtDebugMsg,
-                 "Logger::~Logger: taken old message handler into use");
+Logger::~Logger()
+{
+    instance = 0;
 
-    Logger::instance = 0;
+    // restore previous message handler
+    qInstallMsgHandler(oldMsgHandler);
 
-    // we can install old_msg_handler even if it is 0 (then Qt default will be used)
-    qInstallMsgHandler(old_msg_handler);
-
-    if ( file.isOpen() ) {
+    if (file.isOpen()) {
         writeMessage(QtDebugMsg,
-                     qPrintable(QString("Logger::~Logger: closing file %1").arg(file.fileName())));
+                qPrintable(QString("Closing log file %1")
+                    .arg(file.fileName())));
         file.close();
     }
 }
 
-void Logger::messageHandler (QtMsgType type, const char *msg) {
-    QMutexLocker locker( &Logger::instance->mutex );
+void Logger::messageHandler(QtMsgType type, const char *msg)
+{
+    QMutexLocker locker(&instance->mutex);
 
-    if (!Logger::instance)
+    if (!instance) {
         return;
+    }
 
-    Logger::instance->writeMessage(type, msg);
+    instance->writeMessage(type, msg);
 
-    if (Logger::instance->log_to_file) {
+    if (instance->logToFile) {
         // enough lines logged for a potential rotation?
-        if ( Logger::instance->logged_lines++ >= Logger::instance->rotation_check_interval ) {
+        if (Logger::instance->loggedLines++ >=
+                Logger::instance->rotationCheckInterval) {
             // time to at least check for a rotation
-            Logger::instance->rotate ();
+            Logger::instance->rotate();
         }
     }
 }
@@ -144,21 +134,20 @@ void Logger::messageHandler (QtMsgType type, const char *msg) {
 void Logger::writeMessage(QtMsgType type, const char *msg)
 {
     // check if message type exceeds logging level set
-    if (type < logging_level) {
+    if (type < loggingLevel) {
         return;
     }
 
     // check if message is whitelisted or blacklisted
-    if (has_whitelist) {
+    if (hasWhiteList) {
         // check against whitelist
 
         // pass through messages more serious than QtWarningMsg
         if (type == QtDebugMsg || type == QtWarningMsg) {
-            QString msg_string(msg);
-            bool passed(false);
-
-            foreach (const QString & prefix, prefixes) {
-                if (msg_string.startsWith(prefix)) {
+            QString msgString(msg);
+            bool passed = false;
+            foreach (const QString &prefix, prefixes) {
+                if (msgString.startsWith(prefix)) {
                     passed = true;
                     break;
                 }
@@ -168,78 +157,78 @@ void Logger::writeMessage(QtMsgType type, const char *msg)
                 return;
             }
         }
-    }
-    else if (has_blacklist) {
+    } else if (hasBlackList) {
         // check against blacklist
 
         // pass through messages more serious than QtWarningMsg
         if (type == QtDebugMsg || type == QtWarningMsg) {
-            QString msg_string(msg);
-            foreach (const QString & prefix, prefixes) {
-                if (msg_string.startsWith(prefix)) {
+            QString msgString(msg);
+            foreach (const QString &prefix, prefixes) {
+                if (msgString.startsWith(prefix)) {
                     return;
                 }
             }
         }
     }
 
-    if (log_to_console) {
+    QString currentTime = QTime::currentTime().toString("hh:mm:ss.zzz");
+    if (logToConsole) {
         // write to the stderr
-        err << QTime::currentTime().toString("hh:mm:ss.zzz")
-                << " [" << log_levels[type] << ']'
-                << ' '
-                << msg << endl;
+        err << currentTime <<
+            " [" << logLevels[type] << ']' <<
+            ' ' << msg << endl;
     }
 
-    if (log_to_file) {
+    if (logToFile) {
         // write to the log file
-        stream << QTime::currentTime().toString("hh:mm:ss.zzz")
-                << " [" << log_levels[type] << ']'
-                << ' '
-                << msg << endl;
+        stream << currentTime <<
+            " [" << logLevels[type] << ']' <<
+            ' ' << msg << endl;
     }
 }
 
-void Logger::rotate () {
-    // always reset the logged lines so that we again log some lines before redoing this check
-    logged_lines = 0;
+void Logger::rotate()
+{
+    // always reset the logged lines so that we again log some lines before
+    // redoing this check
+    loggedLines = 0;
 
-    QFileInfo info (file.fileName());
+    QFileInfo info(file.fileName());
 
     // big enough for rotation?
-    if ( info.size() < min_size ) {
+    if (info.size() < minSize) {
         return;
     }
 
     writeMessage(QtDebugMsg,
-                 "Logger::rotate: maximum log file size exceeded, performing log file rotation");
+            "Maximum log file size exceeded, performing log file rotation");
 
-    // get the directory where we store logfiles and the actual filename without any paths
-    QDir dir         = info.dir ();
-    QString filename = info.fileName();
+    // get the directory where we store logfiles and the actual fileName without any paths
+    QDir dir = info.dir();
+    QString fileName = info.fileName();
 
-    // now find all files that match the filename pattern
-    QStringList old_files = QDir ( dir.path(), filename + ".?" ).entryList ( QDir::Files,
-                                                                             QDir::Name );
+    // now find all files that match the fileName pattern
+    QStringList oldFiles = QDir(dir.path(), fileName + ".?").entryList(
+            QDir::Files, QDir::Name);
 
     // any old files at all?
-    if ( old_files.size() > 0 ) {
-        for ( int index = old_files.size() - 1; index >= 0; index-- ) {
+    if (oldFiles.size() > 0) {
+        for (int index = oldFiles.size() - 1; index >= 0; index--) {
             // have we reached file maximum? this file is no longer rotated but should be nuked
-            if ( index == log_file_count-1 ) {
+            if (index == logFileCount - 1) {
                 // yup,
-                QFile::remove ( info.absolutePath () + '/' + old_files[index] );
+                QFile::remove(info.absolutePath() + '/' + oldFiles[index]);
                 continue;
             }
 
-            // a file 0-8, so create a new filename with the suffix += 1
-            QString rename_to = old_files[index];
-            rename_to.truncate ( rename_to.size() - 1 );
-            rename_to += QString::number ( index + 1 );
+            // a file 0-8, so create a new fileName with the suffix += 1
+            QString renameTo = oldFiles[index];
+            renameTo.truncate(renameTo.size() - 1);
+            renameTo += QString::number(index + 1);
 
             // perform the renaming
-            QFile::rename ( info.absolutePath () + '/' + old_files[index],
-                            info.absolutePath () + '/' + rename_to );
+            QFile::rename(info.absolutePath() + '/' + oldFiles[index],
+                          info.absolutePath() + '/' + renameTo);
         }
     }
 
@@ -248,84 +237,85 @@ void Logger::rotate () {
     file.flush();
 
     // now finally rename our open file
-    file.rename( file.fileName() + ".0" );
+    file.rename(file.fileName() + ".0");
 
     // try to create open a new file
     file.close();
-    file.setFileName ( info.absoluteFilePath() );
-    if ( file.open(QFile::WriteOnly | QIODevice::Append) ) {
+    file.setFileName(info.absoluteFilePath());
+    if (file.open(QFile::WriteOnly | QIODevice::Append)) {
         // open a strem to the file
-        stream.setDevice ( &file );
-    }
-
-    else {
+        stream.setDevice(&file);
+    } else {
         // failed to open the new log file
-        log_to_file = false;
+        logToFile = false;
         writeMessage(QtWarningMsg,
-                     qPrintable(QString("Logger::rotate: failed to open the log file %1 for writing!")
-                                .arg(file.fileName())));
+                qPrintable(QString("Failed to open the log file %1 for writing!")
+                    .arg(file.fileName())));
     }
 }
 
 void Logger::setConsoleLoggingEnabled(bool enabled)
 {
-    writeMessage(QtDebugMsg,
-                 qPrintable(QString("Logger::setConsoleLoggingEnabled: %1.").arg(enabled)));
-    if (enabled == false) {
-        writeMessage(QtDebugMsg,
-                     qPrintable(QString("Logger::setConsoleLoggingEnabled: Launch with -log-console to enable console logging.")));
+    if (logToConsole == enabled) {
+        return;
     }
 
-    log_to_console = enabled;
+    if (enabled) {
+        writeMessage(QtDebugMsg,
+                qPrintable(QString("Enabling console logging")));
+    } else {
+        writeMessage(QtDebugMsg,
+                qPrintable(QString("Disabling console logging")));
+    }
+
+    logToConsole = enabled;
 }
 
-void Logger::setLoggingLevel(const QString & levelString)
+void Logger::setLoggingLevel(const QString &levelString)
 {
     if (levelString.isEmpty()) {
         return;
     }
+
     if (levelString == "debug") {
-        logging_level = QtDebugMsg;
-    }
-    else if (levelString == "warning") {
-        logging_level = QtWarningMsg;
-    }
-    else if (levelString == "critical") {
-        logging_level = QtCriticalMsg;
-    }
-    else {
+        loggingLevel = QtDebugMsg;
+    } else if (levelString == "warning") {
+        loggingLevel = QtWarningMsg;
+    } else if (levelString == "critical") {
+        loggingLevel = QtCriticalMsg;
+    } else {
         writeMessage(QtWarningMsg,
-                     qPrintable(QString("Logger::setLoggingLevel: invalid logging level given %1")
-                                .arg(levelString)));
-    }
-
-    writeMessage(QtDebugMsg,
-                 qPrintable(QString("Logger::setLoggingLevel: logging level set to %1").arg(levelString)));
-}
-
-void Logger::setLoggingPrefixes(const QStringList & whitelist, const QStringList & blacklist)
-{
-    if (whitelist.isEmpty() == false && blacklist.isEmpty() == false) {
-        writeMessage(QtWarningMsg,
-                     "Logger::setLoggingPrefixes: can not give both whitelist and blacklist!");
+                qPrintable(QString("Trying to set an invalid logging level given %1")
+                    .arg(levelString)));
         return;
     }
 
-    has_whitelist = !whitelist.isEmpty();
-    has_blacklist = !blacklist.isEmpty();
+    writeMessage(QtDebugMsg,
+            qPrintable(QString("Logging level set to %1").arg(levelString)));
+}
+
+void Logger::setLoggingPrefixes(const QStringList &whitelist,
+        const QStringList &blacklist)
+{
+    if (whitelist.isEmpty() == false && blacklist.isEmpty() == false) {
+        writeMessage(QtWarningMsg,
+                "Cannot set both logging whitelist and blacklist!");
+        return;
+    }
+
+    hasWhiteList = !whitelist.isEmpty();
+    hasBlackList = !blacklist.isEmpty();
 
     if (whitelist.isEmpty() == false) {
         prefixes = whitelist;
-
         writeMessage(QtDebugMsg,
-                     qPrintable(QString("Logger::setLoggingPrefixes: whitelisted following prefixes: %1")
-                                .arg(prefixes.join(", "))));
+                qPrintable(QString("Whitelisted following logging prefixes: %1")
+                    .arg(prefixes.join(", "))));
     }
     else if (blacklist.isEmpty() == false) {
         prefixes = blacklist;
-
         writeMessage(QtDebugMsg,
-                     qPrintable(QString("Logger::setLoggingPrefixes: blacklisted following prefixes: %1")
-                                .arg(prefixes.join(", "))));
+                qPrintable(QString("Blacklisted following logging prefixes: %1")
+                    .arg(prefixes.join(", "))));
     }
 }

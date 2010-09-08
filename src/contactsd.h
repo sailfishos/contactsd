@@ -17,39 +17,27 @@
 **
 ****************************************************************************/
 
-#ifndef CONTACTSDAEMON_H_
-#define CONTACTSDAEMON_H_
-/* \class ContactsDaemon
+#ifndef CONTACTSD_H
+#define CONTACTSD_H
 
-   yayayayay
-
-   */
-
-// Qt
 #include <QObject>
 #include <QStringList>
 
-class ContactsServiceAdaptor;
+class ContactsdPluginLoader;
 
-
-class ContactsDaemon : public QObject
+class Contactsd : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit ContactsDaemon(QObject* const parent);
-    virtual ~ContactsDaemon();
+    Contactsd(QObject *parent);
+    virtual ~Contactsd();
 
-    void loadAllPlugins(const QStringList &loadPlugins = QStringList());
-    QStringList validPlugins() const;
-
-Q_SIGNALS:
-    void pluginsLoaded();
+    void loadPlugins(const QStringList &plugins = QStringList());
+    QStringList loadedPlugins() const;
 
 private:
-    class Private;
-    Private * const d;
-    ContactsServiceAdaptor* adaptor;
+    ContactsdPluginLoader *mLoader;
 };
 
-#endif
+#endif // CONTACTSDAEMON_H

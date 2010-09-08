@@ -17,12 +17,13 @@
 **
 ****************************************************************************/
 
-#ifndef CONTACTSDPLUGININTERFACE_H_
-#define CONTACTSDPLUGININTERFACE_H_
+#ifndef CONTACTSDPLUGININTERFACE_H
+#define CONTACTSDPLUGININTERFACE_H
 
-#include <QObject>
 #include <QMap>
+#include <QObject>
 #include <QString>
+#include <QVariant>
 
 const QString CONTACTSD_PLUGIN_VERSION = "version";
 const QString CONTACTSD_PLUGIN_NAME    = "name";
@@ -36,7 +37,10 @@ public:
     virtual ~ContactsdPluginInterface () { };
     virtual void init() = 0;
     virtual PluginMetaData metaData() = 0;
+
+    virtual bool hasActiveImports() const = 0;
 };
 
 Q_DECLARE_INTERFACE(ContactsdPluginInterface, "com.nokia.contactsd.Plugin/1.0")
-#endif
+
+#endif // CONTACTSDPLUGININTERFACE_H

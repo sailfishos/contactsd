@@ -20,52 +20,41 @@
 #ifndef CONTACTSPLUGINLOADER_H_
 #define CONTACTSPLUGINLOADER_H_
 
-// Qt
 #include <QObject>
 #include <QMap>
 
-//contactsd
 #include "importnotifierdbusadaptor.h"
 
 class QPluginLoader;
 class QString;
 class QStringList;
 
-/*!
-  \class ContacsdPluginLoader
-
-  \brief Plugin loader and repository for contacsdaemon
-*/
-
 class ContactsdPluginLoader : public QObject
 {
     Q_OBJECT
-public:
-    ContactsdPluginLoader(const QStringList &plugins, const QStringList &banList);
-    ~ContactsdPluginLoader();
-    QStringList validPlugins() const;
 
-Q_SIGNALS:
-        void importStarted();
-        void importEnded(int contactsAdded, int contactsRemoved, int contactsMerged);
+public:
+    ContactsdPluginLoader();
+    ~ContactsdPluginLoader();
+
+    void loadPlugins(const QStringList &plugins);
+    void loadPlugins(const QString &pluginsDir, const QStringList &plugins);
+    QStringList loadedPlugins() const;
 
 public Q_SLOTS:
     bool hasActiveImports();
 
-private:
-    typedef QMap<QString, QPluginLoader*> PluginStore;
-    PluginStore m_pluginStore;
-    ImportNotifierAdaptor* mDbusNotifierAdaptor;
-
-    void loadPlugins(const QStringList &plugins, const QStringList &banList);
-    bool reloadPlugin(const QString &plugin);
-    void startNotificationService();
-    bool hasMethod(QPluginLoader* obj, const QString& method);
-
 Q_SIGNALS:
+    void importStarted();
+    void importEnded(int contactsAdded, int contactsRemoved,
+            int contactsMerged);
     void pluginsLoaded();
 
-private Q_SLOTS:
-    void onPluginError(const QString &, const QString &, const QString &);
+private:
+    void registerNotificationService();
+
+    typedef QMap<QString, QPluginLoader *> PluginStore;
+    PluginStore mPluginStore;
 };
+
 #endif
