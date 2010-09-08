@@ -21,56 +21,73 @@
 #define CDTPACCOUNT_H
 
 #include <TelepathyQt4/Account>
-#include <TelepathyQt4/ContactManager>
-#include <TelepathyQt4/PendingOperation>
+#include <TelepathyQt4/Constants>
+#include <TelepathyQt4/Contact>
+#include <TelepathyQt4/Types>
 
-#include <QDebug>
 #include <QObject>
 
-/**
- * Wraps Tp::Account to monitor signals
- */
+namespace Tp
+{
+    class PendingOperation;
+}
+
+class CDTpContact;
+
 class CDTpAccount : public QObject
 {
     Q_OBJECT
 
 public:
     enum Change {
-        Alias     = 0x1,
-        NickName  = 0x2,
-        Presence  = 0x4,
-        Status    = 0x8,
-        Icon      = 0x10,
-        Avatar    = 0x20,
-        Parameter = 0x40,
-        All       = 0x7F
+        DisplayName = 0x1,
+        Nickname    = 0x2,
+        Presence    = 0x4,
+        Avatar      = 0x8,
+        All         = 0xFFFF
     };
     Q_DECLARE_FLAGS(Changes, Change)
 
-    explicit CDTpAccount(Tp::AccountPtr account, QObject *parent = 0);
-    virtual ~CDTpAccount();
+    CDTpAccount(const Tp::AccountPtr &account, QObject *parent = 0);
+    ~CDTpAccount();
 
-    Tp::AccountPtr account() const;
+    Tp::AccountPtr account() const { return mAccount; }
+
+    QList<CDTpContact *> contacts() const;
 
 Q_SIGNALS:
-    void accountChanged(CDTpAccount *account, CDTpAccount::Changes changes);
+    void ready(CDTpAccount *account);
+    void changed(CDTpAccount *account, CDTpAccount::Changes changes);
+    void rosterChanged(CDTpAccount *account, bool haveRoster);
+    void rosterUpdated(CDTpAccount *acconut,
+            const QList<CDTpContact *> &contactsAdded,
+            const QList<CDTpContact *> &contactsRemoved);
 
 private Q_SLOTS:
-    void onAccountReady(Tp::PendingOperation *);
-    void onDisplayNameChanged(const QString &);
-    void onIconChanged(const QString &);
-    void onNicknameChanged(const QString &);
-    void onAvatarUpdated(const Tp::Avatar &);
-    void onCurrentPresenceChanged(const Tp::SimplePresence &presence);
+    void onAccountReady(Tp::PendingOperation *op);
+    void onAccountDisplayNameChanged();
+    void onAccountNicknameChanged();
+    void onAccountCurrentPresenceChanged();
+    void onAccountAvatarChanged();
+    void onAccountHaveConnectionChanged(bool haveConnection);
+    void onAccountConnectionStatusChanged(Tp::Connection::Status status);
+    void onAccountConnectionReady(Tp::PendingOperation *op);
+    void onAccountConnectionRosterReady(Tp::PendingOperation *op);
+    void onAccountContactsUpgraded(Tp::PendingOperation *op);
+    void onAccountContactsChanged(const Tp::Contacts &contactsAdded,
+            const Tp::Contacts &contactsRemoved);
 
 private:
-    class Private;
-    Private * const d;
-};
+    void introspectAccountConnection();
+    void introspectAccountConnectionRoster();
+    void upgradeContacts(const Tp::Contacts &contacts);
+    CDTpContact *insertContact(const Tp::ContactPtr &contact);
+    void clearContacts();
 
-QDebug operator<<(QDebug dbg, const Tp::Account &account);
-QDebug operator<<(QDebug dbg, const Tp::AccountPtr &accountPtr);
-QDebug operator<<(QDebug dbg, const CDTpAccount &account);
+    Tp::AccountPtr mAccount;
+    bool mRosterReady;
+    QHash<Tp::ContactPtr, CDTpContact *> mContacts;
+};
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(CDTpAccount::Changes)
 

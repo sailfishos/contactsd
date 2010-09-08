@@ -19,111 +19,255 @@
 
 #include "cdtpaccount.h"
 
-#include <TelepathyQt4/Account>
+#include "cdtpcontact.h"
+
+#include <TelepathyQt4/ContactManager>
+#include <TelepathyQt4/PendingContacts>
+#include <TelepathyQt4/PendingOperation>
 #include <TelepathyQt4/PendingReady>
 
-#include <QtTracker/ontologies/nco.h>
-#include <QtTracker/QLive>
-#include <QtTracker/Tracker>
+#include <QDebug>
 
-#include <QImage>
+/*
+ * 1 - when account goes offline mark all contacts as unknown presence
+ * 2 - if the account is removed or disabled remove all contacts from tracker
+ */
 
-using namespace SopranoLive;
-
-struct CDTpAccount::Private
-{
-    Tp::AccountPtr mAccount;
-};
-
-QDebug operator<<(QDebug dbg, const Tp::Account &account)
-{
-    dbg.nospace() << "Tp::Account("
-                  << "displayName:"  << account.displayName()
-                  << ", nickName:"    << account.nickname()
-                  // << ", parameters:"  << account.parameters()
-                  << ", uniqueID:"    << account.uniqueIdentifier()
-                  << ')';
-    return dbg.space();
-}
-
-QDebug operator<<(QDebug dbg, const Tp::AccountPtr &accountPtr)
-{
-    return dbg.nospace() << *(accountPtr.constData());
-}
-
-QDebug operator<<(QDebug dbg, const CDTpAccount &account)
-{
-    return dbg.nospace() << account.account();
-}
-
-CDTpAccount::CDTpAccount(Tp::AccountPtr account, QObject* parent)
+CDTpAccount::CDTpAccount(const Tp::AccountPtr &account, QObject *parent)
     : QObject(parent),
-      d(new Private)
+      mAccount(account),
+      mRosterReady(false)
 {
-    d->mAccount = account;
-    connect(d->mAccount->becomeReady(Tp::Account::FeatureCore | Tp::Account::FeatureAvatar),
-            SIGNAL(finished(Tp::PendingOperation*)),
-            this,
-            SLOT(onAccountReady(Tp::PendingOperation*)));
+    qDebug() << "Trying to make account" << account->objectPath() << "ready";
+    connect(mAccount->becomeReady(
+                Tp::Account::FeatureCore | Tp::Account::FeatureAvatar),
+            SIGNAL(finished(Tp::PendingOperation *)),
+            SLOT(onAccountReady(Tp::PendingOperation *)));
 }
 
 CDTpAccount::~CDTpAccount()
 {
-    delete d;
+}
+
+QList<CDTpContact *> CDTpAccount::contacts() const
+{
+    return mContacts.values();
 }
 
 void CDTpAccount::onAccountReady(Tp::PendingOperation *op)
 {
     if (op->isError()) {
+        qDebug() << "Could not make account" <<  mAccount->objectPath() <<
+            "ready:" << op->errorName() << "-" << op->errorMessage();
+        // TODO signal error
         return;
     }
 
-    qDebug() << Q_FUNC_INFO << ": Account became ready: " << d->mAccount->objectPath();
+    qDebug() << "Account" << mAccount->objectPath() << "ready";
 
-    connect(d->mAccount.data(), SIGNAL(displayNameChanged(const QString &)),
-            this,
-            SLOT(onDisplayNameChanged(const QString &)));
-    connect(d->mAccount.data(), SIGNAL(iconChanged(const QString &)),
-            this, SLOT(onIconChanged(const QString &)));
-    connect(d->mAccount.data(), SIGNAL(nicknameChanged(const QString &)),
-            this, SLOT(onNicknameChanged(const QString &)));
-    connect(d->mAccount.data(), SIGNAL(avatarChanged(const Tp::Avatar &)),
-            this, SLOT(onAvatarUpdated(const Tp::Avatar &)));
-    connect(d->mAccount.data(), SIGNAL(currentPresenceChanged(const Tp::SimplePresence &)),
-            this, SLOT(onCurrentPresenceChanged(const Tp::SimplePresence &)));
+    // signal that the account is ready to use
+    emit ready(this);
+
+    // connect all signals we care about, so we can signal that the account
+    // changed accordingly
+    connect(mAccount.data(),
+            SIGNAL(displayNameChanged(const QString &)),
+            SLOT(onAccountDisplayNameChanged()));
+    connect(mAccount.data(),
+            SIGNAL(nicknameChanged(const QString &)),
+            SLOT(onAccountNicknameChanged()));
+    connect(mAccount.data(),
+            SIGNAL(currentPresenceChanged(const Tp::SimplePresence &)),
+            SLOT(onAccountCurrentPresenceChanged()));
+    connect(mAccount.data(),
+            SIGNAL(avatarChanged(const Tp::Avatar &)),
+            SLOT(onAccountAvatarChanged()));
+
+    connect(mAccount.data(),
+            SIGNAL(haveConnectionChanged(bool)),
+            SLOT(onAccountHaveConnectionChanged(bool)));
+    if (mAccount->haveConnection()) {
+        introspectAccountConnection();
+    }
 }
 
-Tp::AccountPtr CDTpAccount::account() const
+void CDTpAccount::onAccountDisplayNameChanged()
 {
-    return d->mAccount;
+    emit changed(this, DisplayName);
 }
 
-void CDTpAccount::onCurrentPresenceChanged(const Tp::SimplePresence &presence)
+void CDTpAccount::onAccountNicknameChanged()
 {
-    Q_UNUSED(presence);
-    Q_EMIT accountChanged(this, Presence);
+    emit changed(this, Nickname);
 }
 
-void CDTpAccount::onDisplayNameChanged(const QString &name)
+void CDTpAccount::onAccountCurrentPresenceChanged()
 {
-    Q_UNUSED(name);
-    Q_EMIT accountChanged(this, Alias);
+    emit changed(this, Presence);
 }
 
-void CDTpAccount::onIconChanged(const QString &icon)
+void CDTpAccount::onAccountAvatarChanged()
 {
-    Q_UNUSED(icon);
-    Q_EMIT accountChanged(this, Icon);
+    emit changed(this, Avatar);
 }
 
-void CDTpAccount::onNicknameChanged(const QString &nick)
+void CDTpAccount::onAccountHaveConnectionChanged(bool haveConnection)
 {
-    Q_UNUSED(nick);
-    Q_EMIT accountChanged(this, NickName);
+    // Account::haveConnectionChanged is emitted every time the account
+    // connection changes, so always clear contacts we have from the
+    // old connection
+    clearContacts();
+
+    // let's emit rosterChanged(false), to inform that right now we don't have a
+    // roster configured
+    mRosterReady = false;
+    emit rosterChanged(this, false);
+
+    // if we have a new connection, introspect it
+    if (haveConnection) {
+        introspectAccountConnection();
+    }
 }
 
-void CDTpAccount::onAvatarUpdated(const Tp::Avatar &avatar)
+void CDTpAccount::onAccountConnectionReady(Tp::PendingOperation *op)
 {
-    Q_UNUSED(avatar);
-    Q_EMIT accountChanged(this, Avatar);
+    if (op->isError()) {
+        qDebug() << "Could not make account" << mAccount->objectPath() <<
+            "connection ready:" << op->errorName() << "-" << op->errorMessage();
+        return;
+    }
+
+    qDebug() << "Account" << mAccount->objectPath() << "connection ready";
+
+    Tp::ConnectionPtr connection = mAccount->connection();
+    connect(connection.data(),
+        SIGNAL(statusChanged(Tp::Conneciton::Status)),
+        SLOT(onAccountConnectionStatusChanged(Tp::Connection::Status)));
+    if (connection->status() == Tp::Connection::StatusConnected) {
+        introspectAccountConnectionRoster();
+    }
+}
+
+void CDTpAccount::onAccountConnectionStatusChanged(Tp::Connection::Status status)
+{
+    if (status == Tp::Connection::StatusConnected) {
+        introspectAccountConnectionRoster();
+    }
+}
+
+void CDTpAccount::onAccountConnectionRosterReady(Tp::PendingOperation *op)
+{
+    if (op->isError()) {
+        qWarning() << "Could not make account" <<  mAccount->objectPath() <<
+            "connection roster ready:" << op->errorName() << "-" <<
+            op->errorMessage();
+        return;
+    }
+
+    qDebug() << "Account" << mAccount->objectPath() << "connection roster ready";
+
+    Tp::ConnectionPtr connection = mAccount->connection();
+    Tp::ContactManager *contactManager = connection->contactManager();
+    connect(contactManager,
+            SIGNAL(allKnownContactsChanged(const Tp::Contacts &, const Tp::Contacts &)),
+            SLOT(onAccountContactsChanged(const Tp::Contacts &, const Tp::Contacts &)));
+    upgradeContacts(contactManager->allKnownContacts());
+}
+
+void CDTpAccount::onAccountContactsUpgraded(Tp::PendingOperation *op)
+{
+    if (op->isError()) {
+        qDebug() << "Could not upgrade account" << mAccount->objectPath() <<
+            "contacts";
+        return;
+    }
+
+    Tp::PendingContacts *pc = qobject_cast<Tp::PendingContacts *>(op);
+    QList<CDTpContact *> added;
+    foreach (const Tp::ContactPtr &contact, pc->contacts()) {
+        added.append(insertContact(contact));
+    }
+    if (!mRosterReady) {
+        mRosterReady = true;
+        emit rosterChanged(this, true);
+    } else {
+        emit rosterUpdated(this, added, QList<CDTpContact *>());
+    }
+}
+
+void CDTpAccount::onAccountContactsChanged(const Tp::Contacts &contactsAdded,
+        const Tp::Contacts &contactsRemoved)
+{
+    // delay emission of rosterUpdated with contactsAdded until the contacts are
+    // upgraded
+    if (!contactsAdded.isEmpty()) {
+        upgradeContacts(contactsAdded);
+    }
+
+    QList<CDTpContact *> removed;
+    foreach (const Tp::ContactPtr &contact, contactsRemoved) {
+        if (!mContacts.contains(contact)) {
+            qWarning() << "Internal error, contact is not in the internal list"
+                "but was removed from roster";
+            continue;
+        }
+        removed.append(mContacts.take(contact));
+    }
+
+    emit rosterUpdated(this, QList<CDTpContact*>(), removed);
+
+    foreach (CDTpContact *contact, removed) {
+        delete contact;
+    }
+}
+
+void CDTpAccount::introspectAccountConnection()
+{
+    qDebug() << "Trying to make account connection ready";
+
+    Tp::ConnectionPtr connection = mAccount->connection();
+    connect(connection->becomeReady(Tp::Connection::FeatureCore),
+            SIGNAL(finished(Tp::PendingOperation *)),
+            SLOT(onAccountConnectionReady(Tp::PendingOperation *)));
+}
+
+void CDTpAccount::introspectAccountConnectionRoster()
+{
+    qDebug() << "Trying to make account connection roster ready";
+
+    Tp::ConnectionPtr connection = mAccount->connection();
+    // TODO: add support to roster groups?
+    connect(connection->becomeReady(Tp::Connection::FeatureRoster),
+            SIGNAL(finished(Tp::PendingOperation *)),
+            SLOT(onAccountConnectionRosterReady(Tp::PendingOperation *)));
+}
+
+void CDTpAccount::upgradeContacts(const Tp::Contacts &contacts)
+{
+    Tp::ConnectionPtr connection = mAccount->connection();
+    Tp::ContactManager *contactManager = connection->contactManager();
+    Tp::PendingContacts *pc = contactManager->upgradeContacts(contacts.toList(),
+            QSet<Tp::Contact::Feature>() <<
+                Tp::Contact::FeatureAlias <<
+                Tp::Contact::FeatureAvatarToken <<
+                Tp::Contact::FeatureSimplePresence <<
+                Tp::Contact::FeatureCapabilities);
+    connect(pc,
+            SIGNAL(finished(Tp::PendingOperation *)),
+            SLOT(onAccountContactsUpgraded(Tp::PendingOperation *)));
+}
+
+CDTpContact *CDTpAccount::insertContact(const Tp::ContactPtr &contact)
+{
+    CDTpContact *contactWrapper = new CDTpContact(contact, this);
+    mContacts.insert(contact, contactWrapper);
+    return contactWrapper;
+}
+
+void CDTpAccount::clearContacts()
+{
+    foreach (CDTpContact *contact, mContacts) {
+        delete contact;
+    }
+    mContacts.clear();
 }

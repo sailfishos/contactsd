@@ -19,95 +19,143 @@
 
 #include "cdtpcontroller.h"
 
-#include "cdtppendingrosters.h"
+#include "cdtpstorage.h"
 
 #include <TelepathyQt4/Account>
+#include <TelepathyQt4/AccountSet>
 #include <TelepathyQt4/AccountManager>
-#include <TelepathyQt4/PendingContacts>
 #include <TelepathyQt4/PendingReady>
-#include <TelepathyQt4/Types>
 
-#include <QDir>
-#include <QQueue>
-#include <QtDebug>
-
-class CDTpController::Private
-{
-public:
-    Private() : error(false) {}
-
-    Tp::AccountManagerPtr accountManager;
-    bool error;
-};
-
-CDTpController::CDTpController(QObject *parent, bool cache)
+CDTpController::CDTpController(QObject *parent)
     : QObject(parent),
-      d(new Private)
+      mImportActive(false)
 {
-    Q_UNUSED(cache);
-    qDebug() << Q_FUNC_INFO;
-    Tp::registerTypes();
-    d->accountManager = Tp::AccountManager::create();
-    d->error = true;
+    qDebug() << "Creating storage";
+    mStorage = new CDTpStorage(this);
+
+    qDebug() << "Creating account manager";
+    mAM = Tp::AccountManager::create();
+
+    qDebug() << "Trying to make account manager ready";
+    connect(mAM->becomeReady(),
+            SIGNAL(finished(Tp::PendingOperation*)),
+            SLOT(onAccountManagerReady(Tp::PendingOperation*)));
 }
 
 CDTpController::~CDTpController()
 {
-    delete d;
 }
 
-void CDTpController::requestIMAccounts()
+bool CDTpController::hasActiveImports() const
 {
-    if (d->accountManager->isReady()) {
-        emit finished();
+    return mImportActive;
+}
+
+void CDTpController::onAccountManagerReady(Tp::PendingOperation *op)
+{
+    if (op->isError()) {
+        qDebug() << "Could not make account manager ready:" <<
+            op->errorName() << "-" << op->errorMessage();
         return;
     }
 
-    connect(d->accountManager->becomeReady(),
-            SIGNAL(finished(Tp::PendingOperation *)),
-            this,
-            SLOT(onAmFinished(Tp::PendingOperation *)));
-}
+    qDebug() << "Account manager ready";
 
-QList<Tp::AccountPtr> CDTpController::getIMAccount(const QString &protocol)
-{
-    QList<Tp::AccountPtr> rv;
-
-    foreach(Tp::AccountPtr account, d->accountManager->validAccounts()) {
-        if (account->protocol() == protocol) {
-            rv.append(account);
-        }
+    QVariantMap filter;
+    filter.insert("valid", true);
+    filter.insert("enabled", true);
+    mAccountSet = mAM->filterAccounts(filter);
+    connect(mAccountSet.data(),
+            SIGNAL(accountAdded(const Tp::AccountPtr &)),
+            SLOT(onAccountAdded(const Tp::AccountPtr &)));
+    connect(mAccountSet.data(),
+            SIGNAL(accountRemoved(const Tp::AccountPtr &)),
+            SLOT(onAccountRemoved(const Tp::AccountPtr &)));
+    foreach (const Tp::AccountPtr &account, mAccountSet->accounts()) {
+        insertAccount(account);
     }
-
-    return rv;
 }
 
-void CDTpController::onAmFinished(Tp::PendingOperation *op)
+void CDTpController::onAccountAdded(const Tp::AccountPtr &account)
 {
-    if (op->isError()) {
-        qDebug() << Q_FUNC_INFO << op->errorName() << op->errorMessage() ;
-        d->error = true;
-        qWarning() << Q_FUNC_INFO << ": Account manager error: " <<
-            op->errorName() << ": " << op->errorMessage();
+    insertAccount(account);
+}
+
+void CDTpController::onAccountRemoved(const Tp::AccountPtr &account)
+{
+    CDTpAccount *accountWrapper = mAccounts[account];
+    removeAccount(accountWrapper);
+}
+
+void CDTpController::onAccountRosterChanged(CDTpAccount *accountWrapper,
+        bool haveRoster)
+{
+    Tp::AccountPtr account = accountWrapper->account();
+
+    qDebug() << "Account" << account->objectPath() << "roster changed";
+
+    if (haveRoster) {
+        // TODO: emit importStarted/Ended once syncAccountContacts return the
+        //       number of contacts actually added
+        mStorage->syncAccountContacts(accountWrapper);
+    } else {
+        mStorage->setAccountContactsOffline(accountWrapper);
     }
-
-    emit finished();
 }
 
-CDTpPendingRosters *CDTpController::requestRosters(Tp::AccountPtr account)
+void CDTpController::onAccountRosterUpdated(CDTpAccount *accountWrapper,
+        const QList<CDTpContact *> &contactsAdded,
+        const QList<CDTpContact *> &contactsRemoved)
 {
-    qDebug() << Q_FUNC_INFO << ": Requesting roster for account: " <<
-        account->objectPath();
-    CDTpPendingRosters *roster = new CDTpPendingRosters(this);
-    roster->addRequestForAccount(account);
-    return roster;
+    Tp::AccountPtr account = accountWrapper->account();
+
+    qDebug() << "Account" << account->objectPath() << "roster updated";
+
+    setImportStarted();
+    mStorage->syncAccountContacts(accountWrapper, contactsAdded,
+            contactsRemoved);
+    setImportEnded(contactsAdded.size(), contactsRemoved.size());
 }
 
-bool CDTpController::isError() const
+void CDTpController::insertAccount(const Tp::AccountPtr &account)
 {
-    if (!d->accountManager->isReady() || d->error) {
-        return true;
-    }
+    CDTpAccount *accountWrapper = new CDTpAccount(account, this);
+    connect(accountWrapper,
+            SIGNAL(ready(CDTpAccount *)),
+            mStorage,
+            SLOT(syncAccount(CDTpAccount *)));
+    connect(accountWrapper,
+            SIGNAL(changed(CDTpAccount *, CDTpAccount::Changes)),
+            mStorage,
+            SLOT(syncAccount(CDTpAccount *, CDTpAccount::Changes)));
+    connect(accountWrapper,
+            SIGNAL(rosterChanged(CDTpAccount *, bool)),
+            SLOT(onAccountRosterChanged(CDTpAccount *, bool)));
+    connect(accountWrapper,
+            SIGNAL(rosterUpdated(CDTpAccount *,
+                    const QList<CDTpContact *> &,
+                    const QList<CDTpContact *> &)),
+            SLOT(onAccountRosterUpdated(CDTpAccount *,
+                    const QList<CDTpContact *> &,
+                    const QList<CDTpContact *> &)));
+    mAccounts.insert(account, accountWrapper);
+}
 
-    return false;
+void CDTpController::removeAccount(CDTpAccount *accountWrapper)
+{
+    Tp::AccountPtr account = accountWrapper->account();
+    mStorage->removeAccount(accountWrapper);
+    delete mAccounts.take(account);
+}
+
+void CDTpController::setImportStarted()
+{
+    mImportActive = true;
+    emit importStarted();
+}
+
+void CDTpController::setImportEnded(int contactsAdded, int contactsRemoved)
+{
+    mImportActive = false;
+    emit importEnded(contactsAdded, contactsRemoved, 0);
 }

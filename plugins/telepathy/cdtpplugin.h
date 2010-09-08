@@ -22,23 +22,12 @@
 
 #include <contactsdplugininterface.h>
 
-#include "cdtpaccountservicemapper.h"
-#include "cdtpaccount.h"
-#include "cdtpcontact.h"
-
-#include <TelepathyQt4/Types>
-
+#include <QMap>
 #include <QObject>
+#include <QString>
+#include <QVariant>
 
-class CDTpAccount;
 class CDTpController;
-class CDTpPendingRosters;
-class CDTpTrackerSink;
-
-namespace Tp
-{
-    class PendingOperation;
-}
 
 class CDTpPlugin : public QObject, public ContactsdPluginInterface
 {
@@ -51,42 +40,14 @@ public:
 
     void init();
     QMap<QString, QVariant> metaData();
-    void saveSelfContact(Tp::AccountPtr);
+    bool hasActiveImports() const;
 
 Q_SIGNALS:
-    void error(const QString &, const QString &, const QString &);
     void importStarted();
     void importEnded(int contactsAdded, int contactsRemoved, int contactsMerged);
 
-private Q_SLOTS:
-    void onFinished(CDTpPendingRosters *op);
-    void onAccountManagerReady(Tp::PendingOperation *);
-    void onAccountCreated(const QString &);
-    void onAccountReady(Tp::PendingOperation *op);
-    void onAccountChanged(CDTpAccount *, CDTpAccount::Changes changes);
-    void accountModelReady(Tp::AccountPtr);
-    void onAccountRemoved();
-    void onOnlinenessChanged(bool online);
-    void onConnectionChanged(bool connection);
-    void onContactsChanged(const Tp::Contacts &added,
-            const Tp::Contacts &removed);
-    void onContactsRemoved(QList<QSharedPointer<CDTpContact> > list);
-    void onContactsAdded(QList<QSharedPointer<CDTpContact> > list);
-    bool hasActiveImports();
-
 private:
-    void saveIMAccount(Tp::AccountPtr account, CDTpAccount::Changes changes);
-    bool saveAvatar(const QByteArray &, const QString &,
-            const QString &, QString &);
-
     CDTpController *mController;
-    CDTpTrackerSink *mStore;
-    Tp::AccountManagerPtr mAm;
-    QList<CDTpPendingRosters *> mRosters;
-    QList<CDTpAccount *> mAccounts;
-    QList<Tp::ConnectionPtr> mConnections;
-    CDTpAccountServiceMapper mAccountServiceMapper;
-    bool mImportActive;
 };
 
 #endif // CDTPPLUGIN_H

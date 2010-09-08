@@ -20,45 +20,55 @@
 #ifndef CDTPCONTROLLER_H
 #define CDTPCONTROLLER_H
 
-#include <TelepathyQt4/Account>
-#include <TelepathyQt4/ContactManager>
-#include <TelepathyQt4/PendingOperation>
+#include "cdtpaccount.h"
+#include "cdtpcontact.h"
+#include "cdtpstorage.h"
 
+#include <TelepathyQt4/Types>
+
+#include <QList>
 #include <QObject>
 
-class CDTpPendingRosters;
+namespace Tp
+{
+    class PendingOperation;
+}
 
-/*
- * Provides access to Telepathy Contacts
- */
 class CDTpController : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit CDTpController(QObject *parent = 0,  bool cache = false);
-    virtual ~CDTpController();
+    CDTpController(QObject *parent = 0);
+    ~CDTpController();
 
-    /*!
-     *\brief Provides a set of pending roster contats, from all accounts
-     *\returns Pointer to a Pending Roster
-     */
-    CDTpPendingRosters *requestRosters(Tp::AccountPtr account);
-
-    QList<Tp::AccountPtr> getIMAccount(const QString &cmName);
-
-    void requestIMAccounts();
-    bool isError() const;
+    bool hasActiveImports() const;
 
 Q_SIGNALS:
-    void finished();
+    void importStarted();
+    void importEnded(int contactsAdded, int contactsRemoved, int contactsMerged);
 
-public Q_SLOTS:
-    void onAmFinished(Tp::PendingOperation *op);
+private Q_SLOTS:
+    void onAccountManagerReady(Tp::PendingOperation *op);
+    void onAccountAdded(const Tp::AccountPtr &account);
+    void onAccountRemoved(const Tp::AccountPtr &account);
+    void onAccountRosterChanged(CDTpAccount *accountWrapper, bool haveRoster);
+    void onAccountRosterUpdated(CDTpAccount *accountWrapper,
+            const QList<CDTpContact *> &contactsAdded,
+            const QList<CDTpContact *> &contactsRemoved);
 
 private:
-    class Private;
-    Private * const d;
+    void insertAccount(const Tp::AccountPtr &account);
+    void removeAccount(CDTpAccount *accountWrapper);
+
+    void setImportStarted();
+    void setImportEnded(int contactsAdded, int contactsRemoved);
+
+    CDTpStorage *mStorage;
+    Tp::AccountManagerPtr mAM;
+    Tp::AccountSetPtr mAccountSet;
+    QHash<Tp::AccountPtr, CDTpAccount *> mAccounts;
+    bool mImportActive;
 };
 
 #endif // CDTPCONTROLLER_H

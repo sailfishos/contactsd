@@ -20,86 +20,47 @@
 #ifndef CDTPCONTACT_H
 #define CDTPCONTACT_H
 
-#include <TelepathyQt4/ContactCapabilities>
-#include <TelepathyQt4/ContactManager>
-#include <TelepathyQt4/Connection>
+#include <TelepathyQt4/Contact>
+#include <TelepathyQt4/Types>
 
 #include <QObject>
 
-/*
- * Wraps a telepathy contact and also supports caching of
- * avatars and the contact itself.
- */
+class CDTpAccount;
+
 class CDTpContact : public QObject
 {
     Q_OBJECT
 
 public:
-    typedef enum {
-        SIMPLE_PRESENCE = 0,
-        AVATAR_TOKEN,
-        FEATURES,
-        CAPABILITIES
-    } ChangeType;
+    enum Change {
+        Alias        = 0x1,
+        Presence     = 0x2,
+        Capabilities = 0x4,
+        Avatar       = 0x8,
+        All          = 0xFFFF
+    };
+    Q_DECLARE_FLAGS(Changes, Change)
 
-    explicit CDTpContact(Tp::ContactPtr contact, QObject *parent = 0);
-    explicit CDTpContact(QObject *parent = 0);
-    virtual ~CDTpContact();
+    CDTpContact(Tp::ContactPtr contact, CDTpAccount *accountWrapper);
+    ~CDTpContact();
 
-    QSharedPointer<const Tp::Contact> contact() const;
+    Tp::ContactPtr contact() const { return mContact; }
 
-    // following Tp::Contact wrappers are virtual for stubbing purposes
-    virtual QString id() const;
-    virtual QString alias() const;
-    virtual unsigned int presenceType() const;
-    virtual QString presenceMessage() const;
-
-    // capabilities section
-    virtual bool supportsTextChats() const;
-    virtual bool supportsMediaCalls() const;
-    virtual bool supportsAudioCalls() const;
-    virtual bool supportsVideoCalls(bool withAudio = true) const;
-    virtual bool supportsUpgradingCalls() const;
-    Tp::ContactCapabilities *capabilities() const;
-
-    QString accountPath() const;
-    void setAccountPath(const QString &accountPath);
-
-    QString avatar() const;
-    QString avatarMime() const;
-
-    unsigned int uniqueId() const;
-    static unsigned int buildUniqueId(const QString &accountPath,
-            const QString &imId);
-
-    QUrl imAddress() const;
-    static QUrl buildImAddress(const QString &accountPath, const QString &imId);
-
-    bool isReady() const;
+    CDTpAccount *accountWrapper() const { return mAccountWrapper; }
 
 Q_SIGNALS:
-    void ready(CDTpContact *);
-    void change(uint uniqueId, CDTpContact::ChangeType type);
+    void changed(CDTpContact *contact, CDTpContact::Changes changes);
 
 private Q_SLOTS:
-    void onSimplePresenceChanged(const QString &status , uint stat, const QString &message);
-    void onAvatarRetrieved(uint, const QString &, const QByteArray &, const QString &);
-    void onAvatarUpdated(uint, const QString &);
-    void onExtCapFinished(Tp::ContactCapabilities *caps);
-    void onFeaturesReady(Tp::PendingOperation *op);
+    void onContactAliasChanged();
+    void onContactPresenceChanged();
+    void onContactCapabilitiesChanged();
 
 private:
-    friend class ut_trackersink;
-
-    void reqestFeatures(Tp::ContactPtr);
-    void requestAvatar(Tp::ContactPtr);
-    void requestCapabilities();
-
-    class CDTpContactPrivate;
-    CDTpContactPrivate* const d;
+    Tp::ContactPtr mContact;
+    CDTpAccount *mAccountWrapper;
 };
 
-typedef QList<QSharedPointer<CDTpContact> > CDTpContactList;
-typedef QSharedPointer<CDTpContact> CDTpContactPtr;
+Q_DECLARE_OPERATORS_FOR_FLAGS(CDTpContact::Changes)
 
 #endif // CDTPCONTACT_H
