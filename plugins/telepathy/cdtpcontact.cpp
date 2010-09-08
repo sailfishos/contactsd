@@ -55,7 +55,7 @@ void CDTpContact::onContactAliasChanged()
 
 void CDTpContact::onContactPresenceChanged()
 {
-    emit changed(this, Alias);
+    emit changed(this, Presence);
 }
 
 void CDTpContact::onContactCapabilitiesChanged()
