@@ -1,0 +1,20 @@
+=========
+contactsd
+=========
+
+contactsd is a daemon used to fetch contacts information from various sources
+and add them to tracker.
+
+The data on tracker can either be retrieved using QtMobility Contacts API or
+using tracker directly (e.g. using QtTracker).
+
+Requirements
+============
+
+Building contactsd requires:
+  telepathy-qt4 >= 0.3.8 and its dependencies <http://telepathy.freedesktop.org>
+
+Hacking
+=======
+
+See HACKING for version control, coding style and patch submission information.
