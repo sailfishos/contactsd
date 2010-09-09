@@ -36,6 +36,8 @@ using namespace SopranoLive;
 
 class CDTpStorage : public QObject
 {
+    Q_OBJECT
+
 public:
     CDTpStorage(QObject *parent = 0);
     ~CDTpStorage();
