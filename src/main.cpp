@@ -42,12 +42,12 @@ int main(int argc, char **argv)
     while (i < args.count()) {
         arg = args.at(i);
         if (arg == "--plugins") {
-            QString value = args.at(++i);
-            if (value.isEmpty()) {
+            if (++i == args.count()) {
                 usage();
                 return -1;
             }
 
+            QString value = args.at(i);
             value.replace(" ", ",");
             plugins << value.split(",", QString::SkipEmptyParts);
         } else {
