@@ -37,8 +37,8 @@ void CDTpPlugin::init()
     qDebug() << "Initializing contactsd telepathy plugin";
 
     Tp::registerTypes();
-    Tp::enableDebug(true);
-    Tp::enableWarnings(true);
+    // Tp::enableDebug(true);
+    // Tp::enableWarnings(true);
 
     qDebug() << "Creating controller";
     mController = new CDTpController(this);

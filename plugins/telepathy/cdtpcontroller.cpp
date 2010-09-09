@@ -36,7 +36,7 @@ CDTpController::CDTpController(QObject *parent)
     qDebug() << "Creating account manager";
     mAM = Tp::AccountManager::create();
 
-    qDebug() << "Trying to make account manager ready";
+    qDebug() << "Introspecting account manager";
     connect(mAM->becomeReady(),
             SIGNAL(finished(Tp::PendingOperation*)),
             SLOT(onAccountManagerReady(Tp::PendingOperation*)));
@@ -78,11 +78,13 @@ void CDTpController::onAccountManagerReady(Tp::PendingOperation *op)
 
 void CDTpController::onAccountAdded(const Tp::AccountPtr &account)
 {
+    qDebug() << "Account" << account->objectPath() << "added";
     insertAccount(account);
 }
 
 void CDTpController::onAccountRemoved(const Tp::AccountPtr &account)
 {
+    qDebug() << "Account" << account->objectPath() << "removed";
     CDTpAccount *accountWrapper = mAccounts[account];
     removeAccount(accountWrapper);
 }
@@ -91,8 +93,6 @@ void CDTpController::onAccountRosterChanged(CDTpAccount *accountWrapper,
         bool haveRoster)
 {
     Tp::AccountPtr account = accountWrapper->account();
-
-    qDebug() << "Account" << account->objectPath() << "roster changed";
 
     if (haveRoster) {
         // TODO: emit importStarted/Ended once syncAccountContacts return the
@@ -109,8 +109,6 @@ void CDTpController::onAccountRosterUpdated(CDTpAccount *accountWrapper,
 {
     Tp::AccountPtr account = accountWrapper->account();
 
-    qDebug() << "Account" << account->objectPath() << "roster updated";
-
     setImportStarted();
     mStorage->syncAccountContacts(accountWrapper, contactsAdded,
             contactsRemoved);
@@ -119,6 +117,7 @@ void CDTpController::onAccountRosterUpdated(CDTpAccount *accountWrapper,
 
 void CDTpController::insertAccount(const Tp::AccountPtr &account)
 {
+    qDebug() << "Creating wrapper for account" << account->objectPath();
     CDTpAccount *accountWrapper = new CDTpAccount(account, this);
     connect(accountWrapper,
             SIGNAL(ready(CDTpAccount *)),

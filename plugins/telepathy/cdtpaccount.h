@@ -89,6 +89,7 @@ private:
     void clearContacts();
 
     Tp::AccountPtr mAccount;
+    bool mIntrospectingRoster;
     bool mRosterReady;
     QHash<Tp::ContactPtr, CDTpContact *> mContacts;
 };

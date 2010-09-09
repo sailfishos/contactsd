@@ -110,9 +110,15 @@ void CDTpStorage::syncAccountContacts(CDTpAccount *accountWrapper,
         const QList<CDTpContact *> &contactsAdded,
         const QList<CDTpContact *> &contactsRemoved)
 {
-    RDFUpdate updateQuery;
     Tp::AccountPtr account = accountWrapper->account();
     QString accountObjectPath = account->objectPath();
+
+    qDebug() << "Syncing account" << accountObjectPath <<
+        "roster contacts to storage";
+    qDebug() << " " << contactsAdded.size() << "contacts added";
+    qDebug() << " " << contactsRemoved.size() << "contacts removed";
+
+    RDFUpdate updateQuery;
     foreach (CDTpContact *contactWrapper, contactsAdded) {
         Tp::ContactPtr contact = contactWrapper->contact();
 
@@ -161,21 +167,29 @@ void CDTpStorage::syncAccountContacts(CDTpAccount *accountWrapper,
 void CDTpStorage::syncAccountContact(CDTpAccount *accountWrapper,
         CDTpContact *contactWrapper, CDTpContact::Changes changes)
 {
-    Q_UNUSED(accountWrapper);
+    Tp::AccountPtr account = accountWrapper->account();
+    Tp::ContactPtr contact = contactWrapper->contact();
+
+    qDebug() << "Syncing account" << account->objectPath() <<
+        "contact" << contact->id() << "changes to storage";
 
     RDFUpdate updateQuery;
     const RDFVariable imAddress(contactWrapper);
 
     if (changes & CDTpContact::Alias) {
+        qDebug() << "  alias changed";
         addContactAliasInfoToQuery(updateQuery, imAddress, contactWrapper);
     }
     if (changes & CDTpContact::Presence) {
+        qDebug() << "  presence changed";
         addContactPresenceInfoToQuery(updateQuery, imAddress, contactWrapper);
     }
     if (changes & CDTpContact::Capabilities) {
+        qDebug() << "  capabilities changed";
         addContactCapabilitiesInfoToQuery(updateQuery, imAddress, contactWrapper);
     }
     if (changes & CDTpContact::Avatar) {
+        qDebug() << "  avatar changed";
         // TODO: add avatar support
     }
 
@@ -184,6 +198,11 @@ void CDTpStorage::syncAccountContact(CDTpAccount *accountWrapper,
 
 void CDTpStorage::setAccountContactsOffline(CDTpAccount *accountWrapper)
 {
+    Tp::AccountPtr account = accountWrapper->account();
+
+    qDebug() << "Setting account" << account->objectPath() <<
+        "contacts presence to Offline on storage";
+
     RDFUpdate updateQuery;
     foreach (CDTpContact *contactWrapper, accountWrapper->contacts()) {
         const RDFVariable imAddress(contactImAddress(contactWrapper));
@@ -209,6 +228,8 @@ void CDTpStorage::removeAccount(CDTpAccount *accountWrapper)
 {
     Tp::AccountPtr account = accountWrapper->account();
     QString accountObjectPath = account->objectPath();
+
+    qDebug() << "Removing account" << accountObjectPath << "from storage";
 
     RDFVariable imContact = RDFVariable::fromType<nco::PersonContact>();
     RDFVariable imAddress = imContact.optional().property<nco::hasIMAddress>();

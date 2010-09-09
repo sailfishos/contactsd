@@ -28,17 +28,13 @@
 
 #include <QDebug>
 
-/*
- * 1 - when account goes offline mark all contacts as unknown presence
- * 2 - if the account is removed or disabled remove all contacts from tracker
- */
-
 CDTpAccount::CDTpAccount(const Tp::AccountPtr &account, QObject *parent)
     : QObject(parent),
       mAccount(account),
+      mIntrospectingRoster(false),
       mRosterReady(false)
 {
-    qDebug() << "Trying to make account" << account->objectPath() << "ready";
+    qDebug() << "Introspecting account" << account->objectPath();
     connect(mAccount->becomeReady(
                 Tp::Account::FeatureCore | Tp::Account::FeatureAvatar),
             SIGNAL(finished(Tp::PendingOperation *)),
@@ -113,15 +109,19 @@ void CDTpAccount::onAccountAvatarChanged()
 
 void CDTpAccount::onAccountHaveConnectionChanged(bool haveConnection)
 {
-    // Account::haveConnectionChanged is emitted every time the account
-    // connection changes, so always clear contacts we have from the
-    // old connection
-    clearContacts();
+    qDebug() << "Account" << mAccount->objectPath() << "connection changed";
 
-    // let's emit rosterChanged(false), to inform that right now we don't have a
-    // roster configured
-    mRosterReady = false;
-    emit rosterChanged(this, false);
+    if (mRosterReady) {
+        // Account::haveConnectionChanged is emitted every time the account
+        // connection changes, so always clear contacts we have from the
+        // old connection
+        clearContacts();
+
+        // let's emit rosterChanged(false), to inform that right now we don't
+        // have a roster configured
+        mRosterReady = false;
+        emit rosterChanged(this, false);
+    }
 
     // if we have a new connection, introspect it
     if (haveConnection) {
@@ -160,12 +160,9 @@ void CDTpAccount::onAccountConnectionRosterReady(Tp::PendingOperation *op)
 {
     if (op->isError()) {
         qWarning() << "Could not make account" <<  mAccount->objectPath() <<
-            "connection roster ready:" << op->errorName() << "-" <<
-            op->errorMessage();
+            "roster ready:" << op->errorName() << "-" << op->errorMessage();
         return;
     }
-
-    qDebug() << "Account" << mAccount->objectPath() << "connection roster ready";
 
     Tp::ConnectionPtr connection = mAccount->connection();
     Tp::ContactManager *contactManager = connection->contactManager();
@@ -179,16 +176,24 @@ void CDTpAccount::onAccountContactsUpgraded(Tp::PendingOperation *op)
 {
     if (op->isError()) {
         qDebug() << "Could not upgrade account" << mAccount->objectPath() <<
-            "contacts";
+            "roster contacts";
         return;
     }
+
+    qDebug() << "Account" << mAccount->objectPath() <<
+        "roster contacts upgraded";
 
     Tp::PendingContacts *pc = qobject_cast<Tp::PendingContacts *>(op);
     QList<CDTpContact *> added;
     foreach (const Tp::ContactPtr &contact, pc->contacts()) {
+        qDebug() << "  creating wrapper for contact" << contact->id();
         added.append(insertContact(contact));
     }
     if (!mRosterReady) {
+        qDebug() << "Account" << mAccount->objectPath() <<
+            "roster ready";
+
+        mIntrospectingRoster = false;
         mRosterReady = true;
         emit rosterChanged(this, true);
     } else {
@@ -199,10 +204,17 @@ void CDTpAccount::onAccountContactsUpgraded(Tp::PendingOperation *op)
 void CDTpAccount::onAccountContactsChanged(const Tp::Contacts &contactsAdded,
         const Tp::Contacts &contactsRemoved)
 {
+    qDebug() << "Account" << mAccount->objectPath() <<
+        "roster contacts changed:";
+    qDebug() << " " << contactsAdded.size() << "contacts added";
+    qDebug() << " " << contactsRemoved.size() << "contacts removed";
+
     // delay emission of rosterUpdated with contactsAdded until the contacts are
     // upgraded
     if (!contactsAdded.isEmpty()) {
         upgradeContacts(contactsAdded);
+        qDebug() << "Account" << mAccount->objectPath() << "- delaying "
+            "contactsUpdated signal for added contacts until they are upgraded";
     }
 
     QList<CDTpContact *> removed;
@@ -230,7 +242,8 @@ void CDTpAccount::onAccountContactChanged(CDTpContact *contactWrapper,
 
 void CDTpAccount::introspectAccountConnection()
 {
-    qDebug() << "Trying to make account connection ready";
+    qDebug() << "Introspecting account" << mAccount->objectPath() <<
+        "connection";
 
     Tp::ConnectionPtr connection = mAccount->connection();
     connect(connection->becomeReady(Tp::Connection::FeatureCore),
@@ -240,8 +253,14 @@ void CDTpAccount::introspectAccountConnection()
 
 void CDTpAccount::introspectAccountConnectionRoster()
 {
-    qDebug() << "Trying to make account connection roster ready";
+    if (mIntrospectingRoster || mRosterReady) {
+        return;
+    }
 
+    qDebug() << "Introspecting account" << mAccount->objectPath() <<
+        "roster";
+
+    mIntrospectingRoster = true;
     Tp::ConnectionPtr connection = mAccount->connection();
     // TODO: add support to roster groups?
     connect(connection->becomeReady(Tp::Connection::FeatureRoster),
@@ -251,6 +270,8 @@ void CDTpAccount::introspectAccountConnectionRoster()
 
 void CDTpAccount::upgradeContacts(const Tp::Contacts &contacts)
 {
+    qDebug() << "Upgrading account" << mAccount->objectPath() <<
+        "roster contacts with desired features";
     Tp::ConnectionPtr connection = mAccount->connection();
     Tp::ContactManager *contactManager = connection->contactManager();
     Tp::PendingContacts *pc = contactManager->upgradeContacts(contacts.toList(),
