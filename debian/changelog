@@ -1,4 +1,10 @@
 
+contactsd (0.5.36~1) UNRELEASED; urgency=low
+
+  *
+
+ -- Jens Georg <jensg@openismus.com>  Thu, 09 Sep 2010 12:43:14 +0200
+
 contactsd (0.5.35-2) unstable; urgency=low
 
   * Fixes: Missing build dependency on dpatch
