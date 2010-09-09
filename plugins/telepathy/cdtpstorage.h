@@ -29,6 +29,7 @@
 #include <QUrl>
 
 #include <QtTracker/ontologies/nco.h>
+#include <QtTracker/ontologies/nie.h>
 #include <QtTracker/QLive>
 #include <QtTracker/Tracker>
 
@@ -82,6 +83,9 @@ private:
     QUrl trackerStatusFromTpPresenceType(uint tpPresenceType) const;
     QUrl trackerStatusFromTpPresenceStatus(
             const QString &tpPresenceStatus) const;
+    void updateAvatar(RDFUpdate &query, const QUrl &url,
+            const QUrl &fileName,
+            bool deleteOnly);
 };
 
 #endif // CDTPSTORAGE_H

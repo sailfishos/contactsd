@@ -42,66 +42,61 @@ void CDTpStorage::syncAccount(CDTpAccount *accountWrapper,
 {
     Tp::AccountPtr account = accountWrapper->account();
     QString accountObjectPath = account->objectPath();
+    const QString strLocalUID = QString::number(0x7FFFFFFF);
 
     qDebug() << "Syncing account" << accountObjectPath << "to storage";
 
-    QUrl accountUrl(QString("telepathy:%1").arg(accountObjectPath));
-    Live<nco::IMAccount> liveAccount = ::tracker()->liveNode(accountUrl);
-
-    RDFUpdate up;
-    RDFVariable theAccount = RDFVariable::fromType<nco::IMAccount>();
-    up.addInsertion(theAccount, nco::IMAccount::iri(), liveAccount.variable());
-    ::tracker()->executeQuery(up);
-
+    const QUrl accountUrl(QString("telepathy:%1").arg(accountObjectPath));
     QString paramAccount = account->parameters()["account"].toString();
-    liveAccount->setImAccountType(account->protocol());
     const QUrl imAddressUrl(QString("telepathy:%1!%2")
             .arg(accountObjectPath).arg(paramAccount));
-    Live<nco::IMAddress> addressInfo = ::tracker()->liveNode(imAddressUrl);
-    addressInfo->addImID(paramAccount);
+
+    RDFUpdate up;
+
+    RDFVariable imAccount(accountUrl);
+    RDFVariable imAddress(imAddressUrl);
+
+    up.addInsertion(imAccount, rdf::type::iri(), nco::IMAccount::iri());
+    up.addInsertion(imAccount, nco::imAccountType::iri(), LiteralValue(account->protocol()));
+
+    up.addInsertion(imAddress, rdf::type::iri(), nco::IMAddress::iri());
+    up.addInsertion(imAddress, nco::imID::iri(), LiteralValue(paramAccount));
 
     if (changes & CDTpAccount::DisplayName) {
-        liveAccount->setImDisplayName(account->displayName());
+        up.addInsertion(imAccount, nco::imDisplayName::iri(), LiteralValue(account->displayName()));
     }
 
     if (changes & CDTpAccount::Nickname) {
-        addressInfo->setImNickname(account->nickname());
+       up.addInsertion(imAddress, nco::imNickname::iri(), LiteralValue(account->displayName()));
     }
 
     if (changes & CDTpAccount::Presence) {
         Tp::SimplePresence presence = account->currentPresence();
-        Live<nco::PresenceStatus> ncoPresenceStatus = ::tracker()->liveNode(
-                trackerStatusFromTpPresenceStatus(presence.status));
-        addressInfo->setImStatusMessage(presence.statusMessage);
-        addressInfo->setImPresence(ncoPresenceStatus);
-        addressInfo->setPresenceLastModified(QDateTime::currentDateTime());
+
+        up.addInsertion(imAddress, nco::imStatusMessage::iri(),
+                LiteralValue(presence.statusMessage));
+        up.addInsertion(imAddress, nco::imPresence::iri(),
+                LiteralValue(trackerStatusFromTpPresenceStatus(presence.status)));
+        up.addInsertion(imAddress, nco::presenceLastModified::iri(),
+                LiteralValue(QDateTime::currentDateTime()));
     }
 
-    liveAccount->addImAccountAddress(addressInfo);
-
     // link the IMAddress to me-contact
-    Live<nco::PersonContact> me = ::tracker()->liveResource<nco::default_contact_me>();
-    me->addHasIMAddress(addressInfo);
+    up.addInsertion(nco::default_contact_me::iri(), nco::contactLocalUID::iri(),
+            LiteralValue(strLocalUID));
+    up.addInsertion(nco::default_contact_me::iri(), nco::hasIMAddress::iri(), imAddress);
+    up.addInsertion(imAccount, nco::imAccountAddress::iri(), imAddress);
 
     if (changes & CDTpAccount::Avatar) {
         QString fileName;
         const Tp::Avatar &avatar = account->avatar();
-        bool ok = saveAccountAvatar(avatar.avatarData, avatar.MIMEType,
+        // TODO: saving to disk needs to be removed here
+        const bool ok = saveAccountAvatar(avatar.avatarData, avatar.MIMEType,
                 QString("%1/.contacts/avatars/").arg(QDir::homePath()), fileName);
-        if (ok) {
-            Live<nie::DataObject> fileUrl = ::tracker()->liveNode(QUrl(fileName));
-            addressInfo->addImAvatar(fileUrl);
-            // TODO: do we really need to add imAvatar and photo?
-            Live<nie::DataObject> photo = me->getPhoto();
-            if (photo->getUrl().isEmpty()) {
-                me->setPhoto(fileUrl);
-            }
-        }
+        updateAvatar(up, imAddressUrl, QUrl::fromLocalFile(fileName), ok);
     }
 
-    // TODO: generate a random UID for accounts
-    const QString strLocalUID = QString::number(0x7FFFFFFF);
-    me->setContactLocalUID(strLocalUID);
+    ::tracker()->executeQuery(up);
 }
 
 void CDTpStorage::syncAccountContacts(CDTpAccount *accountWrapper)
@@ -424,3 +419,26 @@ QUrl CDTpStorage::trackerStatusFromTpPresenceStatus(
     }
     return nco::presence_status_error::iri();
 }
+
+void CDTpStorage::updateAvatar(RDFUpdate &query,
+        const QUrl &url,
+        const QUrl &fileName,
+        bool deleteOnly)
+{
+    // We need deleteOnly to handle cases where the avatar image was removed from the account
+    if (!fileName.isValid()) {
+        return;
+    }
+
+    RDFVariable imAddress(url);
+    RDFVariable dataObject(fileName);
+
+    query.addDeletion(imAddress, nco::imAvatar::iri());
+    query.addDeletion(dataObject, nie::DataObject::iri());
+
+    if (!deleteOnly) {
+        query.addInsertion(RDFStatement(dataObject, rdf::type::iri(), nie::DataObject::iri()));
+        query.addInsertion(RDFStatement(imAddress, nco::imAvatar::iri(), dataObject));
+    }
+}
+
