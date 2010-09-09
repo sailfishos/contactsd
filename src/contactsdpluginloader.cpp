@@ -98,7 +98,7 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir,
         }
 
         QString pluginName = metaData[CONTACTSD_PLUGIN_NAME].toString();
-        if (!plugins.contains(pluginName)) {
+        if (!plugins.isEmpty() && !plugins.contains(pluginName)) {
             qWarning() << "Ignoring plugin" << absFileName;
             loader->unload();
             delete loader;
