@@ -46,13 +46,16 @@ ContactsdPluginLoader::~ContactsdPluginLoader()
 
 void ContactsdPluginLoader::loadPlugins(const QStringList &plugins)
 {
-    QStringList pluginsDirs = QString::fromLocal8Bit(
-            qgetenv("CONTACTSD_PLUGINS_DIRS")).split(':');
-    if (pluginsDirs.isEmpty()) {
+    QStringList pluginsDirs;
+    QString pluginsDirsEnv = QString::fromLocal8Bit(
+            qgetenv("CONTACTSD_PLUGINS_DIRS"));
+    if (pluginsDirsEnv.isEmpty()) {
         pluginsDirs << CONTACTSD_PLUGINS_DIR;
+    } else {
+        pluginsDirs << pluginsDirsEnv.split(':');
     }
 
-    foreach (const QString pluginsDir, pluginsDirs) {
+    foreach (const QString &pluginsDir, pluginsDirs) {
         loadPlugins(pluginsDir, plugins);
     }
 }
@@ -95,7 +98,14 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir,
         }
 
         QString pluginName = metaData[CONTACTSD_PLUGIN_NAME].toString();
-        if (plugins.contains(pluginName)) {
+        if (!plugins.contains(pluginName)) {
+            qWarning() << "Ignoring plugin" << absFileName;
+            loader->unload();
+            delete loader;
+            continue;
+        }
+
+        if (mPluginStore.contains(pluginName)) {
             qWarning() << "Ignoring plugin" << absFileName <<
                 "- plugin with name" << pluginName << "already registered";
             loader->unload();
