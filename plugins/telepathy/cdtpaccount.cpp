@@ -140,8 +140,9 @@ void CDTpAccount::onAccountConnectionReady(Tp::PendingOperation *op)
     qDebug() << "Account" << mAccount->objectPath() << "connection ready";
 
     Tp::ConnectionPtr connection = mAccount->connection();
+    // TODO: use Connection::statusChanged(status) when tp-qt4 0.3.9 is released
     connect(connection.data(),
-        SIGNAL(statusChanged(Tp::Conneciton::Status)),
+        SIGNAL(statusChanged(Tp::Connection::Status, Tp::ConnectionStatusReason)),
         SLOT(onAccountConnectionStatusChanged(Tp::Connection::Status)));
     if (connection->status() == Tp::Connection::StatusConnected) {
         introspectAccountConnectionRoster();
