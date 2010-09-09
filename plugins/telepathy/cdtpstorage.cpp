@@ -154,7 +154,9 @@ void CDTpStorage::syncAccountContacts(CDTpAccount *accountWrapper,
 
         // TODO add avatar support
     }
-    ::tracker()->executeQuery(updateQuery);
+    if (!contactsAdded.isEmpty()) {
+        ::tracker()->executeQuery(updateQuery);
+    }
 
     Q_UNUSED(contactsRemoved);
     // TODO remove contacts in contactsRemoved from tracker
