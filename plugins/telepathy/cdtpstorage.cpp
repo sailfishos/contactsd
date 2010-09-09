@@ -176,7 +176,7 @@ void CDTpStorage::syncAccountContact(CDTpAccount *accountWrapper,
         "contact" << contact->id() << "changes to storage";
 
     RDFUpdate updateQuery;
-    const RDFVariable imAddress(contactWrapper);
+    const RDFVariable imAddress(contactImAddress(contactWrapper));
 
     if (changes & CDTpContact::Alias) {
         qDebug() << "  alias changed";
