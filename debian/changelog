@@ -1,9 +1,8 @@
+contactsd (0.5.35-3) unstable; urgency=low
 
-contactsd (0.5.36~1) UNRELEASED; urgency=low
+  * Fixes: Changleog format
 
-  *
-
- -- Jens Georg <jensg@openismus.com>  Thu, 09 Sep 2010 12:43:14 +0200
+ -- Jens Georg <jensg@openismus.com>  Fri, 10 Sep 2010 12:13:09 +0200
 
 contactsd (0.5.35-2) unstable; urgency=low
 
