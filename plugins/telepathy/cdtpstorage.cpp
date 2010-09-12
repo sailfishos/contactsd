@@ -172,11 +172,19 @@ void CDTpStorage::syncAccountContact(CDTpAccount *accountWrapper,
     Tp::AccountPtr account = accountWrapper->account();
     Tp::ContactPtr contact = contactWrapper->contact();
 
+    const QString id = contact->id();
+    const QString localId = contactLocalId(account->objectPath(), id);
+    const RDFVariable imContact(contactIri(localId));
+
     qDebug() << "Syncing account" << account->objectPath() <<
         "contact" << contact->id() << "changes to storage";
 
     RDFUpdate updateQuery;
     const RDFVariable imAddress(contactImAddress(contactWrapper));
+
+    updateQuery.addDeletion(imContact, nie::contentLastModified::iri());
+    updateQuery.addInsertion(imContact, nie::contentLastModified::iri(),
+            RDFVariable(QDateTime::currentDateTime()));
 
     if (changes & CDTpContact::Alias) {
         qDebug() << "  alias changed";
