@@ -1,0 +1,65 @@
+#!/bin/sh
+#
+# Configures to build the project
+#
+
+#-------------------------------------------------------------------------------
+# script initialization
+#-------------------------------------------------------------------------------
+
+relpath=`dirname $0`
+relpath=`(cd "$relpath"; /bin/pwd)`
+outpath=`/bin/pwd`
+
+PREFIX=/usr
+TOP_SOURCEDIR=$relpath
+TOP_BUILDDIR=$outpath
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+    -h|--help)
+        echo "Usage: ./configure [OPTION]... [VAR=VALUE]..."
+        echo
+        echo "To assign environment variables (e.g., CC, CFLAGS...), specify them as"
+        echo "VAR=VALUE.  See below for descriptions of some of the useful variables."
+        echo
+        echo "   -h, --help            Display this message."
+        echo "   --prefix PREFIX       install architecture-independent files in PREFIX"
+        echo "                         [/usr]"
+        echo
+        exit
+        ;;
+    --prefix)
+        shift
+        PREFIX=$1
+        ;;
+    *)
+        echo >&2 "configure: error: unrecognized option: '$1'"
+        echo >&2 "Try './configure --help' for more information."
+        exit
+        ;;
+    esac
+    shift
+done
+
+# save configuration into .qmake.cache
+CACHEFILE="$outpath/.qmake.cache"
+[ -f "$CACHEFILE" ] && rm -f "$CACHEFILE"
+
+cat >> "$CACHEFILE" << EOF
+PREFIX = \$\$quote($PREFIX)
+TOP_SOURCEDIR = \$\$quote($TOP_SOURCEDIR)
+TOP_BUILDDIR = \$\$quote($TOP_BUILDDIR)
+EOF
+
+# pre-process .in files
+mkdir -p $TOP_BUILDDIR/tests/dbus-1
+cat $TOP_SOURCEDIR/tests/dbus-1/session.conf.in | sed -e "s,@TOP_BUILDDIR@,${TOP_BUILDDIR},g" \
+    > $TOP_BUILDDIR/tests/dbus-1/session.conf
+
+# run qmake
+qmake $relpath/contactsd.pro
+
+echo "contactsd is not configure for building. Just run 'make'."
+echo "Once everything is built, you must run 'make install'."
+echo "contactsd will be installed into $PREFIX"
