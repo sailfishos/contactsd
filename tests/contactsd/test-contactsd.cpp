@@ -17,14 +17,12 @@
 **
 ****************************************************************************/
 
-#include "ut_contactsd.h"
+#include "test-contactsd.h"
 #include <QCoreApplication>
 #include <QDebug>
 #include <QSettings>
 
-
 const QString telepathyString("telepathy");
-const QString ringString("ring");
 
 const QString telepathyFile("libtelepathycollectorplugin.so");
 
@@ -33,65 +31,36 @@ const QString telepathyFile("libtelepathycollectorplugin.so");
 const QString pollingInterval("1000"); // Interval in seconds, big enough for now as we dont test this,
                                        // it has some issues if interval is too short
 
-
-void loopForEvents(ut_contactsd* ut_daemon)
+void TestContactsd::initTestCase()
 {
-    for(int i = 0; i < 20; i++)
-        {
-            usleep(100000);
-            QCoreApplication::processEvents();
-            if(ut_daemon->getPluginsLoaded())
-                break;
-        }
-};
-
-
-void ut_contactsd::initTestCase()
-{
-    daemon = new ContactsDaemon(this);
-
-    connect(daemon, SIGNAL(pluginsLoaded()), this, SLOT(pluginsLoaded()) );
+    daemon = new Contactsd(this);
 }
 
-void ut_contactsd::testLoadAllPlugins()
+void TestContactsd::testLoadAllPlugins()
 {
-    plugsLoaded=false;
-    daemon->loadAllPlugins();
+    daemon->loadPlugins(QStringList());
 
-    loopForEvents(this);
-
-    QVERIFY2((plugsLoaded), "Plugins were not loaded!");
-
-    QStringList pluginList = daemon->validPlugins();
+    QStringList pluginList = daemon->loadedPlugins();
     QVERIFY2(pluginList.contains(telepathyString), QString("%1-plugin not Loaded!").arg(telepathyString).toLatin1());
-    QVERIFY2(pluginList.contains(ringString), QString("%1-plugin not Loaded!").arg(ringString).toLatin1());
 }
 
 
 
-void ut_contactsd::testLoadPlugins()
+void TestContactsd::testLoadPlugins()
 {
-    disconnect(daemon, SIGNAL(pluginsLoaded()));
     delete daemon; // No other way to unload plugins
-    plugsLoaded=false;
 
-    daemon = new ContactsDaemon(this);
-    connect(daemon, SIGNAL(pluginsLoaded()), this, SLOT(pluginsLoaded()) );
-    daemon->loadAllPlugins();
-    loopForEvents(this);
-    QVERIFY2((plugsLoaded), "Plugins were not loaded!");
+    daemon = new Contactsd(this);
+    daemon->loadPlugins(QStringList() << telepathyString);
+    QStringList pluginList = daemon->loadedPlugins();
+    QVERIFY2(pluginList.size() == 1, QString("%1 plugins loaded, expecting 1").arg(pluginList.size()).toLatin1());
+    QVERIFY2(pluginList.contains(telepathyString), QString("%1-plugin not Loaded!").arg(telepathyString).toLatin1());
 }
 
-void ut_contactsd::pluginsLoaded()
+void TestContactsd::cleanupTestCase()
 {
-    plugsLoaded=true;
-}
-
-void ut_contactsd::cleanupTestCase()
-{
-    disconnect(daemon, SIGNAL(pluginsLoaded()));
     delete daemon;
     daemon=0;
 }
 
-QTEST_MAIN(ut_contactsd)
+QTEST_MAIN(TestContactsd)

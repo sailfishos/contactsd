@@ -1,4 +1,4 @@
-TARGET = ut_contactsd
+TARGET = test-contactsd
 
 QT -= gui
 test.depends = all
@@ -12,14 +12,14 @@ SOURCE_DIR = $$PWD/../../src
 
 INCLUDEPATH += $$SOURCE_DIR
 
-HEADERS += ut_contactsd.h \
-           $$SOURCE_DIR/contactsdaemon.h \
+HEADERS += test-contactsd.h \
+           $$SOURCE_DIR/contactsd.h \
 	   $$SOURCE_DIR/importnotifierdbusadaptor.h \
            $$SOURCE_DIR/contactsdpluginloader.h
 
-SOURCES += ut_contactsd.cpp \
-           $$SOURCE_DIR/contactsdaemon.cpp \
+SOURCES += test-contactsd.cpp \
+           $$SOURCE_DIR/contactsd.cpp \
 	   $$SOURCE_DIR/importnotifierdbusadaptor.cpp  \
            $$SOURCE_DIR/contactsdpluginloader.cpp
 
-DEFINES += CONTACTSD_PLUGIN_PATH=\\\"/usr/lib/contactsd-1.0/plugins\\\"
+DEFINES += CONTACTSD_PLUGINS_DIR=\\\"/usr/lib/contactsd-1.0/plugins\\\"

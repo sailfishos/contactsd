@@ -17,24 +17,21 @@
 **
 ****************************************************************************/
 
-#ifndef UT_CONTACTSD_H
-#define UT_CONTACTSD_H
+#ifndef TEST_CONTACTSD_H
+#define TEST_CONTACTSD_H
 
 #include <QObject>
 #include <QtTest/QtTest>
-#include <contactsdaemon.h>
+#include <contactsd.h>
 
 
 /**
  * Contactsd tests
  */
 
-class ut_contactsd : public QObject
+class TestContactsd : public QObject
 {
 Q_OBJECT
-
-public:
-    bool getPluginsLoaded() { return plugsLoaded; }
 
 private Q_SLOTS:
     void initTestCase();
@@ -44,11 +41,8 @@ private Q_SLOTS:
 
     void cleanupTestCase();
 
-public Q_SLOTS:
-    void pluginsLoaded();
 private:
-    ContactsDaemon* daemon;
-    bool plugsLoaded;
+    Contactsd* daemon;
 };
 
-#endif // UT_CONTACTSD_H
+#endif // TEST_CONTACTSD_H
