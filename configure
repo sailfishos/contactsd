@@ -63,3 +63,4 @@ qmake $relpath/contactsd.pro
 echo "contactsd is not configure for building. Just run 'make'."
 echo "Once everything is built, you must run 'make install'."
 echo "contactsd will be installed into $PREFIX"
+echo "To reconfigure, run 'make confclean' and 'configure'."

@@ -12,3 +12,9 @@ INSTALLS += pkgconfig
 check.target = check
 check.CONFIG = recursive
 QMAKE_EXTRA_TARGETS += check
+
+confclean.depends += distclean
+confclean.commands += \
+    $(DEL_FILE) $$TOP_BUILDDIR/tests/dbus-1/session.conf \
+    $(DEL_FILE) $$TOP_BUILDDIR/.qmake.cache
+QMAKE_EXTRA_TARGETS += confclean
