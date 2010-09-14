@@ -53,7 +53,7 @@ public Q_SLOTS:
     void syncAccountContact(CDTpAccount *accountWrapper,
             CDTpContact *contactWrapper, CDTpContact::Changes changes);
     void setAccountContactsOffline(CDTpAccount *accountWrapper);
-    void removeAccount(CDTpAccount *accountWrapper);
+    void removeAccount(const QString &accountObjectPath);
 
 private:
     bool saveAccountAvatar(const QByteArray &data, const QString &mimeType,

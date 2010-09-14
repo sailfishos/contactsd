@@ -68,9 +68,13 @@ void CDTpController::onAccountManagerReady(Tp::PendingOperation *op)
     connect(mAccountSet.data(),
             SIGNAL(accountAdded(const Tp::AccountPtr &)),
             SLOT(onAccountAdded(const Tp::AccountPtr &)));
-    connect(mAccountSet.data(),
-            SIGNAL(accountRemoved(const Tp::AccountPtr &)),
-            SLOT(onAccountRemoved(const Tp::AccountPtr &)));
+    // FIXME Tp::AccountSet is deleting the account before emitting the signal
+    // connect(mAccountSet.data(),
+    //         SIGNAL(accountRemoved(const Tp::AccountPtr &)),
+    //         SLOT(onAccountRemoved(const Tp::AccountPtr &)));
+    connect(mAM.data(),
+            SIGNAL(accountRemoved(const QString &)),
+            SLOT(onAccountRemoved(const QString &)));
     foreach (const Tp::AccountPtr &account, mAccountSet->accounts()) {
         insertAccount(account);
     }
@@ -82,10 +86,19 @@ void CDTpController::onAccountAdded(const Tp::AccountPtr &account)
     insertAccount(account);
 }
 
-void CDTpController::onAccountRemoved(const Tp::AccountPtr &account)
+// FIXME Tp::AccountSet is deleting the account before emitting the signal
+// void CDTpController::onAccountRemoved(const Tp::AccountPtr &account)
+// {
+//     removeAccount(account->objectPath());
+// }
+
+void CDTpController::onAccountRemoved(const QString &accountObjectPath)
 {
-    CDTpAccount *accountWrapper = mAccounts[account->objectPath()];
-    removeAccount(accountWrapper);
+    if (!mAccounts.contains(accountObjectPath)) {
+        return;
+    }
+
+    removeAccount(accountObjectPath);
 }
 
 void CDTpController::onAccountRosterChanged(CDTpAccount *accountWrapper,
@@ -146,11 +159,10 @@ void CDTpController::insertAccount(const Tp::AccountPtr &account)
     mAccounts.insert(account->objectPath(), accountWrapper);
 }
 
-void CDTpController::removeAccount(CDTpAccount *accountWrapper)
+void CDTpController::removeAccount(const QString &accountObjectPath)
 {
-    Tp::AccountPtr account = accountWrapper->account();
-    mStorage->removeAccount(accountWrapper);
-    delete mAccounts.take(account->objectPath());
+    mStorage->removeAccount(accountObjectPath);
+    delete mAccounts.take(accountObjectPath);
 }
 
 void CDTpController::setImportStarted()

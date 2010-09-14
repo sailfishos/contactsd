@@ -233,11 +233,8 @@ void CDTpStorage::setAccountContactsOffline(CDTpAccount *accountWrapper)
     ::tracker()->executeQuery(updateQuery);
 }
 
-void CDTpStorage::removeAccount(CDTpAccount *accountWrapper)
+void CDTpStorage::removeAccount(const QString &accountObjectPath)
 {
-    Tp::AccountPtr account = accountWrapper->account();
-    QString accountObjectPath = account->objectPath();
-
     qDebug() << "Removing account" << accountObjectPath << "from storage";
 
     RDFVariable imContact = RDFVariable::fromType<nco::PersonContact>();

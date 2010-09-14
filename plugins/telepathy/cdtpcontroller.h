@@ -51,7 +51,9 @@ Q_SIGNALS:
 private Q_SLOTS:
     void onAccountManagerReady(Tp::PendingOperation *op);
     void onAccountAdded(const Tp::AccountPtr &account);
-    void onAccountRemoved(const Tp::AccountPtr &account);
+    // FIXME Tp::AccountSet is deleting the account before emitting the signal
+    // void onAccountRemoved(const Tp::AccountPtr &account);
+    void onAccountRemoved(const QString &account);
     void onAccountRosterChanged(CDTpAccount *accountWrapper, bool haveRoster);
     void onAccountRosterUpdated(CDTpAccount *accountWrapper,
             const QList<CDTpContact *> &contactsAdded,
@@ -59,7 +61,7 @@ private Q_SLOTS:
 
 private:
     void insertAccount(const Tp::AccountPtr &account);
-    void removeAccount(CDTpAccount *accountWrapper);
+    void removeAccount(const QString &accountObjectPath);
 
     void setImportStarted();
     void setImportEnded(int contactsAdded, int contactsRemoved);
