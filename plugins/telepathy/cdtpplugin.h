@@ -20,7 +20,7 @@
 #ifndef CDTPPLUGIN_H
 #define CDTPPLUGIN_H
 
-#include <contactsdplugininterface.h>
+#include <ContactsdPluginInterface>
 
 #include <QMap>
 #include <QObject>
