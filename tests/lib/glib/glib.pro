@@ -1,4 +1,9 @@
 TEMPLATE = lib
+CONFIG += staticlib
+
+CONFIG -= warn_on
+
+CONFIG -= qt
 
 CONFIG += link_pkgconfig
 PKGCONFIG += telepathy-glib
