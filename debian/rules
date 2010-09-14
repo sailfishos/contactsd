@@ -2,12 +2,15 @@
 
 export DH_VERBOSE=1
 
+PREFIX=/usr
+
 %:
 	dh $@
 
 override_dh_auto_configure:
 	dpatch apply-all
-	./configure
+	./configure --prefix $(PREFIX) --bindir $(PREFIX)/bin --libdir $(PREFIX)/lib \
+		--includedir $(PREFIX)/include --localstatedir /var
 
 # Work-around for some machines where INSTALL_ROOT is not set properly by
 # dh_auto_install
