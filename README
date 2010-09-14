@@ -13,6 +13,8 @@ Requirements
 
 Building contactsd requires:
   telepathy-qt4 >= 0.3.9 and its dependencies <http://telepathy.freedesktop.org>
+  QtTracker
+  QtMobility Contacts module
 
 Hacking
 =======
