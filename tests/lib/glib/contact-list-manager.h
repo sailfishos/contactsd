@@ -118,9 +118,9 @@ void test_contact_list_manager_set_avatar (
     TestContactListManager *self, TpHandle contact,
     const TestContactListAvatarData *avatar_data);
 
-static TestContactListAvatarData *test_contact_list_avatar_data_new (
+TestContactListAvatarData *test_contact_list_avatar_data_new (
     GArray *data, const gchar *mime_type, const gchar *token);
-static void test_contact_list_avatar_data_free (gpointer data);
+void test_contact_list_avatar_data_free (gpointer data);
 
 G_END_DECLS
 

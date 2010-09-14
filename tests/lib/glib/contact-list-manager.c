@@ -1735,7 +1735,7 @@ test_contact_list_manager_set_avatar (TestContactListManager *self,
   g_signal_emit (self, signals[AVATAR_UPDATED], 0, contact);
 }
 
-static TestContactListAvatarData *
+TestContactListAvatarData *
 test_contact_list_avatar_data_new (GArray *data,
     const gchar *mime_type,
     const gchar *token)
@@ -1750,7 +1750,7 @@ test_contact_list_avatar_data_new (GArray *data,
   return a;
 }
 
-static void
+void
 test_contact_list_avatar_data_free (gpointer data)
 {
   TestContactListAvatarData *a = data;
