@@ -28,7 +28,7 @@ unix {
     DEFINES += CONTACTSD_PLUGINS_DIR=\\\"$$LIBDIR/contactsd-1.0/plugins\\\"
 }
 
-headers.files = contactsdplugininterface.h
+headers.files = ContactsdPluginInterface contactsdplugininterface.h
 headers.path = $$INCLUDEDIR/contactsd-1.0
 
 target.path = $$BINDIR
