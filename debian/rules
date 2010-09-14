@@ -7,7 +7,7 @@ export DH_VERBOSE=1
 
 override_dh_auto_configure:
 	dpatch apply-all
-	dh_auto_configure -- $(QMAKE_OPTIONS) contactsd.pro
+	./configure
 
 # Work-around for some machines where INSTALL_ROOT is not set properly by
 # dh_auto_install
