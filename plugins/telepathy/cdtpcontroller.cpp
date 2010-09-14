@@ -84,8 +84,7 @@ void CDTpController::onAccountAdded(const Tp::AccountPtr &account)
 
 void CDTpController::onAccountRemoved(const Tp::AccountPtr &account)
 {
-    qDebug() << "Account" << account->objectPath() << "removed";
-    CDTpAccount *accountWrapper = mAccounts[account];
+    CDTpAccount *accountWrapper = mAccounts[account->objectPath()];
     removeAccount(accountWrapper);
 }
 
@@ -144,14 +143,14 @@ void CDTpController::insertAccount(const Tp::AccountPtr &account)
             SLOT(syncAccountContact(CDTpAccount *,
                     CDTpContact *, CDTpContact::Changes)));
 
-    mAccounts.insert(account, accountWrapper);
+    mAccounts.insert(account->objectPath(), accountWrapper);
 }
 
 void CDTpController::removeAccount(CDTpAccount *accountWrapper)
 {
     Tp::AccountPtr account = accountWrapper->account();
     mStorage->removeAccount(accountWrapper);
-    delete mAccounts.take(account);
+    delete mAccounts.take(account->objectPath());
 }
 
 void CDTpController::setImportStarted()

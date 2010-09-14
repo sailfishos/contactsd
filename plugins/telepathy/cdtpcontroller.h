@@ -67,7 +67,7 @@ private:
     CDTpStorage *mStorage;
     Tp::AccountManagerPtr mAM;
     Tp::AccountSetPtr mAccountSet;
-    QHash<Tp::AccountPtr, CDTpAccount *> mAccounts;
+    QHash<QString, CDTpAccount *> mAccounts;
     bool mImportActive;
 };
 
