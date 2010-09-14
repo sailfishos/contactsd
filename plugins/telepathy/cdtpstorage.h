@@ -54,6 +54,7 @@ public Q_SLOTS:
             CDTpContact *contactWrapper, CDTpContact::Changes changes);
     void setAccountContactsOffline(CDTpAccount *accountWrapper);
     void removeAccount(const QString &accountObjectPath);
+    void onAccountRemovalModelUpdated();
 
 private:
     bool saveAccountAvatar(const QByteArray &data, const QString &mimeType,
@@ -89,6 +90,7 @@ private:
     void updateAvatar(RDFUpdate &query, const QUrl &url,
             const QUrl &fileName,
             bool deleteOnly);
+    LiveNodes mRemovalNodes;
 };
 
 #endif // CDTPSTORAGE_H

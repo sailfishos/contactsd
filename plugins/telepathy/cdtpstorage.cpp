@@ -241,6 +241,7 @@ void CDTpStorage::removeAccount(const QString &accountObjectPath)
     RDFVariable imAddress = imContact.optional().property<nco::hasIMAddress>();
     RDFVariable imAccount = RDFVariable::fromType<nco::IMAccount>();
     imAccount.property<nco::hasIMContact>() = imAddress;
+    imAccount = QUrl("telepathy:" + accountObjectPath);
 
     RDFSelect select;
     select.addColumn("contact", imContact);
@@ -249,24 +250,35 @@ void CDTpStorage::removeAccount(const QString &accountObjectPath)
     select.addColumn("accountPath", imAccount);
     select.addColumn("address", imAddress);
 
-    // TODO: improve query to only return contacts whose account object path is
-    //       accountObjectPath
-    LiveNodes ncoContacts = ::tracker()->modelQuery(select);
-    for (int i = 0; i < ncoContacts->rowCount(); ++i) {
-        QString contactAccountObjectPath =
-            ncoContacts->index(i, 3).data().toString().split(":").value(1);
+    mRemovalNodes = ::tracker()->modelQuery(select);
+    connect(mRemovalNodes.model(),
+            SIGNAL(modelUpdated()),
+            SLOT(onAccountRemovalModelUpdated()));
+}
 
-        if (contactAccountObjectPath == accountObjectPath) {
-            Live<nco::PersonContact> imContact = 
-                ncoContacts->liveResource<nco::PersonContact>(i, 0);
-            imContact->remove();
-            Live<nco::IMAddress> imAddress =
-                ncoContacts->liveResource<nco::PersonContact>(i, 4);
-            imAddress->remove();
-        }
+void CDTpStorage::onAccountRemovalModelUpdated()
+{
+    RDFUpdate update;
+
+    for (int i = 0 ; i < mRemovalNodes->rowCount() ; i ++) {
+
+        const QString imTrackerAddress = mRemovalNodes->index(i, 1).data().toString();
+        const QString imTrackerLocalId = mRemovalNodes->index(i, 2).data().toString();
+        const QString imTrackerAccountPath = mRemovalNodes->index(i, 3).data().toString();
+
+        const QString accountObjectPath(imTrackerAccountPath.split(":").value(1));
+
+        const RDFVariable imContact(contactIri(imTrackerLocalId));
+        const RDFVariable imAddress(contactImAddress(accountObjectPath, imTrackerAddress));
+        const RDFVariable imAccount(QUrl(QString("telepathy:%1").arg(accountObjectPath)));
+
+        update.addDeletion(imContact, nco::PersonContact::iri());
+        update.addDeletion(imAddress, nco::IMAddress::iri());
+        update.addDeletion(imAccount, nco::IMAccount::iri());
+
     }
 
-    // TODO: also remove account
+    ::tracker()->executeQuery(update);
 }
 
 bool CDTpStorage::saveAccountAvatar(const QByteArray &data, const QString &mimeType,
