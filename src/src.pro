@@ -14,19 +14,10 @@ SOURCES += main.cpp \
     importnotifierdbusadaptor.cpp \
     logger.cpp
 
-BUILDDATE = $$system(date +%F)
-BUILDTIME = $$system(date +%T)
-REVISION = $$system(cat $$TOP_SOURCEDIR/.git/refs/heads/master)
+DEFINES += VERSION=\\\"$${VERSION}\\\"
 
-DEFINES += VERSION_INFO=\\\"$${VERSION}\\\"
-DEFINES += BUILDDATE_INFO=\\\"$${BUILDDATE}\\\"
-DEFINES += BUILDTIME_INFO=\\\"$${BUILDTIME}\\\"
-DEFINES += REVISION_INFO=\\\"$${REVISION}\\\"
-
-unix {
-    DEFINES += CONTACTSD_LOG_DIR=\\\"$$LOCALSTATEDIR/log\\\"
-    DEFINES += CONTACTSD_PLUGINS_DIR=\\\"$$LIBDIR/contactsd-1.0/plugins\\\"
-}
+DEFINES += CONTACTSD_LOG_DIR=\\\"$$LOCALSTATEDIR/log\\\"
+DEFINES += CONTACTSD_PLUGINS_DIR=\\\"$$LIBDIR/contactsd-1.0/plugins\\\"
 
 headers.files = ContactsdPluginInterface contactsdplugininterface.h
 headers.path = $$INCLUDEDIR/contactsd-1.0

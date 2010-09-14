@@ -28,7 +28,9 @@
 static void usage()
 {
     qDebug() << "Usage: contactsd [OPTION]...\n";
-    qDebug() << "  --plugins PLUGINS    comma separated list of plugins to load";
+    qDebug() << "  --plugins PLUGINS    comma separated list of plugins to load\n";
+    qDebug() << "  --version            output version information and exit";
+    qDebug() << "  --help               display this help and exit";
 }
 
 int main(int argc, char **argv)
@@ -50,6 +52,12 @@ int main(int argc, char **argv)
             QString value = args.at(i);
             value.replace(" ", ",");
             plugins << value.split(",", QString::SkipEmptyParts);
+        } else if (arg == "--version") {
+            qDebug() << "contactsd version" << VERSION;
+            return 0;
+        } else if (arg == "--help") {
+            usage();
+            return 0;
         } else {
             qWarning() << "Invalid argument" << arg;
             usage();
@@ -63,11 +71,7 @@ int main(int argc, char **argv)
     logger->setParent(&app);
 #endif
 
-    qDebug() << "=== Contacts Daemon Start ===";
-    qDebug() << "=== Based on" << VERSION_INFO;
-    qDebug() << "=== Revision" << REVISION_INFO;
-    qDebug() << "=== Built on" << BUILDDATE_INFO << BUILDTIME_INFO;
-    qDebug() << "=============================";
+    qDebug() << "contactsd version" << VERSION << "started";
 
     Contactsd *daemon = new Contactsd(&app);
     daemon->loadPlugins(plugins);
