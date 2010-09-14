@@ -745,7 +745,7 @@ get_avatar_tokens (TpSvcConnectionInterfaceAvatars *avatars,
           /* we're expected to do a round-trip to the server to find out
            * their token, so we have to give some sort of result. Assume
            * no avatar, here */
-          a = avatar_data_new (NULL, NULL, "");
+          a = test_contact_list_avatar_data_new (NULL, NULL, "");
           test_contact_list_manager_set_avatar (self->priv->list_manager,
               contact, a);
           tp_svc_connection_interface_avatars_emit_avatar_updated (self,
