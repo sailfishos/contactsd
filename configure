@@ -85,6 +85,9 @@ TOP_BUILDDIR = \$\$quote($TOP_BUILDDIR)
 EOF
 
 # pre-process .in files
+cat $TOP_SOURCEDIR/contactsd-1.0.pc.in | sed -e "s,@PREFIX@,${PREFIX},g" \
+    > $TOP_BUILDDIR/contactsd-1.0.pc
+
 mkdir -p $TOP_BUILDDIR/tests/dbus-1
 cat $TOP_SOURCEDIR/tests/dbus-1/session.conf.in | sed -e "s,@TOP_BUILDDIR@,${TOP_BUILDDIR},g" \
     > $TOP_BUILDDIR/tests/dbus-1/session.conf

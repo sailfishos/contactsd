@@ -1,0 +1,11 @@
+prefix=@PREFIX@
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+plugindir=${prefix}/lib/contactsd-1.0/plugins
+includedir=${prefix}/include
+moc_includedir=${includedir}/contactsd-1.0
+
+Name: contactsd
+Description: Contact synchronization daemon for meego
+Version: 0.5.30
+Cflags: -I${includedir}/contactsd-1.0
