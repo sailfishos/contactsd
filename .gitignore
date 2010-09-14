@@ -1,3 +1,4 @@
+.qmake.cache
 *.[ao]
 *.gcda
 *.gcno
@@ -8,23 +9,20 @@
 *.moc
 build-stamp*
 moc_*.cpp
-
-.moc
-.obj
-src/telepathysupport/libcontactstelepathysupport.so.1*
 src/contactsd
 Makefile
 Makefile.*
+contactsd-1.0.pc
 core
 .project
 .cproject
-/benchmarks/bm_contactsd_batchsaving
-/build*
-/configure-stamp
-/debian/*.debhelper*
-/debian/*.substvars
-/debian/files
-/debian/tmp/
+build*
+configure-stamp
+debian/*.debhelper*
+debian/*.substvars
+debian/files
+debian/tmp/
+tests/dbus-1/session.conf
 .*.sw?
 *~
 
