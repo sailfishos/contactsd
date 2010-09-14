@@ -1,27 +1,25 @@
 TEMPLATE = lib
-QT += dbus xml
+QT += dbus
 
 CONFIG += plugin
 
 CONFIG += link_pkgconfig
-PKGCONFIG += TelepathyQt4 \
-             accounts-qt \
-             qttracker
+PKGCONFIG += TelepathyQt4 qttracker
 
-INCLUDEPATH += $$PWD/../../src
+INCLUDEPATH += $$TOP_SOURCEDIR/src
 
 HEADERS  = cdtpaccount.h \
-           cdtpcontact.h \
-           cdtpcontroller.h \
-           cdtpplugin.h \
-           cdtpstorage.h
+    cdtpcontact.h \
+    cdtpcontroller.h \
+    cdtpplugin.h \
+    cdtpstorage.h
 
 SOURCES  = cdtpaccount.cpp \
-           cdtpcontact.cpp \
-           cdtpcontroller.cpp \
-           cdtpplugin.cpp \
-           cdtpstorage.cpp
+    cdtpcontact.cpp \
+    cdtpcontroller.cpp \
+    cdtpplugin.cpp \
+    cdtpstorage.cpp
 
 TARGET = telepathyplugin
-target.path = /usr/lib/contactsd-1.0/plugins
+target.path = $$LIBDIR/contactsd-1.0/plugins
 INSTALLS += target
