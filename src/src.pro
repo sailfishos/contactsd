@@ -1,24 +1,7 @@
-BUILDDATE = $$system(date +%F)
-BUILDTIME = $$system(date +%T)
-REVISION = $$system(cat $$PWD/../.git/refs/heads/master)
-
-DEFINES += VERSION_INFO=\\\"$${VERSION}\\\"
-DEFINES += BUILDDATE_INFO=\\\"$${BUILDDATE}\\\"
-DEFINES += BUILDTIME_INFO=\\\"$${BUILDTIME}\\\"
-DEFINES += REVISION_INFO=\\\"$${REVISION}\\\"
-
 TEMPLATE = app
 TARGET = contactsd
-MOC_DIR = ./.moc
 
-CONFIG += mobility
-MOBILITY += contacts
-
-DEPENDPATH += .
-QT += dbus \
-    core
-
-TESTS_DIR = $$PWD/../tests 
+QT += dbus
 
 HEADERS += contactsd.h \
     contactsdpluginloader.h \
@@ -31,13 +14,22 @@ SOURCES += main.cpp \
     importnotifierdbusadaptor.cpp \
     logger.cpp
 
+BUILDDATE = $$system(date +%F)
+BUILDTIME = $$system(date +%T)
+REVISION = $$system(cat $$TOP_SOURCEDIR/.git/refs/heads/master)
+
+DEFINES += VERSION_INFO=\\\"$${VERSION}\\\"
+DEFINES += BUILDDATE_INFO=\\\"$${BUILDDATE}\\\"
+DEFINES += BUILDTIME_INFO=\\\"$${BUILDTIME}\\\"
+DEFINES += REVISION_INFO=\\\"$${REVISION}\\\"
+
 unix {
-    DEFINES += CONTACTSD_LOG_DIR=\\\"/var/log\\\"
-    DEFINES += CONTACTSD_PLUGINS_DIR=\\\"/usr/lib/contactsd-1.0/plugins\\\"
+    DEFINES += CONTACTSD_LOG_DIR=\\\"$$LOCALSTATEDIR/log\\\"
+    DEFINES += CONTACTSD_PLUGINS_DIR=\\\"$$LIBDIR/contactsd-1.0/plugins\\\"
 }
 
 headers.files = contactsdplugininterface.h
-headers.path = /usr/include/contactsd-1.0
+headers.path = $$INCLUDEDIR/contactsd-1.0
 
-target.path = /usr/bin
+target.path = $$BINDIR
 INSTALLS += target headers
