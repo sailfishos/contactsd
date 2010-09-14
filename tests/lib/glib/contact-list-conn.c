@@ -736,7 +736,8 @@ get_avatar_tokens (TpSvcConnectionInterfaceAvatars *avatars,
   for (i = 0; i < contacts->len; i++)
     {
       TpHandle contact = g_array_index (contacts, TpHandle, i);
-      TestContactListAvatarData *a = test_contact_list_manager_get_avatar (
+      TestContactListAvatarData *a =
+          (TestContactListAvatarData *) test_contact_list_manager_get_avatar (
               self->priv->list_manager, contact);
 
       if (a == NULL || a->token == NULL)
@@ -787,7 +788,7 @@ get_known_avatar_tokens (TpSvcConnectionInterfaceAvatars *avatars,
   for (i = 0; i < contacts->len; i++)
     {
       TpHandle contact = g_array_index (contacts, TpHandle, i);
-      TestContactListAvatarData *a = test_contact_list_manager_get_avatar (
+      const TestContactListAvatarData *a = test_contact_list_manager_get_avatar (
               self->priv->list_manager, contact);
       const gchar *token = a ? a->token : NULL;
 
@@ -824,9 +825,9 @@ request_avatars (TpSvcConnectionInterfaceAvatars *avatars,
   for (i = 0; i < contacts->len; i++)
     {
       TpHandle contact = g_array_index (contacts, TpHandle, i);
-
-      TestContactListAvatarData *a = test_contact_list_manager_get_avatar (
+      const TestContactListAvatarData *a = test_contact_list_manager_get_avatar (
               self->priv->list_manager, contact);
+
       if (a != NULL)
         tp_svc_connection_interface_avatars_emit_avatar_retrieved (self, contact,
             a->token, a->data, a->mime_type);
