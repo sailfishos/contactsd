@@ -7,6 +7,26 @@
 # script initialization
 #-------------------------------------------------------------------------------
 
+# Making releases:
+#   set the new version number:
+#     odd minor -> development series
+#     even minor -> stable series
+#     increment micro for each release within a series
+#   set nano_version to 0
+#   make the release, tag it
+#   set nano_version to 1
+
+MAJOR_VERSION=0
+MINOR_VERSION=5
+MICRO_VERSION=35
+NANO_VERSION=1
+
+if [ $NANO_VERSION -eq "0" ]; then
+    VERSION="$MAJOR_VERSION.$MINOR_VERSION.$MICRO_VERSION"
+else
+    VERSION="$MAJOR_VERSION.$MINOR_VERSION.$MICRO_VERSION.$NANO_VERSION"
+fi
+
 relpath=`dirname $0`
 relpath=`(cd "$relpath"; /bin/pwd)`
 outpath=`/bin/pwd`
@@ -75,6 +95,7 @@ CACHEFILE="$outpath/.qmake.cache"
 [ -f "$CACHEFILE" ] && rm -f "$CACHEFILE"
 
 cat >> "$CACHEFILE" << EOF
+VERSION = \$\$quote($VERSION)
 PREFIX = \$\$quote($PREFIX)
 BINDIR = \$\$quote($BINDIR)
 LIBDIR = \$\$quote($LIBDIR)
