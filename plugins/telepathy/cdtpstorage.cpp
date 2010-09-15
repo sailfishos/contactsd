@@ -155,7 +155,7 @@ void CDTpStorage::syncAccountContacts(CDTpAccount *accountWrapper,
     }
 
     foreach (CDTpContact *contactWrapper, contactsRemoved) {
-        addContactAvatarInfoToQuery(updateQuery, accountWrapper, contactWrapper);
+        addContactRemoveInfoToQuery(updateQuery, accountWrapper, contactWrapper);
     }
 
     if (!contactsAdded.isEmpty()) {
