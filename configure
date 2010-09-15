@@ -113,6 +113,10 @@ mkdir -p $TOP_BUILDDIR/tests/dbus-1
 cat $TOP_SOURCEDIR/tests/dbus-1/session.conf.in | sed -e "s,@TOP_BUILDDIR@,${TOP_BUILDDIR},g" \
     > $TOP_BUILDDIR/tests/dbus-1/session.conf
 
+mkdir -p $TOP_BUILDDIR/tests/dbus-1/services
+cat $TOP_SOURCEDIR/tests/dbus-1/services/org.freedesktop.Telepathy.AccountManager.service.in | sed -e "s,@TOP_BUILDDIR@,${TOP_BUILDDIR},g" \
+    > $TOP_BUILDDIR/tests/dbus-1/services/org.freedesktop.Telepathy.AccountManager.service
+
 # run qmake
 qmake $relpath/contactsd.pro
 

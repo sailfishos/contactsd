@@ -26,7 +26,30 @@
 
 #include <QContactManager>
 
+#include "tests/lib/glib/simple-account-manager.h"
+#include "tests/lib/glib/simple-account.h"
+#include "tests/lib/glib/contacts-conn.h"
+#include "tests/lib/glib/util.h"
+
+#include "test.h"
+
 QTM_USE_NAMESPACE
+
+class TestExpectation
+{
+public:
+    enum Event {
+        Added,
+        Changed,
+    };
+
+    void verify(QContact &contact);
+
+    Event event;
+    QString accountUri;
+
+    QString alias;
+};
 
 /**
  * Telepathy plugin's unit test
@@ -51,14 +74,13 @@ private Q_SLOTS:
     void cleanupTestCase();
 
 private:
+    QContactManager *mContactManager;
     TpTestsSimpleAccountManager *mAccountManagerService;
     TpTestsSimpleAccount *mAccountService;
     TpBaseConnection *mConnService;
-    ConnectionPtr mConn;
 
-    QContactManager *manager;
-    QList<QContactLocalId> added;
-    QList<QContactLocalId> changed;
+    QList<TestExpectation> mExpectations;
+    void verify(TestExpectation::Event, const QList<QContactLocalId>&);
 };
 
 #endif

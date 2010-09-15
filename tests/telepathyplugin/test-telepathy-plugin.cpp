@@ -28,13 +28,22 @@
 #include <qcontactfilters.h>
 #include <qtcontacts.h>
 
-#include "lib/simple-account-manager.h"
-#include "lib/simple-account.h"
-#include "lib/contacts-conn.h"
+#include <TelepathyQt4/PendingReady>
 
-#define ACCOUNT_PATH TP_ACCOUNT_OBJECT_PATH_BASE "what/ev/er"
+#include <telepathy-glib/svc-account-manager.h>
+#include <telepathy-glib/svc-account.h>
 
-TestTelepathyPlugin::TestTelepathyPlugin(QObject *parent = 0) : Test(parent), manager(0)
+#define ACCOUNT_PATH TP_ACCOUNT_OBJECT_PATH_BASE "fakecm/fakeproto/UnitTest"
+#define BUS_NAME "org.maemo.Contactsd.UnitTest"
+
+void TestExpectation::verify(QContact &contact)
+{
+    if (!alias.isNull()) {
+        QCOMPARE(alias, contact.displayLabel());
+    }
+}
+
+TestTelepathyPlugin::TestTelepathyPlugin(QObject *parent) : Test(parent), mContactManager(0)
 {
 }
 
@@ -48,107 +57,93 @@ void TestTelepathyPlugin::initTestCase()
     dbus_g_bus_get(DBUS_BUS_STARTER, 0);
 
     /* Create a QContactManager and track added/changed contacts */
-    manager = new QContactManager(QLatin1String("tracker"));
-    connect(manager, SIGNAL(contactsAdded(const QList<QContactLocalId>&)), this, SLOT(contactsAdded(const QList<QContactLocalId>&)));
-    connect(manager, SIGNAL(contactsChanged(const QList<QContactLocalId>&)), this, SLOT(contactsChanged(const QList<QContactLocalId>&)));
-
-    /* Create a fake AccountManager */
-    TpDBusDaemon *dbus = tp_tests_dbus_daemon_dup_or_die();
-    mAccountManagerService = tp_tests_object_new_static_class(TP_TESTS_TYPE_SIMPLE_ACCOUNT_MANAGER, NULL);
-    tp_dbus_daemon_register_object(dbus, TP_ACCOUNT_MANAGER_OBJECT_PATH, mAccountManagerService);
-
-    /* Create a fake Account */
-    mAccountService = tp_tests_object_new_static_class(TP_TESTS_TYPE_SIMPLE_ACCOUNT, NULL);
-    tp_dbus_daemon_register_object(dbus, ACCOUNT_PATH, mAccountService);
+    mContactManager = new QContactManager(QLatin1String("tracker"));
+    connect(mContactManager,
+            SIGNAL(contactsAdded(const QList<QContactLocalId>&)),
+            SLOT(contactsAdded(const QList<QContactLocalId>&)));
+    connect(mContactManager,
+            SIGNAL(contactsChanged(const QList<QContactLocalId>&)),
+            SLOT(contactsChanged(const QList<QContactLocalId>&)));
 
     /* Create a fake Connection */
-    gchar *name;
-    gchar *connPath;
-    GError *error = 0;
-
-    mConnService = TP_TESTS_CONTACTS_CONNECTION(g_object_new(
+    mConnService = TP_BASE_CONNECTION(g_object_new(
             TP_TESTS_TYPE_CONTACTS_CONNECTION,
-            "account", "me@example.com",
-            "protocol", "simple",
+            "account", "fakeaccount",
+            "protocol", "fakeproto",
             NULL));
     QVERIFY(mConnService != 0);
-    QVERIFY(tp_base_connection_register(TP_BASE_CONNECTION(mConnService), "contacts", &name,
-                &connPath, &error));
-    QVERIFY(error == 0);
+    QVERIFY(tp_base_connection_register(mConnService, "fakecm", NULL, NULL, NULL));
 
-    QVERIFY(name != 0);
-    QVERIFY(connPath != 0);
-
-    mConnName = QLatin1String(name);
-    mConnPath = QLatin1String(connPath);
-
-    g_free(name);
-    g_free(connPath);
-
-    mConn = Connection::create(mConnName, mConnPath);
-
-    QCOMPARE(mConn->isReady(), false);
-    QVERIFY(connect(mConn->requestConnect(),
-                    SIGNAL(finished(Tp::PendingOperation*)),
-                    SLOT(expectSuccessfulCall(Tp::PendingOperation*))));
-    QCOMPARE(mLoop->exec(), 0);
-    QCOMPARE(mConn->isReady(), true);
-
-    QCOMPARE(mConn->status(), Connection::StatusConnected);
-
-    /* Make the fake AccountManager announce the fake Account */
-    /* FIXME: TpTestsSimpleAccountManager should have an API for this */
-    tp_svc_account_manager_emit_account_validity_changed(mAccountManagerService, ACCOUNT_PATH, TRUE);
-
-    /* Make the fake Account announce the fake Connection */
-    /* FIXME: TpTestsSimpleAccount should have an API for this */
-    GHashTable *change = tp_asv_new(NULL, NULL);
-    tp_asv_set_object_path(change, "Connection", mConn->objectPath());
-    tp_asv_set_uint32 (change, "ConnectionStatus",
-        TP_CONNECTION_STATUS_CONNECTED);
-    tp_asv_set_uint32 (change, "ConnectionStatusReason",
-        TP_CONNECTION_STATUS_REASON_REQUESTED);
-    tp_svc_account_emit_account_property_changed (mAccountService, change);
-    g_hash_table_unref(change);
-
+    /* Request the UnitTest bus name, so the AM knows we are ready to go */
+    TpDBusDaemon *dbus = tp_dbus_daemon_dup (NULL);
+    QVERIFY(tp_dbus_daemon_request_name (dbus, BUS_NAME, FALSE, NULL));
     g_object_unref (dbus);
 }
 
 void TestTelepathyPlugin::testTrackerImport()
 {
+    TestContactListManager *listManager =
+        tp_tests_contacts_connection_get_contact_list_manager(
+            TP_TESTS_CONTACTS_CONNECTION(mConnService));
+
     /* Create a new contact in fake CM */
     TpHandleRepoIface *serviceRepo =
         tp_base_connection_get_handles(mConnService, TP_HANDLE_TYPE_CONTACT);
-    UIntList handles = UIntList() << tp_handle_ensure(serviceRepo, "alice", NULL, NULL);
-    QVERIFY(handles[0] != 0);
+
+    TpHandle handle = tp_handle_ensure(serviceRepo, "alice", NULL, NULL);
+    QVERIFY(handle != 0);
 
     /* Set some info on the contact */
-    const char *aliases[] = { "Alice" };
+    const char *alias = "Alice";
     tp_tests_contacts_connection_change_aliases(
         TP_TESTS_CONTACTS_CONNECTION (mConnService),
-        3, handles.toVector().constData(),
-        aliases);
+        1, &handle, &alias);
 
-    /* TODO: Add the contact in ContactList, so contactsd should push it to tracker */
+    /* Add the contact in ContactList, so contactsd should push it to tracker */
+    test_contact_list_manager_add_to_list(listManager, NULL,
+        TEST_CONTACT_LIST_SUBSCRIBE, handle, "please", NULL);
+
+    TestExpectation e;
+    e.event = TestExpectation::Added;
+    e.accountUri = QString("alice");
+    e.alias = QString("Alice");
+    mExpectations.append(e);
+
+    /* Wait for the contact to appear */
     QCOMPARE(mLoop->exec(), 0);
+    qDebug() << "All expectations passed";
+}
 
-    /* Verify the contact saved in Tracker has correct information */
-    QContact contact = manager->contact(added[0]);
-    QCOMPARE(contact.displayLabel(), aliases[0]);
+void TestTelepathyPlugin::verify(TestExpectation::Event event,
+    const QList<QContactLocalId> &contactIds)
+{
+    foreach (QContactLocalId localId, contactIds) {
+        QContact contact = mContactManager->contact(localId);
+
+        for (int i = 0; i < mExpectations.count(); i++) {
+            TestExpectation e = mExpectations[i];
+            QString accountUri = contact.detail<QContactOnlineAccount>().accountUri();
+            if (e.event == event && e.accountUri == accountUri) {
+                e.verify(contact);
+                mExpectations.removeAt(i);
+                break;
+            }
+        }
+    }
+
+    if (mExpectations.isEmpty()) {
+        mLoop->exit(0);
+    }
 }
 
 void TestTelepathyPlugin::contactsAdded(const QList<QContactLocalId>& contactIds)
 {
-    qDebug() << Q_FUNC_INFO << contactIds;
-    added.append(contactIds);
-    mLoop->exit(0);
+    verify(TestExpectation::Added, contactIds);
 }
 
 void TestTelepathyPlugin::contactsChanged(const QList<QContactLocalId>& contactIds)
 {
-    qDebug() << Q_FUNC_INFO << contactIds;
-    changed.append(contactIds);
-    mLoop->exit(0);
+    verify(TestExpectation::Changed, contactIds);
 }
 
 void TestTelepathyPlugin::cleanupTestCase()
@@ -157,22 +152,7 @@ void TestTelepathyPlugin::cleanupTestCase()
     g_object_unref(mAccountService);
     g_object_unref(mConnService);
 
-    if (mConn) {
-        // Disconnect and wait for the readiness change
-        QVERIFY(connect(mConn->requestDisconnect(),
-                    SIGNAL(finished(Tp::PendingOperation*)),
-                    SLOT(expectSuccessfulCall(Tp::PendingOperation*))));
-        QCOMPARE(mLoop->exec(), 0);
-
-        if (mConn->isValid()) {
-            QVERIFY(connect(mConn.data(),
-                        SIGNAL(invalidated(Tp::DBusProxy *, QString, QString)),
-                        SLOT(expectConnInvalidated())));
-            QCOMPARE(mLoop->exec(), 0);
-        }
-    }
-
-    delete manager;
+    delete mContactManager;
 
     cleanupTestCaseImpl();
 }

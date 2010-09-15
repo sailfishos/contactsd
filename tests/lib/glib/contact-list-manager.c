@@ -1309,7 +1309,10 @@ test_contact_list_manager_add_to_list (TestContactListManager *self,
                                           GError **error)
 {
   TpIntSet *set;
-  TestContactList *stored = self->priv->lists[TEST_CONTACT_LIST_STORED];
+  TestContactList *stored = ensure_list (self, TEST_CONTACT_LIST_STORED);
+
+  if (channel == NULL)
+      channel = G_OBJECT (ensure_list (self, list));
 
   switch (list)
     {
@@ -1451,6 +1454,9 @@ test_contact_list_manager_remove_from_list (TestContactListManager *self,
                                                GError **error)
 {
   TpIntSet *set;
+
+  if (channel == NULL)
+      channel = G_OBJECT (ensure_list (self, list));
 
   switch (list)
     {

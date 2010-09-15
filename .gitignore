@@ -27,6 +27,8 @@ tests/dbus-1/session.conf
 *~
 
 tests/dbus-1/session.conf
+tests/dbus-1/services/org.freedesktop.Telepathy.AccountManager.service
 tests/contactsd/test-contactsd
-tests/telepathyplugin/test-telepathy-plugin
+tests/telepathyplugin/telepathyplugin
+tests/account-manager/test-account-manager
 
