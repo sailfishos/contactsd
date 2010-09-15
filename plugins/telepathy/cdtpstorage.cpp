@@ -153,16 +153,18 @@ void CDTpStorage::syncAccountContacts(CDTpAccount *accountWrapper,
         addContactCapabilitiesInfoToQuery(updateQuery, imAddress, contactWrapper);
         addContactAvatarInfoToQuery(updateQuery, imAddress, contactWrapper);
     }
+
+    foreach (CDTpContact *contactWrapper, contactsRemoved) {
+        addContactAvatarInfoToQuery(updateQuery, accountWrapper, contactWrapper);
+    }
+
     if (!contactsAdded.isEmpty()) {
         ::tracker()->executeQuery(updateQuery);
     }
 
-    Q_UNUSED(contactsRemoved);
-    // TODO remove contacts in contactsRemoved from tracker
-    // RDFSelect removalQuery;
-    // foreach (CDTpContact *contactWrapper, contactsRemoved) {
-    //
-    // }
+    if (!contactsRemoved.isEmpty()) {
+        ::tracker()->executeQuery(updateQuery);
+    }
 }
 
 void CDTpStorage::syncAccountContact(CDTpAccount *accountWrapper,
@@ -394,6 +396,23 @@ void CDTpStorage::addContactAvatarInfoToQuery(RDFUpdate &query,
     if (!contact->avatarToken().isEmpty()) {
         query.addInsertion(RDFStatement(imAddress, nco::imAvatar::iri(), dataObject));
     }
+}
+
+void CDTpStorage::addContactRemoveInfoToQuery(RDFUpdate &query,
+        CDTpAccount *accountWrapper,
+        CDTpContact *contactWrapper)
+{
+    Tp::ContactPtr contact = contactWrapper->contact();
+    QString accountObjectPath = accountWrapper->account()->objectPath();
+    const QString id = contact->id();
+    const QString localId = contactLocalId(accountObjectPath, id);
+    const RDFVariable imContact(contactIri(localId));
+    const RDFVariable imAddress(contactImAddress(accountObjectPath, id));
+    const RDFVariable imAccount(QUrl(QString("telepathy:%1").arg(accountObjectPath)));
+
+    query.addDeletion(imContact, nco::PersonContact::iri());
+    query.addDeletion(imAccount, nco::hasIMContact::iri(), imAddress);
+    query.addDeletion(imAddress, nco::IMAddress::iri());
 }
 
 QString CDTpStorage::contactLocalId(const QString &contactAccountObjectPath,

@@ -76,6 +76,9 @@ private:
     void addContactAvatarInfoToQuery(RDFUpdate &query,
             const RDFVariable &imAddress,
             CDTpContact *contactWrapper);
+    void addContactRemoveInfoToQuery(RDFUpdate &query,
+            CDTpAccount *accountWrapper,
+            CDTpContact *contactWrapper);
 
     QString contactLocalId(const QString &contactAccountObjectPath,
             const QString &contactId) const;
