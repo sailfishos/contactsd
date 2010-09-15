@@ -35,6 +35,8 @@
 
 using namespace SopranoLive;
 
+class CDTpStorageSelectQuery;
+
 class CDTpStorage : public QObject
 {
     Q_OBJECT
@@ -54,7 +56,9 @@ public Q_SLOTS:
             CDTpContact *contactWrapper, CDTpContact::Changes changes);
     void setAccountContactsOffline(CDTpAccount *accountWrapper);
     void removeAccount(const QString &accountObjectPath);
-    void onAccountRemovalModelUpdated();
+
+private Q_SLOTS:
+    void onAccountRemovalSelectQueryFinished(CDTpStorageSelectQuery *query);
 
 private:
     bool saveAccountAvatar(const QByteArray &data, const QString &mimeType,
@@ -90,7 +94,26 @@ private:
     void updateAvatar(RDFUpdate &query, const QUrl &url,
             const QUrl &fileName,
             bool deleteOnly);
-    LiveNodes mRemovalNodes;
+};
+
+class CDTpStorageSelectQuery : public QObject
+{
+    Q_OBJECT
+
+public:
+    CDTpStorageSelectQuery(const RDFSelect &select, QObject *parent = 0);
+    ~CDTpStorageSelectQuery();
+
+    LiveNodes reply() const { return mReply; }
+
+Q_SIGNALS:
+    void finished(CDTpStorageSelectQuery *queryWrapper);
+
+private Q_SLOTS:
+    void onModelUpdated();
+
+private:
+    LiveNodes mReply;
 };
 
 #endif // CDTPSTORAGE_H

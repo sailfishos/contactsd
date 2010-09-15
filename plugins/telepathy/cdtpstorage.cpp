@@ -250,21 +250,21 @@ void CDTpStorage::removeAccount(const QString &accountObjectPath)
     select.addColumn("accountPath", imAccount);
     select.addColumn("address", imAddress);
 
-    mRemovalNodes = ::tracker()->modelQuery(select);
-    connect(mRemovalNodes.model(),
-            SIGNAL(modelUpdated()),
-            SLOT(onAccountRemovalModelUpdated()));
+    CDTpStorageSelectQuery *query = new CDTpStorageSelectQuery(select, this);
+    connect(query,
+            SIGNAL(finished(CDTpStorageSelectQuery *)),
+            SLOT(onAccountRemovalSelectQueryFinished(CDTpStorageSelectQuery *)));
 }
 
-void CDTpStorage::onAccountRemovalModelUpdated()
+void CDTpStorage::onAccountRemovalSelectQueryFinished(CDTpStorageSelectQuery *query)
 {
     RDFUpdate update;
 
-    for (int i = 0 ; i < mRemovalNodes->rowCount() ; i ++) {
-
-        const QString imTrackerAddress = mRemovalNodes->index(i, 1).data().toString();
-        const QString imTrackerLocalId = mRemovalNodes->index(i, 2).data().toString();
-        const QString imTrackerAccountPath = mRemovalNodes->index(i, 3).data().toString();
+    LiveNodes removalNodes = query->reply();
+    for (int i = 0; i < removalNodes->rowCount(); ++i) {
+        const QString imTrackerAddress = removalNodes->index(i, 1).data().toString();
+        const QString imTrackerLocalId = removalNodes->index(i, 2).data().toString();
+        const QString imTrackerAccountPath = removalNodes->index(i, 3).data().toString();
 
         const QString accountObjectPath(imTrackerAccountPath.split(":").value(1));
 
@@ -275,10 +275,11 @@ void CDTpStorage::onAccountRemovalModelUpdated()
         update.addDeletion(imContact, nco::PersonContact::iri());
         update.addDeletion(imAddress, nco::IMAddress::iri());
         update.addDeletion(imAccount, nco::IMAccount::iri());
-
     }
 
     ::tracker()->executeQuery(update);
+
+    query->deleteLater();
 }
 
 bool CDTpStorage::saveAccountAvatar(const QByteArray &data, const QString &mimeType,
@@ -511,3 +512,22 @@ void CDTpStorage::updateAvatar(RDFUpdate &query,
     }
 }
 
+
+CDTpStorageSelectQuery::CDTpStorageSelectQuery(const RDFSelect &select,
+        QObject *parent)
+    : QObject(parent)
+{
+    mReply = ::tracker()->modelQuery(select);
+    connect(mReply.model(),
+            SIGNAL(modelUpdated()),
+            SLOT(onModelUpdated()));
+}
+
+CDTpStorageSelectQuery::~CDTpStorageSelectQuery()
+{
+}
+
+void CDTpStorageSelectQuery::onModelUpdated()
+{
+    emit finished(this);
+}
