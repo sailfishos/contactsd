@@ -1,25 +1,23 @@
-TARGET = test-contactsd
-
-QT -= gui
-test.depends = all
-QMAKE_EXTRA_TARGETS += test
+include($$TOP_SOURCEDIR/check.pri)
 
 CONFIG += test
+
+QT -= gui
 QT += testlib
 QT += dbus
 
-SOURCE_DIR = $$PWD/../../src
+TARGET = test-contactsd
 
-INCLUDEPATH += $$SOURCE_DIR
+INCLUDEPATH += $$TOP_SOURCEDIR/src
 
 HEADERS += test-contactsd.h \
-           $$SOURCE_DIR/contactsd.h \
-	   $$SOURCE_DIR/importnotifierdbusadaptor.h \
-           $$SOURCE_DIR/contactsdpluginloader.h
+    $$TOP_SOURCEDIR/src/contactsd.h \
+    $$TOP_SOURCEDIR/src/importnotifierdbusadaptor.h \
+    $$TOP_SOURCEDIR/src/contactsdpluginloader.h
 
 SOURCES += test-contactsd.cpp \
-           $$SOURCE_DIR/contactsd.cpp \
-	   $$SOURCE_DIR/importnotifierdbusadaptor.cpp  \
-           $$SOURCE_DIR/contactsdpluginloader.cpp
+    $$TOP_SOURCEDIR/src/contactsd.cpp \
+    $$TOP_SOURCEDIR/src/importnotifierdbusadaptor.cpp  \
+    $$TOP_SOURCEDIR/src/contactsdpluginloader.cpp
 
-DEFINES += CONTACTSD_PLUGINS_DIR=\\\"/usr/lib/contactsd-1.0/plugins\\\"
+DEFINES += CONTACTSD_PLUGINS_DIR=\\\"$$LIBDIR/contactsd-1.0/plugins\\\"

@@ -22,16 +22,12 @@
 
 #include <QObject>
 #include <QtTest/QtTest>
+
 #include <contactsd.h>
-
-
-/**
- * Contactsd tests
- */
 
 class TestContactsd : public QObject
 {
-Q_OBJECT
+    Q_OBJECT
 
 private Q_SLOTS:
     void initTestCase();
@@ -42,7 +38,7 @@ private Q_SLOTS:
     void cleanupTestCase();
 
 private:
-    Contactsd* daemon;
+    Contactsd *mDaemon;
 };
 
 #endif // TEST_CONTACTSD_H
