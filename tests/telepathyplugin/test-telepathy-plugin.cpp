@@ -92,7 +92,6 @@ void TestTelepathyPlugin::testTrackerImport()
     /* Create a new contact in fake CM */
     TpHandleRepoIface *serviceRepo =
         tp_base_connection_get_handles(mConnService, TP_HANDLE_TYPE_CONTACT);
-
     TpHandle handle = tp_handle_ensure(serviceRepo, "alice", NULL, NULL);
     QVERIFY(handle != 0);
 
