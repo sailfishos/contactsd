@@ -5,8 +5,13 @@ tmpdir=$(mktemp -d)
 export XDG_DATA_HOME=$tmpdir
 export XDG_CACHE_HOME=$tmpdir
 export XDG_CONFIG_HOME=$tmpdir
+export XDG_CACHE_HOME=$tmpdir
 
 tracker-control -rs #2>&1 >/dev/null
+/usr/lib/tracker/tracker-store&
+/usr/bin/contactsd&
+
+sleep 5
 
 $1
 result=$?

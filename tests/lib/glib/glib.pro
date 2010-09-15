@@ -11,9 +11,21 @@ PKGCONFIG += telepathy-glib
 TARGET = testsglib
 
 SOURCES += \
-    contact-list-conn.c \
-    contact-list-conn.h \
+    contacts-conn.c \
+    contacts-conn.h \
     contact-list-manager.c \
     contact-list-manager.h \
     contact-list.c \
-    contact-list.h
+    contact-list.h \
+    debug.h \
+    simple-account.c \
+    simple-account.h \
+    simple-account-manager.c \
+    simple-account-manager.h \
+    simple-conn.c \
+    simple-conn.h \
+    textchan-null.c \
+    textchan-null.h \
+    util.c \
+    util.h
+

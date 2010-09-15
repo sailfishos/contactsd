@@ -26,3 +26,9 @@ tests/dbus-1/session.conf
 .*.sw?
 *~
 
+tests/dbus-1/session.conf
+tests/dbus-1/services/org.freedesktop.Telepathy.AccountManager.service
+tests/contactsd/test-contactsd
+tests/telepathyplugin/telepathyplugin
+tests/account-manager/fake-account-manager
+

@@ -17,54 +17,32 @@
 **
 ****************************************************************************/
 
-#ifndef UT_TRACKERSINK_H
-#define UT_TRACKERSINK_H
+#ifndef TEST_CONTACTSD_H
+#define TEST_CONTACTSD_H
 
 #include <QObject>
 #include <QtTest/QtTest>
-#include <QString>
+#include <contactsd.h>
 
-#include <QContactManager>
-
-#include <tpcontactstub.h>
-
-QTM_USE_NAMESPACE
-
-class TrackerSink;
 
 /**
- * Telepathy plugin's TrackerSink unit test
+ * Contactsd tests
  */
-class ut_trackersink : public QObject
+
+class TestContactsd : public QObject
 {
 Q_OBJECT
-public:
-    ut_trackersink();
 
 private Q_SLOTS:
     void initTestCase();
-    void cleanupTestCase();
-    void testSinkToStorage();
-    void testOnSimplePresenceChanged();
 
-protected Q_SLOTS:
-    void contactsAdded(const QList<QContactLocalId>& contactIds);
-    void contactsChanged(const QList<QContactLocalId>& contactIds);
+    void testLoadAllPlugins();
+    void testLoadPlugins();
+
+    void cleanupTestCase();
 
 private:
-    TrackerSink* const sink;
-    QContactManager *manager;
-    TpContactStub *telepathier;
-    unsigned int contactInTrackerUID;
-    QList<QContactLocalId> added;
-    QList<QContactLocalId> changed;
+    Contactsd* daemon;
 };
 
-class Slots: public QObject
-{
-    Q_OBJECT
-public:
-    QList<QContact> contacts;
-};
-
-#endif
+#endif // TEST_CONTACTSD_H

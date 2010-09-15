@@ -379,6 +379,7 @@ static TestContactList *ensure_list (TestContactListManager *self,
 static gboolean
 receive_contact_lists (gpointer p)
 {
+#if 0
   TestContactListManager *self = p;
   TpHandle handle, cambridge, montreal, francophones;
   ExampleContactDetails *d;
@@ -628,6 +629,7 @@ receive_contact_lists (gpointer p)
   g_assert (g_hash_table_size (self->priv->queued_requests) == 0);
   g_hash_table_destroy (self->priv->queued_requests);
   self->priv->queued_requests = NULL;
+#endif
 
   return FALSE;
 }
@@ -1309,7 +1311,10 @@ test_contact_list_manager_add_to_list (TestContactListManager *self,
                                           GError **error)
 {
   TpIntSet *set;
-  TestContactList *stored = self->priv->lists[TEST_CONTACT_LIST_STORED];
+  TestContactList *stored = ensure_list (self, TEST_CONTACT_LIST_STORED);
+
+  if (channel == NULL)
+      channel = G_OBJECT (ensure_list (self, list));
 
   switch (list)
     {
@@ -1451,6 +1456,9 @@ test_contact_list_manager_remove_from_list (TestContactListManager *self,
                                                GError **error)
 {
   TpIntSet *set;
+
+  if (channel == NULL)
+      channel = G_OBJECT (ensure_list (self, list));
 
   switch (list)
     {
