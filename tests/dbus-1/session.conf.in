@@ -14,6 +14,10 @@
 
   <servicedir>@TOP_BUILDDIR@/tests/dbus-1/services/</servicedir>
 
+  <!-- Allow standard service dirs as well so we allow tracker-store to run
+       properly -->
+  <standard_session_servicedirs />
+
   <policy context="default">
     <!-- Allow everything to be sent -->
     <allow send_destination="*" eavesdrop="true"/>
