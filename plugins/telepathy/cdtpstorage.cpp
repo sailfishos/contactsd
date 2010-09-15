@@ -390,10 +390,8 @@ void CDTpStorage::addContactAvatarInfoToQuery(RDFUpdate &query,
     RDFVariable dataObject(QUrl::fromLocalFile(contact->avatarData().fileName));
 
     query.addDeletion(imAddress, nco::imAvatar::iri());
-    query.addDeletion(dataObject, nie::DataObject::iri());
 
     if (!contact->avatarToken().isEmpty()) {
-        query.addInsertion(RDFStatement(dataObject, rdf::type::iri(), nie::DataObject::iri()));
         query.addInsertion(RDFStatement(imAddress, nco::imAvatar::iri(), dataObject));
     }
 }
@@ -504,10 +502,8 @@ void CDTpStorage::updateAvatar(RDFUpdate &query,
     RDFVariable dataObject(fileName);
 
     query.addDeletion(imAddress, nco::imAvatar::iri());
-    query.addDeletion(dataObject, nie::DataObject::iri());
 
     if (!deleteOnly) {
-        query.addInsertion(RDFStatement(dataObject, rdf::type::iri(), nie::DataObject::iri()));
         query.addInsertion(RDFStatement(imAddress, nco::imAvatar::iri(), dataObject));
     }
 }
