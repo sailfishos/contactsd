@@ -78,8 +78,8 @@ void TestTelepathyPlugin::initTestCase()
         TP_CONNECTION_STATUS_REASON_NONE_SPECIFIED);
 
     /* Request the UnitTest bus name, so the AM knows we are ready to go */
-    TpDBusDaemon *dbus = tp_dbus_daemon_dup (NULL);
-    QVERIFY(tp_dbus_daemon_request_name (dbus, BUS_NAME, FALSE, NULL));
+    TpDBusDaemon *dbus = tp_dbus_daemon_dup(NULL);
+    QVERIFY(tp_dbus_daemon_request_name(dbus, BUS_NAME, FALSE, NULL));
     g_object_unref (dbus);
 }
 
@@ -151,6 +151,10 @@ void TestTelepathyPlugin::contactsChanged(const QList<QContactLocalId>& contactI
 
 void TestTelepathyPlugin::cleanupTestCase()
 {
+    tp_base_connection_change_status(mConnService,
+        TP_CONNECTION_STATUS_DISCONNECTED,
+        TP_CONNECTION_STATUS_REASON_REQUESTED);
+
     g_object_unref(mAccountManagerService);
     g_object_unref(mAccountService);
     g_object_unref(mConnService);
