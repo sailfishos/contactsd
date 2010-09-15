@@ -73,6 +73,9 @@ void TestTelepathyPlugin::initTestCase()
             NULL));
     QVERIFY(mConnService != 0);
     QVERIFY(tp_base_connection_register(mConnService, "fakecm", NULL, NULL, NULL));
+    tp_base_connection_change_status(mConnService,
+        TP_CONNECTION_STATUS_CONNECTED,
+        TP_CONNECTION_STATUS_REASON_NONE_SPECIFIED);
 
     /* Request the UnitTest bus name, so the AM knows we are ready to go */
     TpDBusDaemon *dbus = tp_dbus_daemon_dup (NULL);
