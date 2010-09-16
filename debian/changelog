@@ -1,9 +1,23 @@
 
-contactsd (0.5.35~2) UNRELEASED; urgency=low
+contactsd (0.5.35-4) unstable; urgency=low
 
-  *
+  * Changes: MAKE IT ACTUALLY WORK INSTEAD OF BEING CRAP, so All new factored contactsd \0/
+  * Changes: Plug-in API Updated: Adds bool hasActiveImports() const
+  * Changes: New Re factored Telepathy plugin which is faster and more reliable
+  * Changes: Better Remote Avatar handling
+  * Changes: All tracker queries are Async
+  * Changes: New build scripts
+  * Changes: New more flexible unit test infrastructure
+  * Changes: Use libtelepathy-qt4 avatar cache
+  * Changes: Well formatted code and properly defined HACKING Guideline.
+  * Changes: Support loading Plug-ins from custom paths defined by CONTACTSD_PLUGINS_DIRS
+  * Changes: Batch Saving/removing of Contacts
+  * Fixes: NB#190289 - Change in presence status and status message is not reflected for an imported Gtalk contact
+  * Fixes: NB#191514 - Recently configured gtalk accounts contacts are shown in the contacts list with default avatars and without presence icons
+  * Fixes: NB#183235 - All the contacts does not get imported for a configured gtalk account
+  * Fixes: NB#192036 - Newly added contact from remote machine is displayed in contacts list with the name as it's gmail id instead of it's gtalk name
 
- -- Mathias Hasselmann <mathias@openismus.com>  Tue, 07 Sep 2010 10:39:14 +0200
+ -- Siraj Razick <siraj.razick@collabora.co.uk>  Thu, 16 Sep 2010 14:20:34 +0200
 
 contactsd (0.5.35-1) unstable; urgency=low
 
