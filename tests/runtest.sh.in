@@ -10,11 +10,14 @@ tracker-control -rs #2>&1 >/dev/null
 
 export CONTACTSD_PLUGINS_DIRS=@TOP_BUILDDIR@/plugins/telepathy
 @TOP_BUILDDIR@/src/contactsd &
+pid=$!
 
 sleep 5
 
 $1
 result=$?
+
+kill $pid
 
 tracker-control -r #2>&1 >/dev/null
 
