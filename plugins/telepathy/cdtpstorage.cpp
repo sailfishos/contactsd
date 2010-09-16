@@ -274,9 +274,9 @@ void CDTpStorage::onAccountRemovalSelectQueryFinished(CDTpStorageSelectQuery *qu
         const RDFVariable imAddress(contactImAddress(accountObjectPath, imTrackerAddress));
         const RDFVariable imAccount(QUrl(QString("telepathy:%1").arg(accountObjectPath)));
 
-        update.addDeletion(imContact, nco::PersonContact::iri());
-        update.addDeletion(imAddress, nco::IMAddress::iri());
-        update.addDeletion(imAccount, nco::IMAccount::iri());
+        update.addDeletion(imContact, rdf::type::iri(), nco::PersonContact::iri());
+        update.addDeletion(imAddress, rdf::type::iri(), nco::IMAddress::iri());
+        update.addDeletion(imAccount, rdf::type::iri(), nco::IMAccount::iri());
     }
 
     ::tracker()->executeQuery(update);
@@ -410,9 +410,9 @@ void CDTpStorage::addContactRemoveInfoToQuery(RDFUpdate &query,
     const RDFVariable imAddress(contactImAddress(accountObjectPath, id));
     const RDFVariable imAccount(QUrl(QString("telepathy:%1").arg(accountObjectPath)));
 
-    query.addDeletion(imContact, nco::PersonContact::iri());
+    query.addDeletion(imContact, rdf::type::iri(), nco::PersonContact::iri());
     query.addDeletion(imAccount, nco::hasIMContact::iri(), imAddress);
-    query.addDeletion(imAddress, nco::IMAddress::iri());
+    query.addDeletion(imAddress, rdf::type::iri(), nco::IMAddress::iri());
 }
 
 QString CDTpStorage::contactLocalId(const QString &contactAccountObjectPath,
