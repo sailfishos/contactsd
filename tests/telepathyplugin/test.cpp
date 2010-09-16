@@ -78,7 +78,7 @@ void Test::expectFailure(PendingOperation *op)
     }
 
     mLoop->exit(0);
-}  
+}
 
 void Test::processDBusQueue(Tp::DBusProxy *proxy)
 {
