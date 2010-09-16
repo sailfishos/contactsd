@@ -105,25 +105,30 @@ TOP_SOURCEDIR = \$\$quote($TOP_SOURCEDIR)
 TOP_BUILDDIR = \$\$quote($TOP_BUILDDIR)
 EOF
 
-# pre-process .in files
-cat $TOP_SOURCEDIR/contactsd-1.0.pc.in | sed -e "s,@PREFIX@,${PREFIX},g" \
-    > $TOP_BUILDDIR/contactsd-1.0.pc
-
-mkdir -p $TOP_BUILDDIR/tests
-cat $TOP_SOURCEDIR/tests/runtest.sh.in | sed -e "s,@TOP_BUILDDIR@,${TOP_BUILDDIR},g" \
-    > $TOP_BUILDDIR/tests/runtest.sh
-
-mkdir -p $TOP_BUILDDIR/tests/dbus-1
-cat $TOP_SOURCEDIR/tests/dbus-1/session.conf.in | sed -e "s,@TOP_BUILDDIR@,${TOP_BUILDDIR},g" \
-    > $TOP_BUILDDIR/tests/dbus-1/session.conf
-
-mkdir -p $TOP_BUILDDIR/tests/dbus-1/services
-cat $TOP_SOURCEDIR/tests/dbus-1/services/org.freedesktop.Telepathy.AccountManager.service.in | sed -e "s,@TOP_BUILDDIR@,${TOP_BUILDDIR},g" \
-    > $TOP_BUILDDIR/tests/dbus-1/services/org.freedesktop.Telepathy.AccountManager.service
+infiles="contactsd-1.0.pc \
+         tests/runtest.sh \
+         tests/dbus-1/session.conf \
+         tests/dbus-1/services/org.freedesktop.Telepathy.AccountManager.service"
+for infile in $infiles; do
+    echo "Generating $infile"
+    # pre-process .in files
+    mkdir -p `dirname $infile`
+    cat $TOP_SOURCEDIR/$infile.in |
+        sed -e "s,@VERSION@,${VERSION},g" \
+            -e "s,@PREFIX@,${PREFIX},g" \
+            -e "s,@BINDIR@,${BINDIR},g" \
+            -e "s,@LIBDIR@,${LIBDIR},g" \
+            -e "s,@INCLUDEDIR@,${INCLUDEDIR},g" \
+            -e "s,@LOCALSTATEDIR@,${LOCALSTATEDIR},g" \
+            -e "s,@TOP_SOURCEDIR@,${TOP_SOURCEDIR},g" \
+            -e "s,@TOP_BUILDDIR@,${TOP_BUILDDIR},g" \
+        > $TOP_BUILDDIR/$infile
+done
 
 # run qmake
 qmake $relpath/contactsd.pro
 
+echo
 echo "contactsd is now configure for building. Just run 'make'."
 echo "Once everything is built, you must run 'make install'."
 echo "contactsd will be installed into $PREFIX"
