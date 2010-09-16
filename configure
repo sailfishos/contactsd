@@ -50,10 +50,10 @@ while [ "$#" -gt 0 ]; do
         echo "                            [/usr]"
         echo
         echo "Fine tuning of the installation directories:"
-        echo "    --bindir=DIR            user executables [PREFIX/bin]"
-        echo "    --libdir=DIR            object code libraries [PREFIX/lib]"
-        echo "    --includedir=DIR        C header files [PREFIX/include]"
-        echo "    --localstatedir=DIR     modifiable single-machine data [/var]"
+        echo "    --bindir DIR            user executables [PREFIX/bin]"
+        echo "    --libdir DIR            object code libraries [PREFIX/lib]"
+        echo "    --includedir DIR        C header files [PREFIX/include]"
+        echo "    --localstatedir DIR     modifiable single-machine data [/var]"
         echo
         exit
         ;;
