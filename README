@@ -16,6 +16,9 @@ Building contactsd requires:
   QtTracker
   QtMobility Contacts module
 
+Running the tests requires:
+  tracker
+
 Hacking
 =======
 
