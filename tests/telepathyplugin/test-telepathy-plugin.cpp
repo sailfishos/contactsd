@@ -36,10 +36,46 @@
 #define ACCOUNT_PATH TP_ACCOUNT_OBJECT_PATH_BASE "fakecm/fakeproto/UnitTest"
 #define BUS_NAME "org.maemo.Contactsd.UnitTest"
 
-void TestExpectation::verify(QContact &contact)
+void TestExpectation::verify(QContact &contact) const
 {
-    if (!alias.isNull()) {
-        QCOMPARE(alias, contact.displayLabel());
+    QString uri = contact.detail<QContactOnlineAccount>().accountUri();
+    QCOMPARE(uri, accountUri);
+
+    QCOMPARE(contact.displayLabel(), alias);
+
+    QContactPresence::PresenceState state = contact.detail<QContactPresence>().presenceState();
+    switch (state) {
+    case QContactPresence::PresenceUnknown:
+        QCOMPARE(presence, TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN);
+        break;
+    case QContactPresence::PresenceAvailable:
+        QCOMPARE(presence, TP_TESTS_CONTACTS_CONNECTION_STATUS_AVAILABLE);
+        break;
+    case QContactPresence::PresenceHidden:
+        /* FIXME: Hidden is not in the enum */
+        QCOMPARE(presence, TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN);
+        break;
+    case QContactPresence::PresenceBusy:
+        QCOMPARE(presence, TP_TESTS_CONTACTS_CONNECTION_STATUS_BUSY);
+        break;
+    case QContactPresence::PresenceAway:
+        QCOMPARE(presence, TP_TESTS_CONTACTS_CONNECTION_STATUS_AWAY);
+        break;
+    case QContactPresence::PresenceExtendedAway:
+        /* FIXME: ExtendedAway is not in the enum */
+        QCOMPARE(presence, TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN);
+        break;
+    case QContactPresence::PresenceOffline:
+        QCOMPARE(presence, TP_TESTS_CONTACTS_CONNECTION_STATUS_OFFLINE);
+        break;
+    }
+
+    QString avatarFileName = contact.detail<QContactAvatar>().imageUrl().path();
+    if (avatarData.isEmpty()) {
+        QVERIFY(avatarFileName.isEmpty());
+    } else {
+        QFile file(avatarFileName);
+        QCOMPARE(file.readAll(), avatarData);
     }
 }
 
@@ -89,30 +125,65 @@ void TestTelepathyPlugin::testTrackerImport()
         tp_tests_contacts_connection_get_contact_list_manager(
             TP_TESTS_CONTACTS_CONNECTION(mConnService));
 
-    /* Create a new contact in fake CM */
+    /* Create a new contact "alice" */
     TpHandleRepoIface *serviceRepo =
         tp_base_connection_get_handles(mConnService, TP_HANDLE_TYPE_CONTACT);
     TpHandle handle = tp_handle_ensure(serviceRepo, "alice", NULL, NULL);
     QVERIFY(handle != 0);
 
-    /* Set some info on the contact */
+    /* Set alias to "Alice" */
     const char *alias = "Alice";
     tp_tests_contacts_connection_change_aliases(
         TP_TESTS_CONTACTS_CONNECTION (mConnService),
         1, &handle, &alias);
 
-    /* Add the contact in ContactList, so contactsd should push it to tracker */
+    /* Add Alice in the ContactList */
     test_contact_list_manager_add_to_list(listManager, NULL,
         TEST_CONTACT_LIST_SUBSCRIBE, handle, "please", NULL);
 
     TestExpectation e;
-    e.event = TestExpectation::Added;
+    e.event = TestExpectation::Changed; // FIXME: Should be Added
     e.accountUri = QString("alice");
     e.alias = QString("Alice");
+    e.presence = TP_TESTS_CONTACTS_CONNECTION_STATUS_AVAILABLE;
     mExpectations.append(e);
 
-    /* Wait for the contact to appear */
+    /* Wait for the scenario to happen */
     QCOMPARE(mLoop->exec(), 0);
+
+    /* Change the presence of Alice to busy */
+    TpTestsContactsConnectionPresenceStatusIndex presence =
+        TP_TESTS_CONTACTS_CONNECTION_STATUS_BUSY;
+    const gchar *message = "Making coffee";
+    tp_tests_contacts_connection_change_presences(
+        TP_TESTS_CONTACTS_CONNECTION (mConnService),
+        1, &handle, &presence, &message);
+
+    e.event = TestExpectation::Changed;
+    e.presence = presence;
+    mExpectations.append(e);
+
+    /* Wait for the scenario to happen */
+    QCOMPARE(mLoop->exec(), 0);
+
+#if 0
+    /* Change the avatar of Alice */
+    const gchar avatarData[] = "fake-avatar-data";
+    const gchar avatarToken[] = "fake-avatar-token";
+    const gchar avatarMimeType[] = "fake-avatar-mime-type";
+    GArray *array = g_array_new(FALSE, FALSE, sizeof(gchar));
+    g_array_append_vals (array, avatarData, strlen(avatarData));
+    tp_tests_contacts_connection_change_avatar_data(
+        TP_TESTS_CONTACTS_CONNECTION (mConnService),
+        handle, array, avatarMimeType, avatarToken);
+
+    e.avatarData = QByteArray(avatarData);
+    mExpectations.append(e);
+
+    /* Wait for the scenario to happen */
+    QCOMPARE(mLoop->exec(), 0);
+#endif
+
     qDebug() << "All expectations passed";
 }
 
@@ -120,17 +191,13 @@ void TestTelepathyPlugin::verify(TestExpectation::Event event,
     const QList<QContactLocalId> &contactIds)
 {
     foreach (QContactLocalId localId, contactIds) {
-        QContact contact = mContactManager->contact(localId);
+        QVERIFY(!mExpectations.isEmpty());
 
-        for (int i = 0; i < mExpectations.count(); i++) {
-            TestExpectation e = mExpectations[i];
-            QString accountUri = contact.detail<QContactOnlineAccount>().accountUri();
-            if (e.event == event && e.accountUri == accountUri) {
-                e.verify(contact);
-                mExpectations.removeAt(i);
-                break;
-            }
-        }
+        const TestExpectation &e = mExpectations.takeFirst();
+        QCOMPARE(e.event, event);
+
+        QContact contact = mContactManager->contact(localId);
+        e.verify(contact);
     }
 
     if (mExpectations.isEmpty()) {

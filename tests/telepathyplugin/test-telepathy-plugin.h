@@ -43,12 +43,13 @@ public:
         Changed,
     };
 
-    void verify(QContact &contact);
+    void verify(QContact &contact) const;
 
     Event event;
     QString accountUri;
-
     QString alias;
+    TpTestsContactsConnectionPresenceStatusIndex presence;
+    QByteArray avatarData;
 };
 
 /**
