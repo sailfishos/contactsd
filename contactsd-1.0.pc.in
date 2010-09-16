@@ -7,5 +7,5 @@ moc_includedir=${includedir}/contactsd-1.0
 
 Name: contactsd
 Description: Contact synchronization daemon for meego
-Version: 0.5.30
+Version: @VERSION@
 Cflags: -I${includedir}/contactsd-1.0
