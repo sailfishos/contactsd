@@ -1,8 +1,8 @@
-contactsd (0.5.36~1) UNRELEASED; urgency=low
+contactsd (0.5.36-1) unstable; urgency=low
 
-   *
+   * Changes: Support handling Merged Remote Contacts
 
- -- Siraj Razick <siraj.razick@collabora.co.uk>  Thu, 17 Sep 2010 10:00:00 +0200
+ -- Siraj Razick <siraj.razick@collabora.co.uk>  Thu, 17 Sep 2010 17:34:00 +0200
 
 contactsd (0.5.35-5) unstable; urgency=low
 
