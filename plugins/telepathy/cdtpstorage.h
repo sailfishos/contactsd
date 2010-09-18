@@ -135,6 +135,7 @@ public:
     ~CDTpStorageContactResolver();
 
     QList<CDTpContact *> resolvedRemoteContacts();
+    QList<CDTpContact *> remoteContacts();
     QString storageIdForContact(CDTpContact *contactWrapper) const;
 
 Q_SIGNALS:

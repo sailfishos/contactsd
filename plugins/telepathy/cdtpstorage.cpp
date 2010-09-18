@@ -138,17 +138,12 @@ void CDTpStorage::syncAccountContact(CDTpAccount *accountWrapper,
 
     const QString id = contact->id();
     const QString localId = contactLocalId(account->objectPath(), id);
-    const RDFVariable imContact(contactIri(localId));
 
     qDebug() << "Syncing account" << account->objectPath() <<
         "contact" << contact->id() << "changes to storage";
 
     RDFUpdate updateQuery;
     const RDFVariable imAddress(contactImAddress(contactWrapper));
-
-    updateQuery.addDeletion(imContact, nie::contentLastModified::iri());
-    updateQuery.addInsertion(imContact, nie::contentLastModified::iri(),
-            RDFVariable(QDateTime::currentDateTime()));
 
     if (changes & CDTpContact::Alias) {
         qDebug() << "  alias changed";
@@ -261,7 +256,7 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
     QList<CDTpContact *> contactsAdded = resolver->resolvedRemoteContacts();
 
     RDFUpdate updateQuery;
-    foreach (CDTpContact *contactWrapper, contactsAdded) {
+    foreach (CDTpContact *contactWrapper, resolver->remoteContacts()) {
         Tp::ContactPtr contact = contactWrapper->contact();
         QString accountObjectPath =
             contactWrapper->accountWrapper()->account()->objectPath();
@@ -656,6 +651,11 @@ QList<CDTpContact *> CDTpStorageContactResolver::resolvedRemoteContacts()
     return mResolvedContacts.keys();
 }
 
+QList<CDTpContact *> CDTpStorageContactResolver::remoteContacts()
+{
+    return mContactsNotResolved;
+}
+
 QString CDTpStorageContactResolver::storageIdForContact(CDTpContact *contactWrapper) const
 {
     return mResolvedContacts[contactWrapper];
@@ -682,7 +682,6 @@ void CDTpStorageContactResolver::onSotrageResolveSelectQueryFinished(
 void CDTpStorageContactResolver::requestContactResolve(CDTpAccount *accountWrapper,
         const QList<CDTpContact *> &contactWrapper)
 {
-    //::tracker()->setVerbosity(5);
     RDFVariable imContact = RDFVariable::fromType<nco::PersonContact>();
     RDFVariable imAddress = imContact.property<nco::hasIMAddress>();
     RDFVariable imAccount = RDFVariable::fromType<nco::IMAccount>();
