@@ -129,19 +129,20 @@ class CDTpStorageContactResolver : public QObject
     Q_OBJECT
 
 public:
-     CDTpStorageContactResolver(CDTpAccount *accountWrapper,
-             const QList<CDTpContact *> &contactsToResolve,
+    CDTpStorageContactResolver(CDTpAccount *accountWrapper,
+            const QList<CDTpContact *> &contactsToResolve,
              QObject *parent = 0);
     ~CDTpStorageContactResolver();
 
-    QList<CDTpContact *> resolvedRemoteContacts();
+    QList<CDTpContact *> resolvedRemoteContacts() const;
+    QList<CDTpContact *> remoteContacts() const;
     QString storageIdForContact(CDTpContact *contactWrapper) const;
 
 Q_SIGNALS:
    void finished(CDTpStorageContactResolver *resolveWrapper);
 
 private Q_SLOTS:
-    void onSotrageResolveSelectQueryFinished(CDTpStorageSelectQuery *queryWrapper);
+    void onStorageResolveSelectQueryFinished(CDTpStorageSelectQuery *queryWrapper);
 
 private:
     void requestContactResolve(CDTpAccount *accountWrapper,
