@@ -137,6 +137,11 @@ bool ContactsdPluginLoader::hasActiveImports()
         QObject *basePlugin = loader->instance();
         ContactsdPluginInterface *plugin =
             qobject_cast<ContactsdPluginInterface *>(basePlugin);
+
+        if (!plugin) {
+            continue;
+        }
+
         if (plugin->hasActiveImports()) {
             return true;
         }

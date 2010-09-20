@@ -261,7 +261,7 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
     const QList<CDTpContact *> &contactsAddedList = resolver->resolvedRemoteContacts();
 
     RDFUpdate updateQuery;
-    foreach (CDTpContact *contactWrapper, contactsAdded) {
+    foreach (CDTpContact *contactWrapper, resolver->remoteContacts()) {
         Tp::ContactPtr contact = contactWrapper->contact();
         QString accountObjectPath =
             contactWrapper->accountWrapper()->account()->objectPath();
