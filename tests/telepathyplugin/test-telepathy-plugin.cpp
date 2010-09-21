@@ -36,37 +36,36 @@
 #define ACCOUNT_PATH TP_ACCOUNT_OBJECT_PATH_BASE "fakecm/fakeproto/UnitTest"
 #define BUS_NAME "org.maemo.Contactsd.UnitTest"
 
+TestExpectation::TestExpectation():presence(TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN)
+{
+}
+
 void TestExpectation::verify(QContact &contact) const
 {
-    QString uri = contact.detail<QContactOnlineAccount>().accountUri();
-    QCOMPARE(uri, accountUri);
+    QString acutalAccountUri = contact.detail<QContactOnlineAccount>().accountUri();
+    QCOMPARE(acutalAccountUri, accountUri);
 
-    QCOMPARE(contact.displayLabel(), alias);
+    QString actualAlias = contact.detail<QContactDisplayLabel>().label();
+    QCOMPARE(actualAlias, alias);
 
-    QContactPresence::PresenceState state = contact.detail<QContactPresence>().presenceState();
-    switch (state) {
-    case QContactPresence::PresenceUnknown:
-        QCOMPARE(presence, TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN);
+    QContactPresence::PresenceState actualPresence = contact.detail<QContactPresence>().presenceState();
+    switch (presence) {
+    case TP_TESTS_CONTACTS_CONNECTION_STATUS_AVAILABLE:
+        QCOMPARE(actualPresence, QContactPresence::PresenceAvailable);
         break;
-    case QContactPresence::PresenceAvailable:
-        QCOMPARE(presence, TP_TESTS_CONTACTS_CONNECTION_STATUS_AVAILABLE);
+    case TP_TESTS_CONTACTS_CONNECTION_STATUS_BUSY:
+        QCOMPARE(actualPresence, QContactPresence::PresenceBusy);
         break;
-    case QContactPresence::PresenceHidden:
-        /* FIXME: Hidden is not in the enum */
-        QCOMPARE(presence, TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN);
+    case TP_TESTS_CONTACTS_CONNECTION_STATUS_AWAY:
+        QCOMPARE(actualPresence, QContactPresence::PresenceAway);
         break;
-    case QContactPresence::PresenceBusy:
-        QCOMPARE(presence, TP_TESTS_CONTACTS_CONNECTION_STATUS_BUSY);
+    case TP_TESTS_CONTACTS_CONNECTION_STATUS_OFFLINE:
+        QCOMPARE(actualPresence, QContactPresence::PresenceOffline);
         break;
-    case QContactPresence::PresenceAway:
-        QCOMPARE(presence, TP_TESTS_CONTACTS_CONNECTION_STATUS_AWAY);
+    case TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN:
+        QCOMPARE(actualPresence, QContactPresence::PresenceUnknown);
         break;
-    case QContactPresence::PresenceExtendedAway:
-        /* FIXME: ExtendedAway is not in the enum */
-        QCOMPARE(presence, TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN);
-        break;
-    case QContactPresence::PresenceOffline:
-        QCOMPARE(presence, TP_TESTS_CONTACTS_CONNECTION_STATUS_OFFLINE);
+    case TP_TESTS_CONTACTS_CONNECTION_STATUS_ERROR:
         break;
     }
 
@@ -109,9 +108,16 @@ void TestTelepathyPlugin::initTestCase()
             NULL));
     QVERIFY(mConnService != 0);
     QVERIFY(tp_base_connection_register(mConnService, "fakecm", NULL, NULL, NULL));
+    TpHandleRepoIface *serviceRepo = tp_base_connection_get_handles(
+        mConnService, TP_HANDLE_TYPE_CONTACT);
+    mConnService->self_handle = tp_handle_ensure(serviceRepo,
+        "fakeselfcontact", NULL, NULL);
     tp_base_connection_change_status(mConnService,
         TP_CONNECTION_STATUS_CONNECTED,
         TP_CONNECTION_STATUS_REASON_NONE_SPECIFIED);
+    mListManager = tp_tests_contacts_connection_get_contact_list_manager(
+        TP_TESTS_CONTACTS_CONNECTION(mConnService));
+    g_object_set(mListManager, "simulation-delay", 0, NULL);
 
     /* Request the UnitTest bus name, so the AM knows we are ready to go */
     TpDBusDaemon *dbus = tp_dbus_daemon_dup(NULL);
@@ -191,6 +197,9 @@ void TestTelepathyPlugin::verify(TestExpectation::Event event,
     const QList<QContactLocalId> &contactIds)
 {
     foreach (QContactLocalId localId, contactIds) {
+        if (mExpectations.isEmpty()) {
+            mLoop->exit(0);
+        }
         QVERIFY(!mExpectations.isEmpty());
 
         const TestExpectation &e = mExpectations.takeFirst();
@@ -207,11 +216,13 @@ void TestTelepathyPlugin::verify(TestExpectation::Event event,
 
 void TestTelepathyPlugin::contactsAdded(const QList<QContactLocalId>& contactIds)
 {
+    qDebug() << "Got contactsAdded";
     verify(TestExpectation::Added, contactIds);
 }
 
 void TestTelepathyPlugin::contactsChanged(const QList<QContactLocalId>& contactIds)
 {
+    qDebug() << "Got contactsChanged";
     verify(TestExpectation::Changed, contactIds);
 }
 

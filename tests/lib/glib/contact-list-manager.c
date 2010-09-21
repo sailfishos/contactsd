@@ -379,8 +379,8 @@ static TestContactList *ensure_list (TestContactListManager *self,
 static gboolean
 receive_contact_lists (gpointer p)
 {
-#if 0
   TestContactListManager *self = p;
+#if 0
   TpHandle handle, cambridge, montreal, francophones;
   ExampleContactDetails *d;
   TpIntSet *set, *cam_set, *mtl_set, *fr_set;
@@ -620,6 +620,7 @@ receive_contact_lists (gpointer p)
   tp_handle_unref (self->priv->group_repo, cambridge);
   tp_handle_unref (self->priv->group_repo, montreal);
   tp_handle_unref (self->priv->group_repo, francophones);
+#endif
 
   /* Now we've received the roster, we can satisfy all the queued requests */
 
@@ -629,7 +630,6 @@ receive_contact_lists (gpointer p)
   g_assert (g_hash_table_size (self->priv->queued_requests) == 0);
   g_hash_table_destroy (self->priv->queued_requests);
   self->priv->queued_requests = NULL;
-#endif
 
   return FALSE;
 }

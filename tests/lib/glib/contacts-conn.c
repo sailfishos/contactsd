@@ -470,8 +470,12 @@ my_get_contact_statuses (GObject *object,
       const gchar *presence_message;
       GHashTable *parameters;
 
-      index = GPOINTER_TO_UINT (g_hash_table_lookup (
-            self->priv->presence_statuses, key));
+      if (!g_hash_table_lookup_extended (self->priv->presence_statuses,
+          key, NULL, &index))
+        {
+          index = TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN;
+        }
+
       presence_message = g_hash_table_lookup (
           self->priv->presence_messages, key);
 

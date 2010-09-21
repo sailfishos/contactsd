@@ -43,6 +43,8 @@ public:
         Changed,
     };
 
+    TestExpectation();
+
     void verify(QContact &contact) const;
 
     Event event;
