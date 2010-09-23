@@ -1,8 +1,17 @@
-contactsd (0.5.36~1) UNRELEASED; urgency=low
+contactsd (0.5.36~4) UNRELEASED; urgency=low
 
    *
 
- -- Siraj Razick <siraj.razick@collabora.co.uk>  Thu, 17 Sep 2010 10:00:00 +0200
+ -- Siraj Razick <siraj.razick@collabora.co.uk>  Thu, 23 Sep 2010 10:00:00 +0230
+
+contactsd (0.5.36-3) unstable; urgency=low
+
+   * Changes : Fixes Contatsd Crashes
+   * Changes : Supports handling merged contacts
+   * Changes : Improvements in test cases
+   * Changes : Fixes presence change issues for merged contacts
+
+ -- Siraj Razick <siraj.razick@collabora.co.uk>  Thu, 23 Sep 2010 10:00:00 +0230
 
 contactsd (0.5.35-5) unstable; urgency=low
 

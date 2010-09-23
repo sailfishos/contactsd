@@ -36,6 +36,7 @@
 using namespace SopranoLive;
 
 class CDTpStorageSelectQuery;
+class CDTpStorageContactResolver;
 
 class CDTpStorage : public QObject
 {
@@ -59,6 +60,9 @@ public Q_SLOTS:
 
 private Q_SLOTS:
     void onAccountRemovalSelectQueryFinished(CDTpStorageSelectQuery *query);
+    void onContactAddResolverFinished(CDTpStorageContactResolver *resolver);
+    void onContactDeleteResolverFinished(CDTpStorageContactResolver *resolver);
+    void onContactUpdateResolverFinished(CDTpStorageContactResolver *resolver);
 
 private:
     bool saveAccountAvatar(const QByteArray &data, const QString &mimeType,
@@ -77,6 +81,7 @@ private:
             const RDFVariable &imAddress,
             CDTpContact *contactWrapper);
     void addContactRemoveInfoToQuery(RDFUpdate &query,
+            const QString &contactId,
             CDTpAccount *accountWrapper,
             CDTpContact *contactWrapper);
 
@@ -117,6 +122,33 @@ private Q_SLOTS:
 
 private:
     LiveNodes mReply;
+};
+
+class CDTpStorageContactResolver : public QObject
+{
+    Q_OBJECT
+
+public:
+    CDTpStorageContactResolver(CDTpAccount *accountWrapper,
+            const QList<CDTpContact *> &contactsToResolve,
+             QObject *parent = 0);
+    ~CDTpStorageContactResolver();
+
+    QList<CDTpContact *> resolvedRemoteContacts() const;
+    QList<CDTpContact *> remoteContacts() const;
+    QString storageIdForContact(CDTpContact *contactWrapper) const;
+
+Q_SIGNALS:
+   void finished(CDTpStorageContactResolver *resolveWrapper);
+
+private Q_SLOTS:
+    void onStorageResolveSelectQueryFinished(CDTpStorageSelectQuery *queryWrapper);
+
+private:
+    void requestContactResolve(CDTpAccount *accountWrapper,
+            const QList<CDTpContact *> &contactsToResolve);
+    QHash<CDTpContact *, QString> mResolvedContacts;
+    QList<CDTpContact *> mContactsNotResolved;
 };
 
 #endif // CDTPSTORAGE_H
