@@ -1,14 +1,8 @@
 <aegis>
     <request>
        <credential name="Cellular" />
+       <credential name="TrackerReadAccess" />
+       <credential name="TrackerWriteAccess" />
        <for path="/usr/bin/contactsd" />
-    </request>
-    <request>
-        <credential name="TrackerReadAccess" />
-        <for path="/usr/bin/contactsd" />
-    </request>
-    <request>
-        <credential name="TrackerWriteAccess" />
-        <for path="/usr/bin/contactsd" />
     </request>
 </aegis>
