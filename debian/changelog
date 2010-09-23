@@ -1,3 +1,9 @@
+contactsd (0.5.36~4) UNRELEASED; urgency=low
+
+   *
+
+ -- Siraj Razick <siraj.razick@collabora.co.uk>  Thu, 23 Sep 2010 10:00:00 +0230
+
 contactsd (0.5.36-3) unstable; urgency=low
 
    * Changes : Fixes Contatsd Crashes
