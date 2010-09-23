@@ -1,3 +1,9 @@
+contactsd (0.5.36-4) UNRELEASED; urgency=low
+
+   * 
+
+ -- Siraj Razick <siraj.razick@collabora.co.uk>  Thu, 23 Sep 2010 16:40:00 +0230
+
 contactsd (0.5.36-4) unstable; urgency=low
 
    * Changes : NB#175605 -  Status for merged Gtalk contact is not getting updated in the contacts list
