@@ -125,12 +125,8 @@ void TestTelepathyPlugin::initTestCase()
     g_object_unref (dbus);
 }
 
-void TestTelepathyPlugin::testTrackerImport()
+void TestTelepathyPlugin::testBasicUpdates()
 {
-    TestContactListManager *listManager =
-        tp_tests_contacts_connection_get_contact_list_manager(
-            TP_TESTS_CONTACTS_CONNECTION(mConnService));
-
     /* Create a new contact "alice" */
     TpHandleRepoIface *serviceRepo =
         tp_base_connection_get_handles(mConnService, TP_HANDLE_TYPE_CONTACT);
@@ -144,7 +140,7 @@ void TestTelepathyPlugin::testTrackerImport()
         1, &handle, &alias);
 
     /* Add Alice in the ContactList */
-    test_contact_list_manager_add_to_list(listManager, NULL,
+    test_contact_list_manager_add_to_list(mListManager, NULL,
         TEST_CONTACT_LIST_SUBSCRIBE, handle, "please", NULL);
 
     TestExpectation e;
@@ -191,6 +187,15 @@ void TestTelepathyPlugin::testTrackerImport()
 #endif
 
     qDebug() << "All expectations passed";
+}
+
+void TestTelepathyPlugin::testSelfContact()
+{
+    QContactLocalId selfId = mContactManager->selfContactId();
+    QContact contact = mContactManager->contact(selfId);
+
+    QContactPresence presence = contact.detail<QContactPresence>();
+    QCOMPARE(presence.presenceState(), QContactPresence::PresenceAvailable);
 }
 
 void TestTelepathyPlugin::verify(TestExpectation::Event event,

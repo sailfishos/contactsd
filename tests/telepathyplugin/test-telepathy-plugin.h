@@ -71,7 +71,8 @@ private Q_SLOTS:
     void initTestCase();
     void init();
 
-    void testTrackerImport();
+    void testBasicUpdates();
+    void testSelfContact();
 
     void cleanup();
     void cleanupTestCase();
@@ -80,6 +81,7 @@ private:
     QContactManager *mContactManager;
     TpTestsSimpleAccountManager *mAccountManagerService;
     TpTestsSimpleAccount *mAccountService;
+    TestContactListManager *mListManager;
     TpBaseConnection *mConnService;
 
     QList<TestExpectation> mExpectations;
