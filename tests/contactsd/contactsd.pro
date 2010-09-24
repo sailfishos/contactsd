@@ -1,5 +1,3 @@
-include($$TOP_SOURCEDIR/check.pri)
-
 CONFIG += test
 
 QT -= gui
