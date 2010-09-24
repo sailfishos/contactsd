@@ -108,6 +108,17 @@ tp_tests_simple_account_manager_get_property (GObject *object,
   }
 }
 
+static void
+tp_tests_simple_account_manager_finalize (GObject *object)
+{
+  TpTestsSimpleAccountManager *self = SIMPLE_ACCOUNT_MANAGER (object);
+
+  g_ptr_array_unref (self->priv->valid_accounts);
+  g_ptr_array_unref (self->priv->invalid_accounts);
+
+  G_OBJECT_CLASS (tp_tests_simple_account_manager_parent_class)->finalize(object);
+}
+
 /**
   * This class currently only provides the minimum for
   * tp_account_manager_prepare to succeed. This turns out to be only a working
@@ -142,6 +153,7 @@ tp_tests_simple_account_manager_class_init (
   };
 
   g_type_class_add_private (klass, sizeof (TpTestsSimpleAccountManagerPrivate));
+  object_class->finalize = tp_tests_simple_account_manager_finalize;
   object_class->get_property = tp_tests_simple_account_manager_get_property;
 
   param_spec = g_param_spec_boxed ("interfaces", "Extra D-Bus interfaces",

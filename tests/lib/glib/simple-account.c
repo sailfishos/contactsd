@@ -59,6 +59,7 @@ struct _TpTestsSimpleAccountPrivate
   gchar *connection_path;
   TpConnectionStatus connection_status;
   TpConnectionStatusReason connection_status_reason;
+  GHashTable *parameters;
 };
 
 static void
@@ -81,7 +82,8 @@ tp_tests_simple_account_init (TpTestsSimpleAccount *self)
   self->priv->connection_path = g_strdup ("/");
   self->priv->connection_status = TP_CONNECTION_STATUS_DISCONNECTED;
   self->priv->connection_status_reason = TP_CONNECTION_STATUS_REASON_NONE_SPECIFIED;
-  
+
+  self->priv->parameters = g_hash_table_new (NULL, NULL);
 }
 
 static void
@@ -119,7 +121,7 @@ tp_tests_simple_account_get_property (GObject *object,
       g_value_set_string (value, "badger");
       break;
     case PROP_PARAMETERS:
-      g_value_take_boxed (value, g_hash_table_new (NULL, NULL));
+      g_value_set_boxed (value, self->priv->parameters);
       break;
     case PROP_AUTOMATIC_PRESENCE:
       g_value_set_boxed (value, presence);
@@ -154,6 +156,38 @@ tp_tests_simple_account_get_property (GObject *object,
   }
 
   g_boxed_free (TP_STRUCT_TYPE_SIMPLE_PRESENCE, presence);
+}
+
+static void
+tp_tests_simple_account_set_property (GObject *object,
+              guint property_id,
+              GValue *value,
+              GParamSpec *spec)
+{
+  TpTestsSimpleAccount *self = TP_TESTS_SIMPLE_ACCOUNT (object);
+
+  switch (property_id) {
+    case PROP_PARAMETERS:
+      if (self->priv->parameters)
+        g_hash_table_unref (self->priv->parameters);
+      self->priv->parameters = g_value_dup_boxed (value);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, spec);
+      break;
+  }
+}
+
+static void
+tp_tests_simple_account_finalize (GObject *object)
+{
+  TpTestsSimpleAccount *self = TP_TESTS_SIMPLE_ACCOUNT (object);
+
+  g_free (self->priv->connection_path);
+  if (self->priv->parameters)
+    g_hash_table_unref (self->priv->parameters);
+
+  G_OBJECT_CLASS (tp_tests_simple_account_parent_class)->finalize(object);
 }
 
 /**
@@ -197,7 +231,9 @@ tp_tests_simple_account_class_init (TpTestsSimpleAccountClass *klass)
   };
 
   g_type_class_add_private (klass, sizeof (TpTestsSimpleAccountPrivate));
+  object_class->set_property = tp_tests_simple_account_set_property;
   object_class->get_property = tp_tests_simple_account_get_property;
+  object_class->finalize = tp_tests_simple_account_finalize;
 
   param_spec = g_param_spec_boxed ("interfaces", "Extra D-Bus interfaces",
       "In this case we only implement Account, so none.",
@@ -238,7 +274,7 @@ tp_tests_simple_account_class_init (TpTestsSimpleAccountClass *klass)
   param_spec = g_param_spec_boxed ("parameters", "parameters",
       "Parameters property",
       TP_HASH_TYPE_STRING_VARIANT_MAP,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_PARAMETERS, param_spec);
 
   param_spec = g_param_spec_boxed ("automatic-presence", "automatic presence",

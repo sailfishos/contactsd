@@ -65,6 +65,7 @@ main(int argc, char **argv)
   Context ctx = { 0, };
   TpDBusDaemon *dbus;
   TpTestsSimpleAccountManager *manager;
+  GHashTable *asv;
 
   g_type_init ();
 
@@ -78,7 +79,9 @@ main(int argc, char **argv)
   tp_dbus_daemon_request_name (dbus, TP_ACCOUNT_MANAGER_BUS_NAME, FALSE, NULL);
 
   /* Create a fake Account */
+  asv = tp_asv_new ("account", G_TYPE_STRING, "fake@account.org", NULL);
   ctx.account = tp_tests_object_new_static_class (TP_TESTS_TYPE_SIMPLE_ACCOUNT,
+      "parameters", asv,
       NULL);
   tp_dbus_daemon_register_object (dbus, ACCOUNT_PATH, ctx.account);
 
@@ -96,6 +99,7 @@ main(int argc, char **argv)
   /* Cleanup */
   g_object_unref (dbus);
   g_object_unref (manager);
+  g_hash_table_unref (asv);
   g_object_unref (ctx.account);
   g_main_loop_unref (ctx.loop);
 
