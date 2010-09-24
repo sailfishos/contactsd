@@ -93,6 +93,7 @@ void CDTpStorage::syncAccount(CDTpAccount *accountWrapper,
     up.addInsertion(nco::default_contact_me::iri(), nco::contactLocalUID::iri(),
             LiteralValue(strLocalUID));
     up.addInsertion(nco::default_contact_me::iri(), nco::hasIMAddress::iri(), imAddress);
+    up.addDeletion(imAccount, nco::imAccountAddress::iri());
     up.addInsertion(imAccount, nco::imAccountAddress::iri(), imAddress);
 
     if (changes & CDTpAccount::Avatar) {
