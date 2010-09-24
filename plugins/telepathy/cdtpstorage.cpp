@@ -67,7 +67,7 @@ void CDTpStorage::syncAccount(CDTpAccount *accountWrapper,
     }
 
     if (changes & CDTpAccount::Nickname) {
-       up.addInsertion(imAddress, nco::imNickname::iri(), LiteralValue(account->displayName()));
+       up.addInsertion(imAddress, nco::imNickname::iri(), LiteralValue(account->nickname()));
     }
 
     if (changes & CDTpAccount::Presence) {
