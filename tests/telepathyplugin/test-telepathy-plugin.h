@@ -79,10 +79,8 @@ private Q_SLOTS:
 
 private:
     QContactManager *mContactManager;
-    TpTestsSimpleAccountManager *mAccountManagerService;
-    TpTestsSimpleAccount *mAccountService;
-    TestContactListManager *mListManager;
     TpBaseConnection *mConnService;
+    TestContactListManager *mListManager;
 
     QList<TestExpectation> mExpectations;
     void verify(TestExpectation::Event, const QList<QContactLocalId>&);

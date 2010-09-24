@@ -237,8 +237,6 @@ void TestTelepathyPlugin::cleanupTestCase()
         TP_CONNECTION_STATUS_DISCONNECTED,
         TP_CONNECTION_STATUS_REASON_REQUESTED);
 
-    g_object_unref(mAccountManagerService);
-    g_object_unref(mAccountService);
     g_object_unref(mConnService);
 
     delete mContactManager;
