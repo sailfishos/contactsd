@@ -56,27 +56,35 @@ void CDTpStorage::syncAccount(CDTpAccount *accountWrapper,
     RDFVariable imAccount(accountUrl);
     RDFVariable imAddress(imAddressUrl);
 
+    up.addDeletion(imAccount, nco::imAccountType::iri());
+    up.addDeletion(imAccount, nco::imID::iri());
+
     up.addInsertion(imAccount, rdf::type::iri(), nco::IMAccount::iri());
     up.addInsertion(imAccount, nco::imAccountType::iri(), LiteralValue(account->protocol()));
-
     up.addInsertion(imAddress, rdf::type::iri(), nco::IMAddress::iri());
     up.addInsertion(imAddress, nco::imID::iri(), LiteralValue(paramAccount));
 
     if (changes & CDTpAccount::DisplayName) {
+        up.addDeletion(imAccount, nco::imDisplayName::iri());
         up.addInsertion(imAccount, nco::imDisplayName::iri(), LiteralValue(account->displayName()));
     }
 
     if (changes & CDTpAccount::Nickname) {
+       up.addDeletion(imAddress, nco::imNickname::iri());
        up.addInsertion(imAddress, nco::imNickname::iri(), LiteralValue(account->nickname()));
     }
 
     if (changes & CDTpAccount::Presence) {
         Tp::SimplePresence presence = account->currentPresence();
 
+        up.addDeletion(imAddress, nco::imStatusMessage::iri());
+        up.addDeletion(imAddress, nco::imPresence::iri());
+        up.addDeletion(imAddress, nco::presenceLastModified::iri());
+
         up.addInsertion(imAddress, nco::imStatusMessage::iri(),
                 LiteralValue(presence.statusMessage));
         up.addInsertion(imAddress, nco::imPresence::iri(),
-                LiteralValue(trackerStatusFromTpPresenceStatus(presence.status)));
+                RDFVariable(trackerStatusFromTpPresenceStatus(presence.status)));
         up.addInsertion(imAddress, nco::presenceLastModified::iri(),
                 LiteralValue(QDateTime::currentDateTime()));
     }
