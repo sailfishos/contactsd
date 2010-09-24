@@ -1,6 +1,8 @@
-contactsd (0.5.36-4) UNRELEASED; urgency=low
+contactsd (0.5.36-5) unstable; urgency=low
 
-   * 
+   * Fixes : Bug 191368 - Contacts and contactsd cannot query tracker
+   * Changes : Fix Presence and Service Name update issues for self contact
+   * Changes : Test cases for Self Contact Account saving
 
  -- Siraj Razick <siraj.razick@collabora.co.uk>  Thu, 23 Sep 2010 16:40:00 +0230
 
