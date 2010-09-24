@@ -1,3 +1,9 @@
+contactsd (0.5.36~6) UNRELEASED; urgency=low
+
+   *
+
+ -- Siraj Razick <siraj.razick@collabora.co.uk>  Fri, 24 Sep 2010 16:40:00 +0230
+
 contactsd (0.5.36-5) unstable; urgency=low
 
    * Fixes : Bug 191368 - Contacts and contactsd cannot query tracker
