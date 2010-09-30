@@ -193,25 +193,21 @@ void CDTpStorage::setAccountContactsOffline(CDTpAccount *accountWrapper)
     qDebug() << "Setting account" << account->objectPath() <<
         "contacts presence to Offline on storage";
 
-    RDFUpdate updateQuery;
-    foreach (CDTpContact *contactWrapper, accountWrapper->contacts()) {
-        const RDFVariable imAddress(contactImAddress(contactWrapper));
+    RDFSelect select;
+    RDFVariable imContact = RDFVariable::fromType<nco::PersonContact>();
+    RDFVariable imAddress = imContact.property<nco::hasIMAddress>();
+    RDFVariable imAccount = RDFVariable::fromType<nco::IMAccount>();
 
-        updateQuery.addDeletion(imAddress, nco::imPresence::iri());
-        updateQuery.addDeletion(imAddress, nco::imStatusMessage::iri());
-        updateQuery.addDeletion(imAddress, nco::presenceLastModified::iri());
+    imAccount.property<nco::hasIMContact>() == imAddress;
+    imAccount == QUrl(QString("telepathy:%1").arg(account->objectPath()));
 
-        const QLatin1String status("unknown");
-        updateQuery.addInsertion(RDFStatementList() <<
-                RDFStatement(imAddress, nco::imStatusMessage::iri(),
-                    LiteralValue("")) <<
-                RDFStatement(imAddress, nco::imPresence::iri(),
-                    trackerStatusFromTpPresenceStatus(status)));
+    select.addColumn("contact", imContact);
+    select.addColumn("imAddress", imAddress);
 
-        updateQuery.addInsertion(imAddress, nco::presenceLastModified::iri(),
-                RDFVariable(QDateTime::currentDateTime()));
-    }
-    ::tracker()->executeQuery(updateQuery);
+    CDTpStorageSelectQuery *query = new CDTpStorageSelectQuery(select, this);
+    connect(query,
+            SIGNAL(finished(CDTpStorageSelectQuery *)),
+            SLOT(onAccountOfflineSelectQueryFinished(CDTpStorageSelectQuery *)));
 }
 
 void CDTpStorage::removeAccount(const QString &accountObjectPath)
@@ -263,6 +259,36 @@ void CDTpStorage::onAccountRemovalSelectQueryFinished(CDTpStorageSelectQuery *qu
 
     ::tracker()->executeQuery(update);
     query->deleteLater();
+}
+
+void CDTpStorage::onAccountOfflineSelectQueryFinished(
+        CDTpStorageSelectQuery * query)
+{
+    LiveNodes contactNodes = query->reply();
+    RDFVariable unknownState =
+        trackerStatusFromTpPresenceStatus(QLatin1String("unknown"));
+    RDFUpdate update;
+    for (int i = 0; i < contactNodes->rowCount(); ++i) {
+        QUrl imContactIri =
+            QUrl(contactNodes->index(i, 0).data().toString());
+        QUrl imAddressIri =
+            QUrl(contactNodes->index(i, 1).data().toString());
+        RDFVariable imContact = QUrl(imContactIri);
+        RDFVariable imAddress = QUrl(imAddressIri);
+
+        update.addDeletion(imAddress, nco::imPresence::iri());
+        update.addDeletion(imAddress, nco::presenceLastModified::iri());
+
+        update.addInsertion(imAddress, nco::imPresence::iri(),
+                unknownState);
+        update.addInsertion(imAddress, nco::presenceLastModified::iri(),
+                LiteralValue(QDateTime::currentDateTime()));
+        update.addDeletion(imContact, nie::contentLastModified::iri());
+        update.addInsertion(imContact, nie::contentLastModified::iri(),
+            LiteralValue(QDateTime::currentDateTime()));
+    }
+
+    ::tracker()->executeQuery(update);
 }
 
 void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resolver)
@@ -695,7 +721,6 @@ void CDTpStorageContactResolver::onStorageResolveSelectQueryFinished(
 void CDTpStorageContactResolver::requestContactResolve(CDTpAccount *accountWrapper,
         const QList<CDTpContact *> &contactWrapper)
 {
-    //::tracker()->setVerbosity(5);
     RDFVariable imContact = RDFVariable::fromType<nco::PersonContact>();
     RDFVariable imAddress = imContact.property<nco::hasIMAddress>();
     RDFVariable imAccount = RDFVariable::fromType<nco::IMAccount>();

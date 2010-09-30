@@ -60,6 +60,7 @@ public Q_SLOTS:
 
 private Q_SLOTS:
     void onAccountRemovalSelectQueryFinished(CDTpStorageSelectQuery *query);
+    void onAccountOfflineSelectQueryFinished(CDTpStorageSelectQuery *query);
     void onContactAddResolverFinished(CDTpStorageContactResolver *resolver);
     void onContactDeleteResolverFinished(CDTpStorageContactResolver *resolver);
     void onContactUpdateResolverFinished(CDTpStorageContactResolver *resolver);
