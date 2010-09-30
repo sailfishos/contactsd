@@ -1,3 +1,3 @@
 TEMPLATE = subdirs
 
-SUBDIRS += lib account-manager contactsd telepathyplugin
+SUBDIRS += lib contactsd account-manager telepathyplugin

@@ -198,6 +198,18 @@ void TestTelepathyPlugin::testSelfContact()
     QCOMPARE(presence.presenceState(), QContactPresence::PresenceAvailable);
 }
 
+void TestTelepathyPlugin::testSetOffline()
+{
+    tp_base_connection_change_status(mConnService,
+        TP_CONNECTION_STATUS_DISCONNECTED,
+        TP_CONNECTION_STATUS_REASON_REQUESTED);
+
+    /* FIXME: Add here expectations. All contacts created previously should be
+     * changed to have presence 'Unknown'*/
+
+    QCOMPARE(mLoop->exec(), 0);
+}
+
 void TestTelepathyPlugin::verify(TestExpectation::Event event,
     const QList<QContactLocalId> &contactIds)
 {

@@ -73,6 +73,7 @@ private Q_SLOTS:
 
     void testBasicUpdates();
     void testSelfContact();
+    void testSetOffline();
 
     void cleanup();
     void cleanupTestCase();
