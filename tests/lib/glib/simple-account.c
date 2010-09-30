@@ -10,6 +10,7 @@
 
 #include "simple-account.h"
 
+#include <telepathy-glib/connection.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/defs.h>
 #include <telepathy-glib/enums.h>
@@ -56,11 +57,37 @@ enum
 
 struct _TpTestsSimpleAccountPrivate
 {
+  TpConnection *connection;
   gchar *connection_path;
   TpConnectionStatus connection_status;
   TpConnectionStatusReason connection_status_reason;
   GHashTable *parameters;
 };
+
+static void
+connection_invalidated_cb (TpProxy *proxy,
+    guint domain,
+    gint code,
+    gchar *message,
+    TpTestsSimpleAccount *self)
+{
+  GHashTable *change;
+
+  g_free (self->priv->connection_path);
+  self->priv->connection_path = g_strdup ("/");
+
+  self->priv->connection_status = tp_connection_get_status (self->priv->connection,
+      &self->priv->connection_status_reason);
+  g_object_unref (self->priv->connection);
+  self->priv->connection = NULL;
+
+  change = tp_asv_new (NULL, NULL);
+  tp_asv_set_object_path (change, "Connection", self->priv->connection_path);
+  tp_asv_set_uint32 (change, "ConnectionStatus", self->priv->connection_status);
+  tp_asv_set_uint32 (change, "ConnectionStatusReason", self->priv->connection_status_reason);
+  tp_svc_account_emit_account_property_changed (self, change);
+  g_hash_table_unref(change);
+}
 
 static void
 account_iface_init (gpointer klass,
@@ -161,7 +188,7 @@ tp_tests_simple_account_get_property (GObject *object,
 static void
 tp_tests_simple_account_set_property (GObject *object,
               guint property_id,
-              GValue *value,
+              const GValue *value,
               GParamSpec *spec)
 {
   TpTestsSimpleAccount *self = TP_TESTS_SIMPLE_ACCOUNT (object);
@@ -186,6 +213,12 @@ tp_tests_simple_account_finalize (GObject *object)
   g_free (self->priv->connection_path);
   if (self->priv->parameters)
     g_hash_table_unref (self->priv->parameters);
+  if (self->priv->connection)
+    {
+      g_signal_handlers_disconnect_by_func (self->priv->connection,
+          connection_invalidated_cb, self);
+      g_object_unref (self->priv->connection);
+    }
 
   G_OBJECT_CLASS (tp_tests_simple_account_parent_class)->finalize(object);
 }
@@ -352,9 +385,25 @@ tp_tests_simple_account_set_connection (TpTestsSimpleAccount *self,
   GHashTable *change;
 
   g_free (self->priv->connection_path);
+  if (self->priv->connection != NULL)
+    {
+      g_signal_handlers_disconnect_by_func (self->priv->connection,
+          connection_invalidated_cb, self);
+      g_object_unref (self->priv->connection);
+      self->priv->connection = NULL;
+    }
+
   self->priv->connection_path = g_strdup (object_path);
   self->priv->connection_status = status;
   self->priv->connection_status_reason = reason;
+  if (object_path != NULL && tp_strdiff (object_path, "/"))
+    {
+      TpDBusDaemon *dbus = tp_dbus_daemon_dup (NULL);
+      self->priv->connection = tp_connection_new (dbus, NULL, object_path, NULL);
+      g_signal_connect (self->priv->connection, "invalidated",
+          G_CALLBACK (connection_invalidated_cb), self);
+      g_object_unref (dbus);
+    }
 
   change = tp_asv_new (NULL, NULL);
   tp_asv_set_object_path (change, "Connection", self->priv->connection_path);
