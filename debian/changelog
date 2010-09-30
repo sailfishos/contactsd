@@ -1,3 +1,9 @@
+contactsd (0.5.36-6) UNRELEASED; urgency=low
+
+   *
+
+ -- Siraj Razick <siraj.razick@collabora.co.uk>  Fri, 30 Sep 2010 17:40:00 +0230
+
 contactsd (0.5.36-6) unstable; urgency=low
 
    * Fixes : NB#194230 - Presence icon gets displayed for imported gtalk contact contact even when the account is offline
