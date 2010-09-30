@@ -36,7 +36,8 @@
 #define ACCOUNT_PATH TP_ACCOUNT_OBJECT_PATH_BASE "fakecm/fakeproto/UnitTest"
 #define BUS_NAME "org.maemo.Contactsd.UnitTest"
 
-TestExpectation::TestExpectation():presence(TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN)
+TestExpectation::TestExpectation():flags(All),
+    presence(TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN)
 {
 }
 
@@ -45,36 +46,42 @@ void TestExpectation::verify(QContact &contact) const
     QString acutalAccountUri = contact.detail<QContactOnlineAccount>().accountUri();
     QCOMPARE(acutalAccountUri, accountUri);
 
-    QString actualAlias = contact.detail<QContactDisplayLabel>().label();
-    QCOMPARE(actualAlias, alias);
-
-    QContactPresence::PresenceState actualPresence = contact.detail<QContactPresence>().presenceState();
-    switch (presence) {
-    case TP_TESTS_CONTACTS_CONNECTION_STATUS_AVAILABLE:
-        QCOMPARE(actualPresence, QContactPresence::PresenceAvailable);
-        break;
-    case TP_TESTS_CONTACTS_CONNECTION_STATUS_BUSY:
-        QCOMPARE(actualPresence, QContactPresence::PresenceBusy);
-        break;
-    case TP_TESTS_CONTACTS_CONNECTION_STATUS_AWAY:
-        QCOMPARE(actualPresence, QContactPresence::PresenceAway);
-        break;
-    case TP_TESTS_CONTACTS_CONNECTION_STATUS_OFFLINE:
-        QCOMPARE(actualPresence, QContactPresence::PresenceOffline);
-        break;
-    case TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN:
-        QCOMPARE(actualPresence, QContactPresence::PresenceUnknown);
-        break;
-    case TP_TESTS_CONTACTS_CONNECTION_STATUS_ERROR:
-        break;
+    if (flags & Alias) {
+        QString actualAlias = contact.detail<QContactDisplayLabel>().label();
+        QCOMPARE(actualAlias, alias);
     }
 
-    QString avatarFileName = contact.detail<QContactAvatar>().imageUrl().path();
-    if (avatarData.isEmpty()) {
-        QVERIFY(avatarFileName.isEmpty());
-    } else {
-        QFile file(avatarFileName);
-        QCOMPARE(file.readAll(), avatarData);
+    if (flags & Presence) {
+        QContactPresence::PresenceState actualPresence = contact.detail<QContactPresence>().presenceState();
+        switch (presence) {
+        case TP_TESTS_CONTACTS_CONNECTION_STATUS_AVAILABLE:
+            QCOMPARE(actualPresence, QContactPresence::PresenceAvailable);
+            break;
+        case TP_TESTS_CONTACTS_CONNECTION_STATUS_BUSY:
+            QCOMPARE(actualPresence, QContactPresence::PresenceBusy);
+            break;
+        case TP_TESTS_CONTACTS_CONNECTION_STATUS_AWAY:
+            QCOMPARE(actualPresence, QContactPresence::PresenceAway);
+            break;
+        case TP_TESTS_CONTACTS_CONNECTION_STATUS_OFFLINE:
+            QCOMPARE(actualPresence, QContactPresence::PresenceOffline);
+            break;
+        case TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN:
+            QCOMPARE(actualPresence, QContactPresence::PresenceUnknown);
+            break;
+        case TP_TESTS_CONTACTS_CONNECTION_STATUS_ERROR:
+            break;
+        }
+    }
+
+    if (flags & Avatar) {
+        QString avatarFileName = contact.detail<QContactAvatar>().imageUrl().path();
+        if (avatarData.isEmpty()) {
+            QVERIFY(avatarFileName.isEmpty());
+        } else {
+            QFile file(avatarFileName);
+            QCOMPARE(file.readAll(), avatarData);
+        }
     }
 }
 
@@ -204,8 +211,12 @@ void TestTelepathyPlugin::testSetOffline()
         TP_CONNECTION_STATUS_DISCONNECTED,
         TP_CONNECTION_STATUS_REASON_REQUESTED);
 
-    /* FIXME: Add here expectations. All contacts created previously should be
-     * changed to have presence 'Unknown'*/
+    TestExpectation e;
+    e.flags = TestExpectation::Presence;
+    e.event = TestExpectation::Changed;
+    e.presence = TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN;
+    e.accountUri = QString("alice");
+    mExpectations.append(e);
 
     QCOMPARE(mLoop->exec(), 0);
 }

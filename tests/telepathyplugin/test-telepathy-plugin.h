@@ -43,12 +43,20 @@ public:
         Changed,
     };
 
-    TestExpectation();
+    enum VerifyFlags {
+        Alias = 1 << 0,
+        Presence = 1 << 1,
+        Avatar = 1 << 2,
+        All = (1 << 3) - 1
+    };
 
+    TestExpectation();
     void verify(QContact &contact) const;
 
+    VerifyFlags flags;
     Event event;
     QString accountUri;
+
     QString alias;
     TpTestsContactsConnectionPresenceStatusIndex presence;
     QByteArray avatarData;
