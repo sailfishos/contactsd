@@ -469,11 +469,16 @@ my_get_contact_statuses (GObject *object,
       TpTestsContactsConnectionPresenceStatusIndex index;
       const gchar *presence_message;
       GHashTable *parameters;
+      gpointer value;
 
       if (!g_hash_table_lookup_extended (self->priv->presence_statuses,
-          key, NULL, &index))
+          key, NULL, &value))
         {
           index = TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN;
+        }
+      else
+        {
+          index = GPOINTER_TO_UINT (value);
         }
 
       presence_message = g_hash_table_lookup (
