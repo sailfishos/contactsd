@@ -40,6 +40,12 @@ CDTpContact::CDTpContact(Tp::ContactPtr contact, CDTpAccount *accountWrapper)
     connect(contact.data(),
             SIGNAL(avatarDataChanged(const Tp::AvatarData &)),
             SLOT(onContactAvatarDataChanged()));
+    connect(contact.data(),
+            SIGNAL(subscriptionStateChanged(Tp::Contact::PresenceState)),
+            SLOT(onContactAuthorizationChanged()));
+    connect(contact.data(),
+            SIGNAL(publishStateChanged(Tp::Contact::PresenceState)),
+            SLOT(onContactAuthorizationChanged()));
 }
 
 CDTpContact::~CDTpContact()
@@ -64,4 +70,9 @@ void CDTpContact::onContactCapabilitiesChanged()
 void CDTpContact::onContactAvatarDataChanged()
 {
     emit changed(this, Avatar);
+}
+
+void CDTpContact::onContactAuthorizationChanged()
+{
+    emit changed(this, Authorization);
 }

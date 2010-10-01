@@ -175,6 +175,10 @@ void CDTpStorage::syncAccountContact(CDTpAccount *accountWrapper,
         qDebug() << "  avatar changed";
         addContactAvatarInfoToQuery(updateQuery, imAddress, imContact, contactWrapper);
     }
+    if (changes & CDTpContact::Authorization) {
+        qDebug() << "  authorization changed";
+        addContactAuthorizationInfoToQuery(updateQuery, imAddress, contactWrapper);
+    }
 
     ::tracker()->executeQuery(updateQuery);
 
@@ -334,6 +338,7 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
         addContactPresenceInfoToQuery(updateQuery, imAddress, contactWrapper);
         addContactCapabilitiesInfoToQuery(updateQuery, imAddress, contactWrapper);
         addContactAvatarInfoToQuery(updateQuery, imAddress, imContact, contactWrapper);
+        addContactAuthorizationInfoToQuery(updateQuery, imAddress, contactWrapper);
     }
 
     if (!contactsAddedList.isEmpty()) {
@@ -515,6 +520,33 @@ void CDTpStorage::addContactAvatarInfoToQuery(RDFUpdate &query,
         query.addInsertion(RDFStatement(imAddress, nco::imAvatar::iri(), dataObject));
         query.addInsertion(RDFStatement(imContact, nco::photo::iri(), dataObject));
     }
+}
+
+QUrl CDTpStorage::authStatus(Tp::Contact::PresenceState state) const
+{
+    switch (state) {
+    case Tp::Contact::PresenceStateNo:
+        return nco::predefined_auth_status_no::iri();
+    case Tp::Contact::PresenceStateAsk:
+        return nco::predefined_auth_status_requested::iri();
+    case Tp::Contact::PresenceStateYes:
+        return nco::predefined_auth_status_yes::iri();
+    }
+}
+
+void CDTpStorage::addContactAuthorizationInfoToQuery(RDFUpdate &query,
+        const RDFVariable &imAddress,
+        CDTpContact *contactWrapper)
+{
+    Tp::ContactPtr contact = contactWrapper->contact();
+
+    query.addDeletion(imAddress, nco::imAddressAuthStatusFrom::iri());
+    query.addInsertion(RDFStatement(imAddress, nco::imAddressAuthStatusFrom::iri(),
+        RDFVariable(authStatus(contact->subscriptionState()))));
+
+    query.addDeletion(imAddress, nco::imAddressAuthStatusTo::iri());
+    query.addInsertion(RDFStatement(imAddress, nco::imAddressAuthStatusTo::iri(),
+        RDFVariable(authStatus(contact->publishState()))));
 }
 
 void CDTpStorage::addContactRemoveInfoToQuery(RDFUpdate &query,

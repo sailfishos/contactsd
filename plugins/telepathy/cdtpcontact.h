@@ -33,11 +33,12 @@ class CDTpContact : public QObject
 
 public:
     enum Change {
-        Alias        = 0x1,
-        Presence     = 0x2,
-        Capabilities = 0x4,
-        Avatar       = 0x8,
-        All          = 0xFFFF
+        Alias         = 0x1,
+        Presence      = 0x2,
+        Capabilities  = 0x4,
+        Avatar        = 0x8,
+        Authorization = 0x16,
+        All           = 0xFFFF
     };
     Q_DECLARE_FLAGS(Changes, Change)
 
@@ -56,6 +57,7 @@ private Q_SLOTS:
     void onContactPresenceChanged();
     void onContactCapabilitiesChanged();
     void onContactAvatarDataChanged();
+    void onContactAuthorizationChanged();
 
 private:
     Tp::ContactPtr mContact;

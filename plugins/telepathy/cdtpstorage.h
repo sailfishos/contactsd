@@ -86,6 +86,9 @@ private:
             const QString &contactId,
             CDTpAccount *accountWrapper,
             CDTpContact *contactWrapper);
+    void addContactAuthorizationInfoToQuery(RDFUpdate &query,
+            const RDFVariable &imAddress,
+            CDTpContact *contactWrapper);
 
     QString contactLocalId(const QString &contactAccountObjectPath,
             const QString &contactId) const;
@@ -101,6 +104,8 @@ private:
     QUrl trackerStatusFromTpPresenceType(uint tpPresenceType) const;
     QUrl trackerStatusFromTpPresenceStatus(
             const QString &tpPresenceStatus) const;
+    QUrl authStatus(Tp::Contact::PresenceState) const;
+
     void updateAvatar(RDFUpdate &query, const QUrl &url,
             const QUrl &fileName,
             bool deleteOnly);
