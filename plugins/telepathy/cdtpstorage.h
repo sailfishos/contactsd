@@ -80,6 +80,7 @@ private:
             CDTpContact *contactWrapper);
     void addContactAvatarInfoToQuery(RDFUpdate &query,
             const RDFVariable &imAddress,
+            const RDFVariable &imContact,
             CDTpContact *contactWrapper);
     void addContactRemoveInfoToQuery(RDFUpdate &query,
             const QString &contactId,

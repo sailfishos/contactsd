@@ -173,7 +173,7 @@ void CDTpStorage::syncAccountContact(CDTpAccount *accountWrapper,
     }
     if (changes & CDTpContact::Avatar) {
         qDebug() << "  avatar changed";
-        addContactAvatarInfoToQuery(updateQuery, imAddress, contactWrapper);
+        addContactAvatarInfoToQuery(updateQuery, imAddress, imContact, contactWrapper);
     }
 
     ::tracker()->executeQuery(updateQuery);
@@ -333,7 +333,7 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
         addContactAliasInfoToQuery(updateQuery, imAddress, contactWrapper);
         addContactPresenceInfoToQuery(updateQuery, imAddress, contactWrapper);
         addContactCapabilitiesInfoToQuery(updateQuery, imAddress, contactWrapper);
-        addContactAvatarInfoToQuery(updateQuery, imAddress, contactWrapper);
+        addContactAvatarInfoToQuery(updateQuery, imAddress, imContact, contactWrapper);
     }
 
     if (!contactsAddedList.isEmpty()) {
@@ -486,6 +486,7 @@ void CDTpStorage::addContactCapabilitiesInfoToQuery(RDFUpdate &query,
 
 void CDTpStorage::addContactAvatarInfoToQuery(RDFUpdate &query,
         const RDFVariable &imAddress,
+        const RDFVariable &imContact,
         CDTpContact *contactWrapper)
 {
     Tp::ContactPtr contact = contactWrapper->contact();
@@ -505,9 +506,14 @@ void CDTpStorage::addContactAvatarInfoToQuery(RDFUpdate &query,
 
     RDFVariable dataObject(QUrl::fromLocalFile(contact->avatarData().fileName));
     query.addDeletion(imAddress, nco::imAvatar::iri());
+    query.addDeletion(imContact, nco::photo::iri());
+    query.addDeletion(dataObject, nie::url::iri());
 
     if (!contact->avatarToken().isEmpty()) {
+        query.addInsertion(RDFStatement(dataObject, rdf::type::iri(), nie::DataObject::iri()));
+        query.addInsertion(RDFStatement(dataObject, nie::url::iri(), dataObject));
         query.addInsertion(RDFStatement(imAddress, nco::imAvatar::iri(), dataObject));
+        query.addInsertion(RDFStatement(imContact, nco::photo::iri(), dataObject));
     }
 }
 
