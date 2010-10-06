@@ -43,8 +43,10 @@ TestExpectation::TestExpectation():flags(All),
 
 void TestExpectation::verify(QContact &contact) const
 {
-    QString acutalAccountUri = contact.detail<QContactOnlineAccount>().accountUri();
-    QCOMPARE(acutalAccountUri, accountUri);
+    QCOMPARE(contact.details<QContactOnlineAccount>().count(), 1);
+    QCOMPARE(contact.details<QContactPresence>().count(), 1);
+    QCOMPARE(contact.detail<QContactOnlineAccount>().accountUri(), accountUri);
+    QCOMPARE(contact.detail<QContactOnlineAccount>().value("AccountPath"), accountPath);
 
     if (flags & Alias) {
         QString actualAlias = contact.detail<QContactDisplayLabel>().label();
@@ -82,6 +84,12 @@ void TestExpectation::verify(QContact &contact) const
             QFile file(avatarFileName);
             QCOMPARE(file.readAll(), avatarData);
         }
+    }
+
+    if (flags & Authorization) {
+        QContactPresence presence = contact.detail<QContactPresence>();
+        QCOMPARE(presence.value("AuthStatusFrom"), subscriptionState);
+        QCOMPARE(presence.value("AuthStatusTo"), publishState);
     }
 }
 
@@ -124,7 +132,8 @@ void TestTelepathyPlugin::initTestCase()
         TP_CONNECTION_STATUS_REASON_NONE_SPECIFIED);
     mListManager = tp_tests_contacts_connection_get_contact_list_manager(
         TP_TESTS_CONTACTS_CONNECTION(mConnService));
-    g_object_set(mListManager, "simulation-delay", 0, NULL);
+
+    mAccountPath = "/org/freedesktop/Telepathy/Account/fakecm/fakeproto/fakeaccount";
 
     /* Request the UnitTest bus name, so the AM knows we are ready to go */
     TpDBusDaemon *dbus = tp_dbus_daemon_dup(NULL);
@@ -148,13 +157,16 @@ void TestTelepathyPlugin::testBasicUpdates()
 
     /* Add Alice in the ContactList */
     test_contact_list_manager_add_to_list(mListManager, NULL,
-        TEST_CONTACT_LIST_SUBSCRIBE, handle, "please", NULL);
+        TEST_CONTACT_LIST_SUBSCRIBE, handle, "wait", NULL);
 
     TestExpectation e;
     e.event = TestExpectation::Changed; // FIXME: Should be Added
+    e.accountPath = mAccountPath;
     e.accountUri = QString("alice");
     e.alias = QString("Alice");
-    e.presence = TP_TESTS_CONTACTS_CONNECTION_STATUS_AVAILABLE;
+    e.presence = TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN;
+    e.subscriptionState = "Requested";
+    e.publishState = "No";
     mExpectations.append(e);
 
     /* Wait for the scenario to happen */
@@ -196,13 +208,85 @@ void TestTelepathyPlugin::testBasicUpdates()
     qDebug() << "All expectations passed";
 }
 
+void TestTelepathyPlugin::testAuthorization()
+{
+    /* Create a new contact "romeo" */
+    TpHandleRepoIface *serviceRepo =
+        tp_base_connection_get_handles(mConnService, TP_HANDLE_TYPE_CONTACT);
+    TpHandle handle = tp_handle_ensure(serviceRepo, "romeo", NULL, NULL);
+    QVERIFY(handle != 0);
+
+    /* Add Bob in the ContactList, the request will be ignored */
+    test_contact_list_manager_add_to_list(mListManager, NULL,
+        TEST_CONTACT_LIST_SUBSCRIBE, handle, "wait", NULL);
+
+    TestExpectation e;
+    e.flags = TestExpectation::Authorization;
+    e.event = TestExpectation::Changed; // FIXME: Should be Added
+    e.accountPath = mAccountPath;
+    e.accountUri = QString("romeo");
+    e.subscriptionState = "Requested";
+    e.publishState = "No";
+    mExpectations.append(e);
+
+    /* Wait for the scenario to happen */
+    QCOMPARE(mLoop->exec(), 0);
+
+    /* Ask again for subscription, say "please" this time so it gets accepted */
+    test_contact_list_manager_add_to_list(mListManager, NULL,
+        TEST_CONTACT_LIST_SUBSCRIBE, handle, "please", NULL);
+
+    e.event = TestExpectation::Changed;
+    e.subscriptionState = "Yes";
+    e.publishState = "Requested";
+    mExpectations.append(e);
+
+    /* FIXME: Why is there 2 signals coming? */
+    mExpectations.append(e);
+
+    /* Wait for the scenario to happen */
+    QCOMPARE(mLoop->exec(), 0);
+
+    handle = tp_handle_ensure(serviceRepo, "juliette", NULL, NULL);
+    QVERIFY(handle != 0);
+
+    /* Add Bob in the ContactList, the request will be ignored */
+    test_contact_list_manager_add_to_list(mListManager, NULL,
+        TEST_CONTACT_LIST_SUBSCRIBE, handle, "wait", NULL);
+
+    e.event = TestExpectation::Changed; // FIXME: Should be Added
+    e.accountUri = QString("juliette");
+    e.subscriptionState = "Requested";
+    e.publishState = "No";
+    mExpectations.append(e);
+
+    /* Wait for the scenario to happen */
+    QCOMPARE(mLoop->exec(), 0);
+
+    /* Ask again for subscription, but this time it will be rejected */
+    test_contact_list_manager_add_to_list(mListManager, NULL,
+        TEST_CONTACT_LIST_SUBSCRIBE, handle, "I hate you", NULL);
+
+    e.event = TestExpectation::Changed;
+    e.subscriptionState = "No";
+    e.publishState = "No";
+    mExpectations.append(e);
+
+    /* Wait for the scenario to happen */
+    QCOMPARE(mLoop->exec(), 0);
+}
+
 void TestTelepathyPlugin::testSelfContact()
 {
     QContactLocalId selfId = mContactManager->selfContactId();
     QContact contact = mContactManager->contact(selfId);
 
-    QContactPresence presence = contact.detail<QContactPresence>();
-    QCOMPARE(presence.presenceState(), QContactPresence::PresenceAvailable);
+    TestExpectation e;
+    e.flags = TestExpectation::Presence;
+    e.accountPath = mAccountPath;
+    e.accountUri = QString("fake@account.org");
+    e.presence = TP_TESTS_CONTACTS_CONNECTION_STATUS_AVAILABLE;
+    e.verify(contact);
 }
 
 void TestTelepathyPlugin::testSetOffline()
@@ -214,8 +298,13 @@ void TestTelepathyPlugin::testSetOffline()
     TestExpectation e;
     e.flags = TestExpectation::Presence;
     e.event = TestExpectation::Changed;
+    e.accountPath = mAccountPath;
     e.presence = TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN;
+    e.accountUri = QString("romeo");
+    mExpectations.append(e);
     e.accountUri = QString("alice");
+    mExpectations.append(e);
+    e.accountUri = QString("juliette");
     mExpectations.append(e);
 
     QCOMPARE(mLoop->exec(), 0);
@@ -238,7 +327,9 @@ void TestTelepathyPlugin::verify(TestExpectation::Event event,
     }
 
     if (mExpectations.isEmpty()) {
-        mLoop->exit(0);
+        /* All expectations passed, wait a bit to be sure we don't get undesired
+         * signals */
+        QTimer::singleShot(500, mLoop, SLOT(quit()));
     }
 }
 

@@ -1353,9 +1353,11 @@ test_contact_list_manager_add_to_list (TestContactListManager *self,
           tp_intset_destroy (set);
 
           /* Pretend that after a delay, the contact notices the request
-           * and allows or rejects it. In this example connection manager,
-           * empty requests are allowed, as are requests that contain "please"
-           * case-insensitively. All other requests are denied. */
+           * and allows, rejects or ignore it. In this example connection
+           * manager, empty requests are allowed, as are requests that contain
+           * "please" case-insensitively. Requests that contain "wait"
+           * case-insensitively will be ignored. All other requests are denied.
+           */
           message_lc = g_ascii_strdown (message, -1);
 
           if (message[0] == '\0' || strstr (message_lc, "please") != NULL)
@@ -1365,7 +1367,7 @@ test_contact_list_manager_add_to_list (TestContactListManager *self,
                   self_and_contact_new (self, member),
                   self_and_contact_destroy);
             }
-          else
+          else if (strstr (message_lc, "wait") == NULL)
             {
               g_timeout_add_full (G_PRIORITY_DEFAULT,
                   self->priv->simulation_delay,

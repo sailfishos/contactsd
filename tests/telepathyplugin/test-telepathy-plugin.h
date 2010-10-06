@@ -26,6 +26,8 @@
 
 #include <QContactManager>
 
+#include <TelepathyQt4/Contact>
+
 #include "tests/lib/glib/simple-account-manager.h"
 #include "tests/lib/glib/simple-account.h"
 #include "tests/lib/glib/contacts-conn.h"
@@ -44,10 +46,11 @@ public:
     };
 
     enum VerifyFlags {
-        Alias = 1 << 0,
-        Presence = 1 << 1,
-        Avatar = 1 << 2,
-        All = (1 << 3) - 1
+        Alias         = (1 << 0),
+        Presence      = (1 << 1),
+        Avatar        = (1 << 2),
+        Authorization = (1 << 3),
+        All           = (1 << 4) - 1
     };
 
     TestExpectation();
@@ -56,10 +59,13 @@ public:
     VerifyFlags flags;
     Event event;
     QString accountUri;
+    QString accountPath;
 
     QString alias;
     TpTestsContactsConnectionPresenceStatusIndex presence;
     QByteArray avatarData;
+    QString subscriptionState;
+    QString publishState;
 };
 
 /**
@@ -81,6 +87,7 @@ private Q_SLOTS:
 
     void testBasicUpdates();
     void testSelfContact();
+    void testAuthorization();
     void testSetOffline();
 
     void cleanup();
@@ -90,6 +97,7 @@ private:
     QContactManager *mContactManager;
     TpBaseConnection *mConnService;
     TestContactListManager *mListManager;
+    QString mAccountPath;
 
     QList<TestExpectation> mExpectations;
     void verify(TestExpectation::Event, const QList<QContactLocalId>&);
