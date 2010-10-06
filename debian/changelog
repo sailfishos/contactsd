@@ -1,4 +1,4 @@
-contactsd (0.5.36-6) UNRELEASED; urgency=low
+contactsd (0.5.36-7) unstable; urgency=low
 
    * Fixes : Bug#193964 - [Hamsin IM] Avatars are not displayed
 
