@@ -47,9 +47,8 @@ void CDTpStorage::syncAccount(CDTpAccount *accountWrapper,
     qDebug() << "Syncing account" << accountObjectPath << "to storage";
 
     const QUrl accountUrl(QString("telepathy:%1").arg(accountObjectPath));
-    QString paramAccount = account->parameters()["account"].toString();
     const QUrl imAddressUrl(QString("telepathy:%1!%2")
-            .arg(accountObjectPath).arg(paramAccount));
+            .arg(accountObjectPath).arg(account->normalizedName()));
 
     RDFUpdate up;
 
@@ -62,7 +61,7 @@ void CDTpStorage::syncAccount(CDTpAccount *accountWrapper,
     up.addInsertion(imAccount, rdf::type::iri(), nco::IMAccount::iri());
     up.addInsertion(imAccount, nco::imAccountType::iri(), LiteralValue(account->protocol()));
     up.addInsertion(imAddress, rdf::type::iri(), nco::IMAddress::iri());
-    up.addInsertion(imAddress, nco::imID::iri(), LiteralValue(paramAccount));
+    up.addInsertion(imAddress, nco::imID::iri(), LiteralValue(account->normalizedName()));
 
     if (changes & CDTpAccount::DisplayName) {
         up.addDeletion(imAccount, nco::imDisplayName::iri());
@@ -95,6 +94,7 @@ void CDTpStorage::syncAccount(CDTpAccount *accountWrapper,
     up.addInsertion(nco::default_contact_me::iri(), nco::hasIMAddress::iri(), imAddress);
     up.addDeletion(imAccount, nco::imAccountAddress::iri());
     up.addInsertion(imAccount, nco::imAccountAddress::iri(), imAddress);
+    up.addInsertion(imAccount, nco::hasIMContact::iri(), imAddress);
 
     if (changes & CDTpAccount::Avatar) {
         QString fileName;
