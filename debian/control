@@ -31,4 +31,4 @@ Package: contactsd-dev
 Architecture: any
 Section: libdevel
 Recommends: contactsd (=${binary:Version})
-Description: Debug symbols for Contacts daemon.
+Description: Development headers for Contacts daemon plugins.
