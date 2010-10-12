@@ -20,17 +20,21 @@
 #ifndef CONTACTSDPLUGININTERFACE_H
 #define CONTACTSDPLUGININTERFACE_H
 
-#include <QMap>
 #include <QObject>
 #include <QString>
-#include <QVariant>
+
+class QVariant;
+template<class Key, class Value> class QMap;
+class QStringList;
 
 const QString CONTACTSD_PLUGIN_VERSION = "version";
 const QString CONTACTSD_PLUGIN_NAME    = "name";
 const QString CONTACTSD_PLUGIN_COMMENT = "comment";
 
-class ContactsdPluginInterface
+class ContactsdPluginInterface : public QObject
 {
+    Q_OBJECT
+
 public:
     typedef QMap<QString, QVariant> PluginMetaData;
 
@@ -39,6 +43,13 @@ public:
     virtual PluginMetaData metaData() = 0;
 
     virtual bool hasActiveImports() const = 0;
+
+signals:
+    void importStarted(const QStringList &services);
+    void importStateChanged(const QStringList &finishedServices,
+                            const QStringList &newServices);
+    void importEnded(int contactsAdded, int contactsRemoved,
+                     int contactsMerged);
 };
 
 Q_DECLARE_INTERFACE(ContactsdPluginInterface, "com.nokia.contactsd.Plugin/1.0")

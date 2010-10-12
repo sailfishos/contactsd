@@ -23,11 +23,12 @@
 #include <QObject>
 #include <QMap>
 
-#include "importnotifierdbusadaptor.h"
+#include "importstate.h"
 
 class QPluginLoader;
 class QString;
 class QStringList;
+class ContactsdPluginInterface;
 
 class ContactsdPluginLoader : public QObject
 {
@@ -46,15 +47,27 @@ public Q_SLOTS:
 
 Q_SIGNALS:
     void importStarted();
+    void importStateChanged(const QStringList &finishedServices,
+                            const QStringList &newServices);
     void importEnded(int contactsAdded, int contactsRemoved,
-            int contactsMerged);
+                     int contactsMerged);
     void pluginsLoaded();
+
+private slots:
+    void onPluginImportStarted(const QStringList &services);
+    void onPluginImportStateChanged(const QStringList &finishedServices,
+                                    const QStringList &newServices);
+    void onPluginImportEnded(int contactsAdded, int contactsRemoved,
+                             int contactsMerged);
 
 private:
     void registerNotificationService();
+    QString pluginName(ContactsdPluginInterface *plugin);
 
     typedef QMap<QString, QPluginLoader *> PluginStore;
     PluginStore mPluginStore;
+    
+    ImportState mImportState;
 };
 
 #endif

@@ -17,14 +17,16 @@
 **
 ****************************************************************************/
 
-#include "contactsdpluginloader.h"
-
-#include "contactsdplugininterface.h"
-
 #include <QDebug>
 #include <QDir>
 #include <QPluginLoader>
+#include <QString>
+#include <QStringList>
 #include <QVariant>
+
+#include "contactsdpluginloader.h"
+#include "contactsdplugininterface.h"
+#include "importnotifierdbusadaptor.h"
 
 ContactsdPluginLoader::ContactsdPluginLoader()
 {
@@ -61,7 +63,7 @@ void ContactsdPluginLoader::loadPlugins(const QStringList &plugins)
 }
 
 void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir,
-        const QStringList &plugins)
+                                        const QStringList &plugins)
 {
     QPluginLoader *loader;
     QDir dir(pluginsDir);
@@ -90,8 +92,8 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir,
 
         ContactsdPluginInterface::PluginMetaData metaData = plugin->metaData();
         if (!metaData.contains(CONTACTSD_PLUGIN_NAME)) {
-            qWarning() << "Error loading plugin" << absFileName <<
-                "- invalid plugin metadata";
+            qWarning() << "Error loading plugin" << absFileName
+                       << "- invalid plugin metadata";
             loader->unload();
             delete loader;
             continue;
@@ -115,13 +117,15 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir,
 
         qDebug() << "Plugin" << pluginName << "loaded";
         mPluginStore.insert(pluginName, loader);
-        connect(basePlugin,
-                SIGNAL(importStarted()),
-                SIGNAL(importStarted()));
-        connect(basePlugin,
-                SIGNAL(importEnded(int, int, int)),
-                SIGNAL(importEnded(int, int, int)));
+        connect(plugin, SIGNAL(importStarted(const QStringList &)),
+                this, SLOT(onPluginImportStarted(const QStringList &)));
+        connect(plugin, SIGNAL(importStateChanged(const QStringList &, const QStringList &)),
+                this, SLOT(onPluginImportStateChanged(const QStringList &, const QStringList &)));
+        connect(plugin, SIGNAL(importEnded(int, int, int)),
+                this, SLOT(onPluginImportEnded(int,int,int)));
         plugin->init();
+
+        // TODO check if this plugin has active import??? or not necessarily since it's just start
     }
 }
 
@@ -132,21 +136,84 @@ QStringList ContactsdPluginLoader::loadedPlugins() const
 
 bool ContactsdPluginLoader::hasActiveImports()
 {
-    foreach (const QString &pluginName, loadedPlugins()) {
-        QPluginLoader *loader = mPluginStore[pluginName];
-        QObject *basePlugin = loader->instance();
-        ContactsdPluginInterface *plugin =
-            qobject_cast<ContactsdPluginInterface *>(basePlugin);
+    return mImportState.hasActiveImports();
+}
 
-        if (!plugin) {
-            continue;
-        }
-
-        if (plugin->hasActiveImports()) {
-            return true;
-        }
+void ContactsdPluginLoader::onPluginImportStarted(const QStringList &services)
+{
+    ContactsdPluginInterface *plugin = qobject_cast<ContactsdPluginInterface *>(sender());
+    if (not plugin) {
+        qWarning() << Q_FUNC_INFO << "invalid ContactsdPluginInterface object";
+        return ;
     }
-    return false;
+
+    QString name = pluginName(plugin);
+    qDebug() << Q_FUNC_INFO << "by plugin" << name << "with services" << services;
+
+    if (mImportState.hasActiveImports()) {
+        // there's already active import, so we update import state with new services
+        emit importStateChanged(QStringList(), services);
+    }
+    else {
+        // new import
+        mImportState.reset();
+        emit importStarted();
+    }
+
+    mImportState.addImportingServices(name, services);
+}
+
+void ContactsdPluginLoader::onPluginImportStateChanged(const QStringList &finishedServices,
+                                                       const QStringList &newServices)
+{
+    ContactsdPluginInterface *plugin = qobject_cast<ContactsdPluginInterface *>(sender());
+    if (not plugin) {
+        qWarning() << Q_FUNC_INFO << "invalid ContactsdPluginInterface object";
+        return ;
+    }
+
+    QString name = pluginName(plugin);
+    qDebug() << Q_FUNC_INFO << "by plugin" << name
+             << "with finished services" << finishedServices
+             << "new services" << newServices;
+
+    if (not finishedServices.isEmpty())
+        mImportState.removeImportngServices(name, finishedServices);
+
+    if (not newServices.isEmpty())
+        mImportState.addImportingServices(name, newServices);
+
+    // emit importStateChanged signal
+    emit importStateChanged(finishedServices, newServices);
+}
+
+void ContactsdPluginLoader::onPluginImportEnded(int contactsAdded, int contactsRemoved,
+                                                int contactsMerged)
+{
+    ContactsdPluginInterface *plugin = qobject_cast<ContactsdPluginInterface *>(sender());
+    if (not plugin) {
+        qWarning() << Q_FUNC_INFO << "invalid ContactsdPluginInterface object";
+        return ;
+    }
+
+    QString name = pluginName(plugin);
+    qDebug() << Q_FUNC_INFO << "by plugin" << name
+             << "added" << contactsAdded
+             << "removed" << contactsRemoved
+             << "merged" << contactsMerged;
+
+    mImportState.pluginImportFinished(name, contactsAdded, contactsRemoved, contactsMerged);
+
+    if (not mImportState.hasActiveImports()) {
+        emit importEnded(mImportState.contactsAdded(), mImportState.contactsRemoved(),
+                         mImportState.contactsMerged());
+    }
+}
+
+QString ContactsdPluginLoader::pluginName(ContactsdPluginInterface *plugin)
+{
+    ContactsdPluginInterface::PluginMetaData metaData = plugin->metaData();
+    return metaData.value(CONTACTSD_PLUGIN_NAME).toString();
 }
 
 void ContactsdPluginLoader::registerNotificationService()

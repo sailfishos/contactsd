@@ -7,11 +7,13 @@ HEADERS += contactsd.h \
     contactsdpluginloader.h \
     contactsdplugininterface.h \
     importnotifierdbusadaptor.h \
+    importstate.h \
     logger.h
 SOURCES += main.cpp \
     contactsd.cpp \
     contactsdpluginloader.cpp \
     importnotifierdbusadaptor.cpp \
+    importstate.cpp \
     logger.cpp
 
 DEFINES += VERSION=\\\"$${VERSION}\\\"
