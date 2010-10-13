@@ -1,3 +1,9 @@
+contactsd (0.5.37-2) unstable; urgency=low
+
+  * Changes : Test Fix for self avatar and chat buttons
+
+ -- Siraj Razick <siraj.razick@collabora.co.uk>  Wed, 13 Oct 2010 14:00:00 +0530
+
 contactsd (0.5.37-1) unstable; urgency=low
 
   * Change: Make sure to not store the account until we have its normalized name
