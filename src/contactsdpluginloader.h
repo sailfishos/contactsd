@@ -46,7 +46,7 @@ public Q_SLOTS:
     bool hasActiveImports();
 
 Q_SIGNALS:
-    void importStarted();
+    void importStarted(const QStringList &services);
     void importStateChanged(const QStringList &finishedServices,
                             const QStringList &newServices);
     void importEnded(int contactsAdded, int contactsRemoved,

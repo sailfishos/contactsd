@@ -2,7 +2,7 @@ TEMPLATE = subdirs
 CONFIG += ordered
 QT -= gui
 
-SUBDIRS += src plugins tests
+SUBDIRS += dbus src plugins tests
 
 pkgconfig.path=$$LIBDIR/pkgconfig
 pkgconfig.files=contactsd-1.0.pc

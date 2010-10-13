@@ -3,25 +3,32 @@ TARGET = contactsd
 
 QT += dbus
 
+system(qdbusxml2cpp -c ContactsImportProgressAdaptor -a contactsimportprogressadaptor.h:contactsimportprogressadaptor.cpp $$PWD/../dbus/com.nokia.contacts.importprogress.xml)
+
 HEADERS += contactsd.h \
     contactsdpluginloader.h \
     contactsdplugininterface.h \
-    importnotifierdbusadaptor.h \
     importstate.h \
-    logger.h
+    logger.h \
+    contactsimportprogressadaptor.h
 SOURCES += main.cpp \
     contactsd.cpp \
     contactsdpluginloader.cpp \
-    importnotifierdbusadaptor.cpp \
     importstate.cpp \
-    logger.cpp
+    logger.cpp \
+    contactsimportprogressadaptor.cpp
+
+QMAKE_CLEAN += \
+    contactsimportprogressadaptor.h \
+    contactsimportprogressadaptor.cpp
 
 DEFINES += VERSION=\\\"$${VERSION}\\\"
 
 DEFINES += CONTACTSD_LOG_DIR=\\\"$$LOCALSTATEDIR/log\\\"
 DEFINES += CONTACTSD_PLUGINS_DIR=\\\"$$LIBDIR/contactsd-1.0/plugins\\\"
 
-headers.files = ContactsdPluginInterface contactsdplugininterface.h
+headers.files = ContactsdPluginInterface \
+                contactsdplugininterface.h
 headers.path = $$INCLUDEDIR/contactsd-1.0
 
 target.path = $$BINDIR

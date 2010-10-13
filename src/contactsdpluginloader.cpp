@@ -26,11 +26,11 @@
 
 #include "contactsdpluginloader.h"
 #include "contactsdplugininterface.h"
-#include "importnotifierdbusadaptor.h"
+#include "contactsimportprogressadaptor.h"
 
 ContactsdPluginLoader::ContactsdPluginLoader()
 {
-    (void) new ImportNotifierAdaptor(this);
+    (void) new ContactsImportProgressAdaptor(this);
     registerNotificationService();
 }
 
@@ -117,11 +117,11 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir,
 
         qDebug() << "Plugin" << pluginName << "loaded";
         mPluginStore.insert(pluginName, loader);
-        connect(plugin, SIGNAL(importStarted(const QStringList &)),
+        connect(basePlugin, SIGNAL(importStarted(const QStringList &)),
                 this, SLOT(onPluginImportStarted(const QStringList &)));
-        connect(plugin, SIGNAL(importStateChanged(const QStringList &, const QStringList &)),
+        connect(basePlugin, SIGNAL(importStateChanged(const QStringList &, const QStringList &)),
                 this, SLOT(onPluginImportStateChanged(const QStringList &, const QStringList &)));
-        connect(plugin, SIGNAL(importEnded(int, int, int)),
+        connect(basePlugin, SIGNAL(importEnded(int, int, int)),
                 this, SLOT(onPluginImportEnded(int,int,int)));
         plugin->init();
 
@@ -157,7 +157,7 @@ void ContactsdPluginLoader::onPluginImportStarted(const QStringList &services)
     else {
         // new import
         mImportState.reset();
-        emit importStarted();
+        emit importStarted(services);
     }
 
     mImportState.addImportingServices(name, services);
