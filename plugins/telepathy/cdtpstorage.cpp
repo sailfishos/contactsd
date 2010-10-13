@@ -55,11 +55,11 @@ void CDTpStorage::syncAccount(CDTpAccount *accountWrapper,
     RDFVariable imAccount(accountUrl);
     RDFVariable imAddress(imAddressUrl);
 
-    up.addDeletion(imAccount, nco::imAccountType::iri());
+    up.addDeletion(imAccount, nco::imProtocol::iri());
     up.addDeletion(imAccount, nco::imID::iri());
 
     up.addInsertion(imAccount, rdf::type::iri(), nco::IMAccount::iri());
-    up.addInsertion(imAccount, nco::imAccountType::iri(), LiteralValue(account->protocol()));
+    up.addInsertion(imAccount, nco::imProtocol::iri(), LiteralValue(account->protocol()));
     up.addInsertion(imAddress, rdf::type::iri(), nco::IMAddress::iri());
     up.addInsertion(imAddress, nco::imID::iri(), LiteralValue(account->normalizedName()));
 
