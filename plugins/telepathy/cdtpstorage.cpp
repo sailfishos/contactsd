@@ -102,7 +102,7 @@ void CDTpStorage::syncAccount(CDTpAccount *accountWrapper,
         // TODO: saving to disk needs to be removed here
         const bool ok = saveAccountAvatar(avatar.avatarData, avatar.MIMEType,
                 QString("%1/.contacts/avatars/").arg(QDir::homePath()), fileName);
-        updateAvatar(up, imAddressUrl, QUrl::fromLocalFile(fileName), ok);
+        updateAvatar(up, imAddressUrl, QUrl::fromLocalFile(fileName));
     }
 
     ::tracker()->executeQuery(up);
@@ -667,8 +667,7 @@ QUrl CDTpStorage::trackerStatusFromTpPresenceStatus(
 
 void CDTpStorage::updateAvatar(RDFUpdate &query,
         const QUrl &url,
-        const QUrl &fileName,
-        bool deleteOnly)
+        const QUrl &fileName)
 {
     // We need deleteOnly to handle cases where the avatar image was removed from the account
     if (!fileName.isValid()) {
@@ -679,10 +678,17 @@ void CDTpStorage::updateAvatar(RDFUpdate &query,
     RDFVariable dataObject(fileName);
 
     query.addDeletion(imAddress, nco::imAvatar::iri());
+    query.addDeletion(imAddress, nco::imAvatar::iri());
+    query.addDeletion(nco::default_contact_me::iri() , nco::photo::iri());
+    query.addDeletion(dataObject, nie::url::iri());
 
-    if (!deleteOnly) {
+    if (!fileName.isEmpty()) {
+        query.addInsertion(RDFStatement(dataObject, rdf::type::iri(), nie::DataObject::iri()));
+        query.addInsertion(RDFStatement(dataObject, nie::url::iri(), dataObject));
         query.addInsertion(RDFStatement(imAddress, nco::imAvatar::iri(), dataObject));
+        query.addInsertion(RDFStatement(nco::default_contact_me::iri(), nco::photo::iri(), dataObject));
     }
+
 }
 
 CDTpStorageSelectQuery::CDTpStorageSelectQuery(const RDFSelect &select,
