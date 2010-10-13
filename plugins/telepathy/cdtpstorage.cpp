@@ -683,10 +683,17 @@ void CDTpStorage::updateAvatar(RDFUpdate &query,
     RDFVariable dataObject(fileName);
 
     query.addDeletion(imAddress, nco::imAvatar::iri());
+    query.addDeletion(imAddress, nco::imAvatar::iri());
+    query.addDeletion(nco::default_contact_me::iri() , nco::photo::iri());
+    query.addDeletion(dataObject, nie::url::iri());
 
     if (!deleteOnly) {
+        query.addInsertion(RDFStatement(dataObject, rdf::type::iri(), nie::DataObject::iri()));
+        query.addInsertion(RDFStatement(dataObject, nie::url::iri(), dataObject));
         query.addInsertion(RDFStatement(imAddress, nco::imAvatar::iri(), dataObject));
+        query.addInsertion(RDFStatement(nco::default_contact_me::iri(), nco::photo::iri(), dataObject));
     }
+
 }
 
 CDTpStorageSelectQuery::CDTpStorageSelectQuery(const RDFSelect &select,
