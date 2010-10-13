@@ -107,8 +107,8 @@ private:
     QUrl authStatus(Tp::Contact::PresenceState) const;
 
     void updateAvatar(RDFUpdate &query, const QUrl &url,
-            const QUrl &fileName,
-            bool deleteOnly);
+            const QUrl &fileName);
+    CDTpStorageSignalWatcher *mStorageSignalWatcher;
 };
 
 class CDTpStorageSelectQuery : public QObject
