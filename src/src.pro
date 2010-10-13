@@ -3,7 +3,7 @@ TARGET = contactsd
 
 QT += dbus
 
-system(qdbusxml2cpp -c ContactsImportProgressAdaptor -a contactsimportprogressadaptor.h:contactsimportprogressadaptor.cpp $$PWD/../dbus/com.nokia.contacts.importprogress.xml)
+system(qdbusxml2cpp -c ContactsImportProgressAdaptor -a contactsimportprogressadaptor.h:contactsimportprogressadaptor.cpp com.nokia.contacts.importprogress.xml)
 
 HEADERS += contactsd.h \
     contactsdpluginloader.h \
@@ -31,5 +31,8 @@ headers.files = ContactsdPluginInterface \
                 contactsdplugininterface.h
 headers.path = $$INCLUDEDIR/contactsd-1.0
 
+xml.files = com.nokia.contacts.importprogress.xml
+xml.path = $$INCLUDEDIR/contactsd-1.0
+
 target.path = $$BINDIR
-INSTALLS += target headers
+INSTALLS += target headers xml
