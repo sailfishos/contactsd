@@ -18,10 +18,11 @@
 ****************************************************************************/
 
 #include "test-contactsd.h"
+#include "importstate.h"
 
 const QString telepathyString("telepathy");
 
-void TestContactsd::initTestCase()
+void TestContactsd::init()
 {
     mDaemon = new Contactsd(this);
 }
@@ -49,7 +50,40 @@ void TestContactsd::testLoadPlugins()
                 .arg(telepathyString).toLatin1());
 }
 
-void TestContactsd::cleanupTestCase()
+void TestContactsd::testImportState()
+{
+    ImportState state;
+
+    QCOMPARE(state.hasActiveImports(), false);
+
+    state.addImportingService("plugin1", "gtalk");
+    QCOMPARE(state.hasActiveImports(), true);
+
+    state.addImportingService("plugin1", "msn");
+    QCOMPARE(state.hasActiveImports(), true);
+
+    state.removeImportingService("plugin1", "gtalk", 10, 0, 3);
+    QCOMPARE(state.hasActiveImports(), true);
+
+    state.addImportingService("plugin2", "qq");
+    state.removeImportingService("plugin1", "msn", 20, 1, 4);
+    QCOMPARE(state.hasActiveImports(), true);
+
+    state.removeImportingService("plugin2", "qq", 5, 0, 1);
+    QCOMPARE(state.hasActiveImports(), false);
+
+    QCOMPARE(state.contactsAdded(), 10+20+5);
+    QCOMPARE(state.contactsRemoved(), 1);
+    QCOMPARE(state.contactsMerged(), 3+4+1);
+
+    state.reset();
+    QCOMPARE(state.hasActiveImports(), false);
+    QCOMPARE(state.contactsAdded(), 0);
+    QCOMPARE(state.contactsRemoved(), 0);
+    QCOMPARE(state.contactsMerged(), 0);
+}
+
+void TestContactsd::cleanup()
 {
     delete mDaemon;
 }

@@ -30,12 +30,13 @@ class TestContactsd : public QObject
     Q_OBJECT
 
 private Q_SLOTS:
-    void initTestCase();
+    void init();
 
     void testLoadAllPlugins();
     void testLoadPlugins();
+    void testImportState();
 
-    void cleanupTestCase();
+    void cleanup();
 
 private:
     Contactsd *mDaemon;
