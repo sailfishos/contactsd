@@ -117,12 +117,10 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir,
 
         qDebug() << "Plugin" << pluginName << "loaded";
         mPluginStore.insert(pluginName, loader);
-        connect(basePlugin, SIGNAL(importStarted(const QStringList &)),
-                this, SLOT(onPluginImportStarted(const QStringList &)));
-        connect(basePlugin, SIGNAL(importStateChanged(const QStringList &, const QStringList &)),
-                this, SLOT(onPluginImportStateChanged(const QStringList &, const QStringList &)));
-        connect(basePlugin, SIGNAL(importEnded(int, int, int)),
-                this, SLOT(onPluginImportEnded(int,int,int)));
+        connect(basePlugin, SIGNAL(importStarted(const QString &)),
+                this, SLOT(onPluginImportStarted(const QString &)));
+        connect(basePlugin, SIGNAL(importEnded(const QString &, int, int, int)),
+                this, SLOT(onPluginImportEnded(const QString &, int,int,int)));
         plugin->init();
 
         // TODO check if this plugin has active import??? or not necessarily since it's just start
@@ -136,10 +134,12 @@ QStringList ContactsdPluginLoader::loadedPlugins() const
 
 bool ContactsdPluginLoader::hasActiveImports()
 {
-    return mImportState.hasActiveImports();
+    bool importing = mImportState.hasActiveImports();
+    qDebug() << Q_FUNC_INFO << importing;
+    return importing;
 }
 
-void ContactsdPluginLoader::onPluginImportStarted(const QStringList &services)
+void ContactsdPluginLoader::onPluginImportStarted(const QString &service)
 {
     ContactsdPluginInterface *plugin = qobject_cast<ContactsdPluginInterface *>(sender());
     if (not plugin) {
@@ -148,23 +148,26 @@ void ContactsdPluginLoader::onPluginImportStarted(const QStringList &services)
     }
 
     QString name = pluginName(plugin);
-    qDebug() << Q_FUNC_INFO << "by plugin" << name << "with services" << services;
+    qDebug() << Q_FUNC_INFO << "by plugin" << name << "with service" << service;
+
+    QStringList newServices;
+    newServices << service;
 
     if (mImportState.hasActiveImports()) {
         // there's already active import, so we update import state with new services
-        emit importStateChanged(QStringList(), services);
+        emit importStateChanged(QStringList(), newServices);
     }
     else {
         // new import
         mImportState.reset();
-        emit importStarted(services);
+        emit importStarted(newServices);
     }
 
-    mImportState.addImportingServices(name, services);
+    mImportState.addImportingService(name, service);
 }
 
-void ContactsdPluginLoader::onPluginImportStateChanged(const QStringList &finishedServices,
-                                                       const QStringList &newServices)
+void ContactsdPluginLoader::onPluginImportEnded(const QString &service, int contactsAdded,
+                                                int contactsRemoved, int contactsMerged)
 {
     ContactsdPluginInterface *plugin = qobject_cast<ContactsdPluginInterface *>(sender());
     if (not plugin) {
@@ -174,37 +177,18 @@ void ContactsdPluginLoader::onPluginImportStateChanged(const QStringList &finish
 
     QString name = pluginName(plugin);
     qDebug() << Q_FUNC_INFO << "by plugin" << name
-             << "with finished services" << finishedServices
-             << "new services" << newServices;
+             << "service" << service << "added" << contactsAdded
+             << "removed" << contactsRemoved << "merged" << contactsMerged;
 
-    if (not finishedServices.isEmpty())
-        mImportState.removeImportngServices(name, finishedServices);
+    mImportState.removeImportingService(name, service, contactsAdded,
+                                        contactsRemoved, contactsMerged);
 
-    if (not newServices.isEmpty())
-        mImportState.addImportingServices(name, newServices);
-
-    // emit importStateChanged signal
-    emit importStateChanged(finishedServices, newServices);
-}
-
-void ContactsdPluginLoader::onPluginImportEnded(int contactsAdded, int contactsRemoved,
-                                                int contactsMerged)
-{
-    ContactsdPluginInterface *plugin = qobject_cast<ContactsdPluginInterface *>(sender());
-    if (not plugin) {
-        qWarning() << Q_FUNC_INFO << "invalid ContactsdPluginInterface object";
-        return ;
+    if (mImportState.hasActiveImports()) {
+        QStringList finishedServices;
+        finishedServices << service;
+        emit importStateChanged(finishedServices, QStringList());
     }
-
-    QString name = pluginName(plugin);
-    qDebug() << Q_FUNC_INFO << "by plugin" << name
-             << "added" << contactsAdded
-             << "removed" << contactsRemoved
-             << "merged" << contactsMerged;
-
-    mImportState.pluginImportFinished(name, contactsAdded, contactsRemoved, contactsMerged);
-
-    if (not mImportState.hasActiveImports()) {
+    else {
         emit importEnded(mImportState.contactsAdded(), mImportState.contactsRemoved(),
                          mImportState.contactsMerged());
     }
@@ -223,9 +207,9 @@ void ContactsdPluginLoader::registerNotificationService()
         qWarning() << "Could not connect to DBus:" << connection.lastError();
     }
 
-    if (!connection.registerService("com.nokia.contacts.importprogress")) {
+    if (!connection.registerService("com.nokia.contactsd")) {
         qWarning() << "Could not register DBus service "
-            "'com.nokia.contacts.importprogress':" << connection.lastError();
+            "'com.nokia.contactsd':" << connection.lastError();
     }
 
     if (!connection.registerObject("/", this)) {

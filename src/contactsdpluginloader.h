@@ -54,11 +54,9 @@ Q_SIGNALS:
     void pluginsLoaded();
 
 private slots:
-    void onPluginImportStarted(const QStringList &services);
-    void onPluginImportStateChanged(const QStringList &finishedServices,
-                                    const QStringList &newServices);
-    void onPluginImportEnded(int contactsAdded, int contactsRemoved,
-                             int contactsMerged);
+    void onPluginImportStarted(const QString &service);
+    void onPluginImportEnded(const QString &service, int contactsAdded,
+                             int contactsRemoved, int contactsMerged);
 
 private:
     void registerNotificationService();

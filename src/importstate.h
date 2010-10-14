@@ -20,7 +20,7 @@
 #ifndef IMPORTSTATE_H_
 #define IMPORTSTATE_H_
 
-#include <QMap>
+#include <QMultiHash>
 #include <QString>
 #include <QStringList>
 
@@ -34,18 +34,17 @@ public:
     // otherwise it will fail and return false.
     bool reset();
 
-    void addImportingServices(const QString &pluginName, const QStringList &services);
-    void removeImportngServices(const QString &pluginName, const QStringList &services);
-    // a plugin has finished contacts importing, thus we remove all importing services of this plugin
-    void pluginImportFinished(const QString &pluginName, int added, int removed, int merged);
+    void addImportingService(const QString &pluginName, const QString &service);
+    void removeImportingService(const QString &pluginName, const QString &service,
+                                int added, int removed, int merged);
 
     int contactsAdded();
     int contactsMerged();
     int contactsRemoved();
 
 private:
-    // plguin name to importing services
-    QMap<QString, QStringList> mPluginsImporting;
+    // plguin name to importing service. A plugin can have multiple active importing services
+    QMultiHash<QString, QString> mPluginsImporting;
 
     // accumlated amount of contacts being added, merged, removed
     int mContactsAdded;

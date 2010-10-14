@@ -45,11 +45,9 @@ public:
 /* The plugin that wants to provide contacts importing feature
    must decalre the following signals:
 signals:
-    void importStarted(const QStringList &services);
-    void importStateChanged(const QStringList &finishedServices,
-                            const QStringList &newServices);
-    void importEnded(int contactsAdded, int contactsRemoved,
-                     int contactsMerged);
+    void importStarted(const QString &service);
+    void importEnded(const QString &service, int contactsAdded,
+                     int contactsRemoved, int contactsMerged);
 
    This is an ugly hack but we can't make ContactsdPluginInterface an QObject
    since the meta-objects would not be defined in this interface, and plguin

@@ -45,31 +45,21 @@ bool ImportState::reset()
     return true;
 }
 
-void ImportState::addImportingServices(const QString &pluginName, const QStringList &services)
+void ImportState::addImportingService(const QString &pluginName, const QString &service)
 {
-    QStringList &currentServices = mPluginsImporting[pluginName];
-    currentServices.append(services);
-    currentServices.removeDuplicates();
+    if (not mPluginsImporting.contains(pluginName, service))
+        mPluginsImporting.insert(pluginName, service);
 }
 
-void ImportState::removeImportngServices(const QString &pluginName, const QStringList &services)
+void ImportState::removeImportingService(const QString &pluginName, const QString &service,
+                                         int added, int removed, int merged)
 {
-    if (!mPluginsImporting.contains(pluginName)) {
-        qWarning() << Q_FUNC_INFO << pluginName << "does not have active contacts import";
-        return ;
+    int numRemoved = mPluginsImporting.remove(pluginName, service);
+    if (numRemoved) {
+        mContactsAdded += added;
+        mContactsRemoved += removed;
+        mContactsMerged += merged;
     }
-
-    QStringList &currentServices = mPluginsImporting[pluginName];
-    foreach (const QString &service, services)
-        currentServices.removeAll(service);
-}
-
-void ImportState::pluginImportFinished(const QString &pluginName, int added,  int removed, int merged)
-{
-    mPluginsImporting.remove(pluginName);
-    mContactsAdded += added;
-    mContactsRemoved += removed;
-    mContactsMerged += merged;
 }
 
 int ImportState::contactsAdded()
