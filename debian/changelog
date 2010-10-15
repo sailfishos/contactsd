@@ -1,5 +1,13 @@
+contactsd (0.5.37-3) unstable; urgency=low
+
+  * Fixes: NB#197676 - voip call and chat buttons are not shown in the contact card view.
+  * Fixes: NB#191414 - Default avatar is displayed under 'info' tab after configuring gtalk account
+  * Changes: use imProtocol property for imAccount
+
+ -- Siraj Razick <siraj.razick@collabora.co.uk>  Wed, 13 Oct 2010 17:40:00 +0530
+
 contactsd (0.5.37-2) unstable; urgency=low
-  
+
   * Fixes : NB#197676 - voip call and chat buttons are not shown in the contact card view.
   * Fixes : NB#191414 - Default avatar is displayed under 'info' tab after configuring gtalk account
   * Changes : use imProtocol property for imAccount
