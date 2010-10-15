@@ -100,7 +100,7 @@ void CDTpStorage::syncAccount(CDTpAccount *accountWrapper,
         QString fileName;
         const Tp::Avatar &avatar = account->avatar();
         // TODO: saving to disk needs to be removed here
-        const bool ok = saveAccountAvatar(avatar.avatarData, avatar.MIMEType,
+        saveAccountAvatar(avatar.avatarData, avatar.MIMEType,
                 QString("%1/.contacts/avatars/").arg(QDir::homePath()), fileName);
         updateAvatar(up, imAddressUrl, QUrl::fromLocalFile(fileName));
     }
@@ -532,6 +532,9 @@ QUrl CDTpStorage::authStatus(Tp::Contact::PresenceState state) const
     case Tp::Contact::PresenceStateYes:
         return nco::predefined_auth_status_yes::iri();
     }
+
+    qWarning() << "Unknown telepathy presence state:" << state;
+    return nco::predefined_auth_status_no::iri();
 }
 
 void CDTpStorage::addContactAuthorizationInfoToQuery(RDFUpdate &query,
