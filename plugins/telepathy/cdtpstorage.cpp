@@ -307,9 +307,7 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
         addContactAuthorizationInfoToQuery(updateQuery, imAddress, contactWrapper);
     }
 
-    if (!contactsAddedList.isEmpty()) {
-       ::tracker()->executeQuery(updateQuery);
-    }
+    ::tracker()->executeQuery(updateQuery);
     resolver->deleteLater();
 }
 
