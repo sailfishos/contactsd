@@ -108,7 +108,6 @@ private:
 
     void updateAvatar(RDFUpdate &query, const QUrl &url,
             const QUrl &fileName);
-    CDTpStorageSignalWatcher *mStorageSignalWatcher;
 };
 
 class CDTpStorageSelectQuery : public QObject

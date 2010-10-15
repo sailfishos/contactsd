@@ -147,17 +147,12 @@ void CDTpStorage::syncAccountContact(CDTpAccount *accountWrapper,
 
     const QString id = contact->id();
     const QString localId = contactLocalId(account->objectPath(), id);
-    const RDFVariable imContact(contactIri(localId));
 
     qDebug() << "Syncing account" << account->objectPath() <<
         "contact" << contact->id() << "changes to storage";
 
     RDFUpdate updateQuery;
     const RDFVariable imAddress(contactImAddress(contactWrapper));
-
-    updateQuery.addDeletion(imContact, nie::contentLastModified::iri());
-    updateQuery.addInsertion(imContact, nie::contentLastModified::iri(),
-            RDFVariable(QDateTime::currentDateTime()));
 
     if (changes & CDTpContact::Alias) {
         qDebug() << "  alias changed";
@@ -173,7 +168,7 @@ void CDTpStorage::syncAccountContact(CDTpAccount *accountWrapper,
     }
     if (changes & CDTpContact::Avatar) {
         qDebug() << "  avatar changed";
-        addContactAvatarInfoToQuery(updateQuery, imAddress, imContact, contactWrapper);
+        //addContactAvatarInfoToQuery(updateQuery, imAddress, imContact, contactWrapper);
     }
     if (changes & CDTpContact::Authorization) {
         qDebug() << "  authorization changed";
@@ -341,9 +336,7 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
         addContactAuthorizationInfoToQuery(updateQuery, imAddress, contactWrapper);
     }
 
-    if (!contactsAddedList.isEmpty()) {
-       ::tracker()->executeQuery(updateQuery);
-    }
+    ::tracker()->executeQuery(updateQuery);
     resolver->deleteLater();
 }
 
@@ -378,7 +371,7 @@ void CDTpStorage::onContactUpdateResolverFinished(CDTpStorageContactResolver *re
     const QList<CDTpContact *> &contactsAdded = resolver->resolvedRemoteContacts();
 
     RDFUpdate updateQuery;
-    foreach (CDTpContact *contactWrapper, contactsAdded) {
+    foreach (CDTpContact *contactWrapper, resolver->remoteContacts()) {
         Tp::ContactPtr contact = contactWrapper->contact();
         QString accountObjectPath =
             contactWrapper->accountWrapper()->account()->objectPath();
@@ -389,6 +382,7 @@ void CDTpStorage::onContactUpdateResolverFinished(CDTpStorageContactResolver *re
         if (localId.isEmpty() || localId.isNull()) {
             localId = contactLocalId(accountObjectPath, id);
         }
+        qDebug() << Q_FUNC_INFO << "Updateing " << localId;
 
         const RDFVariable imContact(contactIri(localId));
         const RDFVariable imAddress(contactImAddress(accountObjectPath, id));
@@ -763,7 +757,7 @@ void CDTpStorageContactResolver::onStorageResolveSelectQueryFinished(
 }
 
 void CDTpStorageContactResolver::requestContactResolve(CDTpAccount *accountWrapper,
-        const QList<CDTpContact *> &contactWrapper)
+        const QList<CDTpContact *> &contactList)
 {
     RDFVariable imContact = RDFVariable::fromType<nco::PersonContact>();
     RDFVariable imAddress = imContact.property<nco::hasIMAddress>();
@@ -775,7 +769,7 @@ void CDTpStorageContactResolver::requestContactResolve(CDTpAccount *accountWrapp
     imAccount = QUrl("telepathy:" + accountObjectPath);
     imAccount.property<nco::hasIMContact>() = imAddress;
 
-    foreach (CDTpContact *contactWrapper, contactWrapper) {
+    foreach (CDTpContact *contactWrapper, contactList) {
         QString storageUri = QString("telepathy:%1!%2")
             .arg(accountObjectPath)
             .arg(contactWrapper->contact()->id());
