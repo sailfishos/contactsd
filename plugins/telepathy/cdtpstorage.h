@@ -143,6 +143,8 @@ public:
     QList<CDTpContact *> resolvedRemoteContacts() const;
     QList<CDTpContact *> remoteContacts() const;
     QString storageIdForContact(CDTpContact *contactWrapper) const;
+    void setContactChanges(CDTpContact::Changes changes);
+    CDTpContact::Changes contactChanges() const;
 
 Q_SIGNALS:
    void finished(CDTpStorageContactResolver *resolveWrapper);
@@ -155,6 +157,7 @@ private:
             const QList<CDTpContact *> &contactsToResolve);
     QHash<CDTpContact *, QString> mResolvedContacts;
     QList<CDTpContact *> mContactsNotResolved;
+    CDTpContact::Changes mContactChanges;
 };
 
 #endif // CDTPSTORAGE_H
