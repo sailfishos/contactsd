@@ -117,10 +117,10 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir,
 
         qDebug() << "Plugin" << pluginName << "loaded";
         mPluginStore.insert(pluginName, loader);
-        connect(basePlugin, SIGNAL(importStarted(const QString &)),
-                this, SLOT(onPluginImportStarted(const QString &)));
-        connect(basePlugin, SIGNAL(importEnded(const QString &, int, int, int)),
-                this, SLOT(onPluginImportEnded(const QString &, int,int,int)));
+        connect(basePlugin, SIGNAL(importStarted(const QString &, const QString &)),
+                this, SLOT(onPluginImportStarted(const QString &, const QString &)));
+        connect(basePlugin, SIGNAL(importEnded(const QString &, const QString &, int, int, int)),
+                this, SLOT(onPluginImportEnded(const QString &, const QString &, int,int,int)));
         plugin->init();
 
         // TODO check if this plugin has active import??? or not necessarily since it's just start
@@ -139,35 +139,7 @@ bool ContactsdPluginLoader::hasActiveImports()
     return importing;
 }
 
-void ContactsdPluginLoader::onPluginImportStarted(const QString &service)
-{
-    ContactsdPluginInterface *plugin = qobject_cast<ContactsdPluginInterface *>(sender());
-    if (not plugin) {
-        qWarning() << Q_FUNC_INFO << "invalid ContactsdPluginInterface object";
-        return ;
-    }
-
-    QString name = pluginName(plugin);
-    qDebug() << Q_FUNC_INFO << "by plugin" << name << "with service" << service;
-
-    QStringList newServices;
-    newServices << service;
-
-    if (mImportState.hasActiveImports()) {
-        // there's already active import, so we update import state with new services
-        emit importStateChanged(QStringList(), newServices);
-    }
-    else {
-        // new import
-        mImportState.reset();
-        emit importStarted(newServices);
-    }
-
-    mImportState.addImportingService(name, service);
-}
-
-void ContactsdPluginLoader::onPluginImportEnded(const QString &service, int contactsAdded,
-                                                int contactsRemoved, int contactsMerged)
+void ContactsdPluginLoader::onPluginImportStarted(const QString &service, const QString &account)
 {
     ContactsdPluginInterface *plugin = qobject_cast<ContactsdPluginInterface *>(sender());
     if (not plugin) {
@@ -177,16 +149,52 @@ void ContactsdPluginLoader::onPluginImportEnded(const QString &service, int cont
 
     QString name = pluginName(plugin);
     qDebug() << Q_FUNC_INFO << "by plugin" << name
-             << "service" << service << "added" << contactsAdded
-             << "removed" << contactsRemoved << "merged" << contactsMerged;
+             << "with service" << service << "account" << account;
 
-    mImportState.removeImportingService(name, service, contactsAdded,
+    QStringList newServices;
+    newServices << service;
+
+    if (mImportState.hasActiveImports()) {
+        // check if any account from the same service is importing now
+        if (not mImportState.serviceHasActiveImports(name, service)) {
+            // there was no active import from this service, so we update import state with new services
+            emit importStateChanged(QStringList(), newServices);
+        }
+    }
+    else {
+        // new import
+        mImportState.reset();
+        emit importStarted(newServices);
+    }
+
+    mImportState.addImportingAccount(name, service, account);
+}
+
+void ContactsdPluginLoader::onPluginImportEnded(const QString &service, const QString &account,
+                                                int contactsAdded, int contactsRemoved, int contactsMerged)
+{
+    ContactsdPluginInterface *plugin = qobject_cast<ContactsdPluginInterface *>(sender());
+    if (not plugin) {
+        qWarning() << Q_FUNC_INFO << "invalid ContactsdPluginInterface object";
+        return ;
+    }
+
+    QString name = pluginName(plugin);
+    qDebug() << Q_FUNC_INFO << "by plugin" << name
+             << "service" << service << "account" << account
+             << "added" << contactsAdded << "removed" << contactsRemoved
+             << "merged" << contactsMerged;
+
+    mImportState.removeImportingAccount(name, service, account, contactsAdded,
                                         contactsRemoved, contactsMerged);
 
     if (mImportState.hasActiveImports()) {
-        QStringList finishedServices;
-        finishedServices << service;
-        emit importStateChanged(finishedServices, QStringList());
+        if (not mImportState.serviceHasActiveImports(name, service)) {
+            // This service has no acive importing accounts anymore
+            QStringList finishedServices;
+            finishedServices << service;
+            emit importStateChanged(finishedServices, QStringList());
+        }
     }
     else {
         emit importEnded(mImportState.contactsAdded(), mImportState.contactsRemoved(),

@@ -40,14 +40,17 @@ public:
     virtual void init() = 0;
     virtual PluginMetaData metaData() = 0;
 
+    // TODO we don't need this function!!!!!!!!!!!!!!!!!!!!!!!
     virtual bool hasActiveImports() const = 0;
 
 /* The plugin that wants to provide contacts importing feature
    must decalre the following signals:
 signals:
-    void importStarted(const QString &service);
-    void importEnded(const QString &service, int contactsAdded,
-                     int contactsRemoved, int contactsMerged);
+    // \param service - display name of a service (e.g. Gtalk, MSN)
+    // \param account - account id or account path that can uniquely identify an account
+    void importStarted(const QString &service, const QString &account);
+    void importEnded(const QString &service, const QString &account,
+                     int contactsAdded, int contactsRemoved, int contactsMerged);
 
    This is an ugly hack but we can't make ContactsdPluginInterface an QObject
    since the meta-objects would not be defined in this interface, and plguin

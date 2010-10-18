@@ -30,7 +30,7 @@ ImportState::ImportState()
 
 bool ImportState::hasActiveImports()
 {
-    return (mPluginsImporting.size() != 0);
+    return (mImportingPlugin2Services.size() != 0);
 }
 
 bool ImportState::reset()
@@ -38,27 +38,44 @@ bool ImportState::reset()
     if (hasActiveImports())
         return false;
 
-    mPluginsImporting.clear();
+    mImportingPlugin2Services.clear();
+    mService2Accounts.clear();
     mContactsAdded = 0;
     mContactsMerged = 0;
     mContactsRemoved = 0;
     return true;
 }
 
-void ImportState::addImportingService(const QString &pluginName, const QString &service)
+
+bool ImportState::serviceHasActiveImports(const QString &pluginName, const QString &service)
 {
-    if (not mPluginsImporting.contains(pluginName, service))
-        mPluginsImporting.insert(pluginName, service);
+    return mImportingPlugin2Services.contains(pluginName, service);
 }
 
-void ImportState::removeImportingService(const QString &pluginName, const QString &service,
-                                         int added, int removed, int merged)
+void ImportState::addImportingAccount(const QString &pluginName, const QString &service,
+                                      const QString &account)
 {
-    int numRemoved = mPluginsImporting.remove(pluginName, service);
+    if (not mImportingPlugin2Services.contains(pluginName, service))
+        mImportingPlugin2Services.insert(pluginName, service);
+
+    if (not mService2Accounts.contains(service, account))
+        mService2Accounts.insert(service, account);
+}
+
+void ImportState::removeImportingAccount(const QString &pluginName, const QString &service,
+                                         const QString &account, int added, int removed, int merged)
+{
+    int numRemoved = mService2Accounts.remove(service, account);
+
     if (numRemoved) {
         mContactsAdded += added;
         mContactsRemoved += removed;
         mContactsMerged += merged;
+
+        // If this service doesn't have any other active importing account,
+        // we consider this service has finished importing
+        if (not mService2Accounts.contains(service))
+            mImportingPlugin2Services.remove(pluginName, service);
     }
 }
 
