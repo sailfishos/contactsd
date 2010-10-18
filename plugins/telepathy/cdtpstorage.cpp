@@ -302,7 +302,8 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
 
         const QString id = contact->id();
         QString localId = resolver->storageIdForContact(contactWrapper);
-        if (localId.isEmpty() || localId.isNull()) {
+        bool alreadyExists = (localId.isEmpty() || localId.isNull());
+        if (!alreadyExists) {
             localId = contactLocalId(accountObjectPath, id);
         }
 
@@ -312,22 +313,25 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
         const QDateTime datetime = QDateTime::currentDateTime();
 
         updateQuery.addDeletion(imContact, nie::contentLastModified::iri());
+        updateQuery.addInsertion(imContact, nie::contentLastModified::iri(), RDFVariable(datetime));
 
         updateQuery.addInsertion(RDFStatementList() <<
                 RDFStatement(imAddress, rdf::type::iri(), nco::IMAddress::iri()) <<
                 RDFStatement(imAddress, nco::imID::iri(), LiteralValue(id)));
 
+        if (!alreadyExists) {
+            updateQuery.addInsertion(RDFStatementList() <<
+                    RDFStatement(imContact, nco::contactLocalUID::iri(), LiteralValue(localId)) <<
+                    RDFStatement(imContact, nco::contactUID::iri(), LiteralValue(localId)));
+        }
+
         updateQuery.addInsertion(RDFStatementList() <<
                 RDFStatement(imContact, rdf::type::iri(), nco::PersonContact::iri()) <<
-                RDFStatement(imContact, nco::hasIMAddress::iri(), imAddress) <<
-                RDFStatement(imContact, nco::contactLocalUID::iri(), LiteralValue(localId)) <<
-                RDFStatement(imContact, nco::contactUID::iri(), LiteralValue(localId)));
+                RDFStatement(imContact, nco::hasIMAddress::iri(), imAddress));
 
         updateQuery.addInsertion(RDFStatementList() <<
                 RDFStatement(imAccount, rdf::type::iri(), nco::IMAccount::iri()) <<
                 RDFStatement(imAccount, nco::hasIMContact::iri(), imAddress));
-
-        updateQuery.addInsertion(imContact, nie::contentLastModified::iri(), RDFVariable(datetime));
 
         addContactAliasInfoToQuery(updateQuery, imAddress, contactWrapper);
         addContactPresenceInfoToQuery(updateQuery, imAddress, contactWrapper);
