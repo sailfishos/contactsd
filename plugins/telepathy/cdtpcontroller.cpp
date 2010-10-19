@@ -168,11 +168,13 @@ void CDTpController::removeAccount(const QString &accountObjectPath)
 void CDTpController::setImportStarted()
 {
     mImportActive = true;
-    emit importStarted();
+    // TODO empty service name and account id for now
+    emit importStarted(QString(), QString());
 }
 
 void CDTpController::setImportEnded(int contactsAdded, int contactsRemoved)
 {
     mImportActive = false;
-    emit importEnded(contactsAdded, contactsRemoved, 0);
+    // TODO empty service name and account id for now
+    emit importEnded(QString(), QString(), contactsAdded, contactsRemoved, 0);
 }

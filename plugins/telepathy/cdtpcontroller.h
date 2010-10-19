@@ -45,8 +45,8 @@ public:
     bool hasActiveImports() const;
 
 Q_SIGNALS:
-    void importStarted();
-    void importEnded(int contactsAdded, int contactsRemoved, int contactsMerged);
+    void importStarted(const QString &service, const QString &account);
+    void importEnded(const QString &service, const QString &account, int contactsAdded, int contactsRemoved, int contactsMerged);
 
 private Q_SLOTS:
     void onAccountManagerReady(Tp::PendingOperation *op);

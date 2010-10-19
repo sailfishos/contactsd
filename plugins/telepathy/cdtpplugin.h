@@ -42,9 +42,10 @@ public:
     QMap<QString, QVariant> metaData();
     bool hasActiveImports() const;
 
-Q_SIGNALS:
-    void importStarted();
-    void importEnded(int contactsAdded, int contactsRemoved, int contactsMerged);
+signals:
+    void importStarted(const QString &service, const QString &account);
+    void importEnded(const QString &service, const QString &account,
+                     int contactsAdded, int contactsRemoved, int contactsMerged);
 
 private:
     CDTpController *mController;

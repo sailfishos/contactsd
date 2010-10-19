@@ -44,11 +44,11 @@ void CDTpPlugin::init()
     mController = new CDTpController(this);
     // relay signals
     connect(mController,
-            SIGNAL(importStarted()),
-            SIGNAL(importStarted()));
+            SIGNAL(importStarted(const QString &, const QString &)),
+            SIGNAL(importStarted(const QString &, const QString &)));
     connect(mController,
-            SIGNAL(importEnded(int, int, int)),
-            SIGNAL(importEnded(int, int, int)));
+            SIGNAL(importEnded(const QString &, const QString &, int, int, int)),
+            SIGNAL(importEnded(const QString &, const QString &, int, int, int)));
 }
 
 QMap<QString, QVariant> CDTpPlugin::metaData()
