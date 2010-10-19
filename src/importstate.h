@@ -35,21 +35,17 @@ public:
     bool reset();
 
     // check if a service still has active importing accounts
-    bool serviceHasActiveImports(const QString &pluginName, const QString &service);
+    bool serviceHasActiveImports(const QString &service);
 
-    void addImportingAccount(const QString &pluginName, const QString &service,
-                             const QString &account);
-    void removeImportingAccount(const QString &pluginName, const QString &service,
-                                const QString &account, int added, int removed, int merged);
+    void addImportingAccount(const QString &service, const QString &account);
+    void removeImportingAccount(const QString &service, const QString &account,
+                                int added, int removed, int merged);
 
     int contactsAdded();
     int contactsMerged();
     int contactsRemoved();
 
 private:
-    // plguin name to importing services. A plugin can have multiple active importing services
-    QMultiHash<QString, QString> mImportingPlugin2Services;
-
     // each service may have multiple active importing accounts
     QMultiHash<QString, QString> mService2Accounts;
 

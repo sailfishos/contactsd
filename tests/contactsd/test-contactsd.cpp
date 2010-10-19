@@ -56,38 +56,38 @@ void TestContactsd::testImportState()
 
     QCOMPARE(state.hasActiveImports(), false);
 
-    state.addImportingAccount("plugin1", "gtalk", "gtalk-account1");
+    state.addImportingAccount("gtalk", "gtalk-account1");
     QCOMPARE(state.hasActiveImports(), true);
-    QCOMPARE(state.serviceHasActiveImports("plugin1", "gtalk"), true);
+    QCOMPARE(state.serviceHasActiveImports("gtalk"), true);
 
-    state.addImportingAccount("plugin1", "msn", "msn-account1");
+    state.addImportingAccount("msn", "msn-account1");
     QCOMPARE(state.hasActiveImports(), true);
-    QCOMPARE(state.serviceHasActiveImports("plugin1", "msn"), true);
-    QCOMPARE(state.serviceHasActiveImports("plugin1", "gtalk"), true);
+    QCOMPARE(state.serviceHasActiveImports("msn"), true);
+    QCOMPARE(state.serviceHasActiveImports("gtalk"), true);
 
-    state.removeImportingAccount("plugin1", "gtalk", "gtalk-account1", 10, 0, 3);
+    state.removeImportingAccount("gtalk", "gtalk-account1", 10, 0, 3);
     QCOMPARE(state.hasActiveImports(), true);
-    QCOMPARE(state.serviceHasActiveImports("plugin1", "gtalk"), false);
-    QCOMPARE(state.serviceHasActiveImports("plugin1", "msn"), true);
+    QCOMPARE(state.serviceHasActiveImports("gtalk"), false);
+    QCOMPARE(state.serviceHasActiveImports("msn"), true);
 
-    state.addImportingAccount("plugin1", "msn", "msn-account2");
+    state.addImportingAccount("msn", "msn-account2");
     QCOMPARE(state.hasActiveImports(), true);
-    QCOMPARE(state.serviceHasActiveImports("plugin1", "msn"), true);
+    QCOMPARE(state.serviceHasActiveImports("msn"), true);
 
-    state.addImportingAccount("plugin2", "qq", "qq-account1");
-    state.removeImportingAccount("plugin1", "msn", "msn-account1", 20, 1, 4);
+    state.addImportingAccount("qq", "qq-account1");
+    state.removeImportingAccount("msn", "msn-account1", 20, 1, 4);
     QCOMPARE(state.hasActiveImports(), true);
-    QCOMPARE(state.serviceHasActiveImports("plugin1", "msn"), true);
-    QCOMPARE(state.serviceHasActiveImports("plugin2", "qq"), true);
+    QCOMPARE(state.serviceHasActiveImports("msn"), true);
+    QCOMPARE(state.serviceHasActiveImports("qq"), true);
 
-    state.removeImportingAccount("plugin2", "qq", "qq-account1", 5, 0, 1);
+    state.removeImportingAccount("qq", "qq-account1", 5, 0, 1);
     QCOMPARE(state.hasActiveImports(), true);
-    QCOMPARE(state.serviceHasActiveImports("plugin2", "qq"), false);
-    QCOMPARE(state.serviceHasActiveImports("plugin1", "msn"), true);
+    QCOMPARE(state.serviceHasActiveImports("qq"), false);
+    QCOMPARE(state.serviceHasActiveImports("msn"), true);
 
-    state.removeImportingAccount("plugin1", "msn", "msn-account2", 2, 0, 1);
+    state.removeImportingAccount("msn", "msn-account2", 2, 0, 1);
     QCOMPARE(state.hasActiveImports(), false);
-    QCOMPARE(state.serviceHasActiveImports("plugin1", "msn"), false);
+    QCOMPARE(state.serviceHasActiveImports("msn"), false);
 
     QCOMPARE(state.contactsAdded(), 10+20+5+2);
     QCOMPARE(state.contactsRemoved(), 1);
