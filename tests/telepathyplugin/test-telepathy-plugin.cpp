@@ -160,7 +160,7 @@ void TestTelepathyPlugin::testBasicUpdates()
         TEST_CONTACT_LIST_SUBSCRIBE, handle, "wait", NULL);
 
     TestExpectation e;
-    e.event = TestExpectation::Changed; // FIXME: Should be Added
+    e.event = TestExpectation::Added;
     e.accountPath = mAccountPath;
     e.accountUri = QString("alice");
     e.alias = QString("Alice");
@@ -222,7 +222,7 @@ void TestTelepathyPlugin::testAuthorization()
 
     TestExpectation e;
     e.flags = TestExpectation::Authorization;
-    e.event = TestExpectation::Changed; // FIXME: Should be Added
+    e.event = TestExpectation::Added;
     e.accountPath = mAccountPath;
     e.accountUri = QString("romeo");
     e.subscriptionState = "Requested";
@@ -241,9 +241,6 @@ void TestTelepathyPlugin::testAuthorization()
     e.publishState = "Requested";
     mExpectations.append(e);
 
-    /* FIXME: Why is there 2 signals coming? */
-    mExpectations.append(e);
-
     /* Wait for the scenario to happen */
     QCOMPARE(mLoop->exec(), 0);
 
@@ -254,7 +251,7 @@ void TestTelepathyPlugin::testAuthorization()
     test_contact_list_manager_add_to_list(mListManager, NULL,
         TEST_CONTACT_LIST_SUBSCRIBE, handle, "wait", NULL);
 
-    e.event = TestExpectation::Changed; // FIXME: Should be Added
+    e.event = TestExpectation::Added;
     e.accountUri = QString("juliette");
     e.subscriptionState = "Requested";
     e.publishState = "No";
@@ -314,6 +311,9 @@ void TestTelepathyPlugin::verify(TestExpectation::Event event,
     const QList<QContactLocalId> &contactIds)
 {
     foreach (QContactLocalId localId, contactIds) {
+        QContact contact = mContactManager->contact(localId);
+        qDebug() << contact;
+
         if (mExpectations.isEmpty()) {
             mLoop->exit(0);
         }
@@ -322,7 +322,6 @@ void TestTelepathyPlugin::verify(TestExpectation::Event event,
         const TestExpectation &e = mExpectations.takeFirst();
         QCOMPARE(e.event, event);
 
-        QContact contact = mContactManager->contact(localId);
         e.verify(contact);
     }
 
