@@ -279,8 +279,9 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
         const RDFVariable imAccount(QUrl(QString("telepathy:%1").arg(accountObjectPath)));
         const QDateTime datetime = QDateTime::currentDateTime();
 
-        updateQuery.addDeletion(imContact, nie::contentLastModified::iri());
-        updateQuery.addInsertion(imContact, nie::contentLastModified::iri(), RDFVariable(datetime));
+        updateQuery.addDeletion(imContact, nie::contentCreated::iri());
+        updateQuery.addInsertion(imContact, nie::contentCreated::iri(),
+                LiteralValue(datetime));
 
         updateQuery.addInsertion(RDFStatementList() <<
                 RDFStatement(imAddress, rdf::type::iri(), nco::IMAddress::iri()) <<
@@ -358,7 +359,7 @@ void CDTpStorage::onContactUpdateResolverFinished(CDTpStorageContactResolver *re
         const QDateTime datetime = QDateTime::currentDateTime();
 
         updateQuery.addDeletion(imContact, nie::contentLastModified::iri());
-        updateQuery.addInsertion(imContact, nie::contentLastModified::iri(), RDFVariable(datetime));
+        updateQuery.addInsertion(imContact, nie::contentLastModified::iri(), LiteralValue(datetime));
         const CDTpContact::Changes changes = resolver->contactChanges();
 
         if (changes & CDTpContact::Alias) {
