@@ -269,7 +269,8 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
 
         const QString id = contact->id();
         QString localId = resolver->storageIdForContact(contactWrapper);
-        bool alreadyExists = (localId.isEmpty() || localId.isNull());
+        bool alreadyExists = !localId.isEmpty();
+
         if (!alreadyExists) {
             localId = contactLocalId(accountObjectPath, id);
         }
