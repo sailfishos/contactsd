@@ -280,22 +280,22 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
         const RDFVariable imAccount(QUrl(QString("telepathy:%1").arg(accountObjectPath)));
         const QDateTime datetime = QDateTime::currentDateTime();
 
-        updateQuery.addDeletion(imContact, nie::contentLastModified::iri());
-        updateQuery.addInsertion(imContact, nie::contentLastModified::iri(), RDFVariable(datetime));
-
         updateQuery.addInsertion(RDFStatementList() <<
                 RDFStatement(imAddress, rdf::type::iri(), nco::IMAddress::iri()) <<
                 RDFStatement(imAddress, nco::imID::iri(), LiteralValue(id)));
 
+        /* Insert the imContact only if we didn't found one. UI could already
+         * have created the imContact before adding the im contact in telepathy
+         */
         if (!alreadyExists) {
             updateQuery.addInsertion(RDFStatementList() <<
+                    RDFStatement(imContact, rdf::type::iri(), nco::PersonContact::iri()) <<
+                    RDFStatement(imContact, nco::hasIMAddress::iri(), imAddress) <<
                     RDFStatement(imContact, nco::contactLocalUID::iri(), LiteralValue(localId)) <<
                     RDFStatement(imContact, nco::contactUID::iri(), LiteralValue(localId)));
         }
-
-        updateQuery.addInsertion(RDFStatementList() <<
-                RDFStatement(imContact, rdf::type::iri(), nco::PersonContact::iri()) <<
-                RDFStatement(imContact, nco::hasIMAddress::iri(), imAddress));
+        updateQuery.addDeletion(imContact, nie::contentLastModified::iri());
+        updateQuery.addInsertion(imContact, nie::contentLastModified::iri(), RDFVariable(datetime));
 
         updateQuery.addInsertion(RDFStatementList() <<
                 RDFStatement(imAccount, rdf::type::iri(), nco::IMAccount::iri()) <<
