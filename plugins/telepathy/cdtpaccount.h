@@ -67,6 +67,7 @@ Q_SIGNALS:
 
 private Q_SLOTS:
     void onAccountReady(Tp::PendingOperation *op);
+    void onAccountNormalizedNameChanged();
     void onAccountDisplayNameChanged();
     void onAccountNicknameChanged();
     void onAccountCurrentPresenceChanged();

@@ -67,6 +67,9 @@ void CDTpAccount::onAccountReady(Tp::PendingOperation *op)
     // connect all signals we care about, so we can signal that the account
     // changed accordingly
     connect(mAccount.data(),
+            SIGNAL(normalizedNameChanged(const QString &)),
+            SLOT(onAccountNormalizedNameChanged()));
+    connect(mAccount.data(),
             SIGNAL(displayNameChanged(const QString &)),
             SLOT(onAccountDisplayNameChanged()));
     connect(mAccount.data(),
@@ -85,6 +88,11 @@ void CDTpAccount::onAccountReady(Tp::PendingOperation *op)
     if (mAccount->haveConnection()) {
         introspectAccountConnection();
     }
+}
+
+void CDTpAccount::onAccountNormalizedNameChanged()
+{
+    emit changed(this, All);
 }
 
 void CDTpAccount::onAccountDisplayNameChanged()

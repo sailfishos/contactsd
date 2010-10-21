@@ -41,6 +41,10 @@ void CDTpStorage::syncAccount(CDTpAccount *accountWrapper,
         CDTpAccount::Changes changes)
 {
     Tp::AccountPtr account = accountWrapper->account();
+    if (account->normalizedName().isEmpty()) {
+        return;
+    }
+
     QString accountObjectPath = account->objectPath();
     const QString strLocalUID = QString::number(0x7FFFFFFF);
 
