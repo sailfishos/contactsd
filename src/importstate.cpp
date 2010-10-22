@@ -20,11 +20,14 @@
 #include <QDebug>
 
 #include "importstate.h"
+#include "importstateconst.h"
 
 ImportState::ImportState()
     : mContactsAdded(0),
       mContactsMerged(0),
-      mContactsRemoved(0)
+      mContactsRemoved(0),
+      mStateStore(QSettings::IniFormat, QSettings::UserScope,
+                  Contactsd::SettingsOrganization, Contactsd::SettingsApplication)
 {
 }
 
@@ -52,8 +55,12 @@ bool ImportState::serviceHasActiveImports(const QString &service)
 
 void ImportState::addImportingAccount(const QString &service, const QString &account)
 {
-    if (not mService2Accounts.contains(service, account))
+    if (not mService2Accounts.contains(service, account)) {
         mService2Accounts.insert(service, account);
+
+        mStateStore.setValue(account, Contactsd::Importing);
+        mStateStore.sync();
+    }
 }
 
 void ImportState::removeImportingAccount(const QString &service, const QString &account,
@@ -65,6 +72,9 @@ void ImportState::removeImportingAccount(const QString &service, const QString &
         mContactsAdded += added;
         mContactsRemoved += removed;
         mContactsMerged += merged;
+
+        mStateStore.setValue(account, Contactsd::Imported);
+        mStateStore.sync();
     }
 }
 

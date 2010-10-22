@@ -23,6 +23,7 @@
 #include <QMultiHash>
 #include <QString>
 #include <QStringList>
+#include <QSettings>
 
 class ImportState
 {
@@ -53,6 +54,9 @@ private:
     int mContactsAdded;
     int mContactsMerged;
     int mContactsRemoved;
+
+    // store each account's import state
+    QSettings mStateStore;
 };
 
 #endif // IMPORTSTATE_H_

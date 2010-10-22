@@ -10,7 +10,9 @@ HEADERS += contactsd.h \
     contactsdplugininterface.h \
     importstate.h \
     logger.h \
-    contactsimportprogressadaptor.h
+    contactsimportprogressadaptor.h \
+    importstateconst.h
+
 SOURCES += main.cpp \
     contactsd.cpp \
     contactsdpluginloader.cpp \
@@ -28,7 +30,8 @@ DEFINES += CONTACTSD_LOG_DIR=\\\"$$LOCALSTATEDIR/log\\\"
 DEFINES += CONTACTSD_PLUGINS_DIR=\\\"$$LIBDIR/contactsd-1.0/plugins\\\"
 
 headers.files = ContactsdPluginInterface \
-                contactsdplugininterface.h
+                contactsdplugininterface.h \
+                importstateconst.h
 headers.path = $$INCLUDEDIR/contactsd-1.0
 
 xml.files = com.nokia.contacts.importprogress.xml
