@@ -82,7 +82,9 @@ void TestExpectation::verify(QContact &contact) const
             QVERIFY(avatarFileName.isEmpty());
         } else {
             QFile file(avatarFileName);
+            file.open(QIODevice::ReadOnly);
             QCOMPARE(file.readAll(), avatarData);
+            file.close();
         }
     }
 
@@ -184,7 +186,6 @@ void TestTelepathyPlugin::testBasicUpdates()
     /* Wait for the scenario to happen */
     QCOMPARE(mLoop->exec(), 0);
 
-#if 0
     /* Change the avatar of Alice */
     const gchar avatarData[] = "fake-avatar-data";
     const gchar avatarToken[] = "fake-avatar-token";
@@ -200,7 +201,6 @@ void TestTelepathyPlugin::testBasicUpdates()
 
     /* Wait for the scenario to happen */
     QCOMPARE(mLoop->exec(), 0);
-#endif
 
     qDebug() << "All expectations passed";
 }
