@@ -69,24 +69,30 @@ private:
     bool saveAccountAvatar(const QByteArray &data, const QString &mimeType,
             const QString &path, QString &fileName);
 
-    void addContactAliasInfoToQuery(RDFUpdate &query,
+    void addContactAliasInfoToQuery(RDFStatementList &deletions,
+            RDFStatementList &inserts,
             const RDFVariable &imAddress,
             CDTpContact *contactWrapper);
-    void addContactPresenceInfoToQuery(RDFUpdate &query,
+    void addContactPresenceInfoToQuery(RDFStatementList &deletions,
+            RDFStatementList &inserts,
             const RDFVariable &imAddress,
             CDTpContact *contactWrapper);
-    void addContactCapabilitiesInfoToQuery(RDFUpdate &query,
+    void addContactCapabilitiesInfoToQuery(RDFStatementList &deletions,
+            RDFStatementList &inserts,
             const RDFVariable &imAddress,
             CDTpContact *contactWrapper);
-    void addContactAvatarInfoToQuery(RDFUpdate &query,
+    void addContactAvatarInfoToQuery(RDFStatementList &deletions,
+            RDFStatementList &inserts,
             const RDFVariable &imAddress,
             const RDFVariable &imContact,
             CDTpContact *contactWrapper);
-    void addContactRemoveInfoToQuery(RDFUpdate &query,
+    void addContactRemoveInfoToQuery(RDFStatementList &deletions,
+            RDFStatementList &inserts,
             const QString &contactId,
             CDTpAccount *accountWrapper,
             CDTpContact *contactWrapper);
-    void addContactAuthorizationInfoToQuery(RDFUpdate &query,
+    void addContactAuthorizationInfoToQuery(RDFStatementList &deletions,
+            RDFStatementList &inserts,
             const RDFVariable &imAddress,
             CDTpContact *contactWrapper);
 
@@ -107,7 +113,10 @@ private:
     QUrl authStatus(Tp::Contact::PresenceState) const;
 
     void updateAvatar(RDFUpdate &query, const QUrl &url,
+            RDFStatementList &deletions,
+            RDFStatementList &inserts,
             const QUrl &fileName);
+    static const QUrl defaultGraph;
 };
 
 class CDTpStorageSelectQuery : public QObject
