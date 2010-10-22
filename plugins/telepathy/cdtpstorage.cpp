@@ -105,17 +105,12 @@ void CDTpStorage::syncAccount(CDTpAccount *accountWrapper,
         RDFStatement(imAccount, nco::hasIMContact::iri(), imAddress);
 
     if (changes & CDTpAccount::Avatar) {
-        QString fileName;
         const Tp::Avatar &avatar = account->avatar();
         // TODO: saving to disk needs to be removed here
-        saveAccountAvatar(avatar.avatarData, avatar.MIMEType,
-                QString("%1/.contacts/avatars/").arg(QDir::homePath()), fileName);
-        updateAvatar(up, imAddressUrl, deletions, inserts, QUrl::fromLocalFile(fileName));
+        saveAccountAvatar(avatar.avatarData, avatar.MIMEType, imAddress,
+            inserts, deletions);
     }
 
-    // delete photo seperatly since it's not part of the default graph
-    up.addDeletion(nco::default_contact_me::iri(), nco::photo::iri());
-    up.addDeletion(imAddressUrl, nco::imAvatar::iri());
     up.addDeletion(deletions, defaultGraph);
     up.addInsertion(inserts, defaultGraph);
 
@@ -321,7 +316,7 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
         addContactAliasInfoToQuery(deletions, inserts, imAddress, contactWrapper);
         addContactPresenceInfoToQuery(deletions, inserts, imAddress, contactWrapper);
         addContactCapabilitiesInfoToQuery(deletions, inserts, imAddress, contactWrapper);
-        addContactAvatarInfoToQuery(deletions, inserts, imAddress, imContact, contactWrapper);
+        addContactAvatarInfoToQuery(deletions, inserts, imAddress, contactWrapper);
         addContactAuthorizationInfoToQuery(deletions, inserts, imAddress, contactWrapper);
     }
 
@@ -404,7 +399,7 @@ void CDTpStorage::onContactUpdateResolverFinished(CDTpStorageContactResolver *re
         }
         if (changes & CDTpContact::Avatar) {
             qDebug() << "  avatar changed";
-           addContactAvatarInfoToQuery(deletions, inserts, imAddress, imContact, contactWrapper);
+           addContactAvatarInfoToQuery(deletions, inserts, imAddress, contactWrapper);
         }
         if (changes & CDTpContact::Authorization) {
             qDebug() << "  authorization changed";
@@ -418,32 +413,37 @@ void CDTpStorage::onContactUpdateResolverFinished(CDTpStorageContactResolver *re
     resolver->deleteLater();
 }
 
-bool CDTpStorage::saveAccountAvatar(const QByteArray &data, const QString &mimeType,
-        const QString &path, QString &fileName)
+void CDTpStorage::saveAccountAvatar(const QByteArray &data, const QString &mimeType,
+        const RDFVariable &imAddress, RDFStatementList &deletions,
+        RDFStatementList &inserts)
 {
     Q_UNUSED(mimeType);
 
+    deletions << RDFStatement(imAddress, nco::imAvatar::iri());
+
     if (data.isEmpty()) {
-        // nothing to write, avatar is empty
-        return false;
+        return;
     }
 
-    fileName = path + QString(QCryptographicHash::hash(data,
-                QCryptographicHash::Sha1).toHex());
+    QString fileName = QString("%1/.contacts/avatars/%2")
+        .arg(QDir::homePath())
+        .arg(QString(QCryptographicHash::hash(data, QCryptographicHash::Sha1).toHex()));
     qDebug() << "Saving account avatar to" << fileName;
 
     QFile avatarFile(fileName);
     if (!avatarFile.open(QIODevice::WriteOnly)) {
         qWarning() << "Unable to save account avatar: error opening avatar "
             "file" << fileName << "for writing";
-        return false;
+        return;
     }
     avatarFile.write(data);
     avatarFile.close();
 
-    qDebug() << "Account avatar saved successfully";
-
-    return true;
+    RDFVariable dataObject(QUrl::fromLocalFile(fileName));
+    deletions << RDFStatement(dataObject, nie::url::iri());
+    inserts << RDFStatement(dataObject, rdf::type::iri(), nie::DataObject::iri())
+            << RDFStatement(dataObject, nie::url::iri(), dataObject)
+            << RDFStatement(imAddress, nco::imAvatar::iri(), dataObject);
 }
 
 void CDTpStorage::addContactAliasInfoToQuery(RDFStatementList &deletions,
@@ -505,7 +505,6 @@ void CDTpStorage::addContactCapabilitiesInfoToQuery(RDFStatementList &deletions,
 void CDTpStorage::addContactAvatarInfoToQuery(RDFStatementList &deletions,
         RDFStatementList &inserts,
         const RDFVariable &imAddress,
-        const RDFVariable &imContact,
         CDTpContact *contactWrapper)
 {
     Tp::ContactPtr contact = contactWrapper->contact();
@@ -525,14 +524,12 @@ void CDTpStorage::addContactAvatarInfoToQuery(RDFStatementList &deletions,
 
     RDFVariable dataObject(QUrl::fromLocalFile(contact->avatarData().fileName));
     deletions << RDFStatement(imAddress, nco::imAvatar::iri()) <<
-        RDFStatement(imContact, nco::photo::iri()) <<
         RDFStatement(dataObject, nie::url::iri());
 
     if (!contact->avatarToken().isEmpty()) {
         inserts << RDFStatement(dataObject, rdf::type::iri(), nie::DataObject::iri()) <<
             RDFStatement(dataObject, nie::url::iri(), dataObject) <<
-            RDFStatement(imAddress, nco::imAvatar::iri(), dataObject) <<
-            RDFStatement(imContact, nco::photo::iri(), dataObject);
+            RDFStatement(imAddress, nco::imAvatar::iri(), dataObject);
     }
 }
 
@@ -682,33 +679,6 @@ QUrl CDTpStorage::trackerStatusFromTpPresenceStatus(
         return *i;
     }
     return nco::presence_status_error::iri();
-}
-
-void CDTpStorage::updateAvatar(RDFUpdate &query,
-        const QUrl &url,
-        RDFStatementList &deletions,
-        RDFStatementList &inserts,
-        const QUrl &fileName)
-{
-    // We need deleteOnly to handle cases where the avatar image was removed from the account
-    if (!fileName.isValid()) {
-        return;
-    }
-
-    qDebug() << Q_FUNC_INFO << fileName;
-    RDFVariable imAddress(url);
-    RDFVariable dataObject(fileName);
-
-    deletions << RDFStatement(imAddress, nco::imAvatar::iri())
-        << RDFStatement(nco::default_contact_me::iri(), nco::photo::iri())
-        << RDFStatement(dataObject, nie::url::iri());
-
-    if (!fileName.isEmpty()) {
-        inserts << RDFStatement(dataObject, rdf::type::iri(), nie::DataObject::iri())
-            << RDFStatement(dataObject, nie::url::iri(), dataObject)
-            << RDFStatement(imAddress, nco::imAvatar::iri(), dataObject)
-            << RDFStatement(nco::default_contact_me::iri(), nco::photo::iri(), dataObject);
-    }
 }
 
 CDTpStorageSelectQuery::CDTpStorageSelectQuery(const RDFSelect &select,

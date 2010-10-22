@@ -276,7 +276,7 @@ void TestTelepathyPlugin::testSelfContact()
     qDebug() << contact;
 
     TestExpectation e;
-    e.flags = TestExpectation::Presence;
+    e.flags = TestExpectation::VerifyFlags(TestExpectation::Presence | TestExpectation::Avatar);
     e.accountUri = QString("fake@account.org");
     e.presence = TP_TESTS_CONTACTS_CONNECTION_STATUS_AVAILABLE;
     e.verify(contact);

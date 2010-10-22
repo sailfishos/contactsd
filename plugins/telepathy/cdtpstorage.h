@@ -66,8 +66,9 @@ private Q_SLOTS:
     void onContactUpdateResolverFinished(CDTpStorageContactResolver *resolver);
 
 private:
-    bool saveAccountAvatar(const QByteArray &data, const QString &mimeType,
-            const QString &path, QString &fileName);
+    void saveAccountAvatar(const QByteArray &data, const QString &mimeType,
+            const RDFVariable &imAddress, RDFStatementList &deletions,
+            RDFStatementList &inserts);
 
     void addContactAliasInfoToQuery(RDFStatementList &deletions,
             RDFStatementList &inserts,
@@ -84,7 +85,6 @@ private:
     void addContactAvatarInfoToQuery(RDFStatementList &deletions,
             RDFStatementList &inserts,
             const RDFVariable &imAddress,
-            const RDFVariable &imContact,
             CDTpContact *contactWrapper);
     void addContactRemoveInfoToQuery(RDFStatementList &deletions,
             RDFStatementList &inserts,
@@ -112,10 +112,6 @@ private:
             const QString &tpPresenceStatus) const;
     QUrl authStatus(Tp::Contact::PresenceState) const;
 
-    void updateAvatar(RDFUpdate &query, const QUrl &url,
-            RDFStatementList &deletions,
-            RDFStatementList &inserts,
-            const QUrl &fileName);
     static const QUrl defaultGraph;
 };
 
