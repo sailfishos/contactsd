@@ -305,7 +305,7 @@ void TestTelepathyPlugin::testSetOffline()
 void TestTelepathyPlugin::verify(TestExpectation::Event event,
     const QList<QContactLocalId> &contactIds)
 {
-    foreach (QContactLocalId localId, contactIds) {
+    Q_FOREACH (QContactLocalId localId, contactIds) {
         QContactLocalId SelfContactId = 0x7FFFFFFF;
         if (localId == SelfContactId)
             continue;
