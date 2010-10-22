@@ -172,7 +172,7 @@ tp_tests_simple_account_get_property (GObject *object,
       g_value_set_boxed (value, presence);
       break;
     case PROP_NORMALIZED_NAME:
-      g_value_set_string (value, "");
+      g_value_set_string (value, "fake@account.org");
       break;
     case PROP_HAS_BEEN_ONLINE:
       g_value_set_boolean (value, TRUE);

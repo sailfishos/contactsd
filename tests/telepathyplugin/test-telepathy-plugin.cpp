@@ -33,7 +33,7 @@
 #include <telepathy-glib/svc-account-manager.h>
 #include <telepathy-glib/svc-account.h>
 
-#define ACCOUNT_PATH TP_ACCOUNT_OBJECT_PATH_BASE "fakecm/fakeproto/UnitTest"
+#define ACCOUNT_PATH TP_ACCOUNT_OBJECT_PATH_BASE "fakecm/fakeproto/fakeaccount"
 #define BUS_NAME "org.maemo.Contactsd.UnitTest"
 
 TestExpectation::TestExpectation():flags(All),
@@ -46,7 +46,7 @@ void TestExpectation::verify(QContact &contact) const
     QCOMPARE(contact.details<QContactOnlineAccount>().count(), 1);
     QCOMPARE(contact.details<QContactPresence>().count(), 1);
     QCOMPARE(contact.detail<QContactOnlineAccount>().accountUri(), accountUri);
-    QCOMPARE(contact.detail<QContactOnlineAccount>().value("AccountPath"), accountPath);
+    QCOMPARE(contact.detail<QContactOnlineAccount>().value("AccountPath"), QString(ACCOUNT_PATH));
 
     if (flags & Alias) {
         QString actualAlias = contact.detail<QContactDisplayLabel>().label();
@@ -126,14 +126,12 @@ void TestTelepathyPlugin::initTestCase()
     TpHandleRepoIface *serviceRepo = tp_base_connection_get_handles(
         mConnService, TP_HANDLE_TYPE_CONTACT);
     mConnService->self_handle = tp_handle_ensure(serviceRepo,
-        "fakeselfcontact", NULL, NULL);
+        "fakeaccountid", NULL, NULL);
     tp_base_connection_change_status(mConnService,
         TP_CONNECTION_STATUS_CONNECTED,
         TP_CONNECTION_STATUS_REASON_NONE_SPECIFIED);
     mListManager = tp_tests_contacts_connection_get_contact_list_manager(
         TP_TESTS_CONTACTS_CONNECTION(mConnService));
-
-    mAccountPath = "/org/freedesktop/Telepathy/Account/fakecm/fakeproto/fakeaccount";
 
     /* Request the UnitTest bus name, so the AM knows we are ready to go */
     TpDBusDaemon *dbus = tp_dbus_daemon_dup(NULL);
@@ -161,7 +159,6 @@ void TestTelepathyPlugin::testBasicUpdates()
 
     TestExpectation e;
     e.event = TestExpectation::Added;
-    e.accountPath = mAccountPath;
     e.accountUri = QString("alice");
     e.alias = QString("Alice");
     e.presence = TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN;
@@ -223,7 +220,6 @@ void TestTelepathyPlugin::testAuthorization()
     TestExpectation e;
     e.flags = TestExpectation::Authorization;
     e.event = TestExpectation::Added;
-    e.accountPath = mAccountPath;
     e.accountUri = QString("romeo");
     e.subscriptionState = "Requested";
     e.publishState = "No";
@@ -262,7 +258,7 @@ void TestTelepathyPlugin::testAuthorization()
 
     /* Ask again for subscription, but this time it will be rejected */
     test_contact_list_manager_add_to_list(mListManager, NULL,
-        TEST_CONTACT_LIST_SUBSCRIBE, handle, "I hate you", NULL);
+        TEST_CONTACT_LIST_SUBSCRIBE, handle, "no", NULL);
 
     e.event = TestExpectation::Changed;
     e.subscriptionState = "No";
@@ -277,10 +273,10 @@ void TestTelepathyPlugin::testSelfContact()
 {
     QContactLocalId selfId = mContactManager->selfContactId();
     QContact contact = mContactManager->contact(selfId);
+    qDebug() << contact;
 
     TestExpectation e;
     e.flags = TestExpectation::Presence;
-    e.accountPath = mAccountPath;
     e.accountUri = QString("fake@account.org");
     e.presence = TP_TESTS_CONTACTS_CONNECTION_STATUS_AVAILABLE;
     e.verify(contact);
@@ -295,7 +291,6 @@ void TestTelepathyPlugin::testSetOffline()
     TestExpectation e;
     e.flags = TestExpectation::Presence;
     e.event = TestExpectation::Changed;
-    e.accountPath = mAccountPath;
     e.presence = TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN;
     e.accountUri = QString("romeo");
     mExpectations.append(e);
@@ -311,6 +306,10 @@ void TestTelepathyPlugin::verify(TestExpectation::Event event,
     const QList<QContactLocalId> &contactIds)
 {
     foreach (QContactLocalId localId, contactIds) {
+        QContactLocalId SelfContactId = 0x7FFFFFFF;
+        if (localId == SelfContactId)
+            continue;
+
         QContact contact = mContactManager->contact(localId);
         qDebug() << contact;
 
@@ -320,15 +319,16 @@ void TestTelepathyPlugin::verify(TestExpectation::Event event,
         QVERIFY(!mExpectations.isEmpty());
 
         const TestExpectation &e = mExpectations.takeFirst();
+
+        /* If we took the last expectation, quit the mainloop after a short
+         * timeout. This is to make sure we don't get extra unwanted signals */
+        if (mExpectations.isEmpty()) {
+            QTimer::singleShot(500, mLoop, SLOT(quit()));
+        }
+
         QCOMPARE(e.event, event);
 
         e.verify(contact);
-    }
-
-    if (mExpectations.isEmpty()) {
-        /* All expectations passed, wait a bit to be sure we don't get undesired
-         * signals */
-        QTimer::singleShot(500, mLoop, SLOT(quit()));
     }
 }
 

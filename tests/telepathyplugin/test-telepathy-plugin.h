@@ -59,7 +59,6 @@ public:
     VerifyFlags flags;
     Event event;
     QString accountUri;
-    QString accountPath;
 
     QString alias;
     TpTestsContactsConnectionPresenceStatusIndex presence;
@@ -97,7 +96,6 @@ private:
     QContactManager *mContactManager;
     TpBaseConnection *mConnService;
     TestContactListManager *mListManager;
-    QString mAccountPath;
 
     QList<TestExpectation> mExpectations;
     void verify(TestExpectation::Event, const QList<QContactLocalId>&);
