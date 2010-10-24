@@ -1,3 +1,12 @@
+contactsd (0.5.38-2) unstable; urgency=low
+
+  * Changes: Graph Support
+  * Fixes: NB#198576 - contactd fails to build with GLib 2.26
+  * Fixes: NB#183730 - Recently updated avatar from server for IM contact is not displayed as the avatar of the merged contact
+  * Fixes: NB#190119 - Selected local contact for merging is visible in the list as a separate contact even after merging with a gtalk contact
+
+ -- Siraj Razick <siraj.razick@collabora.co.uk>  Fri, 22 Oct 2010 18:42:00 +0530
+
 contactsd (0.5.38-1) unstable; urgency=low
 
   * Changes: Handle Subscription updates
