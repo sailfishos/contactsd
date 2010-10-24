@@ -65,10 +65,17 @@ void TestContactsd::testImportState()
     QCOMPARE(state.serviceHasActiveImports("msn"), true);
     QCOMPARE(state.serviceHasActiveImports("gtalk"), true);
 
+    QStringList activeServices = state.activeImportingServices();
+    QCOMPARE(activeServices.size(), 2);
+    QVERIFY(activeServices.contains("gtalk"));
+    QVERIFY(activeServices.contains("msn"));
+
     state.removeImportingAccount("gtalk", "gtalk-account1", 10, 0, 3);
     QCOMPARE(state.hasActiveImports(), true);
     QCOMPARE(state.serviceHasActiveImports("gtalk"), false);
     QCOMPARE(state.serviceHasActiveImports("msn"), true);
+
+    QCOMPARE(state.activeImportingServices().size(), 1);
 
     state.addImportingAccount("msn", "msn-account2");
     QCOMPARE(state.hasActiveImports(), true);
@@ -88,6 +95,7 @@ void TestContactsd::testImportState()
     state.removeImportingAccount("msn", "msn-account2", 2, 0, 1);
     QCOMPARE(state.hasActiveImports(), false);
     QCOMPARE(state.serviceHasActiveImports("msn"), false);
+    QCOMPARE(state.activeImportingServices().size(), 0);
 
     QCOMPARE(state.contactsAdded(), 10+20+5+2);
     QCOMPARE(state.contactsRemoved(), 1);
