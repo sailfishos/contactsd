@@ -48,6 +48,11 @@ bool ImportState::reset()
     return true;
 }
 
+QStringList ImportState::activeImportingServices()
+{
+    return mService2Accounts.uniqueKeys();
+}
+
 bool ImportState::serviceHasActiveImports(const QString &service)
 {
     return mService2Accounts.contains(service);
@@ -55,6 +60,8 @@ bool ImportState::serviceHasActiveImports(const QString &service)
 
 void ImportState::addImportingAccount(const QString &service, const QString &account)
 {
+    qDebug() << Q_FUNC_INFO << service << account;
+
     if (not mService2Accounts.contains(service, account)) {
         mService2Accounts.insert(service, account);
 
@@ -66,6 +73,8 @@ void ImportState::addImportingAccount(const QString &service, const QString &acc
 void ImportState::removeImportingAccount(const QString &service, const QString &account,
                                          int added, int removed, int merged)
 {
+    qDebug() << Q_FUNC_INFO << service << account;
+
     int numRemoved = mService2Accounts.remove(service, account);
 
     if (numRemoved) {

@@ -35,6 +35,8 @@ public:
     // otherwise it will fail and return false.
     bool reset();
 
+    QStringList activeImportingServices();
+
     // check if a service still has active importing accounts
     bool serviceHasActiveImports(const QString &service);
 

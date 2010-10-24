@@ -3,11 +3,11 @@
 <node>
   <interface name="com.nokia.contacts.importprogress">
     <signal name="importStarted">
-      <arg name="services" type="as" direction="out"/>
+      <arg name="service" type="s" direction="out"/>
     </signal>
     <signal name="importStateChanged">
-      <arg name="finishedServices" type="as" direction="out"/>
-      <arg name="newServices" type="as" direction="out"/>
+      <arg name="finishedService" type="s" direction="out"/>
+      <arg name="newService" type="s" direction="out"/>
     </signal>
     <signal name="importEnded">
       <arg name="contactsAdded" type="i" direction="out"/>
@@ -15,7 +15,7 @@
       <arg name="contactsMerged" type="i" direction="out"/>
     </signal>
     <method name="hasActiveImports">
-      <arg direction="out" type="b"/>
+      <arg direction="out" type="as"/>
     </method>
   </interface>
 </node>

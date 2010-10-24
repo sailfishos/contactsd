@@ -43,12 +43,12 @@ public:
     QStringList loadedPlugins() const;
 
 public Q_SLOTS:
-    bool hasActiveImports();
+    QStringList hasActiveImports();
 
 Q_SIGNALS:
-    void importStarted(const QStringList &services);
-    void importStateChanged(const QStringList &finishedServices,
-                            const QStringList &newServices);
+    void importStarted(const QString &service);
+    void importStateChanged(const QString &finishedService,
+                            const QString &newService);
     void importEnded(int contactsAdded, int contactsRemoved,
                      int contactsMerged);
     void pluginsLoaded();

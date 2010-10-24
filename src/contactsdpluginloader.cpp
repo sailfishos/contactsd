@@ -132,11 +132,9 @@ QStringList ContactsdPluginLoader::loadedPlugins() const
     return mPluginStore.keys();
 }
 
-bool ContactsdPluginLoader::hasActiveImports()
+QStringList ContactsdPluginLoader::hasActiveImports()
 {
-    bool importing = mImportState.hasActiveImports();
-    qDebug() << Q_FUNC_INFO << importing;
-    return importing;
+    return mImportState.activeImportingServices();
 }
 
 void ContactsdPluginLoader::onPluginImportStarted(const QString &service, const QString &account)
@@ -151,20 +149,17 @@ void ContactsdPluginLoader::onPluginImportStarted(const QString &service, const 
     qDebug() << Q_FUNC_INFO << "by plugin" << name
              << "with service" << service << "account" << account;
 
-    QStringList newServices;
-    newServices << service;
-
     if (mImportState.hasActiveImports()) {
         // check if any account from the same service is importing now
         if (not mImportState.serviceHasActiveImports(service)) {
             // there was no active import from this service, so we update import state with new services
-            emit importStateChanged(QStringList(), newServices);
+            emit importStateChanged(QString(), service);
         }
     }
     else {
         // new import
         mImportState.reset();
-        emit importStarted(newServices);
+        emit importStarted(service);
     }
 
     mImportState.addImportingAccount(service, account);
@@ -191,9 +186,7 @@ void ContactsdPluginLoader::onPluginImportEnded(const QString &service, const QS
     if (mImportState.hasActiveImports()) {
         if (not mImportState.serviceHasActiveImports(service)) {
             // This service has no acive importing accounts anymore
-            QStringList finishedServices;
-            finishedServices << service;
-            emit importStateChanged(finishedServices, QStringList());
+            emit importStateChanged(service, QString());
         }
     }
     else {
