@@ -380,7 +380,7 @@ void CDTpStorage::onContactUpdateResolverFinished(CDTpStorageContactResolver *re
         if (localId.isEmpty() || localId.isNull()) {
             localId = contactLocalId(accountObjectPath, id);
         }
-        qDebug() << Q_FUNC_INFO << "Updateing " << localId;
+        qDebug() << Q_FUNC_INFO << "Updating " << localId;
 
         const RDFVariable imContact(contactIri(localId));
         const RDFVariable imAddress(contactImAddress(accountObjectPath, id));
