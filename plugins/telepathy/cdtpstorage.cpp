@@ -570,6 +570,8 @@ void CDTpStorage::addContactRemoveInfoToQuery(RDFStatementList &deletions,
         CDTpAccount *accountWrapper,
         CDTpContact *contactWrapper)
 {
+    Q_UNUSED(inserts);
+
     Tp::ContactPtr contact = contactWrapper->contact();
     QString accountObjectPath = accountWrapper->account()->objectPath();
     const QString id = contact->id();
