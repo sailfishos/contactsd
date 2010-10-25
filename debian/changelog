@@ -1,3 +1,11 @@
+contactsd (0.5.38-3) unstable; urgency=low
+
+  * Fixes: NB#190809 - Merged (gtalk+local) contact is visible in the contacts list with assigned avatar of service(gtalk) contact instead of avatar of local contact
+  * Changes: Fixes update issues in susbscription status and presence updates.
+
+ -- Siraj Razick <siraj.razick@collabora.co.uk>  Mon, 25 Oct 2010 18:42:00 +0530
+
+
 contactsd (0.5.38-2) unstable; urgency=low
 
   * Changes: Graph Support
