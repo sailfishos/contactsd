@@ -50,7 +50,6 @@ void CDTpStorage::syncAccount(CDTpAccount *accountWrapper,
 
     const QString accountObjectPath = account->objectPath();
     const QString accountId = account->normalizedName();
-    const QString strLocalUID = QString::number(0x7FFFFFFF);
     const QUrl accountUrl(QString("telepathy:%1").arg(accountObjectPath));
     const QUrl imAddressUrl(QString("telepathy:%1!%2")
             .arg(accountObjectPath).arg(accountId));
