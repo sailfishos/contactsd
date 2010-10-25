@@ -63,8 +63,9 @@ private:
     void insertAccount(const Tp::AccountPtr &account);
     void removeAccount(const QString &accountObjectPath);
 
-    void setImportStarted();
-    void setImportEnded(int contactsAdded, int contactsRemoved);
+    void setImportStarted(const Tp::AccountPtr &account);
+    void setImportEnded(const Tp::AccountPtr &account,
+                        int contactsAdded, int contactsRemoved);
 
     CDTpStorage *mStorage;
     Tp::AccountManagerPtr mAM;

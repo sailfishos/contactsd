@@ -121,10 +121,10 @@ void CDTpController::onAccountRosterUpdated(CDTpAccount *accountWrapper,
 {
     Tp::AccountPtr account = accountWrapper->account();
 
-    setImportStarted();
+    setImportStarted(account);
     mStorage->syncAccountContacts(accountWrapper, contactsAdded,
             contactsRemoved);
-    setImportEnded(contactsAdded.size(), contactsRemoved.size());
+    setImportEnded(account, contactsAdded.size(), contactsRemoved.size());
 }
 
 void CDTpController::insertAccount(const Tp::AccountPtr &account)
@@ -165,16 +165,15 @@ void CDTpController::removeAccount(const QString &accountObjectPath)
     delete mAccounts.take(accountObjectPath);
 }
 
-void CDTpController::setImportStarted()
+void CDTpController::setImportStarted(const Tp::AccountPtr &account)
 {
     mImportActive = true;
-    // TODO empty service name and account id for now
-    emit importStarted(QString(), QString());
+    emit importStarted(account->serviceName(), account->objectPath());
 }
 
-void CDTpController::setImportEnded(int contactsAdded, int contactsRemoved)
+void CDTpController::setImportEnded(const Tp::AccountPtr &account, int contactsAdded, int contactsRemoved)
 {
     mImportActive = false;
-    // TODO empty service name and account id for now
-    emit importEnded(QString(), QString(), contactsAdded, contactsRemoved, 0);
+    emit importEnded(account->serviceName(), account->objectPath(),
+                     contactsAdded, contactsRemoved, 0);
 }
