@@ -294,19 +294,22 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
         const RDFVariable imAccount(QUrl(QString("telepathy:%1").arg(accountObjectPath)));
         const QDateTime datetime = QDateTime::currentDateTime();
 
-        deletions << RDFStatement(imContact, nie::contentCreated::iri());
-        inserts << RDFStatement(imContact, nie::contentCreated::iri(), LiteralValue(datetime)) <<
-            RDFStatement(imAddress, rdf::type::iri(), nco::IMAddress::iri()) <<
-            RDFStatement(imAddress, nco::imID::iri(), LiteralValue(id));
-
         /* Insert the imContact only if we didn't found one. UI could already
          * have created the imContact before adding the im contact in telepathy
          */
         if (!alreadyExists) {
-           inserts << RDFStatement(imContact, rdf::type::iri(), nco::PersonContact::iri()) <<
+            deletions << RDFStatement(imContact, nie::contentCreated::iri());
+            inserts << RDFStatement(imContact, rdf::type::iri(), nco::PersonContact::iri()) <<
                 RDFStatement(imContact, nco::hasIMAddress::iri(), imAddress) <<
                 RDFStatement(imContact, nco::contactLocalUID::iri(), LiteralValue(localId)) <<
-                RDFStatement(imContact, nco::contactUID::iri(), LiteralValue(localId));
+                RDFStatement(imContact, nco::contactUID::iri(), LiteralValue(localId)) <<
+                RDFStatement(imContact, nie::contentCreated::iri(), LiteralValue(datetime)) <<
+                RDFStatement(imContact, nie::contentLastModified::iri(), LiteralValue(datetime)) <<
+                RDFStatement(imAddress, rdf::type::iri(), nco::IMAddress::iri()) <<
+                RDFStatement(imAddress, nco::imID::iri(), LiteralValue(id));
+        } else {
+            deletions << RDFStatement(imContact, nie::contentLastModified::iri());
+            inserts << RDFStatement(imContact, nie::contentLastModified::iri(), LiteralValue(datetime));
         }
 
         inserts << RDFStatement(imContact, rdf::type::iri(), nco::PersonContact::iri()) <<
