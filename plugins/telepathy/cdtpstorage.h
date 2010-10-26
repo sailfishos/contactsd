@@ -66,24 +66,25 @@ private Q_SLOTS:
     void onContactUpdateResolverFinished(CDTpStorageContactResolver *resolver);
 
 private:
-    void saveAccountAvatar(const QByteArray &data, const QString &mimeType,
-            const RDFVariable &imAddress, RDFStatementList &deletions,
+    void saveAccountAvatar(RDFUpdate &query, const QByteArray &data, const QString &mimeType,
+            const RDFVariable &imAddress,
             RDFStatementList &inserts);
 
-    void addContactAliasInfoToQuery(RDFStatementList &deletions,
-            RDFStatementList &inserts,
+    void addContactAliasInfoToQuery(RDFStatementList &inserts,
+            RDFVariableList &lists,
             const RDFVariable &imAddress,
             CDTpContact *contactWrapper);
-    void addContactPresenceInfoToQuery(RDFStatementList &deletions,
-            RDFStatementList &inserts,
+    void addContactPresenceInfoToQuery(RDFStatementList &inserts,
+            RDFVariableList &lists,
             const RDFVariable &imAddress,
             CDTpContact *contactWrapper);
-    void addContactCapabilitiesInfoToQuery(RDFStatementList &deletions,
-            RDFStatementList &inserts,
+    void addContactCapabilitiesInfoToQuery(RDFStatementList &inserts,
+            RDFVariableList &lists,
             const RDFVariable &imAddress,
             CDTpContact *contactWrapper);
-    void addContactAvatarInfoToQuery(RDFStatementList &deletions,
+    void addContactAvatarInfoToQuery(RDFUpdate &query,
             RDFStatementList &inserts,
+            RDFVariableList &lists,
             const RDFVariable &imAddress,
             CDTpContact *contactWrapper);
     void addContactRemoveInfoToQuery(RDFStatementList &deletions,
@@ -91,8 +92,8 @@ private:
             const QString &contactId,
             CDTpAccount *accountWrapper,
             CDTpContact *contactWrapper);
-    void addContactAuthorizationInfoToQuery(RDFStatementList &deletions,
-            RDFStatementList &inserts,
+    void addContactAuthorizationInfoToQuery(RDFStatementList &inserts,
+            RDFVariableList &lists,
             const RDFVariable &imAddress,
             CDTpContact *contactWrapper);
 
