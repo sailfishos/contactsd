@@ -86,8 +86,9 @@ private Q_SLOTS:
     void onContactUpdateResolverFinished(CDTpStorageContactResolver *resolver);
 
 private:
-    void saveAccountAvatar(RDFUpdate &query, const QByteArray &data, const QString &mimeType,
+    void saveAccountAvatar(const QByteArray &data, const QString &mimeType,
             const RDFVariable &imAddress,
+            RDFStatementList &deletions,
             RDFStatementList &inserts);
 
     void addContactAliasInfoToQuery(RDFStatementList &inserts,
