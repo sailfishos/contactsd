@@ -144,7 +144,6 @@ void CDTpStorage::syncAccount(CDTpAccount *accountWrapper,
         RDFStatement(nco::default_contact_me::iri(), nco::contactLocalUID::iri(),
                 LiteralValue(strLocalUID)) <<
         RDFStatement(imAccount, nco::hasIMContact::iri(), imAddress);
-
     if (changes & CDTpAccount::Avatar) {
         const Tp::Avatar &avatar = account->avatar();
         // TODO: saving to disk needs to be removed here
@@ -393,7 +392,7 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
         updateQuery.addDeletion(resourceAddress, property, RDFVariable(), defaultGraph);
     }
 
-    updateQuery.addInsertion(inserts, defaultGraph);
+   updateQuery.addInsertion(inserts, defaultGraph);
     ::tracker()->executeQuery(updateQuery);
     resolver->deleteLater();
 }
@@ -496,7 +495,7 @@ void CDTpStorage::onContactUpdateResolverFinished(CDTpStorageContactResolver *re
 
     RDFVariable resourceContact = RDFVariable::fromContainer(resourceContactList);
     RDFVariable resourceAddress = RDFVariable::fromContainer(resourceAddressList);
-    foreach (RDFVariable property, imContactPropertyList) {
+   foreach (RDFVariable property, imContactPropertyList) {
         updateQuery.addDeletion(resourceContact, property, RDFVariable(), defaultGraph);
     }
 
