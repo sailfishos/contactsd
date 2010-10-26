@@ -38,8 +38,9 @@ bool ImportState::hasActiveImports()
 
 bool ImportState::reset()
 {
-    if (hasActiveImports())
+    if (hasActiveImports()) {
         return false;
+    }
 
     mService2Accounts.clear();
     mContactsAdded = 0;
@@ -64,7 +65,6 @@ void ImportState::addImportingAccount(const QString &service, const QString &acc
 
     if (not mService2Accounts.contains(service, account)) {
         mService2Accounts.insert(service, account);
-
         mStateStore.setValue(account, Contactsd::Importing);
         mStateStore.sync();
     }
@@ -81,7 +81,6 @@ void ImportState::removeImportingAccount(const QString &service, const QString &
         mContactsAdded += added;
         mContactsRemoved += removed;
         mContactsMerged += merged;
-
         mStateStore.setValue(account, Contactsd::Imported);
         mStateStore.sync();
     }

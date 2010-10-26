@@ -45,7 +45,7 @@ public:
 
 /* The plugin that wants to provide contacts importing feature
    must decalre the following signals:
-signals:
+Q_SIGNALS:
     // \param service - display name of a service (e.g. Gtalk, MSN)
     // \param account - account id or account path that can uniquely identify an account
     void importStarted(const QString &service, const QString &account);

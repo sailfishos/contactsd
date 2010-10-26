@@ -62,8 +62,7 @@ void ContactsdPluginLoader::loadPlugins(const QStringList &plugins)
     }
 }
 
-void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir,
-                                        const QStringList &plugins)
+void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir, const QStringList &plugins)
 {
     QPluginLoader *loader;
     QDir dir(pluginsDir);
@@ -92,8 +91,7 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir,
 
         ContactsdPluginInterface::PluginMetaData metaData = plugin->metaData();
         if (!metaData.contains(CONTACTSD_PLUGIN_NAME)) {
-            qWarning() << "Error loading plugin" << absFileName
-                       << "- invalid plugin metadata";
+            qWarning() << "Error loading plugin" << absFileName << "- invalid plugin metadata";
             loader->unload();
             delete loader;
             continue;
@@ -155,8 +153,7 @@ void ContactsdPluginLoader::onPluginImportStarted(const QString &service, const 
             // there was no active import from this service, so we update import state with new services
             emit importStateChanged(QString(), service);
         }
-    }
-    else {
+    } else {
         // new import
         mImportState.reset();
         emit importStarted(service);
@@ -188,8 +185,7 @@ void ContactsdPluginLoader::onPluginImportEnded(const QString &service, const QS
             // This service has no acive importing accounts anymore
             emit importStateChanged(service, QString());
         }
-    }
-    else {
+    } else {
         emit importEnded(mImportState.contactsAdded(), mImportState.contactsRemoved(),
                          mImportState.contactsMerged());
     }

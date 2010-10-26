@@ -51,12 +51,10 @@ public:
 private:
     // each service may have multiple active importing accounts
     QMultiHash<QString, QString> mService2Accounts;
-
     // accumlated amount of contacts being added, merged, removed
     int mContactsAdded;
     int mContactsMerged;
     int mContactsRemoved;
-
     // store each account's import state
     QSettings mStateStore;
 };

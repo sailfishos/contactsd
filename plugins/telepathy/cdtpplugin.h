@@ -42,7 +42,7 @@ public:
     QMap<QString, QVariant> metaData();
     bool hasActiveImports() const;
 
-signals:
+Q_SIGNALS:
     void importStarted(const QString &service, const QString &account);
     void importEnded(const QString &service, const QString &account,
                      int contactsAdded, int contactsRemoved, int contactsMerged);

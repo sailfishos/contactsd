@@ -64,7 +64,6 @@ private:
 
     typedef QMap<QString, QPluginLoader *> PluginStore;
     PluginStore mPluginStore;
-    
     ImportState mImportState;
 };
 
