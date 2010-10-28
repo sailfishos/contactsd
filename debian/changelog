@@ -1,3 +1,16 @@
+contactsd (0.5.39-2) unstable; urgency=low
+
+  * Changes: Fix importing regressions
+  * Changes: Delete properties of a resoruece list
+  * Fixes: NB#186363 - Unnamed/empty contact is received from device when no contacts are created in device and synced to other end [N95, MfE]
+  * Fixes: NB#200625 - Unable to edit Service Contact
+  * Fixes: NB#200573 -  IMAccount written by contactsd doesn't have nco:imProtocol
+  * Fixes: NB#189346 - Away presence for user and buddies is displayed as Busy in conversation UI for all communities
+  * Fixes: NB#200261 - Presence icon is not displayed for the Gtalk contacts when the configured account changes its presence status from Offline->Available
+
+ -- Siraj Razick <siraj.razick@collabora.co.uk>  Tue, 26 Oct 2010 14:11:00 +0530
+
+
 contactsd (0.5.39-1) unstable; urgency=low
 
   * Changes: Import Notication API change
