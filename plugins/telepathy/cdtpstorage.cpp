@@ -263,14 +263,15 @@ void CDTpStorage::onAccountOfflineSelectQueryFinished(
                 RDFVariable(), defaultGraph);
         update.addDeletion(imAddress, nco::presenceLastModified::iri(),
                 RDFVariable(), defaultGraph);
+        update.addDeletion(imContact, nie::contentLastModified::iri(),
+                RDFVariable(), defaultGraph);
 
         update.addInsertion(imAddress, nco::imPresence::iri(),
                 unknownState, defaultGraph);
         update.addInsertion(imAddress, nco::presenceLastModified::iri(),
                 LiteralValue(QDateTime::currentDateTime()),defaultGraph);
-        update.addDeletion(imContact, nie::contentLastModified::iri(), defaultGraph);
         update.addInsertion(imContact, nie::contentLastModified::iri(),
-            LiteralValue(QDateTime::currentDateTime()), defaultGraph);
+                LiteralValue(QDateTime::currentDateTime()), defaultGraph);
     }
 
     ::tracker()->executeQuery(update);
@@ -522,7 +523,7 @@ void CDTpStorage::addContactPresenceInfoToQuery(RDFStatementList &inserts,
             RDFStatement(imAddress, nco::imPresence::iri(),
                 trackerStatusFromTpPresenceType(contact->presenceType())) <<
             RDFStatement(imAddress, nco::presenceLastModified::iri(),
-                RDFVariable(QDateTime::currentDateTime()));
+                LiteralValue(QDateTime::currentDateTime()));
 }
 
 void CDTpStorage::addContactCapabilitiesInfoToQuery(RDFStatementList &inserts,
