@@ -65,9 +65,11 @@ void CDTpStorage::syncAccount(CDTpAccount *accountWrapper,
 
     up.addDeletion(imAccount, nco::imAccountType::iri(), RDFVariable(), defaultGraph);
     up.addDeletion(imAddress, nco::imID::iri(), RDFVariable(), defaultGraph);
+    up.addDeletion(imAccount, nco::imProtocol::iri(), RDFVariable(), defaultGraph);
 
     inserts << RDFStatement(imAccount, rdf::type::iri(), nco::IMAccount::iri()) <<
         RDFStatement(imAccount, nco::imAccountType::iri(), LiteralValue(account->protocol())) <<
+        RDFStatement(imAccount, nco::imProtocol::iri(), LiteralValue(account->protocol())) <<
         RDFStatement(imAddress, rdf::type::iri(), nco::IMAddress::iri()) <<
         RDFStatement(imAddress, nco::imID::iri(), LiteralValue(account->normalizedName()));
 
