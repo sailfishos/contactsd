@@ -142,7 +142,7 @@ void CDTpStorage::syncAccount(CDTpAccount *accountWrapper,
         RDFStatement(nco::default_contact_me::iri(), nco::contactUID::iri(),
                 LiteralValue(strLocalUID)) <<
         RDFStatement(nco::default_contact_me::iri(), nco::contactLocalUID::iri(),
-                LiteralValue(strLocalUID)) << 
+                LiteralValue(strLocalUID)) <<
         RDFStatement(imAccount, nco::hasIMContact::iri(), imAddress);
 
     if (changes & CDTpAccount::Avatar) {
@@ -346,11 +346,15 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
         if (!alreadyExists) {
             inserts << RDFStatement(imContact, rdf::type::iri(), nco::PersonContact::iri()) <<
                 RDFStatement(imContact, nco::hasIMAddress::iri(), imAddress) <<
+                RDFStatement(imContact, nco::hasPostalAddress::iri(), imAddress) <<
+                RDFStatement(imContact, nco::hasPhoneNumber::iri(), imAddress) <<
                 RDFStatement(imContact, nco::contactLocalUID::iri(), LiteralValue(localId)) <<
                 RDFStatement(imContact, nco::contactUID::iri(), LiteralValue(localId)) <<
                 RDFStatement(imContact, nie::contentCreated::iri(), LiteralValue(datetime)) <<
                 RDFStatement(imContact, nie::contentLastModified::iri(), LiteralValue(datetime)) <<
                 RDFStatement(imAddress, rdf::type::iri(), nco::IMAddress::iri()) <<
+                RDFStatement(imAddress, rdf::type::iri(), nco::PostalAddress::iri()) <<
+                RDFStatement(imAddress, rdf::type::iri(), nco::PhoneNumber::iri()) <<
                 RDFStatement(imAddress, nco::imID::iri(), LiteralValue(id));
         } else {
             imContactPropertyList << nie::contentLastModified::iri();
@@ -360,6 +364,8 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
 
         inserts << RDFStatement(imContact, rdf::type::iri(), nco::PersonContact::iri()) <<
             RDFStatement(imContact, nco::hasIMAddress::iri(), imAddress) <<
+            RDFStatement(imContact, nco::hasPostalAddress::iri(), imAddress) <<
+            RDFStatement(imContact, nco::hasPhoneNumber::iri(), imAddress) <<
             RDFStatement(imAccount, rdf::type::iri(), nco::IMAccount::iri()) <<
             RDFStatement(imAccount, nco::hasIMContact::iri(), imAddress);
         addContactAliasInfoToQuery(inserts,
@@ -372,6 +378,8 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
                 imAddress, contactWrapper);
         addContactAuthorizationInfoToQuery(inserts, imAddressPropertyList,
                 imAddress, contactWrapper);
+        addContactInfoToQuery(updateQuery, inserts, imAddressPropertyList,
+                              imContactPropertyList, imAddress,  imContact, contactWrapper);
     }
 
     RDFVariable resourceContact = RDFVariable::fromContainer(resourceContactList);
@@ -478,6 +486,11 @@ void CDTpStorage::onContactUpdateResolverFinished(CDTpStorageContactResolver *re
             qDebug() << "  authorization changed";
             addContactAuthorizationInfoToQuery(inserts,
                     imAddressPropertyList, imAddress, contactWrapper);
+        }
+        if (changes & CDTpContact::Info) {
+            qDebug() << "  information changed";
+            addContactInfoToQuery(updateQuery, inserts, imAddressPropertyList,
+                                  imContactPropertyList, imAddress,  imContact, contactWrapper);
         }
     }
 
@@ -647,8 +660,121 @@ void CDTpStorage::addContactAuthorizationInfoToQuery(RDFStatementList &inserts,
         RDFVariable(authStatus(contact->publishState())));
 }
 
+void CDTpStorage::addContactInfoToQuery(RDFUpdate &query, RDFStatementList &inserts,
+        RDFVariableList &imAddressPropertyList, RDFVariableList &imContactPropertyList,
+        const RDFVariable &imAddress, const RDFVariable &imContact,
+        CDTpContact *contactWrapper)
+{
+    qDebug() <<"Fetching the Contact";
+
+    Tp::ContactPtr contact = contactWrapper->contact();
+
+    Tp::ContactInfoFieldList  listContactInfo = contact->info();
+
+    int i;
+
+    if (listContactInfo.count() == 0) {
+        qWarning() << "No contact info present";
+    }
+    else {
+         qDebug() << "Contact info is present";
+         QStringList fieldValueList;
+
+         foreach(Tp::ContactInfoField  field, listContactInfo) {
+             qDebug() <<"Field Name:"<<field.fieldName;
+
+             for (i=0; i< field.parameters.count();i++) {
+                 qDebug() << "Parameter:" << field.parameters.at(i);
+             }
+
+             fieldValueList=QStringList();
+
+             for (i =0; i < field.fieldValue.count();i++) {
+                 qDebug() << "Field Value:" << field.fieldValue.at(i);
+                 fieldValueList.append(field.fieldValue.at(i));
+             }
+
+             if(field.fieldName.compare("fn")==0) {
+                 qDebug() << "Updating Full Name" << fieldValueList.at(0);
+                 //query.addDeletion(imContact, nco::fullname::iri());
+                 imContactPropertyList << nco::fullname::iri();
+                 inserts << RDFStatement(imContact, nco::fullname::iri(),LiteralValue(fieldValueList.at(0)));
+             }
+             else if (field.fieldName.compare("bday")==0) {
+                 qDebug() << "Updating Birthday" << fieldValueList.at(0);
+                 //query.addDeletion(imContact,nco::birthDate::iri());
+                 imContactPropertyList << nco::birthDate::iri();
+                 inserts << RDFStatement(imContact,nco::birthDate::iri(),LiteralValue(QDateTime::fromString(fieldValueList.at(0),"yyyy'-'MM'-'dd")));
+             }
+             else if(field.fieldName.compare("x-gender")==0) {
+                 qDebug() << "Updating Gender" << fieldValueList.at(0);
+                 //query.addDeletion(imContact, nco::gender::iri());
+                 imContactPropertyList << nco::gender::iri();
+                 inserts << RDFStatement(imContact, nco::gender::iri(),LiteralValue(fieldValueList.at(0)));
+             }
+            else if (field.fieldName.compare("adr")==0){
+                 qDebug() << "Updating Address";
+
+                 qDebug() << "PO Box:" << fieldValueList.at(0);
+                 qDebug() << "Extended Address:" << fieldValueList.at(1);
+                 qDebug() << "Street Address:" << fieldValueList.at(2);
+                 qDebug() << "Locality:" << fieldValueList.at(3);
+                 qDebug() << "Region:" << fieldValueList.at(4);
+                 qDebug() << "Postal Code:" << fieldValueList.at(5);
+                 qDebug() << "Country Name:" << fieldValueList.at(6);
+
+                 /*
+                 query.addDeletion(imAddress, nco::pobox::iri());
+                 query.addDeletion(imAddress, nco::extendedAddress::iri());
+                 query.addDeletion(imAddress, nco::streetAddress::iri());
+                 query.addDeletion(imAddress, nco::locality::iri());
+                 query.addDeletion(imAddress, nco::region::iri());
+                 query.addDeletion(imAddress, nco::postalcode::iri());
+                 query.addDeletion(imAddress, nco::country::iri());
+                */
+
+                 imAddressPropertyList <<nco::pobox::iri() <<
+                         nco::extendedAddress::iri() <<
+                         nco::streetAddress::iri() <<
+                         nco::locality::iri() <<
+                         nco::region::iri() <<
+                         nco::postalcode::iri() <<
+                         nco::country::iri();
+
+                 inserts << RDFStatement(imAddress,nco::pobox::iri(),LiteralValue(fieldValueList.at(0))) <<
+                         RDFStatement(imAddress,nco::extendedAddress::iri(),LiteralValue(fieldValueList.at(1))) <<
+                         RDFStatement(imAddress,nco::streetAddress::iri(),LiteralValue(fieldValueList.at(2))) <<
+                         RDFStatement(imAddress,nco::locality::iri(),LiteralValue(fieldValueList.at(3))) <<
+                         RDFStatement(imAddress,nco::region::iri(),LiteralValue(fieldValueList.at(4))) <<
+                         RDFStatement(imAddress,nco::postalcode::iri(),LiteralValue(fieldValueList.at(5))) <<
+                         RDFStatement(imAddress,nco::country::iri(),LiteralValue(fieldValueList.at(6)));
+             }
+             else if(field.fieldName.compare("tel")==0) {
+                 qDebug()<<"Updating Phone Number:"<<fieldValueList.at(0);
+                 //query.addDeletion(imAddress,nco::phoneNumber::iri());
+                 imAddressPropertyList << nco::phoneNumber::iri();
+                 inserts << RDFStatement(imAddress,nco::phoneNumber::iri(),LiteralValue(fieldValueList.at(0)));
+             }
+             else if (field.fieldName.compare("url")==0){
+                 qDebug()<<"Updating Web Page:"<<fieldValueList.at(0);
+                 //query.addDeletion(imContact,nco::url::iri());
+                 imContactPropertyList << nco::url::iri();
+                 inserts << RDFStatement(imContact,nco::url::iri(),LiteralValue(fieldValueList.at(0)));
+             }
+             else if(field.fieldName.compare("note")==0) {
+                 qDebug()<<"Updating Note:"<<fieldValueList.at(0);
+                 //query.addDeletion(imContact,nco::note::iri());
+                 imContactPropertyList << nco::note::iri();
+                 inserts << RDFStatement(imContact,nco::note::iri(),LiteralValue(fieldValueList.at(0)));
+             }
+
+         }
+    }
+}
+
 void CDTpStorage::addContactRemoveInfoToQuery(RDFStatementList &deletions,
         RDFStatementList &inserts,
+
         const QString &contactId,
         CDTpAccount *accountWrapper,
         CDTpContact *contactWrapper)

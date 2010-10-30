@@ -38,6 +38,7 @@ public:
         Capabilities  = 0x4,
         Avatar        = 0x8,
         Authorization = 0x16,
+        Info = 0x32,
         All           = 0xFFFF
     };
     Q_DECLARE_FLAGS(Changes, Change)

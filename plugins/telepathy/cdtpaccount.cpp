@@ -34,9 +34,9 @@ CDTpAccount::CDTpAccount(const Tp::AccountPtr &account, QObject *parent)
       mIntrospectingRoster(false),
       mRosterReady(false)
 {
-    qDebug() << "Introspecting account" << account->objectPath();
+    qDebug() << "==*Introspecting account" << account->objectPath();
     connect(mAccount->becomeReady(
-                Tp::Account::FeatureCore | Tp::Account::FeatureAvatar),
+            Tp::Account::FeatureCore | Tp::Account::FeatureAvatar),
             SIGNAL(finished(Tp::PendingOperation *)),
             SLOT(onAccountReady(Tp::PendingOperation *)));
 }
@@ -194,6 +194,7 @@ void CDTpAccount::onAccountContactsUpgraded(Tp::PendingOperation *op)
     QList<CDTpContact *> added;
     foreach (const Tp::ContactPtr &contact, pc->contacts()) {
         qDebug() << "  creating wrapper for contact" << contact->id();
+
         added.append(insertContact(contact));
     }
     if (!mRosterReady) {
@@ -287,6 +288,8 @@ void CDTpAccount::upgradeContacts(const Tp::Contacts &contacts)
                 Tp::Contact::FeatureAvatarToken <<
                 Tp::Contact::FeatureAvatarData <<
                 Tp::Contact::FeatureSimplePresence <<
+                Tp::Contact::FeatureInfo <<
+                Tp::Contact::FeatureLocation<<
                 Tp::Contact::FeatureCapabilities);
     connect(pc,
             SIGNAL(finished(Tp::PendingOperation *)),
@@ -300,6 +303,7 @@ CDTpContact *CDTpAccount::insertContact(const Tp::ContactPtr &contact)
             SIGNAL(changed(CDTpContact *, CDTpContact::Changes)),
             SLOT(onAccountContactChanged(CDTpContact *, CDTpContact::Changes)));
     mContacts.insert(contact, contactWrapper);
+   // this->onAccountContactChanged(contactWrapper, CDTpContact::Info);
     return contactWrapper;
 }
 

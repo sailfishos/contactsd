@@ -116,6 +116,31 @@ private:
             RDFVariableList &lists,
             const RDFVariable &imAddress,
             CDTpContact *contactWrapper);
+    void addContactInfoToQuery(RDFUpdate &query,
+            RDFStatementList &inserts,
+            RDFVariableList &imAddressPropertyList,
+            RDFVariableList &imContactPropertyList,
+            const RDFVariable &imAddress,
+            const RDFVariable &imContact,
+            CDTpContact *contactWrapper);
+
+    QString contactLocalId(const QString &contactAccountObjectPath,
+            const QString &contactId) const;
+    QString contactLocalId(CDTpContact *contactWrapper) const;
+
+    QUrl contactIri(const QString &contactLocalId) const;
+    QUrl contactIri(CDTpContact *contactWrapper) const;
+
+    QUrl contactImAddress(const QString &contactAccountObjectPath,
+            const QString &contactId) const;
+    QUrl contactImAddress(CDTpContact *contactWrapper) const;
+
+    QUrl trackerStatusFromTpPresenceType(uint tpPresenceType) const;
+    QUrl trackerStatusFromTpPresenceStatus(
+            const QString &tpPresenceStatus) const;
+    QUrl authStatus(Tp::Contact::PresenceState) const;
+
+    static const QUrl defaultGraph;
 };
 
 class CDTpStorageSelectQuery : public QObject
