@@ -34,7 +34,7 @@ CDTpAccount::CDTpAccount(const Tp::AccountPtr &account, QObject *parent)
       mIntrospectingRoster(false),
       mRosterReady(false)
 {
-    qDebug() << "==*Introspecting account" << account->objectPath();
+    qDebug() << "Introspecting account" << account->objectPath();
     connect(mAccount->becomeReady(
             Tp::Account::FeatureCore | Tp::Account::FeatureAvatar),
             SIGNAL(finished(Tp::PendingOperation *)),
