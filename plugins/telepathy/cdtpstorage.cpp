@@ -377,8 +377,8 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
                 imAddress, contactWrapper);
         addContactAuthorizationInfoToQuery(inserts, imAddressPropertyList,
                 imAddress, contactWrapper);
-        addContactInfoToQuery(updateQuery, inserts, imAddressPropertyList,
-                              imContactPropertyList, imAddress,  imContact, contactWrapper);
+        addContactInfoToQuery(inserts,
+                imContactPropertyList, imContact, contactWrapper);
     }
 
     RDFVariable resourceContact = RDFVariable::fromContainer(resourceContactList);
@@ -392,7 +392,7 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
         updateQuery.addDeletion(resourceAddress, property, RDFVariable(), defaultGraph);
     }
 
-   updateQuery.addInsertion(inserts, defaultGraph);
+    updateQuery.addInsertion(inserts, defaultGraph);
     ::tracker()->executeQuery(updateQuery);
     resolver->deleteLater();
 }
@@ -488,16 +488,15 @@ void CDTpStorage::onContactUpdateResolverFinished(CDTpStorageContactResolver *re
         }
         if (changes & CDTpContact::Infomation) {
             qDebug() << "  vcard information changed";
-            addContactInfoToQuery(updateQuery, inserts,
-                    imAddressPropertyList, imContactPropertyList,
-                    imAddress,
+            addContactInfoToQuery(inserts,
+                    imContactPropertyList,
                     imContact, contactWrapper);
         }
     }
 
     RDFVariable resourceContact = RDFVariable::fromContainer(resourceContactList);
     RDFVariable resourceAddress = RDFVariable::fromContainer(resourceAddressList);
-   foreach (RDFVariable property, imContactPropertyList) {
+    foreach (RDFVariable property, imContactPropertyList) {
         updateQuery.addDeletion(resourceContact, property, RDFVariable(), defaultGraph);
     }
 
@@ -660,9 +659,9 @@ void CDTpStorage::addContactAuthorizationInfoToQuery(RDFStatementList &inserts,
         RDFVariable(authStatus(contact->publishState())));
 }
 
-void CDTpStorage::addContactInfoToQuery(RDFUpdate &query, RDFStatementList &inserts,
-        RDFVariableList &imAddressPropertyList, RDFVariableList &imContactPropertyList,
-        const RDFVariable &imAddress, const RDFVariable &imContact,
+void CDTpStorage::addContactInfoToQuery(RDFStatementList &inserts,
+        RDFVariableList &imContactPropertyList,
+        const RDFVariable &imContact,
         CDTpContact *contactWrapper)
 {
 
@@ -674,7 +673,6 @@ void CDTpStorage::addContactInfoToQuery(RDFUpdate &query, RDFStatementList &inse
         return;
     }
 
-    qDebug() << "Contact info is present";
     QStringList fieldValueList;
     const QString affiliation = QString("urn:uuid:%1").
                     arg(contactLocalId(contactWrapper));
@@ -740,6 +738,12 @@ void CDTpStorage::addContactAddressToQuery(RDFStatementList &inserts,
     inserts << RDFStatement(imPostalAddress, rdf::type::iri(), QUrl(affiliation)) <<
         RDFStatement(imAffiliation, rdf::type::iri(), QUrl(affiliation)) <<
         RDFStatement(imPostalAddress, nco::pobox::iri(), LiteralValue(pobox)) <<
+        RDFStatement(imPostalAddress, nco::extendedAddress::iri(),LiteralValue(extendedAddress)) <<
+        RDFStatement(imPostalAddress, nco::streetAddress::iri(),LiteralValue(streetAddress)) <<
+        RDFStatement(imPostalAddress, nco::locality::iri(),LiteralValue(locality)) <<
+        RDFStatement(imPostalAddress, nco::region::iri(),LiteralValue(region)) <<
+        RDFStatement(imPostalAddress, nco::postalcode::iri(),LiteralValue(postalcode)) <<
+        RDFStatement(imPostalAddress, nco::country::iri(),LiteralValue(country)) <<
         RDFStatement(imContact, nco::hasPostalAddress::iri(), imPostalAddress);
 }
 
