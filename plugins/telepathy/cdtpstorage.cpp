@@ -33,6 +33,23 @@ CDTpStorage::~CDTpStorage()
 {
 }
 
+void CDTpStorage::onSelectAccountsToDeleteFinished(CDTpStorageSelectAccountsToDelete *query)
+{
+    foreach (QString accountObjectPath, query->accountsToDelete()) {
+        removeAccount(accountObjectPath);
+    }
+    query->deleteLater();
+}
+
+void CDTpStorage::syncAccountSet(const QList<QString> &accounts)
+{
+    CDTpStorageSelectAccountsToDelete *query =
+            new CDTpStorageSelectAccountsToDelete(accounts, this);
+    connect(query,
+            SIGNAL(finished(CDTpStorageSelectAccountsToDelete *)),
+            SLOT(onSelectAccountsToDeleteFinished(CDTpStorageSelectAccountsToDelete *)));
+}
+
 void CDTpStorage::syncAccount(CDTpAccount *accountWrapper)
 {
     syncAccount(accountWrapper, CDTpAccount::All);
@@ -848,4 +865,39 @@ void CDTpStorageContactResolver::requestContactResolve(CDTpAccount *accountWrapp
     connect(query,
             SIGNAL(finished(CDTpStorageSelectQuery *)),
             SLOT(onStorageResolveSelectQueryFinished(CDTpStorageSelectQuery *)));
+}
+
+QList<QString> CDTpStorageSelectAccountsToDelete::accountsToDelete() const
+{
+    return mAccountsToDelete;
+}
+
+void CDTpStorageSelectAccountsToDelete::onStorageSelectQueryFinished(
+        CDTpStorageSelectQuery *queryWrapper)
+{
+    LiveNodes result = queryWrapper->reply();
+
+    for (int i = 0; i < result->rowCount(); i++) {
+        const QString accountUrl = result->index(i, 0).data().toString();
+        const QString accountObjectPath = accountUrl.mid(QString("telepathy:").length());
+        if (!mValidAccounts.contains(accountObjectPath)) {
+            mAccountsToDelete << accountObjectPath;
+        }
+    }
+
+    emit finished(this);
+}
+
+CDTpStorageSelectAccountsToDelete::CDTpStorageSelectAccountsToDelete(
+        const QList<QString> &validAccounts, QObject *parent) : QObject(parent),
+        mValidAccounts(validAccounts)
+{
+    RDFVariable imAccount = RDFVariable::fromType<nco::IMAccount>();
+    RDFSelect select;
+    select.addColumn("Accounts", imAccount);
+
+    CDTpStorageSelectQuery *query = new CDTpStorageSelectQuery(select, this);
+    connect(query,
+            SIGNAL(finished(CDTpStorageSelectQuery *)),
+            SLOT(onStorageSelectQueryFinished(CDTpStorageSelectQuery *)));
 }

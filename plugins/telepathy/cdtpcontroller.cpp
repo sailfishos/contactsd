@@ -78,6 +78,7 @@ void CDTpController::onAccountManagerReady(Tp::PendingOperation *op)
     foreach (const Tp::AccountPtr &account, mAccountSet->accounts()) {
         insertAccount(account);
     }
+    mStorage->syncAccountSet(mAccounts.keys());
 }
 
 void CDTpController::onAccountAdded(const Tp::AccountPtr &account)

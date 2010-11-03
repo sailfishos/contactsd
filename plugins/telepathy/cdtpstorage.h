@@ -37,6 +37,7 @@ using namespace SopranoLive;
 
 class CDTpStorageSelectQuery;
 class CDTpStorageContactResolver;
+class CDTpStorageSelectAccountsToDelete;
 
 class CDTpStorage : public QObject
 {
@@ -47,6 +48,7 @@ public:
     ~CDTpStorage();
 
 public Q_SLOTS:
+    void syncAccountSet(const QList<QString> &accountPaths);
     void syncAccount(CDTpAccount *accountWrapper);
     void syncAccount(CDTpAccount *accountWrapper, CDTpAccount::Changes changes);
     void syncAccountContacts(CDTpAccount *accountWrapper);
@@ -64,6 +66,7 @@ private Q_SLOTS:
     void onContactAddResolverFinished(CDTpStorageContactResolver *resolver);
     void onContactDeleteResolverFinished(CDTpStorageContactResolver *resolver);
     void onContactUpdateResolverFinished(CDTpStorageContactResolver *resolver);
+    void onSelectAccountsToDeleteFinished(CDTpStorageSelectAccountsToDelete *query);
 
 private:
     void saveAccountAvatar(RDFUpdate &query, const QByteArray &data, const QString &mimeType,
@@ -164,6 +167,27 @@ private:
     QHash<CDTpContact *, QString> mResolvedContacts;
     QList<CDTpContact *> mContactsNotResolved;
     CDTpContact::Changes mContactChanges;
+};
+
+class CDTpStorageSelectAccountsToDelete : public QObject
+{
+    Q_OBJECT
+
+public:
+    CDTpStorageSelectAccountsToDelete(const QList<QString> &validAccounts, QObject *parent = 0);
+    ~CDTpStorageSelectAccountsToDelete() {};
+
+    QList<QString> accountsToDelete() const;
+
+Q_SIGNALS:
+   void finished(CDTpStorageSelectAccountsToDelete *select);
+
+private Q_SLOTS:
+    void onStorageSelectQueryFinished(CDTpStorageSelectQuery *query);
+
+private:
+    QList<QString> mAccountsToDelete;
+    QList<QString> mValidAccounts;
 };
 
 #endif // CDTPSTORAGE_H
