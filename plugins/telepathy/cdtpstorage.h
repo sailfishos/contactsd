@@ -199,7 +199,7 @@ public:
     ~CDTpStorageRemoveAccount() {};
 
 private Q_SLOTS:
-    void onSelectQueryFinished(CDTpStorageSelectQuery *);
+    void onSelectQueryFinished(CDTpStorageSelectQuery *query);
 
 private:
     QString mAccountObjectPath;

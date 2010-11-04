@@ -223,16 +223,11 @@ CDTpStorageRemoveAccount::CDTpStorageRemoveAccount(const QString &accountObjectP
 {
     RDFVariable imContact = RDFVariable::fromType<nco::PersonContact>();
     RDFVariable imAddress = imContact.optional().property<nco::hasIMAddress>();
-    RDFVariable imAccount = RDFVariable::fromType<nco::IMAccount>();
-    imAccount.property<nco::hasIMContact>() = imAddress;
-    imAccount = QUrl("telepathy:" + accountObjectPath);
 
     RDFSelect select;
     select.addColumn("contact", imContact);
     select.addColumn("distinct", imAddress.property<nco::imID>());
     select.addColumn("contactId", imContact.property<nco::contactLocalUID>());
-    select.addColumn("accountPath", imAccount);
-    select.addColumn("address", imAddress);
 
     CDTpStorageSelectQuery *query = new CDTpStorageSelectQuery(select, this);
     connect(query,
