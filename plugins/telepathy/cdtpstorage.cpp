@@ -214,6 +214,13 @@ void CDTpStorage::removeAccount(const QString &accountObjectPath)
 {
     qDebug() << "Removing account" << accountObjectPath << "from storage";
 
+    /* Object will self destroy when operation is done */
+    new CDTpStorageRemoveAccount(accountObjectPath, this);
+}
+
+CDTpStorageRemoveAccount::CDTpStorageRemoveAccount(const QString &accountObjectPath,
+    QObject *parent) : QObject(parent), mAccountObjectPath(accountObjectPath)
+{
     RDFVariable imContact = RDFVariable::fromType<nco::PersonContact>();
     RDFVariable imAddress = imContact.optional().property<nco::hasIMAddress>();
     RDFVariable imAccount = RDFVariable::fromType<nco::IMAccount>();
@@ -230,10 +237,10 @@ void CDTpStorage::removeAccount(const QString &accountObjectPath)
     CDTpStorageSelectQuery *query = new CDTpStorageSelectQuery(select, this);
     connect(query,
             SIGNAL(finished(CDTpStorageSelectQuery *)),
-            SLOT(onAccountRemovalSelectQueryFinished(CDTpStorageSelectQuery *)));
+            SLOT(onSelectQueryFinished(CDTpStorageSelectQuery *)));
 }
 
-void CDTpStorage::onAccountRemovalSelectQueryFinished(CDTpStorageSelectQuery *query)
+void CDTpStorageRemoveAccount::onSelectQueryFinished(CDTpStorageSelectQuery *query)
 {
     RDFUpdate update;
 
@@ -242,25 +249,26 @@ void CDTpStorage::onAccountRemovalSelectQueryFinished(CDTpStorageSelectQuery *qu
         QUrl personContactIri = QUrl(removalNodes->index(i, 0).data().toString());
         const QString imStorageAddress = removalNodes->index(i, 1).data().toString();
         const QString contactLocalUID = removalNodes->index(i, 2).data().toString();
-        const QString accountUri = removalNodes->index(i, 3).data().toString();
-        const QString accountObjectPath(accountUri.split(":").value(1));
-        QUrl imContactGeneratedIri = QUrl(contactImAddress(accountObjectPath,
+        QUrl imContactGeneratedIri = QUrl(CDTpStorage::contactImAddress(mAccountObjectPath,
                     imStorageAddress));
-        const RDFVariable imContact(contactIri(contactLocalUID));
-        const RDFVariable imAddress(contactImAddress(accountObjectPath, imStorageAddress));
-        const RDFVariable imAccount(QUrl(QString("telepathy:%1").arg(accountObjectPath)));
+        const RDFVariable imContact(CDTpStorage::contactIri(contactLocalUID));
+        const RDFVariable imAddress(CDTpStorage::contactImAddress(mAccountObjectPath, imStorageAddress));
 
         if (personContactIri == imContactGeneratedIri) {
-            update.addDeletion(imContact, rdf::type::iri(), nco::PersonContact::iri());
+            update.addDeletion(imContact, rdf::type::iri(), nco::PersonContact::iri(),
+                CDTpStorage::defaultGraph);
         }
         update.addDeletion(imAddress, rdf::type::iri(), nco::IMAddress::iri(),
-                defaultGraph);
-        update.addDeletion(imAccount, rdf::type::iri(), nco::IMAccount::iri(),
-                defaultGraph);
+                CDTpStorage::defaultGraph);
     }
+
+    const RDFVariable imAccount(QUrl(QString("telepathy:%1").arg(mAccountObjectPath)));
+    update.addDeletion(imAccount, rdf::type::iri(), nco::IMAccount::iri(),
+            CDTpStorage::defaultGraph);
 
     ::tracker()->executeQuery(update);
     query->deleteLater();
+    deleteLater();
 }
 
 void CDTpStorage::onAccountOfflineSelectQueryFinished(
@@ -603,7 +611,7 @@ void CDTpStorage::addContactAvatarInfoToQuery(RDFUpdate &query,
     }
 }
 
-QUrl CDTpStorage::authStatus(Tp::Contact::PresenceState state) const
+QUrl CDTpStorage::authStatus(Tp::Contact::PresenceState state)
 {
     switch (state) {
     case Tp::Contact::PresenceStateNo:
@@ -661,14 +669,14 @@ void CDTpStorage::addContactRemoveInfoToQuery(RDFStatementList &deletions,
 }
 
 QString CDTpStorage::contactLocalId(const QString &contactAccountObjectPath,
-        const QString &contactId) const
+        const QString &contactId)
 {
     return QString::number(qHash(QString("%1!%2")
                 .arg(contactAccountObjectPath)
                 .arg(contactId)));
 }
 
-QString CDTpStorage::contactLocalId(CDTpContact *contactWrapper) const
+QString CDTpStorage::contactLocalId(CDTpContact *contactWrapper)
 {
     CDTpAccount *accountWrapper = contactWrapper->accountWrapper();
     Tp::AccountPtr account = accountWrapper->account();
@@ -676,25 +684,25 @@ QString CDTpStorage::contactLocalId(CDTpContact *contactWrapper) const
     return contactLocalId(account->objectPath(), contact->id());
 }
 
-QUrl CDTpStorage::contactIri(const QString &contactLocalId) const
+QUrl CDTpStorage::contactIri(const QString &contactLocalId)
 {
     return QUrl(QString("contact:%1").arg(contactLocalId));
 }
 
-QUrl CDTpStorage::contactIri(CDTpContact *contactWrapper) const
+QUrl CDTpStorage::contactIri(CDTpContact *contactWrapper)
 {
     return contactIri(contactLocalId(contactWrapper));
 }
 
 QUrl CDTpStorage::contactImAddress(const QString &contactAccountObjectPath,
-        const QString &contactId) const
+        const QString &contactId)
 {
     return QUrl(QString("telepathy:%1!%2")
             .arg(contactAccountObjectPath)
             .arg(contactId));
 }
 
-QUrl CDTpStorage::contactImAddress(CDTpContact *contactWrapper) const
+QUrl CDTpStorage::contactImAddress(CDTpContact *contactWrapper)
 {
     CDTpAccount *accountWrapper = contactWrapper->accountWrapper();
     Tp::AccountPtr account = accountWrapper->account();
@@ -702,7 +710,7 @@ QUrl CDTpStorage::contactImAddress(CDTpContact *contactWrapper) const
     return contactImAddress(account->objectPath(), contact->id());
 }
 
-QUrl CDTpStorage::trackerStatusFromTpPresenceType(uint tpPresenceType) const
+QUrl CDTpStorage::trackerStatusFromTpPresenceType(uint tpPresenceType)
 {
     switch (tpPresenceType) {
     case Tp::ConnectionPresenceTypeUnset:
@@ -731,7 +739,7 @@ QUrl CDTpStorage::trackerStatusFromTpPresenceType(uint tpPresenceType) const
 }
 
 QUrl CDTpStorage::trackerStatusFromTpPresenceStatus(
-        const QString &tpPresenceStatus) const
+        const QString &tpPresenceStatus)
 {
     static QHash<QString, QUrl> mapping;
     if (mapping.isEmpty()) {

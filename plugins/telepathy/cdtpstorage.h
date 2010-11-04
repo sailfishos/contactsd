@@ -47,6 +47,24 @@ public:
     CDTpStorage(QObject *parent = 0);
     ~CDTpStorage();
 
+    static QString contactLocalId(const QString &contactAccountObjectPath,
+            const QString &contactId);
+    static QString contactLocalId(CDTpContact *contactWrapper);
+
+    static QUrl contactIri(const QString &contactLocalId);
+    static QUrl contactIri(CDTpContact *contactWrapper);
+
+    static QUrl contactImAddress(const QString &contactAccountObjectPath,
+            const QString &contactId);
+    static QUrl contactImAddress(CDTpContact *contactWrapper);
+
+    static QUrl trackerStatusFromTpPresenceType(uint tpPresenceType);
+    static QUrl trackerStatusFromTpPresenceStatus(
+            const QString &tpPresenceStatus);
+    static QUrl authStatus(Tp::Contact::PresenceState);
+
+    static const QUrl defaultGraph;
+
 public Q_SLOTS:
     void syncAccountSet(const QList<QString> &accountPaths);
     void syncAccount(CDTpAccount *accountWrapper);
@@ -99,24 +117,6 @@ private:
             RDFVariableList &lists,
             const RDFVariable &imAddress,
             CDTpContact *contactWrapper);
-
-    QString contactLocalId(const QString &contactAccountObjectPath,
-            const QString &contactId) const;
-    QString contactLocalId(CDTpContact *contactWrapper) const;
-
-    QUrl contactIri(const QString &contactLocalId) const;
-    QUrl contactIri(CDTpContact *contactWrapper) const;
-
-    QUrl contactImAddress(const QString &contactAccountObjectPath,
-            const QString &contactId) const;
-    QUrl contactImAddress(CDTpContact *contactWrapper) const;
-
-    QUrl trackerStatusFromTpPresenceType(uint tpPresenceType) const;
-    QUrl trackerStatusFromTpPresenceStatus(
-            const QString &tpPresenceStatus) const;
-    QUrl authStatus(Tp::Contact::PresenceState) const;
-
-    static const QUrl defaultGraph;
 };
 
 class CDTpStorageSelectQuery : public QObject
@@ -188,6 +188,21 @@ private Q_SLOTS:
 private:
     QList<QString> mAccountsToDelete;
     QList<QString> mValidAccounts;
+};
+
+class CDTpStorageRemoveAccount : public QObject
+{
+    Q_OBJECT
+
+public:
+    CDTpStorageRemoveAccount(const QString &accountObjectPath, QObject *parent = 0);
+    ~CDTpStorageRemoveAccount() {};
+
+private Q_SLOTS:
+    void onSelectQueryFinished(CDTpStorageSelectQuery *);
+
+private:
+    QString mAccountObjectPath;
 };
 
 #endif // CDTPSTORAGE_H
