@@ -79,12 +79,11 @@ public Q_SLOTS:
     void removeAccount(const QString &accountObjectPath);
 
 private Q_SLOTS:
-    void onAccountRemovalSelectQueryFinished(CDTpStorageSelectQuery *query);
+    void onAccountPurgeSelectQueryFinished(CDTpStorageSelectQuery *query);
     void onAccountOfflineSelectQueryFinished(CDTpStorageSelectQuery *query);
     void onContactAddResolverFinished(CDTpStorageContactResolver *resolver);
     void onContactDeleteResolverFinished(CDTpStorageContactResolver *resolver);
     void onContactUpdateResolverFinished(CDTpStorageContactResolver *resolver);
-    void onSelectAccountsToDeleteFinished(CDTpStorageSelectAccountsToDelete *query);
 
 private:
     void saveAccountAvatar(RDFUpdate &query, const QByteArray &data, const QString &mimeType,
@@ -167,27 +166,6 @@ private:
     QHash<CDTpContact *, QString> mResolvedContacts;
     QList<CDTpContact *> mContactsNotResolved;
     CDTpContact::Changes mContactChanges;
-};
-
-class CDTpStorageSelectAccountsToDelete : public QObject
-{
-    Q_OBJECT
-
-public:
-    CDTpStorageSelectAccountsToDelete(const QList<QString> &validAccounts, QObject *parent = 0);
-    ~CDTpStorageSelectAccountsToDelete() {};
-
-    QList<QString> accountsToDelete() const;
-
-Q_SIGNALS:
-   void finished(CDTpStorageSelectAccountsToDelete *select);
-
-private Q_SLOTS:
-    void onStorageSelectQueryFinished(CDTpStorageSelectQuery *query);
-
-private:
-    QList<QString> mAccountsToDelete;
-    QList<QString> mValidAccounts;
 };
 
 class CDTpStorageRemoveAccount : public QObject
