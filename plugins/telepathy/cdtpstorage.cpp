@@ -222,12 +222,12 @@ CDTpStorageRemoveAccount::CDTpStorageRemoveAccount(const QString &accountObjectP
     QObject *parent) : QObject(parent), mAccountObjectPath(accountObjectPath)
 {
     RDFVariable imContact = RDFVariable::fromType<nco::PersonContact>();
-    RDFVariable imAddress = imContact.optional().property<nco::hasIMAddress>();
+    RDFVariable imAddress = imContact.property<nco::hasIMAddress>();
+    imAddress.hasPrefix(QString("telepathy:%1").arg(accountObjectPath));
 
     RDFSelect select;
     select.addColumn("contact", imContact);
-    select.addColumn("distinct", imAddress.property<nco::imID>());
-    select.addColumn("contactId", imContact.property<nco::contactLocalUID>());
+    select.addColumn("address", imAddress);
 
     CDTpStorageSelectQuery *query = new CDTpStorageSelectQuery(select, this);
     connect(query,
@@ -241,18 +241,13 @@ void CDTpStorageRemoveAccount::onSelectQueryFinished(CDTpStorageSelectQuery *que
 
     LiveNodes removalNodes = query->reply();
     for (int i = 0; i < removalNodes->rowCount(); ++i) {
-        QUrl personContactIri = QUrl(removalNodes->index(i, 0).data().toString());
-        const QString imStorageAddress = removalNodes->index(i, 1).data().toString();
-        const QString contactLocalUID = removalNodes->index(i, 2).data().toString();
-        QUrl imContactGeneratedIri = QUrl(CDTpStorage::contactImAddress(mAccountObjectPath,
-                    imStorageAddress));
-        const RDFVariable imContact(CDTpStorage::contactIri(contactLocalUID));
-        const RDFVariable imAddress(CDTpStorage::contactImAddress(mAccountObjectPath, imStorageAddress));
+        QUrl imContact = QUrl(removalNodes->index(i, 0).data().toString());
+        QUrl imAddress = QUrl(removalNodes->index(i, 1).data().toString());
 
-        if (personContactIri == imContactGeneratedIri) {
-            update.addDeletion(imContact, rdf::type::iri(), nco::PersonContact::iri(),
+        /* FIXME: if the imContact never got modified, we should remove it completely */
+        update.addDeletion(imContact, nco::hasIMAddress::iri(), imAddress,
                 CDTpStorage::defaultGraph);
-        }
+
         update.addDeletion(imAddress, rdf::type::iri(), nco::IMAddress::iri(),
                 CDTpStorage::defaultGraph);
     }
