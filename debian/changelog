@@ -1,3 +1,10 @@
+contactsd (0.5.40~3) UNRELEASED; urgency=low
+
+  *
+
+ -- Siraj Razick <siraj.razick@collabora.co.uk>  Sun, 07 Nov 2010 22:152:00 +0530
+
+
 contactsd (0.5.40-2) unstable; urgency=low
 
   * Changes: Contact Info Support
