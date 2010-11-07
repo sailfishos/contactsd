@@ -123,6 +123,23 @@ private:
             const RDFVariable &imAddress,
             const RDFVariable &imContact,
             CDTpContact *contactWrapper);
+    void addContactVoicePhoneNumberToQuery(RDFStatementList &inserts,
+            RDFVariableList &lists,
+            const QString &phoneNumber,
+            const QString &affiliation,
+            const RDFVariable &imContact);
+
+    void addContactAddressToQuery(RDFStatementList &inserts,
+            RDFVariableList &lists,
+            const QString &pobox,
+            const QString &extAddress,
+            const QString &streetAddress,
+            const QString &locality,
+            const QString &region,
+            const QString &postalcode,
+            const QString &country,
+            const QString &affiliation,
+            const RDFVariable &imContact);
 
     QString contactLocalId(const QString &contactAccountObjectPath,
             const QString &contactId) const;

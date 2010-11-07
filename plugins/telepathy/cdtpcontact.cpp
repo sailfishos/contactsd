@@ -82,5 +82,5 @@ void CDTpContact::onContactAuthorizationChanged()
 
 void CDTpContact::onContactInfoChanged()
 {
-    emit changed(this, Info);
+    emit changed(this, Infomation);
 }

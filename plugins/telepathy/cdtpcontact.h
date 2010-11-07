@@ -38,7 +38,7 @@ public:
         Capabilities  = 0x4,
         Avatar        = 0x8,
         Authorization = 0x10,
-        Info          = 0x20,
+        Infomation    = 0x20,
         All           = 0xFFFF
     };
     Q_DECLARE_FLAGS(Changes, Change)
@@ -59,7 +59,7 @@ private Q_SLOTS:
     void onContactCapabilitiesChanged();
     void onContactAvatarDataChanged();
     void onContactAuthorizationChanged();
-    void onContactInfoChanged()
+    void onContactInfoChanged();
 
 private:
     Tp::ContactPtr mContact;
