@@ -227,8 +227,31 @@ void CDTpStorage::removeAccount(const QString &accountObjectPath)
 {
     qDebug() << "Removing account" << accountObjectPath << "from storage";
 
-    /* Object will self destroy when operation is done */
-    new CDTpStorageRemoveAccount(this, accountObjectPath);
+    /* Delete the imAccount resource */
+    RDFUpdate updateQuery;
+    const RDFVariable imAccount(QUrl(QString("telepathy:%1").arg(accountObjectPath)));
+    updateQuery.addDeletion(imAccount, rdf::type::iri(), rdfs::Resource::iri(),
+            defaultGraph);
+    ::tracker()->executeQuery(updateQuery);
+
+    /* Delete all imAddress from that account */
+    RDFVariable imContact = RDFVariable::fromType<nco::PersonContact>();
+    RDFVariable imAddress = imContact.property<nco::hasIMAddress>();
+    imAddress.hasPrefix(QString("telepathy:%1").arg(accountObjectPath));
+
+    RDFSelect select;
+    select.addColumn("contact", imContact);
+    select.addColumn("address", imAddress);
+
+    CDTpStorageSelectQuery *query = new CDTpStorageSelectQuery(select, this);
+    connect(query,
+            SIGNAL(finished(CDTpStorageSelectQuery *)),
+            SLOT(onSelectQueryFinished(CDTpStorageSelectQuery *)));
+}
+
+void CDTpStorage::onAccountDeleteSelectQueryFinished(CDTpStorageSelectQuery *query)
+{
+    removeContacts(query, false);
 }
 
 void CDTpStorage::removeContacts(CDTpAccount *accountWrapper,
@@ -260,49 +283,19 @@ void CDTpStorage::removeContacts(CDTpAccount *accountWrapper,
             SLOT(onContactDeleteSelectQueryFinished(CDTpStorageSelectQuery *)));
 }
 
-CDTpStorageRemoveAccount::CDTpStorageRemoveAccount(CDTpStorage *storage,
-        const QString &accountObjectPath) : QObject(storage),
-        mAccountObjectPath(accountObjectPath), mStorage(storage)
+void CDTpStorage::onContactDeleteSelectQueryFinished(CDTpStorageSelectQuery *query)
 {
-    RDFVariable imContact = RDFVariable::fromType<nco::PersonContact>();
-    RDFVariable imAddress = imContact.property<nco::hasIMAddress>();
-    imAddress.hasPrefix(QString("telepathy:%1").arg(accountObjectPath));
-
-    RDFSelect select;
-    select.addColumn("contact", imContact);
-    select.addColumn("address", imAddress);
-
-    CDTpStorageSelectQuery *query = new CDTpStorageSelectQuery(select, this);
-    connect(query,
-            SIGNAL(finished(CDTpStorageSelectQuery *)),
-            SLOT(onSelectQueryFinished(CDTpStorageSelectQuery *)));
+    removeContacts(query, true);
 }
 
-void CDTpStorageRemoveAccount::onSelectQueryFinished(CDTpStorageSelectQuery *query)
+void CDTpStorage::removeContacts(CDTpStorageSelectQuery *query, bool deleteAccount)
 {
-    mStorage->onContactDeleteSelectQueryFinished(query, false);
-
-    const RDFVariable imAccount(QUrl(QString("telepathy:%1").arg(mAccountObjectPath)));
-
-    RDFUpdate updateQuery;
-    updateQuery.addDeletion(imAccount, rdf::type::iri(), rdfs::Resource::iri(),
-            CDTpStorage::defaultGraph);
-    ::tracker()->executeQuery(updateQuery);
-    deleteLater();
-}
-
-void CDTpStorage::onContactDeleteSelectQueryFinished(CDTpStorageSelectQuery *query,
-        bool deleteAccount)
-{
-    LiveNodes result = query->reply();
     query->deleteLater();
 
+    LiveNodes result = query->reply();
     if (result->rowCount() <= 0) {
         return;
     }
-
-    const QString addressUrl = result->index(0, 1).data().toString();
-    const RDFVariable imAccount(QUrl(addressUrl.left(addressUrl.indexOf("!"))));
 
     RDFUpdate updateQuery;
     for (int i = 0; i < result->rowCount(); i++) {
@@ -310,6 +303,8 @@ void CDTpStorage::onContactDeleteSelectQueryFinished(CDTpStorageSelectQuery *que
         QUrl imAddress = QUrl(result->index(i, 1).data().toString());
 
         if (deleteAccount) {
+            const QString addressUrl = result->index(i, 1).data().toString();
+            const RDFVariable imAccount(QUrl(addressUrl.left(addressUrl.indexOf("!"))));
             updateQuery.addDeletion(imAccount, nco::hasIMContact::iri(), imAddress,
                     defaultGraph);
         }
