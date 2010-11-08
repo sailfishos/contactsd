@@ -77,12 +77,15 @@ public Q_SLOTS:
             CDTpContact *contactWrapper, CDTpContact::Changes changes);
     void setAccountContactsOffline(CDTpAccount *accountWrapper);
     void removeAccount(const QString &accountObjectPath);
+    void removeContacts(CDTpAccount *accountWrapper,
+            const QList<CDTpContact *> &contacts, bool not_ = false);
+    void onContactDeleteSelectQueryFinished(CDTpStorageSelectQuery *query,
+            bool deleteAccount = true);
 
 private Q_SLOTS:
     void onAccountPurgeSelectQueryFinished(CDTpStorageSelectQuery *query);
     void onAccountOfflineSelectQueryFinished(CDTpStorageSelectQuery *query);
     void onContactAddResolverFinished(CDTpStorageContactResolver *resolver);
-    void onContactDeleteResolverFinished(CDTpStorageContactResolver *resolver);
     void onContactUpdateResolverFinished(CDTpStorageContactResolver *resolver);
 
 private:
@@ -193,7 +196,7 @@ class CDTpStorageRemoveAccount : public QObject
     Q_OBJECT
 
 public:
-    CDTpStorageRemoveAccount(const QString &accountObjectPath, QObject *parent = 0);
+    CDTpStorageRemoveAccount(CDTpStorage *storage, const QString &accountObjectPath);
     ~CDTpStorageRemoveAccount() {};
 
 private Q_SLOTS:
@@ -201,6 +204,7 @@ private Q_SLOTS:
 
 private:
     QString mAccountObjectPath;
+    CDTpStorage *mStorage;
 };
 
 #endif // CDTPSTORAGE_H
