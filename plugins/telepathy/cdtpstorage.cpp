@@ -285,7 +285,7 @@ void CDTpStorageRemoveAccount::onSelectQueryFinished(CDTpStorageSelectQuery *que
     const RDFVariable imAccount(QUrl(QString("telepathy:%1").arg(mAccountObjectPath)));
 
     RDFUpdate updateQuery;
-    updateQuery.addDeletion(imAccount, rdf::type::iri(), nco::IMAccount::iri(),
+    updateQuery.addDeletion(imAccount, rdf::type::iri(), rdfs::Resource::iri(),
             CDTpStorage::defaultGraph);
     ::tracker()->executeQuery(updateQuery);
     deleteLater();
@@ -314,8 +314,7 @@ void CDTpStorage::onContactDeleteSelectQueryFinished(CDTpStorageSelectQuery *que
                     defaultGraph);
         }
 
-        updateQuery.addDeletion(imAddress, rdf::type::iri(),
-                nco::IMAddress::iri(), defaultGraph);
+        updateQuery.addDeletion(imAddress, rdf::type::iri(), rdfs::Resource::iri(), defaultGraph);
 
         /* FIXME: if the imContact never got modified, we should remove it completely */
         updateQuery.addDeletion(imContact, nco::hasIMAddress::iri(),
@@ -727,6 +726,8 @@ void CDTpStorage::addContactVoicePhoneNumberToQuery(RDFStatementList &inserts,
         const QString &affiliation,
         const RDFVariable &imContact)
 {
+    Q_UNUSED(list);
+
     RDFVariable imAffiliation = QUrl(affiliation);
     RDFVariable voicePhoneNumber = QUrl(QString("tel:%1").
                 arg(phoneNumber));
@@ -754,6 +755,8 @@ void CDTpStorage::addContactAddressToQuery(RDFStatementList &inserts,
         const QString &affiliation,
         const RDFVariable &imContact)
 {
+    Q_UNUSED(list);
+
     RDFVariable imAffiliation = QUrl(affiliation);
     RDFVariable imPostalAddress = RDFVariable::fromType<nco::PostalAddress>();
 
