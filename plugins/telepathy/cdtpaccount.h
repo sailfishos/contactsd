@@ -53,17 +53,17 @@ public:
 
     Tp::AccountPtr account() const { return mAccount; }
 
-    QList<CDTpContact *> contacts() const;
+    QList<CDTpContactPtr> contacts() const;
 
 Q_SIGNALS:
     void ready(CDTpAccount *accountWrapper);
     void changed(CDTpAccount *accountWrapper, CDTpAccount::Changes changes);
     void rosterChanged(CDTpAccount *accountWrapper, bool haveRoster);
     void rosterUpdated(CDTpAccount *acconutWrapper,
-            const QList<CDTpContact *> &contactsAdded,
-            const QList<CDTpContact *> &contactsRemoved);
+            const QList<CDTpContactPtr> &contactsAdded,
+            const QList<CDTpContactPtr> &contactsRemoved);
     void rosterContactChanged(CDTpAccount *accountWrapper,
-            CDTpContact *contactWrapper, CDTpContact::Changes changes);
+            CDTpContactPtr contactWrapper, CDTpContact::Changes changes);
 
 private Q_SLOTS:
     void onAccountReady(Tp::PendingOperation *op);
@@ -79,20 +79,20 @@ private Q_SLOTS:
     void onAccountContactsUpgraded(Tp::PendingOperation *op);
     void onAccountContactsChanged(const Tp::Contacts &contactsAdded,
             const Tp::Contacts &contactsRemoved);
-    void onAccountContactChanged(CDTpContact *contactWrapper,
+    void onAccountContactChanged(CDTpContactPtr contactWrapper,
             CDTpContact::Changes changes);
 
 private:
     void introspectAccountConnection();
     void introspectAccountConnectionRoster();
     void upgradeContacts(const Tp::Contacts &contacts);
-    CDTpContact *insertContact(const Tp::ContactPtr &contact);
+    CDTpContactPtr insertContact(const Tp::ContactPtr &contact);
     void clearContacts();
 
     Tp::AccountPtr mAccount;
     bool mIntrospectingRoster;
     bool mRosterReady;
-    QHash<Tp::ContactPtr, CDTpContact *> mContacts;
+    QHash<Tp::ContactPtr, CDTpContactPtr> mContacts;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(CDTpAccount::Changes)

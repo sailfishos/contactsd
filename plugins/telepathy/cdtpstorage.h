@@ -49,14 +49,14 @@ public:
 
     static QString contactLocalId(const QString &contactAccountObjectPath,
             const QString &contactId);
-    static QString contactLocalId(CDTpContact *contactWrapper);
+    static QString contactLocalId(CDTpContactPtr contactWrapper);
 
     static QUrl contactIri(const QString &contactLocalId);
-    static QUrl contactIri(CDTpContact *contactWrapper);
+    static QUrl contactIri(CDTpContactPtr contactWrapper);
 
     static QUrl contactImAddress(const QString &contactAccountObjectPath,
             const QString &contactId);
-    static QUrl contactImAddress(CDTpContact *contactWrapper);
+    static QUrl contactImAddress(CDTpContactPtr contactWrapper);
 
     static QUrl trackerStatusFromTpPresenceType(uint tpPresenceType);
     static QUrl trackerStatusFromTpPresenceStatus(
@@ -71,14 +71,14 @@ public Q_SLOTS:
     void syncAccount(CDTpAccount *accountWrapper, CDTpAccount::Changes changes);
     void syncAccountContacts(CDTpAccount *accountWrapper);
     void syncAccountContacts(CDTpAccount *accountWrapper,
-            const QList<CDTpContact *> &contactsAdded,
-            const QList<CDTpContact *> &contactsRemoved);
+            const QList<CDTpContactPtr> &contactsAdded,
+            const QList<CDTpContactPtr> &contactsRemoved);
     void syncAccountContact(CDTpAccount *accountWrapper,
-            CDTpContact *contactWrapper, CDTpContact::Changes changes);
+            CDTpContactPtr contactWrapper, CDTpContact::Changes changes);
     void setAccountContactsOffline(CDTpAccount *accountWrapper);
     void removeAccount(const QString &accountObjectPath);
     void removeContacts(CDTpAccount *accountWrapper,
-            const QList<CDTpContact *> &contacts, bool not_ = false);
+            const QList<CDTpContactPtr> &contacts, bool not_ = false);
 
 private Q_SLOTS:
     void onAccountPurgeSelectQueryFinished(CDTpStorageSelectQuery *query);
@@ -98,33 +98,33 @@ private:
     void addContactAliasInfoToQuery(RDFStatementList &inserts,
             RDFVariableList &lists,
             const RDFVariable &imAddress,
-            CDTpContact *contactWrapper);
+            CDTpContactPtr contactWrapper);
     void addContactPresenceInfoToQuery(RDFStatementList &inserts,
             RDFVariableList &lists,
             const RDFVariable &imAddress,
-            CDTpContact *contactWrapper);
+            CDTpContactPtr contactWrapper);
     void addContactCapabilitiesInfoToQuery(RDFStatementList &inserts,
             RDFVariableList &lists,
             const RDFVariable &imAddress,
-            CDTpContact *contactWrapper);
+            CDTpContactPtr contactWrapper);
     void addContactAvatarInfoToQuery(RDFUpdate &query,
             RDFStatementList &inserts,
             RDFVariableList &lists,
             const RDFVariable &imAddress,
-            CDTpContact *contactWrapper);
+            CDTpContactPtr contactWrapper);
     void addContactRemoveInfoToQuery(RDFStatementList &deletions,
             RDFStatementList &inserts,
             const QString &contactId,
             CDTpAccount *accountWrapper,
-            CDTpContact *contactWrapper);
+            CDTpContactPtr contactWrapper);
     void addContactAuthorizationInfoToQuery(RDFStatementList &inserts,
             RDFVariableList &lists,
             const RDFVariable &imAddress,
-            CDTpContact *contactWrapper);
+            CDTpContactPtr contactWrapper);
     void addContactInfoToQuery(RDFStatementList &inserts,
             RDFVariableList &imContactPropertyList,
             const RDFVariable &imContact,
-            CDTpContact *contactWrapper);
+            CDTpContactPtr contactWrapper);
     void addContactVoicePhoneNumberToQuery(RDFStatementList &inserts,
             RDFVariableList &lists,
             const QString &phoneNumber,
@@ -169,13 +169,13 @@ class CDTpStorageContactResolver : public QObject
 
 public:
     CDTpStorageContactResolver(CDTpAccount *accountWrapper,
-            const QList<CDTpContact *> &contactsToResolve,
+            const QList<CDTpContactPtr> &contactsToResolve,
              QObject *parent = 0);
     ~CDTpStorageContactResolver();
 
-    QList<CDTpContact *> resolvedRemoteContacts() const;
-    QList<CDTpContact *> remoteContacts() const;
-    QString storageIdForContact(CDTpContact *contactWrapper) const;
+    QList<CDTpContactPtr> resolvedRemoteContacts() const;
+    QList<CDTpContactPtr> remoteContacts() const;
+    QString storageIdForContact(CDTpContactPtr contactWrapper) const;
     void setContactChanges(CDTpContact::Changes changes);
     CDTpContact::Changes contactChanges() const;
 
@@ -187,9 +187,9 @@ private Q_SLOTS:
 
 private:
     void requestContactResolve(CDTpAccount *accountWrapper,
-            const QList<CDTpContact *> &contactsToResolve);
-    QHash<CDTpContact *, QString> mResolvedContacts;
-    QList<CDTpContact *> mContactsNotResolved;
+            const QList<CDTpContactPtr> &contactsToResolve);
+    QHash<CDTpContactPtr, QString> mResolvedContacts;
+    QList<CDTpContactPtr> mContactsNotResolved;
     CDTpContact::Changes mContactChanges;
 };
 

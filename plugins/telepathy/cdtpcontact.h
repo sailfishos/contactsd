@@ -22,12 +22,15 @@
 
 #include <TelepathyQt4/Contact>
 #include <TelepathyQt4/Types>
+#include <TelepathyQt4/SharedPtr>
 
 #include <QObject>
 
 class CDTpAccount;
+class CDTpContact;
+typedef Tp::SharedPtr<CDTpContact> CDTpContactPtr;
 
-class CDTpContact : public QObject
+class CDTpContact : public QObject, public Tp::RefCounted
 {
     Q_OBJECT
 
@@ -43,15 +46,16 @@ public:
     };
     Q_DECLARE_FLAGS(Changes, Change)
 
-    CDTpContact(Tp::ContactPtr contact, CDTpAccount *accountWrapper);
+     CDTpContact(Tp::ContactPtr contact, CDTpAccount *accountWrapper);
     ~CDTpContact();
 
     Tp::ContactPtr contact() const { return mContact; }
 
     CDTpAccount *accountWrapper() const { return mAccountWrapper; }
+    bool isRemoved() const { return mRemoved; }
 
 Q_SIGNALS:
-    void changed(CDTpContact *contact, CDTpContact::Changes changes);
+    void changed(CDTpContactPtr contact, CDTpContact::Changes changes);
 
 private Q_SLOTS:
     void onContactAliasChanged();
@@ -62,8 +66,10 @@ private Q_SLOTS:
     void onContactInfoChanged();
 
 private:
+    friend class CDTpAccount;
     Tp::ContactPtr mContact;
     CDTpAccount *mAccountWrapper;
+    bool mRemoved;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(CDTpContact::Changes)

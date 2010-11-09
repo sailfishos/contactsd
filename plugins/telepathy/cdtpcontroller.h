@@ -56,8 +56,8 @@ private Q_SLOTS:
     void onAccountRemoved(const QString &account);
     void onAccountRosterChanged(CDTpAccount *accountWrapper, bool haveRoster);
     void onAccountRosterUpdated(CDTpAccount *accountWrapper,
-            const QList<CDTpContact *> &contactsAdded,
-            const QList<CDTpContact *> &contactsRemoved);
+            const QList<CDTpContactPtr> &contactsAdded,
+            const QList<CDTpContactPtr> &contactsRemoved);
 
 private:
     void insertAccount(const Tp::AccountPtr &account);

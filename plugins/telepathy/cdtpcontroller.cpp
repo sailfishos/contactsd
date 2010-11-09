@@ -117,8 +117,8 @@ void CDTpController::onAccountRosterChanged(CDTpAccount *accountWrapper,
 }
 
 void CDTpController::onAccountRosterUpdated(CDTpAccount *accountWrapper,
-        const QList<CDTpContact *> &contactsAdded,
-        const QList<CDTpContact *> &contactsRemoved)
+        const QList<CDTpContactPtr> &contactsAdded,
+        const QList<CDTpContactPtr> &contactsRemoved)
 {
     Tp::AccountPtr account = accountWrapper->account();
 
@@ -145,17 +145,17 @@ void CDTpController::insertAccount(const Tp::AccountPtr &account)
             SLOT(onAccountRosterChanged(CDTpAccount *, bool)));
     connect(accountWrapper,
             SIGNAL(rosterUpdated(CDTpAccount *,
-                    const QList<CDTpContact *> &,
-                    const QList<CDTpContact *> &)),
+                    const QList<CDTpContactPtr> &,
+                    const QList<CDTpContactPtr> &)),
             SLOT(onAccountRosterUpdated(CDTpAccount *,
-                    const QList<CDTpContact *> &,
-                    const QList<CDTpContact *> &)));
+                    const QList<CDTpContactPtr> &,
+                    const QList<CDTpContactPtr> &)));
     connect(accountWrapper,
             SIGNAL(rosterContactChanged(CDTpAccount *,
-                    CDTpContact *, CDTpContact::Changes)),
+                    CDTpContactPtr, CDTpContact::Changes)),
             mStorage,
             SLOT(syncAccountContact(CDTpAccount *,
-                    CDTpContact *, CDTpContact::Changes)));
+                    CDTpContactPtr, CDTpContact::Changes)));
 
     mAccounts.insert(account->objectPath(), accountWrapper);
 }

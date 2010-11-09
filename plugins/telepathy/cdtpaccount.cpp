@@ -45,7 +45,7 @@ CDTpAccount::~CDTpAccount()
 {
 }
 
-QList<CDTpContact *> CDTpAccount::contacts() const
+QList<CDTpContactPtr> CDTpAccount::contacts() const
 {
     return mContacts.values();
 }
@@ -191,7 +191,7 @@ void CDTpAccount::onAccountContactsUpgraded(Tp::PendingOperation *op)
         "roster contacts upgraded";
 
     Tp::PendingContacts *pc = qobject_cast<Tp::PendingContacts *>(op);
-    QList<CDTpContact *> added;
+    QList<CDTpContactPtr> added;
     foreach (const Tp::ContactPtr &contact, pc->contacts()) {
         qDebug() << "  creating wrapper for contact" << contact->id();
         added.append(insertContact(contact));
@@ -204,7 +204,7 @@ void CDTpAccount::onAccountContactsUpgraded(Tp::PendingOperation *op)
         mRosterReady = true;
         emit rosterChanged(this, true);
     } else {
-        emit rosterUpdated(this, added, QList<CDTpContact *>());
+        emit rosterUpdated(this, added, QList<CDTpContactPtr>());
     }
 }
 
@@ -224,7 +224,7 @@ void CDTpAccount::onAccountContactsChanged(const Tp::Contacts &contactsAdded,
             "contactsUpdated signal for added contacts until they are upgraded";
     }
 
-    QList<CDTpContact *> removed;
+    QList<CDTpContactPtr> removed;
     foreach (const Tp::ContactPtr &contact, contactsRemoved) {
         if (!mContacts.contains(contact)) {
             qWarning() << "Internal error, contact is not in the internal list"
@@ -234,14 +234,14 @@ void CDTpAccount::onAccountContactsChanged(const Tp::Contacts &contactsAdded,
         removed.append(mContacts.take(contact));
     }
 
-    emit rosterUpdated(this, QList<CDTpContact*>(), removed);
+    emit rosterUpdated(this, QList<CDTpContactPtr>(), removed);
 
-    foreach (CDTpContact *contact, removed) {
-        delete contact;
+    foreach (CDTpContactPtr contactWrapper, removed) {
+        contactWrapper->mRemoved = true;
     }
 }
 
-void CDTpAccount::onAccountContactChanged(CDTpContact *contactWrapper,
+void CDTpAccount::onAccountContactChanged(CDTpContactPtr contactWrapper,
         CDTpContact::Changes changes)
 {
     emit rosterContactChanged(this, contactWrapper, changes);
@@ -295,20 +295,17 @@ void CDTpAccount::upgradeContacts(const Tp::Contacts &contacts)
             SLOT(onAccountContactsUpgraded(Tp::PendingOperation *)));
 }
 
-CDTpContact *CDTpAccount::insertContact(const Tp::ContactPtr &contact)
+CDTpContactPtr CDTpAccount::insertContact(const Tp::ContactPtr &contact)
 {
-    CDTpContact *contactWrapper = new CDTpContact(contact, this);
-    connect(contactWrapper,
-            SIGNAL(changed(CDTpContact *, CDTpContact::Changes)),
-            SLOT(onAccountContactChanged(CDTpContact *, CDTpContact::Changes)));
+    CDTpContactPtr contactWrapper = CDTpContactPtr(new CDTpContact(contact, this));
+    connect(contactWrapper.data(),
+            SIGNAL(changed(CDTpContactPtr, CDTpContact::Changes)),
+            SLOT(onAccountContactChanged(CDTpContactPtr, CDTpContact::Changes)));
     mContacts.insert(contact, contactWrapper);
     return contactWrapper;
 }
 
 void CDTpAccount::clearContacts()
 {
-    foreach (CDTpContact *contact, mContacts) {
-        delete contact;
-    }
     mContacts.clear();
 }

@@ -159,7 +159,7 @@ void CDTpStorage::syncAccountContacts(CDTpAccount *accountWrapper)
 {
     // TODO: return the number of contacts that were actually added
     syncAccountContacts(accountWrapper, accountWrapper->contacts(),
-            QList<CDTpContact *>());
+            QList<CDTpContactPtr>());
 
     /* We need to purge contacts that are in tracker but got removed from the
      * account while contactsd was not running. */
@@ -167,8 +167,8 @@ void CDTpStorage::syncAccountContacts(CDTpAccount *accountWrapper)
 }
 
 void CDTpStorage::syncAccountContacts(CDTpAccount *accountWrapper,
-        const QList<CDTpContact *> &contactsAdded,
-        const QList<CDTpContact *> &contactsRemoved)
+        const QList<CDTpContactPtr> &contactsAdded,
+        const QList<CDTpContactPtr> &contactsRemoved)
 {
     Tp::AccountPtr account = accountWrapper->account();
     QString accountObjectPath = account->objectPath();
@@ -188,14 +188,14 @@ void CDTpStorage::syncAccountContacts(CDTpAccount *accountWrapper,
 }
 
 void CDTpStorage::syncAccountContact(CDTpAccount *accountWrapper,
-        CDTpContact *contactWrapper, CDTpContact::Changes changes)
+        CDTpContactPtr contactWrapper, CDTpContact::Changes changes)
 {
     Tp::AccountPtr account = accountWrapper->account();
     Tp::ContactPtr contact = contactWrapper->contact();
 
     CDTpStorageContactResolver *updateResolver =
         new CDTpStorageContactResolver(accountWrapper,
-                QList<CDTpContact *>() << contactWrapper, this);
+                QList<CDTpContactPtr>() << contactWrapper, this);
     updateResolver->setContactChanges(changes);
     connect(updateResolver,
             SIGNAL(finished(CDTpStorageContactResolver *)),
@@ -255,12 +255,12 @@ void CDTpStorage::onAccountDeleteSelectQueryFinished(CDTpStorageSelectQuery *que
 }
 
 void CDTpStorage::removeContacts(CDTpAccount *accountWrapper,
-        const QList<CDTpContact *> &contacts, bool not_)
+        const QList<CDTpContactPtr> &contacts, bool not_)
 {
     RDFVariable imContact = RDFVariable::fromType<nco::PersonContact>();
     RDFVariable imAddress = imContact.property<nco::hasIMAddress>();
     RDFVariableList members;
-    foreach (CDTpContact *contactWrapper, contacts) {
+    foreach (CDTpContactPtr contactWrapper, contacts) {
         members << RDFVariable(contactImAddress(contactWrapper));
     }
 
@@ -365,7 +365,7 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
     RDFVariableList resourceAddressList;
     RDFVariableList resourceContactList;
 
-    foreach (CDTpContact *contactWrapper, resolver->remoteContacts()) {
+    foreach (CDTpContactPtr contactWrapper, resolver->remoteContacts()) {
         Tp::ContactPtr contact = contactWrapper->contact();
         QString accountObjectPath =
             contactWrapper->accountWrapper()->account()->objectPath();
@@ -449,7 +449,12 @@ void CDTpStorage::onContactUpdateResolverFinished(CDTpStorageContactResolver *re
     RDFVariableList resourceAddressList;
     RDFVariableList resourceContactList;
 
-    foreach (CDTpContact *contactWrapper, resolver->remoteContacts()) {
+    foreach (CDTpContactPtr contactWrapper, resolver->remoteContacts()) {
+        if (contactWrapper->isRemoved()) {
+            qDebug() << "skipping" << contactWrapper->contact()->id();
+            continue;
+        }
+
         Tp::ContactPtr contact = contactWrapper->contact();
         QString accountObjectPath =
             contactWrapper->accountWrapper()->account()->objectPath();
@@ -556,7 +561,7 @@ void CDTpStorage::saveAccountAvatar(RDFUpdate &query, const QByteArray &data, co
 void CDTpStorage::addContactAliasInfoToQuery(RDFStatementList &inserts,
         RDFVariableList &properties,
         const RDFVariable &imAddress,
-        CDTpContact *contactWrapper)
+        CDTpContactPtr contactWrapper)
 {
     Tp::ContactPtr contact = contactWrapper->contact();
     properties << nco::imNickname::iri();
@@ -567,7 +572,7 @@ void CDTpStorage::addContactAliasInfoToQuery(RDFStatementList &inserts,
 void CDTpStorage::addContactPresenceInfoToQuery(RDFStatementList &inserts,
         RDFVariableList &properties,
         const RDFVariable &imAddress,
-        CDTpContact *contactWrapper)
+        CDTpContactPtr contactWrapper)
 {
     Tp::ContactPtr contact = contactWrapper->contact();
 
@@ -586,7 +591,7 @@ void CDTpStorage::addContactPresenceInfoToQuery(RDFStatementList &inserts,
 void CDTpStorage::addContactCapabilitiesInfoToQuery(RDFStatementList &inserts,
         RDFVariableList &properties,
         const RDFVariable &imAddress,
-        CDTpContact *contactWrapper)
+        CDTpContactPtr contactWrapper)
 {
     Tp::ContactPtr contact = contactWrapper->contact();
 
@@ -612,7 +617,7 @@ void CDTpStorage::addContactAvatarInfoToQuery(RDFUpdate &query,
         RDFStatementList &inserts,
         RDFVariableList &properties,
         const RDFVariable &imAddress,
-        CDTpContact *contactWrapper)
+        CDTpContactPtr contactWrapper)
 {
     Tp::ContactPtr contact = contactWrapper->contact();
 
@@ -659,7 +664,7 @@ QUrl CDTpStorage::authStatus(Tp::Contact::PresenceState state)
 void CDTpStorage::addContactAuthorizationInfoToQuery(RDFStatementList &inserts,
         RDFVariableList &properties,
         const RDFVariable &imAddress,
-        CDTpContact *contactWrapper)
+        CDTpContactPtr contactWrapper)
 {
     Tp::ContactPtr contact = contactWrapper->contact();
 
@@ -674,7 +679,7 @@ void CDTpStorage::addContactAuthorizationInfoToQuery(RDFStatementList &inserts,
 void CDTpStorage::addContactInfoToQuery(RDFStatementList &inserts,
         RDFVariableList &imContactPropertyList,
         const RDFVariable &imContact,
-        CDTpContact *contactWrapper)
+        CDTpContactPtr contactWrapper)
 {
 
     Tp::ContactPtr contact = contactWrapper->contact();
@@ -771,7 +776,7 @@ QString CDTpStorage::contactLocalId(const QString &contactAccountObjectPath,
                 .arg(contactId)));
 }
 
-QString CDTpStorage::contactLocalId(CDTpContact *contactWrapper)
+QString CDTpStorage::contactLocalId(CDTpContactPtr contactWrapper)
 {
     CDTpAccount *accountWrapper = contactWrapper->accountWrapper();
     Tp::AccountPtr account = accountWrapper->account();
@@ -784,7 +789,7 @@ QUrl CDTpStorage::contactIri(const QString &contactLocalId)
     return QUrl(QString("contact:%1").arg(contactLocalId));
 }
 
-QUrl CDTpStorage::contactIri(CDTpContact *contactWrapper)
+QUrl CDTpStorage::contactIri(CDTpContactPtr contactWrapper)
 {
     return contactIri(contactLocalId(contactWrapper));
 }
@@ -797,7 +802,7 @@ QUrl CDTpStorage::contactImAddress(const QString &contactAccountObjectPath,
             .arg(contactId));
 }
 
-QUrl CDTpStorage::contactImAddress(CDTpContact *contactWrapper)
+QUrl CDTpStorage::contactImAddress(CDTpContactPtr contactWrapper)
 {
     CDTpAccount *accountWrapper = contactWrapper->accountWrapper();
     Tp::AccountPtr account = accountWrapper->account();
@@ -875,7 +880,7 @@ void CDTpStorageSelectQuery::onModelUpdated()
 }
 
 CDTpStorageContactResolver::CDTpStorageContactResolver(CDTpAccount *accountWrapper,
-        const QList<CDTpContact *> &contactsToResolve,
+        const QList<CDTpContactPtr> &contactsToResolve,
         QObject *parent)
     : QObject(parent)
 {
@@ -889,7 +894,7 @@ CDTpStorageContactResolver::~CDTpStorageContactResolver()
     mResolvedContacts.clear();
 }
 
-QList<CDTpContact *> CDTpStorageContactResolver::resolvedRemoteContacts() const
+QList<CDTpContactPtr> CDTpStorageContactResolver::resolvedRemoteContacts() const
 {
     if (mResolvedContacts.keys().empty()) {
         return mContactsNotResolved;
@@ -898,12 +903,12 @@ QList<CDTpContact *> CDTpStorageContactResolver::resolvedRemoteContacts() const
     return mResolvedContacts.keys();
 }
 
-QList<CDTpContact *> CDTpStorageContactResolver::remoteContacts() const
+QList<CDTpContactPtr> CDTpStorageContactResolver::remoteContacts() const
 {
     return mContactsNotResolved;
 }
 
-QString CDTpStorageContactResolver::storageIdForContact(CDTpContact *contactWrapper) const
+QString CDTpStorageContactResolver::storageIdForContact(CDTpContactPtr contactWrapper) const
 {
     return mResolvedContacts[contactWrapper];
 }
@@ -926,7 +931,7 @@ void CDTpStorageContactResolver::onStorageResolveSelectQueryFinished(
     for (int i = 0; i < result->rowCount(); i++) {
         const QString storageContact = result->index(i, 2).data().toString();
         const QString imAddress = result->index(i, 1).data().toString();
-        foreach (CDTpContact *contactWrapper, mContactsNotResolved) {
+        foreach (CDTpContactPtr contactWrapper, mContactsNotResolved) {
             if (contactWrapper->contact()->id() == imAddress) {
                 mResolvedContacts[contactWrapper] = storageContact;
             }
@@ -937,7 +942,7 @@ void CDTpStorageContactResolver::onStorageResolveSelectQueryFinished(
 }
 
 void CDTpStorageContactResolver::requestContactResolve(CDTpAccount *accountWrapper,
-        const QList<CDTpContact *> &contactList)
+        const QList<CDTpContactPtr> &contactList)
 {
     Q_UNUSED(accountWrapper);
 
@@ -945,7 +950,7 @@ void CDTpStorageContactResolver::requestContactResolve(CDTpAccount *accountWrapp
     RDFVariable imAddress = imContact.property<nco::hasIMAddress>();
 
     RDFVariableList members;
-    foreach (CDTpContact *contactWrapper, contactList) {
+    foreach (CDTpContactPtr contactWrapper, contactList) {
         members << RDFVariable(CDTpStorage::contactImAddress(contactWrapper));
     }
     imAddress.isMemberOf(members);

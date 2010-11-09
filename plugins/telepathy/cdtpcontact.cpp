@@ -24,9 +24,10 @@
 #include <TelepathyQt4/Types>
 
 CDTpContact::CDTpContact(Tp::ContactPtr contact, CDTpAccount *accountWrapper)
-    : QObject(accountWrapper),
+    : QObject(),
       mContact(contact),
-      mAccountWrapper(accountWrapper)
+      mAccountWrapper(accountWrapper),
+      mRemoved(false)
 {
     connect(contact.data(),
             SIGNAL(aliasChanged(const QString &)),
@@ -57,30 +58,30 @@ CDTpContact::~CDTpContact()
 
 void CDTpContact::onContactAliasChanged()
 {
-    emit changed(this, Alias);
+    emit changed(CDTpContactPtr(this), Alias);
 }
 
 void CDTpContact::onContactPresenceChanged()
 {
-    emit changed(this, Presence);
+    emit changed(CDTpContactPtr(this), Presence);
 }
 
 void CDTpContact::onContactCapabilitiesChanged()
 {
-    emit changed(this, Capabilities);
+    emit changed(CDTpContactPtr(this), Capabilities);
 }
 
 void CDTpContact::onContactAvatarDataChanged()
 {
-    emit changed(this, Avatar);
+    emit changed(CDTpContactPtr(this), Avatar);
 }
 
 void CDTpContact::onContactAuthorizationChanged()
 {
-    emit changed(this, Authorization);
+    emit changed(CDTpContactPtr(this), Authorization);
 }
 
 void CDTpContact::onContactInfoChanged()
 {
-    emit changed(this, Infomation);
+    emit changed(CDTpContactPtr(this), Infomation);
 }
