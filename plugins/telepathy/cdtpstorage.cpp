@@ -113,7 +113,7 @@ void CDTpStorage::syncAccount(CDTpAccount *accountWrapper,
     }
 
     if (changes & CDTpAccount::Nickname) {
-       up.addDeletion(imAddress, nco::imNickname::iri());
+       up.addDeletion(imAddress, nco::imNickname::iri(), RDFVariable(), defaultGraph);
        inserts << RDFStatement(imAddress, nco::imNickname::iri(),
                LiteralValue(account->nickname()));
     }
@@ -134,7 +134,7 @@ void CDTpStorage::syncAccount(CDTpAccount *accountWrapper,
     }
 
     // link the IMAddress to me-contact
-    up.addDeletion(nco::default_contact_me::iri(), nco::imAccountAddress::iri());
+    up.addDeletion(nco::default_contact_me::iri(), nco::imAccountAddress::iri(), RDFVariable(), defaultGraph);
 
     inserts << RDFStatement(nco::default_contact_me::iri(),
             nco::hasIMAddress::iri(), imAddress) <<
@@ -267,8 +267,13 @@ void CDTpStorage::removeContacts(CDTpAccount *accountWrapper,
     if (not_) {
         /* We want to remove all contacts from that account, EXCEPT those in
          * contacts param. */
+        const QString accountId = accountWrapper->account()->normalizedName();
+        const QString accountPath = accountWrapper->account()->objectPath();
+
         imAddress.isMemberOf(members).not_();
-        imAddress.hasPrefix(QString("telepathy:%1").arg(accountWrapper->account()->objectPath()));
+        imAddress.hasPrefix(QString("telepathy:%1").arg(accountPath));
+        imAddress.notEqual(contactImAddress(accountPath, accountId));
+
     } else {
         imAddress.isMemberOf(members);
     }
@@ -530,7 +535,7 @@ void CDTpStorage::saveAccountAvatar(RDFUpdate &query, const QByteArray &data, co
 {
     Q_UNUSED(mimeType);
 
-    query.addDeletion(imAddress, nco::imAvatar::iri());
+    query.addDeletion(imAddress, nco::imAvatar::iri(), RDFVariable(), defaultGraph);
 
     if (data.isEmpty()) {
         return;
@@ -551,7 +556,7 @@ void CDTpStorage::saveAccountAvatar(RDFUpdate &query, const QByteArray &data, co
     avatarFile.close();
 
     RDFVariable dataObject(QUrl::fromLocalFile(fileName));
-    query.addDeletion(dataObject, nie::url::iri());
+    query.addDeletion(dataObject, nie::url::iri(), RDFVariable(), defaultGraph);
 
     inserts << RDFStatement(dataObject, rdf::type::iri(), nie::DataObject::iri())
             << RDFStatement(dataObject, nie::url::iri(), dataObject)
