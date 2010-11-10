@@ -1,10 +1,18 @@
+contactsd (0.5.40-4) unstable; urgency=low
+
+  * Changes: Fix Self Contact
+  * Fixes: NB#203204 - All the service related information gets removed from imported service contact after merging
+  * Fixes: NB#165247 - MSN buddy's Vcard doesn't show most of the required information
+
+ -- Siraj Razick <siraj.razick@collabora.co.uk>  Wed, 10 Nov 2010 21:09:00 +0530
+
+
 contactsd (0.5.40-3) unstable; urgency=low
 
   * Changes: Fix Account Sync issues
   * Changes: Adding hasPhoneNumber and hasPostalAddress with incorrect URI's 
 
  -- Siraj Razick <siraj.razick@collabora.co.uk>  Tue, 09 Nov 2010 11:09:00 +0530
-
 
 contactsd (0.5.40-2) unstable; urgency=low
 
