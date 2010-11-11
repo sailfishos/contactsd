@@ -246,7 +246,7 @@ void CDTpStorage::removeAccount(const QString &accountObjectPath)
     CDTpStorageSelectQuery *query = new CDTpStorageSelectQuery(select, this);
     connect(query,
             SIGNAL(finished(CDTpStorageSelectQuery *)),
-            SLOT(onSelectQueryFinished(CDTpStorageSelectQuery *)));
+            SLOT(onAccountDeleteSelectQueryFinished(CDTpStorageSelectQuery *)));
 }
 
 void CDTpStorage::onAccountDeleteSelectQueryFinished(CDTpStorageSelectQuery *query)
@@ -273,7 +273,6 @@ void CDTpStorage::removeContacts(CDTpAccount *accountWrapper,
         imAddress.isMemberOf(members).not_();
         imAddress.hasPrefix(QString("telepathy:%1").arg(accountPath));
         imAddress.notEqual(contactImAddress(accountPath, accountId));
-
     } else {
         imAddress.isMemberOf(members);
     }
