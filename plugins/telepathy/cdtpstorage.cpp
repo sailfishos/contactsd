@@ -453,7 +453,6 @@ void CDTpStorage::onContactUpdateResolverFinished(CDTpStorageContactResolver *re
 
     foreach (CDTpContactPtr contactWrapper, resolver->remoteContacts()) {
         if (contactWrapper->isRemoved()) {
-            qDebug() << "skipping" << contactWrapper->contact()->id();
             continue;
         }
 

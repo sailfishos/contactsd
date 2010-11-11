@@ -43,9 +43,11 @@ public:
     enum Event {
         Added,
         Changed,
+        Removed
     };
 
     enum VerifyFlags {
+        None          = 0,
         Alias         = (1 << 0),
         Presence      = (1 << 1),
         Avatar        = (1 << 2),
@@ -58,6 +60,8 @@ public:
 
     VerifyFlags flags;
     Event event;
+
+    int nOnlineAccounts;
     QString accountUri;
 
     QString alias;
@@ -79,6 +83,7 @@ public:
 protected Q_SLOTS:
     void contactsAdded(const QList<QContactLocalId>& contactIds);
     void contactsChanged(const QList<QContactLocalId>& contactIds);
+    void contactsRemoved(const QList<QContactLocalId>& contactIds);
 
 private Q_SLOTS:
     void initTestCase();
@@ -87,6 +92,7 @@ private Q_SLOTS:
     void testBasicUpdates();
     void testSelfContact();
     void testAuthorization();
+    void testRemoveContacts();
     void testSetOffline();
 
     void cleanup();
@@ -96,6 +102,9 @@ private:
     QContactManager *mContactManager;
     TpBaseConnection *mConnService;
     TestContactListManager *mListManager;
+
+    QHash<TpHandle, QString> mContacts;
+    TpHandle ensureContact(const gchar *id);
 
     QList<TestExpectation> mExpectations;
     void verify(TestExpectation::Event, const QList<QContactLocalId>&);

@@ -36,17 +36,19 @@
 #define ACCOUNT_PATH TP_ACCOUNT_OBJECT_PATH_BASE "fakecm/fakeproto/fakeaccount"
 #define BUS_NAME "org.maemo.Contactsd.UnitTest"
 
-TestExpectation::TestExpectation():flags(All),
+TestExpectation::TestExpectation():flags(All), nOnlineAccounts(1),
     presence(TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN)
 {
 }
 
 void TestExpectation::verify(QContact &contact) const
 {
-    QCOMPARE(contact.details<QContactOnlineAccount>().count(), 1);
-    QCOMPARE(contact.details<QContactPresence>().count(), 1);
-    QCOMPARE(contact.detail<QContactOnlineAccount>().accountUri(), accountUri);
-    QCOMPARE(contact.detail<QContactOnlineAccount>().value("AccountPath"), QString(ACCOUNT_PATH));
+    QCOMPARE(contact.details<QContactOnlineAccount>().count(), nOnlineAccounts);
+    QCOMPARE(contact.details<QContactPresence>().count(), nOnlineAccounts);
+    if (nOnlineAccounts == 1) {
+        QCOMPARE(contact.detail<QContactOnlineAccount>().accountUri(), accountUri);
+        QCOMPARE(contact.detail<QContactOnlineAccount>().value("AccountPath"), QString(ACCOUNT_PATH));
+    }
 
     if (flags & Alias) {
         QString actualAlias = contact.detail<QContactDisplayLabel>().label();
@@ -116,6 +118,9 @@ void TestTelepathyPlugin::initTestCase()
     connect(mContactManager,
             SIGNAL(contactsChanged(const QList<QContactLocalId>&)),
             SLOT(contactsChanged(const QList<QContactLocalId>&)));
+    connect(mContactManager,
+            SIGNAL(contactsRemoved(const QList<QContactLocalId>&)),
+            SLOT(contactsRemoved(const QList<QContactLocalId>&)));
 
     /* Create a fake Connection */
     mConnService = TP_BASE_CONNECTION(g_object_new(
@@ -144,10 +149,7 @@ void TestTelepathyPlugin::initTestCase()
 void TestTelepathyPlugin::testBasicUpdates()
 {
     /* Create a new contact "alice" */
-    TpHandleRepoIface *serviceRepo =
-        tp_base_connection_get_handles(mConnService, TP_HANDLE_TYPE_CONTACT);
-    TpHandle handle = tp_handle_ensure(serviceRepo, "alice", NULL, NULL);
-    QVERIFY(handle != 0);
+    TpHandle handle = ensureContact("alice");
 
     /* Set alias to "Alice" */
     const char *alias = "Alice";
@@ -205,13 +207,23 @@ void TestTelepathyPlugin::testBasicUpdates()
     qDebug() << "All expectations passed";
 }
 
+void TestTelepathyPlugin::testSelfContact()
+{
+    QContactLocalId selfId = mContactManager->selfContactId();
+    QContact contact = mContactManager->contact(selfId);
+    qDebug() << contact;
+
+    TestExpectation e;
+    e.flags = TestExpectation::VerifyFlags(TestExpectation::Presence | TestExpectation::Avatar);
+    e.accountUri = QString("fake@account.org");
+    e.presence = TP_TESTS_CONTACTS_CONNECTION_STATUS_AVAILABLE;
+    e.verify(contact);
+}
+
 void TestTelepathyPlugin::testAuthorization()
 {
     /* Create a new contact "romeo" */
-    TpHandleRepoIface *serviceRepo =
-        tp_base_connection_get_handles(mConnService, TP_HANDLE_TYPE_CONTACT);
-    TpHandle handle = tp_handle_ensure(serviceRepo, "romeo", NULL, NULL);
-    QVERIFY(handle != 0);
+    TpHandle handle = ensureContact("romeo");
 
     /* Add Bob in the ContactList, the request will be ignored */
     test_contact_list_manager_add_to_list(mListManager, NULL,
@@ -240,8 +252,7 @@ void TestTelepathyPlugin::testAuthorization()
     /* Wait for the scenario to happen */
     QCOMPARE(mLoop->exec(), 0);
 
-    handle = tp_handle_ensure(serviceRepo, "juliette", NULL, NULL);
-    QVERIFY(handle != 0);
+    handle = ensureContact("juliette");
 
     /* Add Bob in the ContactList, the request will be ignored */
     test_contact_list_manager_add_to_list(mListManager, NULL,
@@ -269,37 +280,72 @@ void TestTelepathyPlugin::testAuthorization()
     QCOMPARE(mLoop->exec(), 0);
 }
 
-void TestTelepathyPlugin::testSelfContact()
+void TestTelepathyPlugin::testRemoveContacts()
 {
-    QContactLocalId selfId = mContactManager->selfContactId();
-    QContact contact = mContactManager->contact(selfId);
-    qDebug() << contact;
-
+    /* FIXME: contacts should be removed, but atm it only remove the
+     * hasIMAddress field. */
     TestExpectation e;
-    e.flags = TestExpectation::VerifyFlags(TestExpectation::Presence | TestExpectation::Avatar);
-    e.accountUri = QString("fake@account.org");
-    e.presence = TP_TESTS_CONTACTS_CONNECTION_STATUS_AVAILABLE;
-    e.verify(contact);
+    e.flags = TestExpectation::None;
+    e.event = TestExpectation::Changed;
+    e.nOnlineAccounts = 0;
+
+    for (QHash<TpHandle, QString>::const_iterator i = mContacts.constBegin();
+             i != mContacts.constEnd(); i++) {
+        qDebug() << "removing" << i.key() << i.value();
+
+        /* Removing from Stored list will remove from all lists */
+        test_contact_list_manager_remove_from_list(mListManager, NULL,
+            TEST_CONTACT_LIST_STORED, i.key(), "", NULL);
+
+        e.accountUri = i.value();
+        mExpectations.append(e);
+    }
+
+    /* Wait for the scenario to happen */
+    QCOMPARE(mLoop->exec(), 0);
+
+    mContacts.clear();
 }
 
 void TestTelepathyPlugin::testSetOffline()
 {
+    /* testRemoveContacts() was run before, so contact list is empty at this point. */
+    TestExpectation e;
+    e.flags = TestExpectation::None;
+    e.accountUri = QString("kesh");
+
+    TpHandle handle = ensureContact("kesh");
+    test_contact_list_manager_add_to_list(mListManager, NULL,
+        TEST_CONTACT_LIST_SUBSCRIBE, handle, "please", NULL);
+
+    /* First contact is added, then auth req is accepted */
+    e.event = TestExpectation::Added;
+    mExpectations.append(e);
+    e.event = TestExpectation::Changed;
+    mExpectations.append(e);
+    QCOMPARE(mLoop->exec(), 0);
+
+    /* Now set the account offline, kesh should be updated to have Unknown presence */
     tp_base_connection_change_status(mConnService,
         TP_CONNECTION_STATUS_DISCONNECTED,
         TP_CONNECTION_STATUS_REASON_REQUESTED);
 
-    TestExpectation e;
     e.flags = TestExpectation::Presence;
     e.event = TestExpectation::Changed;
     e.presence = TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN;
-    e.accountUri = QString("romeo");
     mExpectations.append(e);
-    e.accountUri = QString("alice");
-    mExpectations.append(e);
-    e.accountUri = QString("juliette");
-    mExpectations.append(e);
-
     QCOMPARE(mLoop->exec(), 0);
+}
+
+TpHandle TestTelepathyPlugin::ensureContact(const gchar *id)
+{
+    TpHandleRepoIface *serviceRepo =
+        tp_base_connection_get_handles(mConnService, TP_HANDLE_TYPE_CONTACT);
+
+    TpHandle handle = tp_handle_ensure(serviceRepo, id, NULL, NULL);
+    mContacts[handle] = QString(id);
+
+    return handle;
 }
 
 void TestTelepathyPlugin::verify(TestExpectation::Event event,
@@ -342,6 +388,12 @@ void TestTelepathyPlugin::contactsChanged(const QList<QContactLocalId>& contactI
 {
     qDebug() << "Got contactsChanged";
     verify(TestExpectation::Changed, contactIds);
+}
+
+void TestTelepathyPlugin::contactsRemoved(const QList<QContactLocalId>& contactIds)
+{
+    qDebug() << "Got contactsRemoved";
+    verify(TestExpectation::Removed, contactIds);
 }
 
 void TestTelepathyPlugin::cleanupTestCase()
