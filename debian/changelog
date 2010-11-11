@@ -1,3 +1,9 @@
+contactsd (0.5.40-5) unstable; urgency=low
+
+  * Fixes: NB#203200 - All the service related information gets removed from the service contact when marked as favourite
+
+ -- Siraj Razick <siraj.razick@collabora.co.uk>  Wed, 11 Nov 2010 16:29:00 +0530
+
 contactsd (0.5.40-4) unstable; urgency=low
 
   * Changes: Fix Self Contact
@@ -5,7 +11,6 @@ contactsd (0.5.40-4) unstable; urgency=low
   * Fixes: NB#165247 - MSN buddy's Vcard doesn't show most of the required information
 
  -- Siraj Razick <siraj.razick@collabora.co.uk>  Wed, 10 Nov 2010 21:09:00 +0530
-
 
 contactsd (0.5.40-3) unstable; urgency=low
 
