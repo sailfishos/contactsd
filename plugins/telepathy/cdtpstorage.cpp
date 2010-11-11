@@ -401,8 +401,6 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
                 RDFStatement(imContact, nie::contentCreated::iri(), LiteralValue(datetime)) <<
                 RDFStatement(imContact, nie::contentLastModified::iri(), LiteralValue(datetime)) <<
                 RDFStatement(imAddress, rdf::type::iri(), nco::IMAddress::iri()) <<
-                RDFStatement(imAddress, rdf::type::iri(), nco::PostalAddress::iri()) <<
-                RDFStatement(imAddress, rdf::type::iri(), nco::PhoneNumber::iri()) <<
                 RDFStatement(imAddress, nco::imID::iri(), LiteralValue(id));
         } else {
             imContactPropertyList << nie::contentLastModified::iri();
