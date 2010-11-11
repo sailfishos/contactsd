@@ -682,7 +682,8 @@ void CDTpStorage::addContactInfoToQuery(RDFStatementList &inserts,
         const RDFVariable &imContact,
         CDTpContactPtr contactWrapper)
 {
-
+    /* FIXME: This function adds new affiliations, but does not remove previous */
+    /* FIXME: Tp::Contact::info() is deprecated */
     Tp::ContactPtr contact = contactWrapper->contact();
     Tp::ContactInfoFieldList  listContactInfo = contact->info();
 
@@ -691,82 +692,88 @@ void CDTpStorage::addContactInfoToQuery(RDFStatementList &inserts,
         return;
     }
 
-    QStringList fieldValueList;
-    const QString affiliation = QString("urn:uuid:%1").
-                    arg(contactLocalId(contactWrapper));
-
     foreach (Tp::ContactInfoField field, listContactInfo) {
-        if (field.parameters.count() > 0) {
-            if (!field.fieldName.compare("tel")) {
-                addContactVoicePhoneNumberToQuery(inserts, imContactPropertyList,
-                        field.fieldValue.at(0), affiliation, imContact);
-            }
-            if (!field.fieldName.compare("adr")) {
-                addContactAddressToQuery(inserts, imContactPropertyList,
-                        field.fieldValue.at(0),
-                        field.fieldValue.at(1),
-                        field.fieldValue.at(2),
-                        field.fieldValue.at(3),
-                        field.fieldValue.at(4),
-                        field.fieldValue.at(5),
-                        field.fieldValue.at(6),
-                        affiliation,
-                        imContact);
-            }
+        if (field.fieldValue.count() == 0) {
+            continue;
+        }
+
+        if (!field.fieldName.compare("tel")) {
+            addContactVoicePhoneNumberToQuery(inserts, imContactPropertyList,
+                    createAffiliation(inserts, imContact, field),
+                    field.fieldValue.at(0));
+        } else if (!field.fieldName.compare("adr")) {
+            addContactAddressToQuery(inserts, imContactPropertyList,
+                    createAffiliation(inserts, imContact, field),
+                    field.fieldValue.at(0),
+                    field.fieldValue.at(1),
+                    field.fieldValue.at(2),
+                    field.fieldValue.at(3),
+                    field.fieldValue.at(4),
+                    field.fieldValue.at(5),
+                    field.fieldValue.at(6));
         }
     }
 }
 
-void CDTpStorage::addContactVoicePhoneNumberToQuery(RDFStatementList &inserts,
-        RDFVariableList &list,
-        const QString &phoneNumber,
-        const QString &affiliation,
-        const RDFVariable &imContact)
+RDFVariable CDTpStorage::createAffiliation(RDFStatementList &inserts,
+        const RDFVariable &imContact,
+        Tp::ContactInfoField &field)
 {
-    Q_UNUSED(list);
+    /* FIXME: Set the type of affiliation from field.parameters.
+     * They are in the form "type=home" for example. See telepathy spec:
+     * http://telepathy.freedesktop.org/spec/Connection_Interface_Contact_Info.html#Contact_Info_Field
+     */
+    Q_UNUSED(field);
 
-    RDFVariable imAffiliation = QUrl(affiliation);
-    RDFVariable voicePhoneNumber = QUrl(QString("tel:%1").
-                arg(phoneNumber));
-    inserts << RDFStatement(imAffiliation, rdf::type::iri(), nco::Affiliation::iri()) <<
-        RDFStatement(voicePhoneNumber, rdf::type::iri(), nco::VoicePhoneNumber::iri()) <<
-        RDFStatement(voicePhoneNumber, maemo::localPhoneNumber::iri(),
-                LiteralValue(phoneNumber)) <<
-        RDFStatement(voicePhoneNumber, nco::phoneNumber::iri(),
-                LiteralValue(phoneNumber)) <<
-        RDFStatement(imAffiliation,  rdfs::label::iri(),
-                LiteralValue(QLatin1String("IMService"))) <<
-        RDFStatement(imAffiliation, nco::hasPhoneNumber::iri(), voicePhoneNumber) <<
-        RDFStatement(imContact, nco::hasAffiliation::iri(), imAffiliation);
+    static uint counter = 0;
+    RDFVariable imAffiliation = RDFVariable(QString("affiliation%1").arg(++counter));
+    inserts << RDFStatement(imAffiliation, rdf::type::iri(), nco::Affiliation::iri())
+            << RDFStatement(imAffiliation, rdfs::label::iri(), LiteralValue(QLatin1String("IMService")));
+    inserts << RDFStatement(imContact, nco::hasAffiliation::iri(), imAffiliation);
+
+    return imAffiliation;
+}
+
+void CDTpStorage::addContactVoicePhoneNumberToQuery(RDFStatementList &inserts,
+        RDFVariableList &properties,
+        const RDFVariable &imAffiliation,
+        const QString &phoneNumber)
+{
+    Q_UNUSED(properties);
+
+    RDFVariable voicePhoneNumber = QUrl(QString("tel:%1").arg(phoneNumber));
+    inserts << RDFStatement(voicePhoneNumber, rdf::type::iri(), nco::VoicePhoneNumber::iri())
+            << RDFStatement(voicePhoneNumber, maemo::localPhoneNumber::iri(), LiteralValue(phoneNumber))
+            << RDFStatement(voicePhoneNumber, nco::phoneNumber::iri(), LiteralValue(phoneNumber));
+
+    inserts << RDFStatement(imAffiliation, nco::hasPhoneNumber::iri(), voicePhoneNumber);
 }
 
 void CDTpStorage::addContactAddressToQuery(RDFStatementList &inserts,
-        RDFVariableList &list,
+        RDFVariableList &properties,
+        const RDFVariable &imAffiliation,
         const QString &pobox,
         const QString &extendedAddress,
         const QString &streetAddress,
         const QString &locality,
         const QString &region,
         const QString &postalcode,
-        const QString &country,
-        const QString &affiliation,
-        const RDFVariable &imContact)
+        const QString &country)
 {
-    Q_UNUSED(list);
+    Q_UNUSED(properties);
 
-    RDFVariable imAffiliation = QUrl(affiliation);
-    RDFVariable imPostalAddress = RDFVariable::fromType<nco::PostalAddress>();
+    static uint counter = 0;
+    RDFVariable imPostalAddress = RDFVariable(QString("address%1").arg(++counter));
+    inserts << RDFStatement(imPostalAddress, rdf::type::iri(), nco::PostalAddress::iri())
+            << RDFStatement(imPostalAddress, nco::pobox::iri(), LiteralValue(pobox))
+            << RDFStatement(imPostalAddress, nco::extendedAddress::iri(), LiteralValue(extendedAddress))
+            << RDFStatement(imPostalAddress, nco::streetAddress::iri(), LiteralValue(streetAddress))
+            << RDFStatement(imPostalAddress, nco::locality::iri(), LiteralValue(locality))
+            << RDFStatement(imPostalAddress, nco::region::iri(), LiteralValue(region))
+            << RDFStatement(imPostalAddress, nco::postalcode::iri(), LiteralValue(postalcode))
+            << RDFStatement(imPostalAddress, nco::country::iri(), LiteralValue(country));
 
-    inserts << RDFStatement(imPostalAddress, rdf::type::iri(), QUrl(affiliation)) <<
-        RDFStatement(imAffiliation, rdf::type::iri(), QUrl(affiliation)) <<
-        RDFStatement(imPostalAddress, nco::pobox::iri(), LiteralValue(pobox)) <<
-        RDFStatement(imPostalAddress, nco::extendedAddress::iri(),LiteralValue(extendedAddress)) <<
-        RDFStatement(imPostalAddress, nco::streetAddress::iri(),LiteralValue(streetAddress)) <<
-        RDFStatement(imPostalAddress, nco::locality::iri(),LiteralValue(locality)) <<
-        RDFStatement(imPostalAddress, nco::region::iri(),LiteralValue(region)) <<
-        RDFStatement(imPostalAddress, nco::postalcode::iri(),LiteralValue(postalcode)) <<
-        RDFStatement(imPostalAddress, nco::country::iri(),LiteralValue(country)) <<
-        RDFStatement(imContact, nco::hasPostalAddress::iri(), imPostalAddress);
+    inserts << RDFStatement(imAffiliation, nco::hasPostalAddress::iri(), imPostalAddress);
 }
 
 QString CDTpStorage::contactLocalId(const QString &contactAccountObjectPath,
