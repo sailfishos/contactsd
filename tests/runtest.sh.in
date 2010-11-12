@@ -9,7 +9,7 @@ export XDG_CONFIG_HOME=$tmpdir
 tracker-control -rs #2>&1 >/dev/null
 
 export CONTACTSD_PLUGINS_DIRS=@TOP_BUILDDIR@/plugins/telepathy
-@TOP_BUILDDIR@/src/contactsd &
+@TOP_BUILDDIR@/src/contactsd  --log-console &
 pid=$!
 
 sleep 5
