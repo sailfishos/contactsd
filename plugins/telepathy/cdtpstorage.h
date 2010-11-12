@@ -126,21 +126,22 @@ private:
             const RDFVariable &imContact,
             CDTpContactPtr contactWrapper);
     void addContactVoicePhoneNumberToQuery(RDFStatementList &inserts,
-            RDFVariableList &lists,
-            const QString &phoneNumber,
-            const QString &affiliation,
-            const RDFVariable &imContact);
+            RDFVariableList &properties,
+            const RDFVariable &imAffiliation,
+            const QString &phoneNumber);
     void addContactAddressToQuery(RDFStatementList &inserts,
-            RDFVariableList &lists,
+            RDFVariableList &properties,
+            const RDFVariable &imAffiliation,
             const QString &pobox,
-            const QString &extAddress,
+            const QString &extendedAddress,
             const QString &streetAddress,
             const QString &locality,
             const QString &region,
             const QString &postalcode,
-            const QString &country,
-            const QString &affiliation,
-            const RDFVariable &imContact);
+            const QString &country);
+    RDFVariable createAffiliation(RDFStatementList &inserts,
+            const RDFVariable &imContact,
+            Tp::ContactInfoField &field);
 };
 
 class CDTpStorageSelectQuery : public QObject
