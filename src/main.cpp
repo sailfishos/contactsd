@@ -28,9 +28,10 @@
 static void usage()
 {
     qDebug() << "Usage: contactsd [OPTION]...\n";
-    qDebug() << "  --plugins PLUGINS    comma separated list of plugins to load\n";
-    qDebug() << "  --version            output version information and exit";
-    qDebug() << "  --help               display this help and exit";
+    qDebug() << "  --plugins PLUGINS    Comma separated list of plugins to load\n";
+    qDebug() << "  --log-console        Enable Console Logging \n";
+    qDebug() << "  --version            Output version information and exit";
+    qDebug() << "  --help               Display this help and exit";
 }
 
 int main(int argc, char **argv)
@@ -39,8 +40,12 @@ int main(int argc, char **argv)
 
     QStringList plugins;
     const QStringList args = app.arguments();
+    Logger *logger = Logger::installLogger(CONTACTSD_LOG_DIR "/contactsd.log", 50, 3);
     QString arg;
     int i = 1; // ignore argv[0]
+
+    logger->setParent(&app);
+    logger->setConsoleLoggingEnabled(false);
     while (i < args.count()) {
         arg = args.at(i);
         if (arg == "--plugins") {
@@ -58,18 +63,15 @@ int main(int argc, char **argv)
         } else if (arg == "--help") {
             usage();
             return 0;
-        } else {
+        } else if (arg == "--log-console") {
+            logger->setConsoleLoggingEnabled(true);
+        } else{
             qWarning() << "Invalid argument" << arg;
             usage();
             return -1;
         }
         ++i;
     }
-
-#ifndef QT_NO_DEBUG_OUTPUT
-    Logger *logger = Logger::installLogger(CONTACTSD_LOG_DIR "/contactsd.log", 50, 3);
-    logger->setParent(&app);
-#endif
 
     qDebug() << "contactsd version" << VERSION << "started";
 
