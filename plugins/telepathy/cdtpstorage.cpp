@@ -696,7 +696,6 @@ void CDTpStorage::addContactInfoToQuery(RDFStatementList &inserts,
         if (field.fieldValue.count() == 0) {
             continue;
         }
-
         if (!field.fieldName.compare("tel")) {
             addContactVoicePhoneNumberToQuery(inserts, imContactPropertyList,
                     createAffiliation(inserts, imContact, field),
@@ -719,17 +718,17 @@ RDFVariable CDTpStorage::createAffiliation(RDFStatementList &inserts,
         const RDFVariable &imContact,
         Tp::ContactInfoField &field)
 {
-    /* FIXME: Set the type of affiliation from field.parameters.
-     * They are in the form "type=home" for example. See telepathy spec:
-     * http://telepathy.freedesktop.org/spec/Connection_Interface_Contact_Info.html#Contact_Info_Field
-     */
-    Q_UNUSED(field);
-
     static uint counter = 0;
     RDFVariable imAffiliation = RDFVariable(QString("affiliation%1").arg(++counter));
     inserts << RDFStatement(imAffiliation, rdf::type::iri(), nco::Affiliation::iri())
-            << RDFStatement(imAffiliation, rdfs::label::iri(), LiteralValue(QLatin1String("IMService")));
-    inserts << RDFStatement(imContact, nco::hasAffiliation::iri(), imAffiliation);
+            << RDFStatement(imContact, nco::hasAffiliation::iri(), imAffiliation);
+
+    foreach (QString parameter, field.parameters) {
+        if (parameter.startsWith("type=")) {
+            inserts << RDFStatement(imAffiliation, rdfs::label::iri(), LiteralValue(parameter.mid(5)));
+            break;
+        }
+    }
 
     return imAffiliation;
 }
