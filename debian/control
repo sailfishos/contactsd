@@ -16,8 +16,8 @@ Depends: libqt4-dbus,
   osso-mission-control,
   libaccounts-qt1
 Recommends: telepathy-gabble (>= 0.8.8), telepathy-spirit (>= 0.5.21),
-  account-plugin-google, account-plugin-facebook, account-plugin-skype,
   libqtcontacts-tracker, libtelepathy-qt4-0 (>= 0.3.9)
+Suggests: account-plugin-google, account-plugin-facebook, account-plugin-skype
 Description: Contacts daemon - Observing telepathy and storing to tracker
 Conflicts: libqtcontacts-tracker (<< 4.9.0)
 
