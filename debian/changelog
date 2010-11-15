@@ -1,3 +1,9 @@
+contactsd (0.5.41~1) UNRELEASED; urgency=low
+
+  * Fixes: NB#203354 - contactsd recommends account plugins
+
+ -- Jens Georg <jensg@openismus.com>  Mon, 15 Nov 2010 09:30:00 +0100
+
 contactsd (0.5.40-5) unstable; urgency=low
 
   * Fixes: NB#203200 - All the service related information gets removed from the service contact when marked as favourite
