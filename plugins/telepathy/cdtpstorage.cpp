@@ -24,6 +24,8 @@
 const QUrl CDTpStorage::defaultGraph = QUrl(
         QLatin1String("urn:uuid:08070f5c-a334-4d19-a8b0-12a3071bfab9"));
 
+const QString defaultGenerator = "telepathy";
+
 CDTpStorage::CDTpStorage(QObject *parent)
     : QObject(parent)
 {
@@ -242,6 +244,7 @@ void CDTpStorage::removeAccount(const QString &accountObjectPath)
     RDFSelect select;
     select.addColumn("contact", imContact);
     select.addColumn("address", imAddress);
+    select.addColumn("Generator", imContact.property<nie::generator>());
 
     CDTpStorageSelectQuery *query = new CDTpStorageSelectQuery(select, this);
     connect(query,
@@ -280,6 +283,7 @@ void CDTpStorage::removeContacts(CDTpAccount *accountWrapper,
     RDFSelect select;
     select.addColumn("Contact", imContact);
     select.addColumn("Address", imAddress);
+    select.addColumn("Generator", imContact.property<nie::generator>());
 
     CDTpStorageSelectQuery *query = new CDTpStorageSelectQuery(select, this);
     connect(query,
@@ -305,6 +309,7 @@ void CDTpStorage::removeContacts(CDTpStorageSelectQuery *query, bool deleteAccou
     for (int i = 0; i < result->rowCount(); i++) {
         QUrl imContact = QUrl(result->index(i, 0).data().toString());
         QUrl imAddress = QUrl(result->index(i, 1).data().toString());
+        const QString generator = result->index(i, 2).data().toString();
 
         if (deleteAccount) {
             const QString addressUrl = result->index(i, 1).data().toString();
@@ -315,13 +320,16 @@ void CDTpStorage::removeContacts(CDTpStorageSelectQuery *query, bool deleteAccou
 
         updateQuery.addDeletion(imAddress, rdf::type::iri(), rdfs::Resource::iri(), defaultGraph);
 
-        /* FIXME: if the imContact never got modified, we should remove it completely */
-        updateQuery.addDeletion(imContact, nco::hasIMAddress::iri(),
-                imAddress, defaultGraph);
-        updateQuery.addDeletion(imContact, nie::contentLastModified::iri(),
-                RDFVariable(), defaultGraph);
-        updateQuery.addInsertion(imContact, nie::contentLastModified::iri(),
-                LiteralValue(QDateTime::currentDateTime()), defaultGraph);
+        if (generator == defaultGenerator) {
+            updateQuery.addDeletion(imContact, rdf::type::iri(), rdfs::Resource::iri(), defaultGraph);
+        } else {
+            updateQuery.addDeletion(imContact, nco::hasIMAddress::iri(),
+                    imAddress, defaultGraph);
+            updateQuery.addDeletion(imContact, nie::contentLastModified::iri(),
+                    RDFVariable(), defaultGraph);
+            updateQuery.addInsertion(imContact, nie::contentLastModified::iri(),
+                    LiteralValue(QDateTime::currentDateTime()), defaultGraph);
+        }
     }
 
     ::tracker()->executeQuery(updateQuery);
@@ -400,6 +408,7 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
                 RDFStatement(imContact, nco::contactUID::iri(), LiteralValue(localId)) <<
                 RDFStatement(imContact, nie::contentCreated::iri(), LiteralValue(datetime)) <<
                 RDFStatement(imContact, nie::contentLastModified::iri(), LiteralValue(datetime)) <<
+                RDFStatement(imContact, nie::generator::iri(), LiteralValue(defaultGenerator)) <<
                 RDFStatement(imAddress, rdf::type::iri(), nco::IMAddress::iri()) <<
                 RDFStatement(imAddress, nco::imID::iri(), LiteralValue(id));
         } else {
