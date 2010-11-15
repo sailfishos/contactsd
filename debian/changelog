@@ -1,4 +1,4 @@
-contactsd (0.5.41~1) UNRELEASED; urgency=low
+contactsd (0.5.41-1) unstable; urgency=low
 
   * Fixes: NB#203354 - contactsd recommends account plugins
 
