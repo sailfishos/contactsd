@@ -53,7 +53,7 @@ Q_SIGNALS:
                      int contactsMerged);
     void pluginsLoaded();
 
-private slots:
+private Q_SLOTS:
     void onPluginImportStarted(const QString &service, const QString &account);
     void onPluginImportEnded(const QString &service, const QString &account,
                              int contactsAdded, int contactsRemoved, int contactsMerged);

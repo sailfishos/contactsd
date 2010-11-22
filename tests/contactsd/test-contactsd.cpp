@@ -24,7 +24,7 @@ const QString telepathyString("telepathy");
 
 void TestContactsd::init()
 {
-    mDaemon = new Contactsd(this);
+    mDaemon = new Contactsd(0);
 }
 
 void TestContactsd::testLoadAllPlugins()
@@ -108,9 +108,23 @@ void TestContactsd::testImportState()
     QCOMPARE(state.contactsMerged(), 0);
 }
 
+void TestContactsd::testInvalid()
+{
+    mDaemon->loadPlugins(QStringList() << "invalid");
+
+    QStringList pluginList = mDaemon->loadedPlugins();
+    QVERIFY2(pluginList.size() == 0,
+            QString("%1 plugins loaded, expecting 0")
+                .arg(pluginList.size()).toLatin1());
+    QVERIFY2(not pluginList.contains(telepathyString),
+            QString("%1-plugin not Loaded!")
+                .arg(telepathyString).toLatin1());
+
+}
 void TestContactsd::cleanup()
 {
-    delete mDaemon;
+    if (mDaemon)
+        delete mDaemon;
 }
 
 QTEST_MAIN(TestContactsd)

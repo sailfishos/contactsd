@@ -62,7 +62,7 @@ void CDTpAccount::onAccountReady(Tp::PendingOperation *op)
     qDebug() << "Account" << mAccount->objectPath() << "ready";
 
     // signal that the account is ready to use
-    emit ready(this);
+    Q_EMIT ready(this);
 
     // connect all signals we care about, so we can signal that the account
     // changed accordingly
@@ -92,27 +92,27 @@ void CDTpAccount::onAccountReady(Tp::PendingOperation *op)
 
 void CDTpAccount::onAccountNormalizedNameChanged()
 {
-    emit changed(this, All);
+    Q_EMIT changed(this, All);
 }
 
 void CDTpAccount::onAccountDisplayNameChanged()
 {
-    emit changed(this, DisplayName);
+    Q_EMIT changed(this, DisplayName);
 }
 
 void CDTpAccount::onAccountNicknameChanged()
 {
-    emit changed(this, Nickname);
+    Q_EMIT changed(this, Nickname);
 }
 
 void CDTpAccount::onAccountCurrentPresenceChanged()
 {
-    emit changed(this, Presence);
+    Q_EMIT changed(this, Presence);
 }
 
 void CDTpAccount::onAccountAvatarChanged()
 {
-    emit changed(this, Avatar);
+    Q_EMIT changed(this, Avatar);
 }
 
 void CDTpAccount::onAccountHaveConnectionChanged(bool haveConnection)
@@ -120,7 +120,7 @@ void CDTpAccount::onAccountHaveConnectionChanged(bool haveConnection)
     qDebug() << "Account" << mAccount->objectPath() << "connection changed";
 
     if (mRosterReady) {
-        // Account::haveConnectionChanged is emitted every time the account
+        // Account::haveConnectionChanged is emited every time the account
         // connection changes, so always clear contacts we have from the
         // old connection
         clearContacts();
@@ -128,7 +128,7 @@ void CDTpAccount::onAccountHaveConnectionChanged(bool haveConnection)
         // let's emit rosterChanged(false), to inform that right now we don't
         // have a roster configured
         mRosterReady = false;
-        emit rosterChanged(this, false);
+        Q_EMIT rosterChanged(this, false);
     }
 
     // if we have a new connection, introspect it
@@ -192,7 +192,7 @@ void CDTpAccount::onAccountContactsUpgraded(Tp::PendingOperation *op)
 
     Tp::PendingContacts *pc = qobject_cast<Tp::PendingContacts *>(op);
     QList<CDTpContactPtr> added;
-    foreach (const Tp::ContactPtr &contact, pc->contacts()) {
+    Q_FOREACH (const Tp::ContactPtr &contact, pc->contacts()) {
         qDebug() << "  creating wrapper for contact" << contact->id();
         added.append(insertContact(contact));
     }
@@ -202,9 +202,9 @@ void CDTpAccount::onAccountContactsUpgraded(Tp::PendingOperation *op)
 
         mIntrospectingRoster = false;
         mRosterReady = true;
-        emit rosterChanged(this, true);
+        Q_EMIT rosterChanged(this, true);
     } else {
-        emit rosterUpdated(this, added, QList<CDTpContactPtr>());
+        Q_EMIT rosterUpdated(this, added, QList<CDTpContactPtr>());
     }
 }
 
@@ -225,7 +225,7 @@ void CDTpAccount::onAccountContactsChanged(const Tp::Contacts &contactsAdded,
     }
 
     QList<CDTpContactPtr> removed;
-    foreach (const Tp::ContactPtr &contact, contactsRemoved) {
+    Q_FOREACH (const Tp::ContactPtr &contact, contactsRemoved) {
         if (!mContacts.contains(contact)) {
             qWarning() << "Internal error, contact is not in the internal list"
                 "but was removed from roster";
@@ -234,9 +234,9 @@ void CDTpAccount::onAccountContactsChanged(const Tp::Contacts &contactsAdded,
         removed.append(mContacts.take(contact));
     }
 
-    emit rosterUpdated(this, QList<CDTpContactPtr>(), removed);
+    Q_EMIT rosterUpdated(this, QList<CDTpContactPtr>(), removed);
 
-    foreach (CDTpContactPtr contactWrapper, removed) {
+    Q_FOREACH (CDTpContactPtr contactWrapper, removed) {
         contactWrapper->mRemoved = true;
     }
 }
@@ -244,7 +244,7 @@ void CDTpAccount::onAccountContactsChanged(const Tp::Contacts &contactsAdded,
 void CDTpAccount::onAccountContactChanged(CDTpContactPtr contactWrapper,
         CDTpContact::Changes changes)
 {
-    emit rosterContactChanged(this, contactWrapper, changes);
+    Q_EMIT rosterContactChanged(this, contactWrapper, changes);
 }
 
 void CDTpAccount::introspectAccountConnection()

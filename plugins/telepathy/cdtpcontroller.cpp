@@ -75,7 +75,7 @@ void CDTpController::onAccountManagerReady(Tp::PendingOperation *op)
     connect(mAM.data(),
             SIGNAL(accountRemoved(const QString &)),
             SLOT(onAccountRemoved(const QString &)));
-    foreach (const Tp::AccountPtr &account, mAccountSet->accounts()) {
+    Q_FOREACH (const Tp::AccountPtr &account, mAccountSet->accounts()) {
         insertAccount(account);
     }
     mStorage->syncAccountSet(mAccounts.keys());
@@ -169,12 +169,12 @@ void CDTpController::removeAccount(const QString &accountObjectPath)
 void CDTpController::setImportStarted(const Tp::AccountPtr &account)
 {
     mImportActive = true;
-    emit importStarted(account->serviceName(), account->objectPath());
+    Q_EMIT importStarted(account->serviceName(), account->objectPath());
 }
 
 void CDTpController::setImportEnded(const Tp::AccountPtr &account, int contactsAdded, int contactsRemoved)
 {
     mImportActive = false;
-    emit importEnded(account->serviceName(), account->objectPath(),
+    Q_EMIT importEnded(account->serviceName(), account->objectPath(),
                      contactsAdded, contactsRemoved, 0);
 }

@@ -4,6 +4,11 @@ QT -= gui
 QT += testlib
 QT += dbus
 
+CONFIG(coverage):{
+QMAKE_CXXFLAGS += -c --coverage -ftest-coverage -fprofile-arcs
+LIBS += -lgcov
+}
+
 TARGET = test-contactsd
 
 INCLUDEPATH += $$TOP_SOURCEDIR/src
@@ -21,3 +26,13 @@ SOURCES += test-contactsd.cpp \
     $$TOP_SOURCEDIR/src/importstate.cpp
 
 DEFINES += CONTACTSD_PLUGINS_DIR=\\\"$$LIBDIR/contactsd-1.0/plugins\\\"
+
+#gcov stuff
+CONFIG(coverage):{
+QMAKE_CLEAN += *.gcov $(OBJECTS_DIR)*.gcda $(OBJECTS_DIR)*.gcno gcov.analysis gcov.analysis.summary
+gcov.target = gcov
+cov.CONFIG = recursive
+gcov.commands = for d in $$SOURCES; do (gcov -a -c -o $(OBJECTS_DIR) \$$$$d >> gcov.analysis ); done;
+gcov.depends = $(TARGET)
+QMAKE_EXTRA_TARGETS += gcov
+}

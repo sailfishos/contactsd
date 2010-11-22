@@ -34,6 +34,7 @@ private Q_SLOTS:
 
     void testLoadAllPlugins();
     void testLoadPlugins();
+    void testInvalid();
     void testImportState();
 
     void cleanup();

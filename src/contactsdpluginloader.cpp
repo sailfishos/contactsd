@@ -39,10 +39,10 @@ ContactsdPluginLoader::~ContactsdPluginLoader()
     PluginStore::const_iterator it = mPluginStore.constBegin();
     PluginStore::const_iterator end = mPluginStore.constEnd();
     while (it != end) {
-        it.value()->unload();
         it.value()->deleteLater();
-        ++it;
+      ++it;
     }
+
     mPluginStore.clear();
 }
 
@@ -57,7 +57,7 @@ void ContactsdPluginLoader::loadPlugins(const QStringList &plugins)
         pluginsDirs << pluginsDirsEnv.split(':');
     }
 
-    foreach (const QString &pluginsDir, pluginsDirs) {
+    Q_FOREACH (const QString &pluginsDir, pluginsDirs) {
         loadPlugins(pluginsDir, plugins);
     }
 }
@@ -67,7 +67,7 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir, const QString
     QPluginLoader *loader;
     QDir dir(pluginsDir);
     dir.setFilter(QDir::Files | QDir::NoSymLinks);
-    foreach (const QString &fileName, dir.entryList()) {
+    Q_FOREACH (const QString &fileName, dir.entryList()) {
         QString absFileName(dir.absoluteFilePath(fileName));
         qDebug() << "Trying to load plugin" << absFileName;
         loader = new QPluginLoader(absFileName);
@@ -151,12 +151,12 @@ void ContactsdPluginLoader::onPluginImportStarted(const QString &service, const 
         // check if any account from the same service is importing now
         if (not mImportState.serviceHasActiveImports(service)) {
             // there was no active import from this service, so we update import state with new services
-            emit importStateChanged(QString(), service);
+            Q_EMIT importStateChanged(QString(), service);
         }
     } else {
         // new import
         mImportState.reset();
-        emit importStarted(service);
+        Q_EMIT importStarted(service);
     }
 
     mImportState.addImportingAccount(service, account);
@@ -183,10 +183,10 @@ void ContactsdPluginLoader::onPluginImportEnded(const QString &service, const QS
     if (mImportState.hasActiveImports()) {
         if (not mImportState.serviceHasActiveImports(service)) {
             // This service has no acive importing accounts anymore
-            emit importStateChanged(service, QString());
+            Q_EMIT importStateChanged(service, QString());
         }
     } else {
-        emit importEnded(mImportState.contactsAdded(), mImportState.contactsRemoved(),
+        Q_EMIT importEnded(mImportState.contactsAdded(), mImportState.contactsRemoved(),
                          mImportState.contactsMerged());
     }
 }

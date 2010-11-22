@@ -58,30 +58,30 @@ CDTpContact::~CDTpContact()
 
 void CDTpContact::onContactAliasChanged()
 {
-    emit changed(CDTpContactPtr(this), Alias);
+    Q_EMIT changed(CDTpContactPtr(this), Alias);
 }
 
 void CDTpContact::onContactPresenceChanged()
 {
-    emit changed(CDTpContactPtr(this), Presence);
+    Q_EMIT changed(CDTpContactPtr(this), Presence);
 }
 
 void CDTpContact::onContactCapabilitiesChanged()
 {
-    emit changed(CDTpContactPtr(this), Capabilities);
+    Q_EMIT changed(CDTpContactPtr(this), Capabilities);
 }
 
 void CDTpContact::onContactAvatarDataChanged()
 {
-    emit changed(CDTpContactPtr(this), Avatar);
+    Q_EMIT changed(CDTpContactPtr(this), Avatar);
 }
 
 void CDTpContact::onContactAuthorizationChanged()
 {
-    emit changed(CDTpContactPtr(this), Authorization);
+    Q_EMIT changed(CDTpContactPtr(this), Authorization);
 }
 
 void CDTpContact::onContactInfoChanged()
 {
-    emit changed(CDTpContactPtr(this), Infomation);
+    Q_EMIT changed(CDTpContactPtr(this), Infomation);
 }

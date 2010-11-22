@@ -40,7 +40,7 @@ void CDTpStorage::syncAccountSet(const QList<QString> &accounts)
     RDFVariable imAccount = RDFVariable::fromType<nco::IMAccount>();
 
     RDFVariableList members;
-    foreach (QString accountObjectPath, accounts) {
+    Q_FOREACH (QString accountObjectPath, accounts) {
         members << RDFVariable(QUrl(QString("telepathy:%1").arg(accountObjectPath)));
     }
     imAccount.isMemberOf(members).not_();
@@ -263,7 +263,7 @@ void CDTpStorage::removeContacts(CDTpAccount *accountWrapper,
     RDFVariable imContact = RDFVariable::fromType<nco::PersonContact>();
     RDFVariable imAddress = imContact.property<nco::hasIMAddress>();
     RDFVariableList members;
-    foreach (CDTpContactPtr contactWrapper, contacts) {
+    Q_FOREACH (CDTpContactPtr contactWrapper, contacts) {
         members << RDFVariable(contactImAddress(contactWrapper));
     }
 
@@ -377,7 +377,7 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
     RDFVariableList resourceAddressList;
     RDFVariableList resourceContactList;
 
-    foreach (CDTpContactPtr contactWrapper, resolver->remoteContacts()) {
+    Q_FOREACH (CDTpContactPtr contactWrapper, resolver->remoteContacts()) {
         Tp::ContactPtr contact = contactWrapper->contact();
         QString accountObjectPath =
             contactWrapper->accountWrapper()->account()->objectPath();
@@ -438,11 +438,11 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
     RDFVariable resourceContact = RDFVariable::fromContainer(resourceContactList);
     RDFVariable resourceAddress = RDFVariable::fromContainer(resourceAddressList);
 
-    foreach (RDFVariable property, imContactPropertyList) {
+    Q_FOREACH (RDFVariable property, imContactPropertyList) {
         updateQuery.addDeletion(resourceContact, property, RDFVariable(), defaultGraph);
     }
 
-    foreach (RDFVariable property, imAddressPropertyList) {
+    Q_FOREACH (RDFVariable property, imAddressPropertyList) {
         updateQuery.addDeletion(resourceAddress, property, RDFVariable(), defaultGraph);
     }
 
@@ -460,7 +460,7 @@ void CDTpStorage::onContactUpdateResolverFinished(CDTpStorageContactResolver *re
     RDFVariableList resourceAddressList;
     RDFVariableList resourceContactList;
 
-    foreach (CDTpContactPtr contactWrapper, resolver->remoteContacts()) {
+    Q_FOREACH (CDTpContactPtr contactWrapper, resolver->remoteContacts()) {
         if (contactWrapper->isRemoved()) {
             continue;
         }
@@ -523,11 +523,11 @@ void CDTpStorage::onContactUpdateResolverFinished(CDTpStorageContactResolver *re
 
     RDFVariable resourceContact = RDFVariable::fromContainer(resourceContactList);
     RDFVariable resourceAddress = RDFVariable::fromContainer(resourceAddressList);
-    foreach (RDFVariable property, imContactPropertyList) {
+    Q_FOREACH (RDFVariable property, imContactPropertyList) {
         updateQuery.addDeletion(resourceContact, property, RDFVariable(), defaultGraph);
     }
 
-    foreach (RDFVariable property, imAddressPropertyList) {
+    Q_FOREACH (RDFVariable property, imAddressPropertyList) {
         updateQuery.addDeletion(resourceAddress, property, RDFVariable(), defaultGraph); }
 
     updateQuery.addInsertion(inserts, defaultGraph);
@@ -701,7 +701,7 @@ void CDTpStorage::addContactInfoToQuery(RDFStatementList &inserts,
         return;
     }
 
-    foreach (Tp::ContactInfoField field, listContactInfo) {
+    Q_FOREACH (Tp::ContactInfoField field, listContactInfo) {
         if (field.fieldValue.count() == 0) {
             continue;
         }
@@ -732,7 +732,7 @@ RDFVariable CDTpStorage::createAffiliation(RDFStatementList &inserts,
     inserts << RDFStatement(imAffiliation, rdf::type::iri(), nco::Affiliation::iri())
             << RDFStatement(imContact, nco::hasAffiliation::iri(), imAffiliation);
 
-    foreach (QString parameter, field.parameters) {
+    Q_FOREACH (QString parameter, field.parameters) {
         if (parameter.startsWith("type=")) {
             inserts << RDFStatement(imAffiliation, rdfs::label::iri(), LiteralValue(parameter.mid(5)));
             break;
@@ -892,7 +892,7 @@ CDTpStorageSelectQuery::~CDTpStorageSelectQuery()
 
 void CDTpStorageSelectQuery::onModelUpdated()
 {
-    emit finished(this);
+    Q_EMIT finished(this);
 }
 
 CDTpStorageContactResolver::CDTpStorageContactResolver(CDTpAccount *accountWrapper,
@@ -947,14 +947,14 @@ void CDTpStorageContactResolver::onStorageResolveSelectQueryFinished(
     for (int i = 0; i < result->rowCount(); i++) {
         const QString storageContact = result->index(i, 2).data().toString();
         const QString imAddress = result->index(i, 1).data().toString();
-        foreach (CDTpContactPtr contactWrapper, mContactsNotResolved) {
+        Q_FOREACH (CDTpContactPtr contactWrapper, mContactsNotResolved) {
             if (contactWrapper->contact()->id() == imAddress) {
                 mResolvedContacts[contactWrapper] = storageContact;
             }
         }
     }
 
-    emit finished(this);
+    Q_EMIT finished(this);
 }
 
 void CDTpStorageContactResolver::requestContactResolve(CDTpAccount *accountWrapper,
@@ -966,7 +966,7 @@ void CDTpStorageContactResolver::requestContactResolve(CDTpAccount *accountWrapp
     RDFVariable imAddress = imContact.property<nco::hasIMAddress>();
 
     RDFVariableList members;
-    foreach (CDTpContactPtr contactWrapper, contactList) {
+    Q_FOREACH (CDTpContactPtr contactWrapper, contactList) {
         members << RDFVariable(CDTpStorage::contactImAddress(contactWrapper));
     }
     imAddress.isMemberOf(members);
