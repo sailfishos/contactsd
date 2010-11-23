@@ -104,12 +104,13 @@ void CDTpStorage::syncAccount(CDTpAccount *accountWrapper,
 
     if (changes & CDTpAccount::Presence) {
         Tp::SimplePresence presence = account->currentPresence();
+        QUrl status = trackerStatusFromTpPresenceStatus(presence.status);
 
         up.addDeletion(imAddress, nco::imPresence::iri(), RDFVariable(), defaultGraph);
         up.addDeletion(imAddress, nco::imStatusMessage::iri(), RDFVariable(), defaultGraph);
         up.addDeletion(imAddress, nco::presenceLastModified::iri(), RDFVariable(), defaultGraph);
 
-        inserts << RDFStatement(imAddress, nco::imPresence::iri(), RDFVariable(trackerStatusFromTpPresenceStatus(presence.status)))
+        inserts << RDFStatement(imAddress, nco::imPresence::iri(), RDFVariable(status))
                 << RDFStatement(imAddress, nco::imStatusMessage::iri(), LiteralValue(presence.statusMessage))
                 << RDFStatement(imAddress, nco::presenceLastModified::iri(), LiteralValue(QDateTime::currentDateTime()));
     }
@@ -403,8 +404,8 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
         inserts << RDFStatement(imAddress, rdf::type::iri(), nco::IMAddress::iri())
                 << RDFStatement(imAddress, nco::imID::iri(), LiteralValue(id));
 
-        addContactAliasInfoToQuery(inserts,
-                imAddressPropertyList, imAddress, contactWrapper);
+        addContactAliasInfoToQuery(inserts, imAddressPropertyList,
+                imAddress, contactWrapper);
         addContactPresenceInfoToQuery(inserts, imAddressPropertyList,
                 imAddress, contactWrapper);
         addContactCapabilitiesInfoToQuery(inserts, imAddressPropertyList,
@@ -413,8 +414,8 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
                 imAddress, contactWrapper);
         addContactAuthorizationInfoToQuery(inserts, imAddressPropertyList,
                 imAddress, contactWrapper);
-        addContactInfoToQuery(inserts,
-                imContactPropertyList, imContact, contactWrapper);
+        addContactInfoToQuery(inserts, imContactPropertyList,
+                imContact, contactWrapper);
 
         // Link the IMAccount to this IMAddress
         const RDFVariable imAccount(QUrl(QString("telepathy:%1").arg(accountObjectPath)));
