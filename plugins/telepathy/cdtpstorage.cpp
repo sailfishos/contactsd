@@ -23,6 +23,8 @@
 
 const QUrl CDTpStorage::defaultGraph = QUrl(
         QLatin1String("urn:uuid:08070f5c-a334-4d19-a8b0-12a3071bfab9"));
+const QUrl CDTpStorage::privateGraph = QUrl(
+        QLatin1String("urn:uuid:679293d4-60f0-49c7-8d63-f1528fe31f66"));
 
 const QString defaultGenerator = "telepathy";
 
@@ -123,16 +125,17 @@ void CDTpStorage::syncAccount(CDTpAccount *accountWrapper,
     }
 
     // Create an IMAccount
+    RDFStatementList imAccountInserts;
     RDFVariable imAccount(QUrl(QString("telepathy:%1").arg(accountObjectPath)));
-    inserts << RDFStatement(imAccount, rdf::type::iri(), nco::IMAccount::iri())
-            << RDFStatement(imAccount, nco::imAccountType::iri(), LiteralValue(account->protocol()))
-            << RDFStatement(imAccount, nco::imProtocol::iri(), LiteralValue(account->protocol()))
-            << RDFStatement(imAccount, nco::imAccountAddress::iri(), imAddress)
-            << RDFStatement(imAccount, nco::hasIMContact::iri(), imAddress);
+    imAccountInserts << RDFStatement(imAccount, rdf::type::iri(), nco::IMAccount::iri())
+                     << RDFStatement(imAccount, nco::imAccountType::iri(), LiteralValue(account->protocol()))
+                     << RDFStatement(imAccount, nco::imProtocol::iri(), LiteralValue(account->protocol()))
+                     << RDFStatement(imAccount, nco::imAccountAddress::iri(), imAddress)
+                     << RDFStatement(imAccount, nco::hasIMContact::iri(), imAddress);
 
     if (changes & CDTpAccount::DisplayName) {
-        up.addDeletion(imAccount, nco::imDisplayName::iri(), RDFVariable(), defaultGraph);
-        inserts << RDFStatement(imAccount, nco::imDisplayName::iri(), LiteralValue(account->displayName()));
+        up.addDeletion(imAccount, nco::imDisplayName::iri(), RDFVariable(), privateGraph);
+        imAccountInserts << RDFStatement(imAccount, nco::imDisplayName::iri(), LiteralValue(account->displayName()));
     }
 
     // link the IMAddress to me-contact
@@ -142,6 +145,7 @@ void CDTpStorage::syncAccount(CDTpAccount *accountWrapper,
             << RDFStatement(nco::default_contact_me::iri(), nco::contactLocalUID::iri(), LiteralValue(strLocalUID));
 
     up.addInsertion(inserts, defaultGraph);
+    up.addInsertion(imAccountInserts, privateGraph);
     ::tracker()->executeQuery(up);
 }
 
@@ -220,8 +224,7 @@ void CDTpStorage::removeAccount(const QString &accountObjectPath)
     /* Delete the imAccount resource */
     RDFUpdate updateQuery;
     const RDFVariable imAccount(QUrl(QString("telepathy:%1").arg(accountObjectPath)));
-    updateQuery.addDeletion(imAccount, rdf::type::iri(), rdfs::Resource::iri(),
-            defaultGraph);
+    updateQuery.addDeletion(imAccount, rdf::type::iri(), rdfs::Resource::iri(), privateGraph);
     ::tracker()->executeQuery(updateQuery);
 
     /* Delete all imAddress from that account */
@@ -302,8 +305,7 @@ void CDTpStorage::removeContacts(CDTpStorageSelectQuery *query, bool deleteAccou
         if (deleteAccount) {
             const QString addressUrl = result->index(i, 1).data().toString();
             const RDFVariable imAccount(QUrl(addressUrl.left(addressUrl.indexOf("!"))));
-            updateQuery.addDeletion(imAccount, nco::hasIMContact::iri(), imAddress,
-                    defaultGraph);
+            updateQuery.addDeletion(imAccount, nco::hasIMContact::iri(), imAddress, privateGraph);
         }
 
         updateQuery.addDeletion(imAddress, rdf::type::iri(), rdfs::Resource::iri(), defaultGraph);
@@ -360,6 +362,7 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
 {
     RDFUpdate updateQuery;
     RDFStatementList inserts;
+    RDFStatementList imAccountInserts;
     RDFVariableList imAddressPropertyList;
     RDFVariableList imContactPropertyList;
     RDFVariableList resourceAddressList;
@@ -419,7 +422,7 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
 
         // Link the IMAccount to this IMAddress
         const RDFVariable imAccount(QUrl(QString("telepathy:%1").arg(accountObjectPath)));
-        inserts << RDFStatement(imAccount, nco::hasIMContact::iri(), imAddress);
+        imAccountInserts << RDFStatement(imAccount, nco::hasIMContact::iri(), imAddress);
 
         // Link the IMContact to this IMAddress
         inserts << RDFStatement(imContact, nco::hasIMAddress::iri(), imAddress);
@@ -437,6 +440,7 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
     }
 
     updateQuery.addInsertion(inserts, defaultGraph);
+    updateQuery.addInsertion(imAccountInserts, privateGraph);
     ::tracker()->executeQuery(updateQuery);
     resolver->deleteLater();
 }

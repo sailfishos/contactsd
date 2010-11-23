@@ -64,6 +64,7 @@ public:
     static QUrl authStatus(Tp::Contact::PresenceState);
 
     static const QUrl defaultGraph;
+    static const QUrl privateGraph;
 
 public Q_SLOTS:
     void syncAccountSet(const QList<QString> &accountPaths);
