@@ -85,73 +85,60 @@ void CDTpStorage::syncAccount(CDTpAccount *accountWrapper,
 
     const QString accountObjectPath = account->objectPath();
     const QString accountId = account->normalizedName();
-    const QUrl accountUrl(QString("telepathy:%1").arg(accountObjectPath));
-    const QUrl imAddressUrl(QString("telepathy:%1!%2")
-            .arg(accountObjectPath).arg(accountId));
-    const QString strLocalUID = QString::number(0x7FFFFFFF);
 
     qDebug() << "Syncing account" << accountObjectPath << "to storage" << accountId;
 
     RDFUpdate up;
-
-    RDFVariable imAccount(accountUrl);
-    RDFVariable imAddress(imAddressUrl);
     RDFStatementList inserts;
 
-    up.addDeletion(imAccount, nco::imAccountType::iri(), RDFVariable(), defaultGraph);
+    // Create the IMAddress for this account's self contact
+    RDFVariable imAddress(contactImAddress(accountObjectPath, accountId));
     up.addDeletion(imAddress, nco::imID::iri(), RDFVariable(), defaultGraph);
-    up.addDeletion(imAccount, nco::imProtocol::iri(), RDFVariable(), defaultGraph);
-
-    inserts << RDFStatement(imAccount, rdf::type::iri(), nco::IMAccount::iri()) <<
-        RDFStatement(imAccount, nco::imAccountType::iri(), LiteralValue(account->protocol())) <<
-        RDFStatement(imAccount, nco::imProtocol::iri(), LiteralValue(account->protocol())) <<
-        RDFStatement(imAddress, rdf::type::iri(), nco::IMAddress::iri()) <<
-        RDFStatement(imAddress, nco::imID::iri(), LiteralValue(account->normalizedName()));
-
-    if (changes & CDTpAccount::DisplayName) {
-        up.addDeletion(imAccount, nco::imDisplayName::iri(), RDFVariable(), defaultGraph);
-        inserts << RDFStatement(imAccount, nco::imDisplayName::iri(),
-                LiteralValue(account->displayName()));
-    }
+    inserts << RDFStatement(imAddress, rdf::type::iri(), nco::IMAddress::iri())
+            << RDFStatement(imAddress, nco::imID::iri(), LiteralValue(account->normalizedName()));
 
     if (changes & CDTpAccount::Nickname) {
        up.addDeletion(imAddress, nco::imNickname::iri(), RDFVariable(), defaultGraph);
-       inserts << RDFStatement(imAddress, nco::imNickname::iri(),
-               LiteralValue(account->nickname()));
+       inserts << RDFStatement(imAddress, nco::imNickname::iri(), LiteralValue(account->nickname()));
     }
 
     if (changes & CDTpAccount::Presence) {
         Tp::SimplePresence presence = account->currentPresence();
 
+        up.addDeletion(imAddress, nco::imPresence::iri(), RDFVariable(), defaultGraph);
         up.addDeletion(imAddress, nco::imStatusMessage::iri(), RDFVariable(), defaultGraph);
         up.addDeletion(imAddress, nco::presenceLastModified::iri(), RDFVariable(), defaultGraph);
-        up.addDeletion(imAddress, nco::imPresence::iri(), RDFVariable(), defaultGraph);
 
-        inserts << RDFStatement(imAddress, nco::imStatusMessage::iri(),
-                LiteralValue(presence.statusMessage)) <<
-            RDFStatement(imAddress, nco::imPresence::iri(),
-                    RDFVariable(trackerStatusFromTpPresenceStatus(presence.status))) <<
-            RDFStatement(imAddress, nco::presenceLastModified::iri(),
-                    LiteralValue(QDateTime::currentDateTime()));
+        inserts << RDFStatement(imAddress, nco::imPresence::iri(), RDFVariable(trackerStatusFromTpPresenceStatus(presence.status)))
+                << RDFStatement(imAddress, nco::imStatusMessage::iri(), LiteralValue(presence.statusMessage))
+                << RDFStatement(imAddress, nco::presenceLastModified::iri(), LiteralValue(QDateTime::currentDateTime()));
     }
 
-    // link the IMAddress to me-contact
-    up.addDeletion(nco::default_contact_me::iri(), nco::imAccountAddress::iri(), RDFVariable(), defaultGraph);
-
-    inserts << RDFStatement(nco::default_contact_me::iri(),
-            nco::hasIMAddress::iri(), imAddress) <<
-        RDFStatement(imAccount, nco::imAccountAddress::iri(), imAddress) <<
-        RDFStatement(nco::default_contact_me::iri(), nco::contactUID::iri(),
-                LiteralValue(strLocalUID)) <<
-        RDFStatement(nco::default_contact_me::iri(), nco::contactLocalUID::iri(),
-                LiteralValue(strLocalUID)) <<
-        RDFStatement(imAccount, nco::hasIMContact::iri(), imAddress);
     if (changes & CDTpAccount::Avatar) {
         const Tp::Avatar &avatar = account->avatar();
         // TODO: saving to disk needs to be removed here
         saveAccountAvatar(up, avatar.avatarData, avatar.MIMEType, imAddress,
             inserts);
     }
+
+    // Create an IMAccount
+    RDFVariable imAccount(QUrl(QString("telepathy:%1").arg(accountObjectPath)));
+    inserts << RDFStatement(imAccount, rdf::type::iri(), nco::IMAccount::iri())
+            << RDFStatement(imAccount, nco::imAccountType::iri(), LiteralValue(account->protocol()))
+            << RDFStatement(imAccount, nco::imProtocol::iri(), LiteralValue(account->protocol()))
+            << RDFStatement(imAccount, nco::imAccountAddress::iri(), imAddress)
+            << RDFStatement(imAccount, nco::hasIMContact::iri(), imAddress);
+
+    if (changes & CDTpAccount::DisplayName) {
+        up.addDeletion(imAccount, nco::imDisplayName::iri(), RDFVariable(), defaultGraph);
+        inserts << RDFStatement(imAccount, nco::imDisplayName::iri(), LiteralValue(account->displayName()));
+    }
+
+    // link the IMAddress to me-contact
+    const QString strLocalUID = QString::number(0x7FFFFFFF);
+    inserts << RDFStatement(nco::default_contact_me::iri(), nco::hasIMAddress::iri(), imAddress)
+            << RDFStatement(nco::default_contact_me::iri(), nco::contactUID::iri(), LiteralValue(strLocalUID))
+            << RDFStatement(nco::default_contact_me::iri(), nco::contactLocalUID::iri(), LiteralValue(strLocalUID));
 
     up.addInsertion(inserts, defaultGraph);
     ::tracker()->executeQuery(up);
@@ -392,7 +379,6 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
 
         const RDFVariable imContact(contactIri(localId));
         const RDFVariable imAddress(contactImAddress(accountObjectPath, id));
-        const RDFVariable imAccount(QUrl(QString("telepathy:%1").arg(accountObjectPath)));
         const QDateTime datetime = QDateTime::currentDateTime();
 
         resourceContactList << imContact;
@@ -402,25 +388,21 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
          * have created the imContact before adding the im contact in telepathy
          */
         if (!alreadyExists) {
-            inserts << RDFStatement(imContact, rdf::type::iri(), nco::PersonContact::iri()) <<
-                RDFStatement(imContact, nco::hasIMAddress::iri(), imAddress) <<
-                RDFStatement(imContact, nco::contactLocalUID::iri(), LiteralValue(localId)) <<
-                RDFStatement(imContact, nco::contactUID::iri(), LiteralValue(localId)) <<
-                RDFStatement(imContact, nie::contentCreated::iri(), LiteralValue(datetime)) <<
-                RDFStatement(imContact, nie::contentLastModified::iri(), LiteralValue(datetime)) <<
-                RDFStatement(imContact, nie::generator::iri(), LiteralValue(defaultGenerator)) <<
-                RDFStatement(imAddress, rdf::type::iri(), nco::IMAddress::iri()) <<
-                RDFStatement(imAddress, nco::imID::iri(), LiteralValue(id));
+            inserts << RDFStatement(imContact, rdf::type::iri(), nco::PersonContact::iri())
+                    << RDFStatement(imContact, nco::contactLocalUID::iri(), LiteralValue(localId))
+                    << RDFStatement(imContact, nco::contactUID::iri(), LiteralValue(localId))
+                    << RDFStatement(imContact, nie::contentCreated::iri(), LiteralValue(datetime))
+                    << RDFStatement(imContact, nie::contentLastModified::iri(), LiteralValue(datetime))
+                    << RDFStatement(imContact, nie::generator::iri(), LiteralValue(defaultGenerator));
         } else {
             imContactPropertyList << nie::contentLastModified::iri();
-            inserts << RDFStatement(imContact, nie::contentLastModified::iri(),
-                    LiteralValue(datetime));
+            inserts << RDFStatement(imContact, nie::contentLastModified::iri(), LiteralValue(datetime));
         }
 
-        inserts << RDFStatement(imContact, rdf::type::iri(), nco::PersonContact::iri()) <<
-            RDFStatement(imContact, nco::hasIMAddress::iri(), imAddress) <<
-            RDFStatement(imAccount, rdf::type::iri(), nco::IMAccount::iri()) <<
-            RDFStatement(imAccount, nco::hasIMContact::iri(), imAddress);
+        // Insert the IMAddress
+        inserts << RDFStatement(imAddress, rdf::type::iri(), nco::IMAddress::iri())
+                << RDFStatement(imAddress, nco::imID::iri(), LiteralValue(id));
+
         addContactAliasInfoToQuery(inserts,
                 imAddressPropertyList, imAddress, contactWrapper);
         addContactPresenceInfoToQuery(inserts, imAddressPropertyList,
@@ -433,6 +415,13 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
                 imAddress, contactWrapper);
         addContactInfoToQuery(inserts,
                 imContactPropertyList, imContact, contactWrapper);
+
+        // Link the IMAccount to this IMAddress
+        const RDFVariable imAccount(QUrl(QString("telepathy:%1").arg(accountObjectPath)));
+        inserts << RDFStatement(imAccount, nco::hasIMContact::iri(), imAddress);
+
+        // Link the IMContact to this IMAddress
+        inserts << RDFStatement(imContact, nco::hasIMAddress::iri(), imAddress);
     }
 
     RDFVariable resourceContact = RDFVariable::fromContainer(resourceContactList);
@@ -479,15 +468,15 @@ void CDTpStorage::onContactUpdateResolverFinished(CDTpStorageContactResolver *re
 
         const RDFVariable imContact(contactIri(localId));
         const RDFVariable imAddress(contactImAddress(accountObjectPath, id));
-        const RDFVariable imAccount(QUrl(QString("telepathy:%1").arg(accountObjectPath)));
         const QDateTime datetime = QDateTime::currentDateTime();
 
         resourceContactList << imContact;
         resourceAddressList << imAddress;
+
         imContactPropertyList << nie::contentLastModified::iri();
         inserts << RDFStatement(imContact, nie::contentLastModified::iri(), LiteralValue(datetime));
-        const CDTpContact::Changes changes = resolver->contactChanges();
 
+        const CDTpContact::Changes changes = resolver->contactChanges();
         if (changes & CDTpContact::Alias) {
             qDebug() << "  alias changed";
             addContactAliasInfoToQuery(inserts,
