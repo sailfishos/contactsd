@@ -36,14 +36,14 @@ class CDTpContact : public QObject, public Tp::RefCounted
 
 public:
     enum Change {
-        Alias         = 0x1,
-        Presence      = 0x2,
-        Capabilities  = 0x4,
-        Avatar        = 0x8,
-        Authorization = 0x10,
-        Infomation    = 0x12,
-        Blocked       = 0x14,
-        All           = 0xFFFF
+        Alias         = (1 << 0),
+        Presence      = (1 << 1),
+        Capabilities  = (1 << 2),
+        Avatar        = (1 << 3),
+        Authorization = (1 << 4),
+        Infomation    = (1 << 5),
+        Blocked       = (1 << 6),
+        All           = (1 << 7) -1
     };
     Q_DECLARE_FLAGS(Changes, Change)
 

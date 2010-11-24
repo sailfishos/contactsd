@@ -40,11 +40,11 @@ class CDTpAccount : public QObject
 
 public:
     enum Change {
-        DisplayName = 0x1,
-        Nickname    = 0x2,
-        Presence    = 0x4,
-        Avatar      = 0x8,
-        All         = 0xFFFF
+        DisplayName = (1 << 0),
+        Nickname    = (1 << 1),
+        Presence    = (1 << 2),
+        Avatar      = (1 << 3),
+        All         = (1 << 4) -1
     };
     Q_DECLARE_FLAGS(Changes, Change)
 
