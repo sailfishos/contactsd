@@ -163,13 +163,22 @@ void CDTpStorage::syncAccountContacts(CDTpAccount *accountWrapper,
     Tp::AccountPtr account = accountWrapper->account();
     QString accountObjectPath = account->objectPath();
 
+    /* Don't add contacts that are blocked */
+    QList<CDTpContactPtr> realAdded;
+    Q_FOREACH (CDTpContactPtr contactWrapper, contactsAdded) {
+        Tp::ContactPtr contact = contactWrapper->contact();
+        if (!contact->isBlocked()) {
+            realAdded << contactWrapper;
+        }
+    }
+
     qDebug() << "Syncing account" << accountObjectPath <<
         "roster contacts to storage";
-    qDebug() << " " << contactsAdded.size() << "contacts added";
+    qDebug() << " " << realAdded.size() << "contacts added";
     qDebug() << " " << contactsRemoved.size() << "contacts removed";
 
     CDTpStorageContactResolver *addResolver =
-        new CDTpStorageContactResolver(accountWrapper, contactsAdded, this);
+        new CDTpStorageContactResolver(accountWrapper, realAdded, this);
     connect(addResolver,
             SIGNAL(finished(CDTpStorageContactResolver *)),
             SLOT(onContactAddResolverFinished(CDTpStorageContactResolver *)));
@@ -182,6 +191,20 @@ void CDTpStorage::syncAccountContact(CDTpAccount *accountWrapper,
 {
     Tp::AccountPtr account = accountWrapper->account();
     Tp::ContactPtr contact = contactWrapper->contact();
+
+    if (changes & CDTpContact::Blocked) {
+        qDebug() << "Contact Block Status changed";
+
+        if (contact->isBlocked()) {
+            removeContacts(accountWrapper, QList<CDTpContactPtr>() << contactWrapper);
+        } else {
+            syncAccountContacts(accountWrapper,
+                    QList<CDTpContactPtr>() << contactWrapper,
+                    QList<CDTpContactPtr>());
+        }
+
+        return;
+    }
 
     CDTpStorageContactResolver *updateResolver =
         new CDTpStorageContactResolver(accountWrapper,

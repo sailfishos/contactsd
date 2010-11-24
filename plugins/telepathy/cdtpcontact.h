@@ -41,7 +41,8 @@ public:
         Capabilities  = 0x4,
         Avatar        = 0x8,
         Authorization = 0x10,
-        Infomation    = 0x20,
+        Infomation    = 0x12,
+        Blocked       = 0x14,
         All           = 0xFFFF
     };
     Q_DECLARE_FLAGS(Changes, Change)
@@ -64,6 +65,7 @@ private Q_SLOTS:
     void onContactAvatarDataChanged();
     void onContactAuthorizationChanged();
     void onContactInfoChanged();
+    void onBlockStatusChanged();
 
 private:
     friend class CDTpAccount;

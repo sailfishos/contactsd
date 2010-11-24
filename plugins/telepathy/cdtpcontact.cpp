@@ -50,6 +50,9 @@ CDTpContact::CDTpContact(Tp::ContactPtr contact, CDTpAccount *accountWrapper)
     connect(contact.data(),
             SIGNAL(infoChanged(const Tp::ContactInfoFieldList &)),
             SLOT(onContactInfoChanged()));
+    connect(contact.data(),
+            SIGNAL(blockStatusChanged(bool)),
+            SLOT(onBlockStatusChanged()));
 }
 
 CDTpContact::~CDTpContact()
@@ -85,3 +88,9 @@ void CDTpContact::onContactInfoChanged()
 {
     Q_EMIT changed(CDTpContactPtr(this), Infomation);
 }
+
+void CDTpContact::onBlockStatusChanged()
+{
+    Q_EMIT changed(CDTpContactPtr(this), Blocked);
+}
+
