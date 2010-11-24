@@ -1,3 +1,11 @@
+contactsd (0.5.42-1) unstable; urgency=low
+
+    * Fixes: NB#205339 - Contact is still displayed in Contacts after selecting "Block" option from "Authorization request"
+    * Fixes: NB#196363 - Blocked Skype contacts are also imported
+    * Changes : Handle Blocked Contacts
+
+ -- Siraj Razick <siraj.razick@collabora.co.uk>  Wed, 24 Nov 2010 16:29:00 +0530
+
 contactsd (0.5.41-1) unstable; urgency=low
 
   * Fixes: NB#203354 - contactsd recommends account plugins
