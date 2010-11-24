@@ -710,7 +710,6 @@ void CDTpStorage::addContactInfoToQuery(RDFStatementList &inserts,
         CDTpContactPtr contactWrapper)
 {
     /* FIXME: This function adds new affiliations, but does not remove previous */
-    /* FIXME: Tp::Contact::info() is deprecated */
     Tp::ContactPtr contact = contactWrapper->contact();
     Tp::ContactInfoFieldList  listContactInfo = contact->infoFields().allFields();
 
