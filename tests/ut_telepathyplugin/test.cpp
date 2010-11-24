@@ -8,6 +8,8 @@
 #include <TelepathyQt4/Debug>
 #include <TelepathyQt4/DBus>
 #include <TelepathyQt4/PendingVoid>
+#include <TelepathyQt4/RefCounted>
+#include <TelepathyQt4/SharedPtr>
 
 using Tp::PendingOperation;
 using Tp::PendingVoid;
@@ -84,7 +86,7 @@ void Test::processDBusQueue(Tp::DBusProxy *proxy)
 {
     // Call method Ping on the D-Bus Peer interface
     PeerInterface peer(proxy);
-    PendingVoid *call = new PendingVoid(peer.Ping(), this);
+    PendingVoid *call = new PendingVoid(peer.Ping(), Tp::SharedPtr<Tp::RefCounted>());
 
     // Wait for the reply to the Ping call
     QVERIFY(connect(call,
