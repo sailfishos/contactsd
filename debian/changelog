@@ -1,3 +1,9 @@
+contactsd (0.5.42~2) UNRELEASED; urgency=low
+
+    *
+
+ -- Siraj Razick <siraj.razick@collabora.co.uk>  Wed, 24 Nov 2010 16:29:00 +0530
+
 contactsd (0.5.42-1) unstable; urgency=low
 
     * Fixes: NB#205339 - Contact is still displayed in Contacts after selecting "Block" option from "Authorization request"
