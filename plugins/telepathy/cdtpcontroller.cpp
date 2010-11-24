@@ -68,13 +68,9 @@ void CDTpController::onAccountManagerReady(Tp::PendingOperation *op)
     connect(mAccountSet.data(),
             SIGNAL(accountAdded(const Tp::AccountPtr &)),
             SLOT(onAccountAdded(const Tp::AccountPtr &)));
-    // FIXME Tp::AccountSet is deleting the account before emitting the signal
-    // connect(mAccountSet.data(),
-    //         SIGNAL(accountRemoved(const Tp::AccountPtr &)),
-    //         SLOT(onAccountRemoved(const Tp::AccountPtr &)));
-    connect(mAM.data(),
-            SIGNAL(accountRemoved(const QString &)),
-            SLOT(onAccountRemoved(const QString &)));
+    connect(mAccountSet.data(),
+            SIGNAL(accountRemoved(const Tp::AccountPtr &)),
+             SLOT(onAccountRemoved(const Tp::AccountPtr &)));
     Q_FOREACH (const Tp::AccountPtr &account, mAccountSet->accounts()) {
         insertAccount(account);
     }
@@ -87,19 +83,9 @@ void CDTpController::onAccountAdded(const Tp::AccountPtr &account)
     insertAccount(account);
 }
 
-// FIXME Tp::AccountSet is deleting the account before emitting the signal
-// void CDTpController::onAccountRemoved(const Tp::AccountPtr &account)
-// {
-//     removeAccount(account->objectPath());
-// }
-
-void CDTpController::onAccountRemoved(const QString &accountObjectPath)
+void CDTpController::onAccountRemoved(const Tp::AccountPtr &account)
 {
-    if (!mAccounts.contains(accountObjectPath)) {
-        return;
-    }
-
-    removeAccount(accountObjectPath);
+    removeAccount(account->objectPath());
 }
 
 void CDTpController::onAccountRosterChanged(CDTpAccount *accountWrapper,

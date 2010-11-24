@@ -33,22 +33,24 @@ CDTpContact::CDTpContact(Tp::ContactPtr contact, CDTpAccount *accountWrapper)
             SIGNAL(aliasChanged(const QString &)),
             SLOT(onContactAliasChanged()));
     connect(contact.data(),
-            SIGNAL(simplePresenceChanged(const QString &, uint, const QString &)),
+            SIGNAL(presenceChanged(const Tp::Presence &)),
             SLOT(onContactPresenceChanged()));
     connect(contact.data(),
-            SIGNAL(capabilitiesChanged(Tp::ContactCapabilities *)),
+            SIGNAL(capabilitiesChanged(const Tp::ContactCapabilities &)),
             SLOT(onContactCapabilitiesChanged()));
     connect(contact.data(),
             SIGNAL(avatarDataChanged(const Tp::AvatarData &)),
             SLOT(onContactAvatarDataChanged()));
     connect(contact.data(),
-            SIGNAL(subscriptionStateChanged(Tp::Contact::PresenceState)),
+            SIGNAL(subscriptionStateChanged(Tp::Contact::PresenceState,
+                    const Tp::Channel::GroupMemberChangeDetails &)),
             SLOT(onContactAuthorizationChanged()));
     connect(contact.data(),
-            SIGNAL(publishStateChanged(Tp::Contact::PresenceState)),
+            SIGNAL(publishStateChanged(Tp::Contact::PresenceState,
+                    const Tp::Channel::GroupMemberChangeDetails &)),
             SLOT(onContactAuthorizationChanged()));
     connect(contact.data(),
-            SIGNAL(infoChanged(const Tp::ContactInfoFieldList &)),
+            SIGNAL(infoFieldsChanged(const Tp::Contact::InfoFields &)),
             SLOT(onContactInfoChanged()));
     connect(contact.data(),
             SIGNAL(blockStatusChanged(bool)),

@@ -76,16 +76,16 @@ void CDTpAccount::onAccountReady(Tp::PendingOperation *op)
             SIGNAL(nicknameChanged(const QString &)),
             SLOT(onAccountNicknameChanged()));
     connect(mAccount.data(),
-            SIGNAL(currentPresenceChanged(const Tp::SimplePresence &)),
+            SIGNAL(currentPresenceChanged(const Tp::Presence &)),
             SLOT(onAccountCurrentPresenceChanged()));
     connect(mAccount.data(),
             SIGNAL(avatarChanged(const Tp::Avatar &)),
             SLOT(onAccountAvatarChanged()));
 
     connect(mAccount.data(),
-            SIGNAL(haveConnectionChanged(bool)),
-            SLOT(onAccountHaveConnectionChanged(bool)));
-    if (mAccount->haveConnection()) {
+            SIGNAL(connectionChanged(const Tp:ConnectionPtr &)),
+            SLOT(onAccountConnectionChanged(const Tp::ConnectionPtr &)));
+    if (mAccount->connection()) {
         introspectAccountConnection();
     }
 }
@@ -115,12 +115,12 @@ void CDTpAccount::onAccountAvatarChanged()
     Q_EMIT changed(this, Avatar);
 }
 
-void CDTpAccount::onAccountHaveConnectionChanged(bool haveConnection)
+void CDTpAccount::onAccountConnectionChanged(const Tp::ConnectionPtr &connection)
 {
     qDebug() << "Account" << mAccount->objectPath() << "connection changed";
 
     if (mRosterReady) {
-        // Account::haveConnectionChanged is emited every time the account
+        // Account::connectionChanged is emited every time the account
         // connection changes, so always clear contacts we have from the
         // old connection
         clearContacts();
@@ -132,7 +132,7 @@ void CDTpAccount::onAccountHaveConnectionChanged(bool haveConnection)
     }
 
     // if we have a new connection, introspect it
-    if (haveConnection) {
+    if (connection) {
         introspectAccountConnection();
     }
 }
@@ -149,16 +149,16 @@ void CDTpAccount::onAccountConnectionReady(Tp::PendingOperation *op)
 
     Tp::ConnectionPtr connection = mAccount->connection();
     connect(connection.data(),
-        SIGNAL(statusChanged(Tp::Connection::Status)),
-        SLOT(onAccountConnectionStatusChanged(Tp::Connection::Status)));
-    if (connection->status() == Tp::Connection::StatusConnected) {
+        SIGNAL(statusChanged(Tp::ConnectionStatus)),
+        SLOT(onAccountConnectionStatusChanged(Tp::ConnectionStatus)));
+    if (connection->status() == Tp::ConnectionStatusConnected) {
         introspectAccountConnectionRoster();
     }
 }
 
-void CDTpAccount::onAccountConnectionStatusChanged(Tp::Connection::Status status)
+void CDTpAccount::onAccountConnectionStatusChanged(Tp::ConnectionStatus status)
 {
-    if (status == Tp::Connection::StatusConnected) {
+    if (status == Tp::ConnectionStatusConnected) {
         introspectAccountConnectionRoster();
     }
 }
@@ -172,9 +172,9 @@ void CDTpAccount::onAccountConnectionRosterReady(Tp::PendingOperation *op)
     }
 
     Tp::ConnectionPtr connection = mAccount->connection();
-    Tp::ContactManager *contactManager = connection->contactManager();
-    connect(contactManager,
-            SIGNAL(allKnownContactsChanged(const Tp::Contacts &, const Tp::Contacts &)),
+    Tp::ContactManagerPtr contactManager = connection->contactManager();
+    connect(contactManager.data(),
+            SIGNAL(allKnownContactsChanged(const Tp::Contacts &, const Tp::Contacts &, const Tp::Channel::GroupMemberChangeDetails &details)),
             SLOT(onAccountContactsChanged(const Tp::Contacts &, const Tp::Contacts &)));
     upgradeContacts(contactManager->allKnownContacts());
 }
@@ -280,9 +280,9 @@ void CDTpAccount::upgradeContacts(const Tp::Contacts &contacts)
     qDebug() << "Upgrading account" << mAccount->objectPath() <<
         "roster contacts with desired features";
     Tp::ConnectionPtr connection = mAccount->connection();
-    Tp::ContactManager *contactManager = connection->contactManager();
+    Tp::ContactManagerPtr contactManager = connection->contactManager();
     Tp::PendingContacts *pc = contactManager->upgradeContacts(contacts.toList(),
-            QSet<Tp::Contact::Feature>() <<
+            Tp::Features() <<
                 Tp::Contact::FeatureAlias <<
                 Tp::Contact::FeatureAvatarToken <<
                 Tp::Contact::FeatureAvatarData <<

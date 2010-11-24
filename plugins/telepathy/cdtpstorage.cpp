@@ -19,6 +19,7 @@
 
 #include "cdtpstorage.h"
 
+#include <TelepathyQt4/AvatarData>
 #include <TelepathyQt4/ContactCapabilities>
 
 const QUrl CDTpStorage::defaultGraph = QUrl(
@@ -105,15 +106,15 @@ void CDTpStorage::syncAccount(CDTpAccount *accountWrapper,
     }
 
     if (changes & CDTpAccount::Presence) {
-        Tp::SimplePresence presence = account->currentPresence();
-        QUrl status = trackerStatusFromTpPresenceStatus(presence.status);
+        Tp::Presence presence = account->currentPresence();
+        QUrl status = trackerStatusFromTpPresenceStatus(presence.status());
 
         up.addDeletion(imAddress, nco::imPresence::iri(), RDFVariable(), defaultGraph);
         up.addDeletion(imAddress, nco::imStatusMessage::iri(), RDFVariable(), defaultGraph);
         up.addDeletion(imAddress, nco::presenceLastModified::iri(), RDFVariable(), defaultGraph);
 
         inserts << RDFStatement(imAddress, nco::imPresence::iri(), RDFVariable(status))
-                << RDFStatement(imAddress, nco::imStatusMessage::iri(), LiteralValue(presence.statusMessage))
+                << RDFStatement(imAddress, nco::imStatusMessage::iri(), LiteralValue(presence.statusMessage()))
                 << RDFStatement(imAddress, nco::presenceLastModified::iri(), LiteralValue(QDateTime::currentDateTime()));
     }
 
@@ -128,8 +129,8 @@ void CDTpStorage::syncAccount(CDTpAccount *accountWrapper,
     RDFStatementList imAccountInserts;
     RDFVariable imAccount(QUrl(QString("telepathy:%1").arg(accountObjectPath)));
     imAccountInserts << RDFStatement(imAccount, rdf::type::iri(), nco::IMAccount::iri())
-                     << RDFStatement(imAccount, nco::imAccountType::iri(), LiteralValue(account->protocol()))
-                     << RDFStatement(imAccount, nco::imProtocol::iri(), LiteralValue(account->protocol()))
+                     << RDFStatement(imAccount, nco::imAccountType::iri(), LiteralValue(account->protocolName()))
+                     << RDFStatement(imAccount, nco::imProtocol::iri(), LiteralValue(account->protocolName()))
                      << RDFStatement(imAccount, nco::imAccountAddress::iri(), imAddress)
                      << RDFStatement(imAccount, nco::hasIMContact::iri(), imAddress);
 
@@ -608,9 +609,9 @@ void CDTpStorage::addContactPresenceInfoToQuery(RDFStatementList &inserts,
         nco::presenceLastModified::iri();
 
     inserts << RDFStatement(imAddress, nco::imStatusMessage::iri(),
-                LiteralValue(contact->presenceMessage())) <<
+                LiteralValue(contact->presence().statusMessage())) <<
             RDFStatement(imAddress, nco::imPresence::iri(),
-                trackerStatusFromTpPresenceType(contact->presenceType())) <<
+                trackerStatusFromTpPresenceType(contact->presence().type())) <<
             RDFStatement(imAddress, nco::presenceLastModified::iri(),
                 LiteralValue(QDateTime::currentDateTime()));
 }
@@ -624,17 +625,17 @@ void CDTpStorage::addContactCapabilitiesInfoToQuery(RDFStatementList &inserts,
 
     properties << nco::imCapability::iri();
 
-    if (contact->capabilities()->supportsTextChats()) {
+    if (contact->capabilities().textChats()) {
         inserts << RDFStatement(imAddress, nco::imCapability::iri(),
                     nco::im_capability_text_chat::iri());
     }
 
-    if (contact->capabilities()->supportsAudioCalls()) {
+    if (contact->capabilities().streamedMediaAudioCalls()) {
         inserts << RDFStatement(imAddress, nco::imCapability::iri(),
                     nco::im_capability_audio_calls::iri());
     }
 
-    if (contact->capabilities()->supportsVideoCalls()) {
+    if (contact->capabilities().streamedMediaVideoCalls()) {
         inserts << RDFStatement(imAddress, nco::imCapability::iri(),
                     nco::im_capability_video_calls::iri());
     }
@@ -711,7 +712,7 @@ void CDTpStorage::addContactInfoToQuery(RDFStatementList &inserts,
     /* FIXME: This function adds new affiliations, but does not remove previous */
     /* FIXME: Tp::Contact::info() is deprecated */
     Tp::ContactPtr contact = contactWrapper->contact();
-    Tp::ContactInfoFieldList  listContactInfo = contact->info();
+    Tp::ContactInfoFieldList  listContactInfo = contact->infoFields().allFields();
 
     if (listContactInfo.count() == 0) {
         qWarning() << "No contact info present";

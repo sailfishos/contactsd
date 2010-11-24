@@ -72,8 +72,8 @@ private Q_SLOTS:
     void onAccountNicknameChanged();
     void onAccountCurrentPresenceChanged();
     void onAccountAvatarChanged();
-    void onAccountHaveConnectionChanged(bool haveConnection);
-    void onAccountConnectionStatusChanged(Tp::Connection::Status status);
+    void onAccountConnectionChanged(const Tp::ConnectionPtr &connection);
+    void onAccountConnectionStatusChanged(Tp::ConnectionStatus status);
     void onAccountConnectionReady(Tp::PendingOperation *op);
     void onAccountConnectionRosterReady(Tp::PendingOperation *op);
     void onAccountContactsUpgraded(Tp::PendingOperation *op);
