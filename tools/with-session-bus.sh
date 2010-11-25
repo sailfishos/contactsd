@@ -10,6 +10,12 @@
 # are permitted in any medium without royalty provided the copyright
 # notice and this notice are preserved.
 
+tmpdir=$(mktemp -d)
+
+export XDG_DATA_HOME=$tmpdir/.local
+export XDG_CACHE_HOME=$tmpdir/.cache
+export XDG_CONFIG_HOME=$tmpdir/.config
+
 set -e
 
 me=with-session-bus
