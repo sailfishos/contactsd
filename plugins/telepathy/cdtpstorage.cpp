@@ -387,6 +387,7 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
     RDFUpdate updateQuery;
     RDFStatementList inserts;
     RDFStatementList imAccountInserts;
+    QList<RDFUpdate> updateQueryQueue;
 
     Q_FOREACH (CDTpContactPtr contactWrapper, resolver->remoteContacts()) {
         Tp::ContactPtr contact = contactWrapper->contact();
@@ -436,8 +437,14 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
                 imAddress, contactWrapper);
         addContactAuthorizationInfoToQuery(inserts, imAddressPropertyList,
                 imAddress, contactWrapper);
-        addContactInfoToQuery(inserts, imContactPropertyList,
-                imContact, contactWrapper);
+
+        /* ContactInfo insertions are made into per-contact graph, so we can't
+         * use 'inserts' here. We also have to make sure those insertions are
+         * made *after* imContact insertions, so we queue them into a list,
+         * and we'll append them later. */
+        RDFUpdate query;
+        addContactInfoToQuery(query, imContact, contactWrapper);
+        updateQueryQueue << query;
 
         // Link the IMAccount to this IMAddress
         const RDFVariable imAccount(QUrl(QString("telepathy:%1").arg(accountObjectPath)));
@@ -457,6 +464,10 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
 
     updateQuery.addInsertion(inserts, defaultGraph);
     updateQuery.addInsertion(imAccountInserts, privateGraph);
+    Q_FOREACH (const RDFUpdate &query, updateQueryQueue) {
+        updateQuery.appendUpdate(query);
+    }
+
     ::tracker()->executeQuery(updateQuery);
     resolver->deleteLater();
 }
@@ -520,9 +531,7 @@ void CDTpStorage::onContactUpdateResolverFinished(CDTpStorageContactResolver *re
         }
         if (changes & CDTpContact::Infomation) {
             qDebug() << "  vcard information changed";
-            addContactInfoToQuery(inserts,
-                    imContactPropertyList,
-                    imContact, contactWrapper);
+            addContactInfoToQuery(updateQuery, imContact, contactWrapper);
         }
 
         Q_FOREACH (RDFVariable property, imContactPropertyList) {
@@ -690,12 +699,19 @@ void CDTpStorage::addContactAuthorizationInfoToQuery(RDFStatementList &inserts,
         RDFVariable(authStatus(contact->publishState())));
 }
 
-void CDTpStorage::addContactInfoToQuery(RDFStatementList &inserts,
-        RDFVariableList &imContactPropertyList,
+void CDTpStorage::addContactInfoToQuery(RDFUpdate &query,
         const RDFVariable &imContact,
         CDTpContactPtr contactWrapper)
 {
-    /* FIXME: This function adds new affiliations, but does not remove previous */
+    /* Use the IMAddress URI as Graph URI for all its ContactInfo. This makes
+     * easy to know which im contact those entities/properties belongs to */
+    const QUrl graph = contactImAddress(contactWrapper);
+
+    /* Drop everything from this graph */
+    query.addDeletion(RDFVariable(), rdf::type::iri(), rdfs::Resource::iri(), graph);
+    query.addDeletion(imContact, nco::hasAffiliation::iri(), RDFVariable(), graph);
+
+    /* FIXME: Tp::Contact::info() is deprecated */
     Tp::ContactPtr contact = contactWrapper->contact();
     Tp::ContactInfoFieldList  listContactInfo = contact->infoFields().allFields();
 
@@ -704,16 +720,18 @@ void CDTpStorage::addContactInfoToQuery(RDFStatementList &inserts,
         return;
     }
 
-    Q_FOREACH (Tp::ContactInfoField field, listContactInfo) {
+    RDFStatementList inserts;
+
+    Q_FOREACH (const Tp::ContactInfoField &field, listContactInfo) {
         if (field.fieldValue.count() == 0) {
             continue;
         }
         if (!field.fieldName.compare("tel")) {
-            addContactVoicePhoneNumberToQuery(inserts, imContactPropertyList,
+            addContactVoicePhoneNumberToQuery(inserts,
                     createAffiliation(inserts, imContact, field),
                     field.fieldValue.at(0));
         } else if (!field.fieldName.compare("adr")) {
-            addContactAddressToQuery(inserts, imContactPropertyList,
+            addContactAddressToQuery(inserts,
                     createAffiliation(inserts, imContact, field),
                     field.fieldValue.at(0),
                     field.fieldValue.at(1),
@@ -724,11 +742,13 @@ void CDTpStorage::addContactInfoToQuery(RDFStatementList &inserts,
                     field.fieldValue.at(6));
         }
     }
+
+    query.addInsertion(inserts, graph);
 }
 
 RDFVariable CDTpStorage::createAffiliation(RDFStatementList &inserts,
         const RDFVariable &imContact,
-        Tp::ContactInfoField &field)
+        const Tp::ContactInfoField &field)
 {
     static uint counter = 0;
     RDFVariable imAffiliation = RDFVariable(QString("affiliation%1").arg(++counter));
@@ -746,12 +766,9 @@ RDFVariable CDTpStorage::createAffiliation(RDFStatementList &inserts,
 }
 
 void CDTpStorage::addContactVoicePhoneNumberToQuery(RDFStatementList &inserts,
-        RDFVariableList &properties,
         const RDFVariable &imAffiliation,
         const QString &phoneNumber)
 {
-    Q_UNUSED(properties);
-
     RDFVariable voicePhoneNumber = QUrl(QString("tel:%1").arg(phoneNumber));
     inserts << RDFStatement(voicePhoneNumber, rdf::type::iri(), nco::VoicePhoneNumber::iri())
             << RDFStatement(voicePhoneNumber, maemo::localPhoneNumber::iri(), LiteralValue(phoneNumber))
@@ -761,7 +778,6 @@ void CDTpStorage::addContactVoicePhoneNumberToQuery(RDFStatementList &inserts,
 }
 
 void CDTpStorage::addContactAddressToQuery(RDFStatementList &inserts,
-        RDFVariableList &properties,
         const RDFVariable &imAffiliation,
         const QString &pobox,
         const QString &extendedAddress,
@@ -771,8 +787,6 @@ void CDTpStorage::addContactAddressToQuery(RDFStatementList &inserts,
         const QString &postalcode,
         const QString &country)
 {
-    Q_UNUSED(properties);
-
     static uint counter = 0;
     RDFVariable imPostalAddress = RDFVariable(QString("address%1").arg(++counter));
     inserts << RDFStatement(imPostalAddress, rdf::type::iri(), nco::PostalAddress::iri())
