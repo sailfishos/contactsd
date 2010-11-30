@@ -52,7 +52,8 @@ public:
         Presence      = (1 << 1),
         Avatar        = (1 << 2),
         Authorization = (1 << 3),
-        All           = (1 << 4) - 1
+        Info          = (1 << 4),
+        All           = (1 << 5) - 1
     };
 
     TestExpectation();
@@ -69,6 +70,7 @@ public:
     QByteArray avatarData;
     QString subscriptionState;
     QString publishState;
+    QList<QContactDetail> details;
 };
 
 /**
@@ -92,6 +94,7 @@ private Q_SLOTS:
     void testBasicUpdates();
     void testSelfContact();
     void testAuthorization();
+    void testContactInfo();
     void testRemoveContacts();
     void testSetOffline();
 
@@ -108,6 +111,8 @@ private:
 
     QList<TestExpectation> mExpectations;
     void verify(TestExpectation::Event, const QList<QContactLocalId>&);
+
+    QList<QContactDetail> createContactInfo(GPtrArray **infoPtrArray);
 };
 
 #endif

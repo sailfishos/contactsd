@@ -81,7 +81,7 @@ void TestExpectation::verify(QContact &contact) const
     if (flags & Avatar) {
         QString avatarFileName = contact.detail<QContactAvatar>().imageUrl().path();
         if (avatarData.isEmpty()) {
-            QVERIFY(avatarFileName.isEmpty());
+            QVERIFY2(avatarFileName.isEmpty(), "Expected empty avatar filename");
         } else {
             QFile file(avatarFileName);
             file.open(QIODevice::ReadOnly);
@@ -94,6 +94,30 @@ void TestExpectation::verify(QContact &contact) const
         QContactPresence presence = contact.detail<QContactPresence>();
         QCOMPARE(presence.value("AuthStatusFrom"), subscriptionState);
         QCOMPARE(presence.value("AuthStatusTo"), publishState);
+    }
+
+    if (flags & Info) {
+        QList<QContactDetail> contactDetails;
+
+        /* Keep only the details we care about */
+        Q_FOREACH (const QContactDetail &detail, contact.details()) {
+            if (detail.definitionName() == "PhoneNumber") {
+                contactDetails << detail;
+            }
+        }
+
+        Q_FOREACH (const QContactDetail &detail, details) {
+            bool matched = false;
+            for (int i = 0; i < contactDetails.size(); i++) {
+                if (detail == contactDetails[i]) {
+                    matched = true;
+                    contactDetails.removeAt(i);
+                    break;
+                }
+            }
+            QVERIFY2(matched, "Expected detail not found");
+        }
+        QVERIFY2(contactDetails.isEmpty(), "Detail not expected");
     }
 }
 
@@ -280,6 +304,73 @@ void TestTelepathyPlugin::testAuthorization()
     QCOMPARE(mLoop->exec(), 0);
 }
 
+QList<QContactDetail> TestTelepathyPlugin::createContactInfo(GPtrArray **infoPtrArray)
+{
+    QList<QContactDetail> ret;
+    *infoPtrArray = g_ptr_array_new_with_free_func((GDestroyNotify) g_value_array_free);
+
+    gchar *randNumber = g_strdup_printf("%d", qrand());
+    const gchar *fieldValues[] = { randNumber, NULL };
+
+    g_ptr_array_add (*infoPtrArray, tp_value_array_build(3,
+        G_TYPE_STRING, "tel",
+        G_TYPE_STRV, NULL,
+        G_TYPE_STRV, fieldValues,
+        G_TYPE_INVALID));
+
+    QContactPhoneNumber phoneNumber;
+    phoneNumber.setContexts("Other");
+    phoneNumber.setDetailUri(QString("tel:%1").arg(randNumber));
+    phoneNumber.setNumber(QString("%1").arg(randNumber));
+    phoneNumber.setSubTypes("Voice");
+    ret << phoneNumber;
+
+    g_free(randNumber);
+
+    return ret;
+}
+
+void TestTelepathyPlugin::testContactInfo()
+{
+    /* Create a contact with no ContactInfo */
+    TpHandle handle = ensureContact("skype");
+    test_contact_list_manager_add_to_list(mListManager, NULL,
+        TEST_CONTACT_LIST_SUBSCRIBE, handle, "wait", NULL);
+
+    TestExpectation e;
+    e.event = TestExpectation::Added;
+    e.flags = TestExpectation::None;
+    e.accountUri = QString("skype");
+    mExpectations.append(e);
+
+    /* Wait for the scenario to happen */
+    QCOMPARE(mLoop->exec(), 0);
+
+    GPtrArray *infoPtrArray;
+    e.event = TestExpectation::Changed;
+    e.flags = TestExpectation::Info;
+
+    /* Set some ContactInfo on the contact */
+    e.details = createContactInfo(&infoPtrArray);
+    tp_tests_contacts_connection_change_contact_info(
+        TP_TESTS_CONTACTS_CONNECTION(mConnService), handle, infoPtrArray);
+    mExpectations.append(e);
+    g_ptr_array_unref(infoPtrArray);
+
+    /* Wait for the scenario to happen */
+    QCOMPARE(mLoop->exec(), 0);
+
+    /* Change the ContactInfo */
+    e.details = createContactInfo(&infoPtrArray);
+    tp_tests_contacts_connection_change_contact_info(
+        TP_TESTS_CONTACTS_CONNECTION(mConnService), handle, infoPtrArray);
+    mExpectations.append(e);
+    g_ptr_array_unref(infoPtrArray);
+
+    /* Wait for the scenario to happen */
+    QCOMPARE(mLoop->exec(), 0);
+}
+
 void TestTelepathyPlugin::testRemoveContacts()
 {
     TestExpectation e;
@@ -360,7 +451,7 @@ void TestTelepathyPlugin::verify(TestExpectation::Event event,
         if (mExpectations.isEmpty()) {
             mLoop->exit(0);
         }
-        QVERIFY(!mExpectations.isEmpty());
+        QVERIFY2(!mExpectations.isEmpty(), "Was not expecting more events");
 
         const TestExpectation &e = mExpectations.takeFirst();
 
