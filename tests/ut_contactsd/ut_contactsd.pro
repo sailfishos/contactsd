@@ -9,7 +9,8 @@ QMAKE_CXXFLAGS += -c --coverage -ftest-coverage -fprofile-arcs
 LIBS += -lgcov
 }
 
-TARGET = test-contactsd
+TARGET = ut_contactsd
+target.path = /usr/bin/
 
 INCLUDEPATH += $$TOP_SOURCEDIR/src
 
@@ -36,3 +37,5 @@ gcov.commands = for d in $$SOURCES; do (gcov -a -c -o $(OBJECTS_DIR) \$$$$d >> g
 gcov.depends = $(TARGET)
 QMAKE_EXTRA_TARGETS += gcov
 }
+
+INSTALLS += target

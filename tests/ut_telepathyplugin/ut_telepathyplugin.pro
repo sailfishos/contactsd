@@ -18,7 +18,8 @@ QMAKE_CXXFLAGS += -c -g --coverage -ftest-coverage -fprofile-arcs
 LIBS += -lgcov
 }
 
-TARGET = test-telepathyplugin
+TARGET = ut_telepathyplugin
+target.path = /usr/bin/
 
 HEADERS += test-telepathy-plugin.h \
     test.h
@@ -66,3 +67,4 @@ gcov.depends = $(TARGET)
 QMAKE_EXTRA_TARGETS += gcov
 }
 
+INSTALLS += target
