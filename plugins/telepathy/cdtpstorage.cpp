@@ -387,10 +387,6 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
     RDFUpdate updateQuery;
     RDFStatementList inserts;
     RDFStatementList imAccountInserts;
-    RDFVariableList imAddressPropertyList;
-    RDFVariableList imContactPropertyList;
-    RDFVariableList resourceAddressList;
-    RDFVariableList resourceContactList;
 
     Q_FOREACH (CDTpContactPtr contactWrapper, resolver->remoteContacts()) {
         Tp::ContactPtr contact = contactWrapper->contact();
@@ -405,12 +401,11 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
             localId = contactLocalId(accountObjectPath, id);
         }
 
+        RDFVariableList imAddressPropertyList;
+        RDFVariableList imContactPropertyList;
         const RDFVariable imContact(contactIri(localId));
         const RDFVariable imAddress(contactImAddress(accountObjectPath, id));
         const QDateTime datetime = QDateTime::currentDateTime();
-
-        resourceContactList << imContact;
-        resourceAddressList << imAddress;
 
         /* Insert the imContact only if we didn't found one. UI could already
          * have created the imContact before adding the im contact in telepathy
@@ -450,17 +445,14 @@ void CDTpStorage::onContactAddResolverFinished(CDTpStorageContactResolver *resol
 
         // Link the IMContact to this IMAddress
         inserts << RDFStatement(imContact, nco::hasIMAddress::iri(), imAddress);
-    }
 
-    RDFVariable resourceContact = RDFVariable::fromContainer(resourceContactList);
-    RDFVariable resourceAddress = RDFVariable::fromContainer(resourceAddressList);
+        Q_FOREACH (RDFVariable property, imContactPropertyList) {
+            updateQuery.addDeletion(imContact, property, RDFVariable(), defaultGraph);
+        }
 
-    Q_FOREACH (RDFVariable property, imContactPropertyList) {
-        updateQuery.addDeletion(resourceContact, property, RDFVariable(), defaultGraph);
-    }
-
-    Q_FOREACH (RDFVariable property, imAddressPropertyList) {
-        updateQuery.addDeletion(resourceAddress, property, RDFVariable(), defaultGraph);
+        Q_FOREACH (RDFVariable property, imAddressPropertyList) {
+            updateQuery.addDeletion(imAddress, property, RDFVariable(), defaultGraph);
+        }
     }
 
     updateQuery.addInsertion(inserts, defaultGraph);
@@ -473,10 +465,6 @@ void CDTpStorage::onContactUpdateResolverFinished(CDTpStorageContactResolver *re
 {
     RDFUpdate updateQuery;
     RDFStatementList inserts;
-    RDFVariableList imAddressPropertyList;
-    RDFVariableList imContactPropertyList;
-    RDFVariableList resourceAddressList;
-    RDFVariableList resourceContactList;
 
     Q_FOREACH (CDTpContactPtr contactWrapper, resolver->remoteContacts()) {
         if (contactWrapper->isRemoved()) {
@@ -495,12 +483,11 @@ void CDTpStorage::onContactUpdateResolverFinished(CDTpStorageContactResolver *re
         }
         qDebug() << Q_FUNC_INFO << "Updating " << localId;
 
+        RDFVariableList imAddressPropertyList;
+        RDFVariableList imContactPropertyList;
         const RDFVariable imContact(contactIri(localId));
         const RDFVariable imAddress(contactImAddress(accountObjectPath, id));
         const QDateTime datetime = QDateTime::currentDateTime();
-
-        resourceContactList << imContact;
-        resourceAddressList << imAddress;
 
         imContactPropertyList << nie::contentLastModified::iri();
         inserts << RDFStatement(imContact, nie::contentLastModified::iri(), LiteralValue(datetime));
@@ -537,16 +524,15 @@ void CDTpStorage::onContactUpdateResolverFinished(CDTpStorageContactResolver *re
                     imContactPropertyList,
                     imContact, contactWrapper);
         }
-    }
 
-    RDFVariable resourceContact = RDFVariable::fromContainer(resourceContactList);
-    RDFVariable resourceAddress = RDFVariable::fromContainer(resourceAddressList);
-    Q_FOREACH (RDFVariable property, imContactPropertyList) {
-        updateQuery.addDeletion(resourceContact, property, RDFVariable(), defaultGraph);
-    }
+        Q_FOREACH (RDFVariable property, imContactPropertyList) {
+            updateQuery.addDeletion(imContact, property, RDFVariable(), defaultGraph);
+        }
 
-    Q_FOREACH (RDFVariable property, imAddressPropertyList) {
-        updateQuery.addDeletion(resourceAddress, property, RDFVariable(), defaultGraph); }
+        Q_FOREACH (RDFVariable property, imAddressPropertyList) {
+            updateQuery.addDeletion(imAddress, property, RDFVariable(), defaultGraph);
+        }
+    }
 
     updateQuery.addInsertion(inserts, defaultGraph);
     ::tracker()->executeQuery(updateQuery);
