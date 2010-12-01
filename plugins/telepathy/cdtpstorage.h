@@ -86,8 +86,8 @@ private Q_SLOTS:
     void onAccountOfflineSelectQueryFinished(CDTpStorageSelectQuery *query);
     void onAccountDeleteSelectQueryFinished(CDTpStorageSelectQuery *query);
     void onContactDeleteSelectQueryFinished(CDTpStorageSelectQuery *query);
-    void onContactAddResolverFinished(CDTpStorageContactResolver *resolver);
     void onContactUpdateResolverFinished(CDTpStorageContactResolver *resolver);
+    void onQueueTimerTimeout();
 
 private:
     void removeContacts(CDTpStorageSelectQuery *query, bool deleteAccount);
@@ -140,6 +140,9 @@ private:
     RDFVariable createAffiliation(RDFStatementList &inserts,
             const RDFVariable &imContact,
             const Tp::ContactInfoField &field);
+
+    QHash<CDTpContactPtr, CDTpContact::Changes> mUpdateQueue;
+    QTimer mQueueTimer;
 };
 
 class CDTpStorageSelectQuery : public QObject
@@ -167,16 +170,14 @@ class CDTpStorageContactResolver : public QObject
     Q_OBJECT
 
 public:
-    CDTpStorageContactResolver(CDTpAccount *accountWrapper,
-            const QList<CDTpContactPtr> &contactsToResolve,
-             QObject *parent = 0);
+    CDTpStorageContactResolver(
+            const QHash<CDTpContactPtr, CDTpContact::Changes> &contactsToResolve,
+            QObject *parent = 0);
     ~CDTpStorageContactResolver();
 
-    QList<CDTpContactPtr> resolvedRemoteContacts() const;
     QList<CDTpContactPtr> remoteContacts() const;
-    QString storageIdForContact(CDTpContactPtr contactWrapper) const;
-    void setContactChanges(CDTpContact::Changes changes);
-    CDTpContact::Changes contactChanges() const;
+    QString storageIdForContact(const CDTpContactPtr &contactWrapper) const;
+    CDTpContact::Changes contactChanges(const CDTpContactPtr &contactWrapper) const;
 
 Q_SIGNALS:
    void finished(CDTpStorageContactResolver *resolveWrapper);
@@ -185,11 +186,8 @@ private Q_SLOTS:
     void onStorageResolveSelectQueryFinished(CDTpStorageSelectQuery *queryWrapper);
 
 private:
-    void requestContactResolve(CDTpAccount *accountWrapper,
-            const QList<CDTpContactPtr> &contactsToResolve);
     QHash<CDTpContactPtr, QString> mResolvedContacts;
-    QList<CDTpContactPtr> mContactsNotResolved;
-    CDTpContact::Changes mContactChanges;
+    QHash<CDTpContactPtr, CDTpContact::Changes> mContacts;
 };
 
 #endif // CDTPSTORAGE_H
