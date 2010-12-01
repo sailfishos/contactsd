@@ -27,10 +27,11 @@ tests/dbus-1/session.conf
 *~
 
 tests/runtest.sh
+tests/tests.xml
 tests/dbus-1/session.conf
 tests/dbus-1/services/org.freedesktop.Telepathy.AccountManager.service
-tests/contactsd/test-contactsd
-tests/telepathyplugin/test-telepathyplugin
+tests/ut_contactsd/ut_contactsd
+tests/ut_telepathyplugin/ut_telepathyplugin
 tests/account-manager/fake-account-manager
 
 src/contactsimportprogressadaptor.cpp
