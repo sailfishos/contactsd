@@ -32,3 +32,14 @@ Architecture: any
 Section: libdevel
 Recommends: contactsd (=${binary:Version})
 Description: Development headers for Contacts daemon plugins.
+
+Package: contactsd-tests
+Section: libdevel
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, testrunner-lite, contactsd, ci-testing
+XB-Maemo-CI-Packages: libqttracker1pre6, tracker, libqtsparql-tracker
+XB-Maemo-CI-Stage: fast, staging, acceptance
+Description: Contactsd plugin (unit tests)
+ Contacts daemon - Observing telepathy and storing to tracker.
+ .
+ This package contains unit tests for contactsd.
