@@ -53,7 +53,7 @@ CDTpContact::CDTpContact(Tp::ContactPtr contact, CDTpAccount *accountWrapper)
             SIGNAL(infoFieldsChanged(const Tp::Contact::InfoFields &)),
             SLOT(onContactInfoChanged()));
     connect(contact.data(),
-            SIGNAL(blockStatusChanged(bool)),
+            SIGNAL(blockStatusChanged(bool, const Tp::Channel::GroupMemberChangeDetails &)),
             SLOT(onBlockStatusChanged()));
 }
 

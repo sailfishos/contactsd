@@ -163,7 +163,8 @@ list_constructed (GObject *object)
        * always allowed, so there's no flag.)
        */
       tp_group_mixin_change_flags (object,
-          TP_CHANNEL_GROUP_FLAG_CAN_REMOVE, 0);
+          TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
+          TP_CHANNEL_GROUP_FLAG_MEMBERS_CHANGED_DETAILED, 0);
       break;
     case TEST_CONTACT_LIST_STORED:
       /* We can add people to our roster (not that that's very useful without
@@ -172,7 +173,8 @@ list_constructed (GObject *object)
        * user-defined groups).
        */
       tp_group_mixin_change_flags (object,
-          TP_CHANNEL_GROUP_FLAG_CAN_ADD | TP_CHANNEL_GROUP_FLAG_CAN_REMOVE, 0);
+          TP_CHANNEL_GROUP_FLAG_CAN_ADD | TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
+          TP_CHANNEL_GROUP_FLAG_MEMBERS_CHANGED_DETAILED, 0);
       break;
     case TEST_CONTACT_LIST_SUBSCRIBE:
       /* We can ask people to show us their presence, attaching a message.
@@ -181,8 +183,8 @@ list_constructed (GObject *object)
        */
       tp_group_mixin_change_flags (object,
           TP_CHANNEL_GROUP_FLAG_CAN_ADD | TP_CHANNEL_GROUP_FLAG_MESSAGE_ADD |
-          TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
-          TP_CHANNEL_GROUP_FLAG_CAN_RESCIND,
+          TP_CHANNEL_GROUP_FLAG_CAN_REMOVE | TP_CHANNEL_GROUP_FLAG_CAN_RESCIND|
+          TP_CHANNEL_GROUP_FLAG_MEMBERS_CHANGED_DETAILED,
           0);
       break;
     default:

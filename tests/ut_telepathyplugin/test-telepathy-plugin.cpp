@@ -282,11 +282,9 @@ void TestTelepathyPlugin::testAuthorization()
 
 void TestTelepathyPlugin::testRemoveContacts()
 {
-    /* FIXME: contacts should be removed, but atm it only remove the
-     * hasIMAddress field. */
     TestExpectation e;
     e.flags = TestExpectation::None;
-    e.event = TestExpectation::Changed;
+    e.event = TestExpectation::Removed;
     e.nOnlineAccounts = 0;
 
     for (QHash<TpHandle, QString>::const_iterator i = mContacts.constBegin();

@@ -83,7 +83,7 @@ void CDTpAccount::onAccountReady(Tp::PendingOperation *op)
             SLOT(onAccountAvatarChanged()));
 
     connect(mAccount.data(),
-            SIGNAL(connectionChanged(const Tp:ConnectionPtr &)),
+            SIGNAL(connectionChanged(const Tp::ConnectionPtr &)),
             SLOT(onAccountConnectionChanged(const Tp::ConnectionPtr &)));
     if (mAccount->connection()) {
         introspectAccountConnection();
@@ -174,7 +174,7 @@ void CDTpAccount::onAccountConnectionRosterReady(Tp::PendingOperation *op)
     Tp::ConnectionPtr connection = mAccount->connection();
     Tp::ContactManagerPtr contactManager = connection->contactManager();
     connect(contactManager.data(),
-            SIGNAL(allKnownContactsChanged(const Tp::Contacts &, const Tp::Contacts &, const Tp::Channel::GroupMemberChangeDetails &details)),
+            SIGNAL(allKnownContactsChanged(const Tp::Contacts &, const Tp::Contacts &, const Tp::Channel::GroupMemberChangeDetails &)),
             SLOT(onAccountContactsChanged(const Tp::Contacts &, const Tp::Contacts &)));
     upgradeContacts(contactManager->allKnownContacts());
 }
