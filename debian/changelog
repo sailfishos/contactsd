@@ -1,8 +1,11 @@
-contactsd (0.5.42~2) UNRELEASED; urgency=low
+contactsd (0.5.43-1) unstable; urgency=low
 
-    *
+    * Fixes: NB#206404 Saving a contact using qtcontacts-tracker causes nco:IMAccount to be removed 
+    * Changes: CITA support 
+    * Changes : New contactsd-tests package for CITA
+    * Changes: Adds support for TelepathyQt4 0.5
 
- -- Siraj Razick <siraj.razick@collabora.co.uk>  Wed, 24 Nov 2010 16:29:00 +0530
+ -- Siraj Razick <siraj.razick@collabora.co.uk>  Wed, 01 Dec 2010 20:29:00 +0530
 
 contactsd (0.5.42-1) unstable; urgency=low
 
