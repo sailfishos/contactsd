@@ -78,6 +78,13 @@ void CDTpStorage::onAccountPurgeSelectQueryFinished(CDTpStorageSelectQuery *quer
 void CDTpStorage::syncAccount(CDTpAccount *accountWrapper)
 {
     syncAccount(accountWrapper, CDTpAccount::All);
+
+    /* If contactsd leaves while account is still online, and get restarted
+     * when account is offline then contacts in tracker still have presence.
+     * This happens when rebooting the device. */
+    if (!accountWrapper->account()->connection()) {
+        setAccountContactsOffline(accountWrapper);
+    }
 }
 
 // TODO: Improve syncAccount so that it only updates the data that really
