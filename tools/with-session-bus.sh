@@ -15,6 +15,7 @@ tmpdir=$(mktemp -d)
 export XDG_DATA_HOME=$tmpdir/.local
 export XDG_CACHE_HOME=$tmpdir/.cache
 export XDG_CONFIG_HOME=$tmpdir/.config
+trap "rm -rf $tmpdir; exit" INT TERM EXIT
 
 set -e
 
