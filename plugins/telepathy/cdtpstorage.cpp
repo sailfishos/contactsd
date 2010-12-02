@@ -899,6 +899,8 @@ void CDTpStorageSelectQuery::onModelUpdated()
 
 CDTpStorageContactResolver::~CDTpStorageContactResolver()
 {
+    mContacts.clear();
+    mResolvedContacts.clear();
 }
 
 QList<CDTpContactPtr> CDTpStorageContactResolver::remoteContacts() const
