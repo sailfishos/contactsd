@@ -10,14 +10,14 @@
 # are permitted in any medium without royalty provided the copyright
 # notice and this notice are preserved.
 
+set -e
+
 tmpdir=$(mktemp -d)
+trap "rm -rf $tmpdir; exit" INT TERM EXIT
 
 export XDG_DATA_HOME=$tmpdir/.local
 export XDG_CACHE_HOME=$tmpdir/.cache
 export XDG_CONFIG_HOME=$tmpdir/.config
-trap "rm -rf $tmpdir; exit" INT TERM EXIT
-
-set -e
 
 me=with-session-bus
 
