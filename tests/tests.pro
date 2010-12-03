@@ -1,3 +1,5 @@
+include(coverage.pri)
+
 TEMPLATE = subdirs
 
 SUBDIRS += lib ut_contactsd account-manager ut_telepathyplugin

@@ -31,7 +31,10 @@ class TestContactsd : public QObject
 
 private Q_SLOTS:
     void init();
-
+    void envTest();
+    void instanceTest();
+    void importNonPlugin();
+    void importTest();
     void testLoadAllPlugins();
     void testLoadPlugins();
     void testInvalid();
