@@ -77,6 +77,10 @@ while [ "$#" -gt 0 ]; do
         shift
         LOCALSTATEDIR=$1
         ;;
+    --enable-coverage)
+        ENABLE_COVERAGE=coverage ;;
+    --disable-coverage)
+        ENABLE_COVERAGE=nocoverage ;;
     *)
         echo >&2 "configure: error: unrecognized option: '$1'"
         echo >&2 "Try './configure --help' for more information."
@@ -89,6 +93,14 @@ done
 [ -z $BINDIR ] && BINDIR=$PREFIX/bin
 [ -z $LIBDIR ] && LIBDIR=$PREFIX/lib
 [ -z $INCLUDEDIR ] && INCLUDEDIR=$PREFIX/include
+
+#coverage options
+
+if [ -z "$ENABLE_COVERAGE" ]
+then 
+    echo "Coverage not enabled"
+    ENABLE_COVERAGE=nocoverage
+fi
 
 # save configuration into .qmake.cache
 CACHEFILE="$outpath/.qmake.cache"
@@ -103,6 +115,7 @@ INCLUDEDIR = \$\$quote($INCLUDEDIR)
 LOCALSTATEDIR = \$\$quote($LOCALSTATEDIR)
 TOP_SOURCEDIR = \$\$quote($TOP_SOURCEDIR)
 TOP_BUILDDIR = \$\$quote($TOP_BUILDDIR)
+CONFIG += \$\$quote($ENABLE_COVERAGE)
 EOF
 
 infiles="contactsd-1.0.pc \

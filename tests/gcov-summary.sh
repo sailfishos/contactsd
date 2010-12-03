@@ -1,6 +1,6 @@
 #!/bin/sh
 COVERAGE_TEST_DIRS="
-    contactsd
+    ut_contactsd
     "
 
 rm gcov.analysis.summary &> /dev/null
@@ -26,9 +26,12 @@ function lcov_generation() {
 
     for dir in $COVERAGE_TEST_DIRS
     do
-        lcov --directory $dir --capture --output-file /tmp/people_tests-$dir.info -b $dir
+        lcov  --directory $dir --capture --output-file /tmp/people_tests-$dir.info -b $dir
         lcov -a /tmp/people_tests-$dir.info -o /tmp/people_tests-$dir.addinfo
-        lcov -r /tmp/people_tests-$dir.addinfo "tests/contactsd*" -o /tmp/people_tests-$dir.addinfo
+        lcov -r /tmp/people_tests-$dir.addinfo "*targets*" -o /tmp/people_tests-$dir.addinfo
+        lcov -r /tmp/people_tests-$dir.addinfo "tests/*" -o /tmp/people_tests-$dir.addinfo
+        lcov -r /tmp/people_tests-$dir.addinfo "*usr/*" -o /tmp/people_tests-$dir.addinfo
+        lcov -r /tmp/people_tests-$dir.addinfo "*moc*" -o /tmp/people_tests-$dir.addinfo
     done;
 
     genhtml -o $LCOV_OUTPUT_DIR $(find /tmp -name '*addinfo');

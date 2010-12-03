@@ -19,12 +19,46 @@
 
 #include "test-contactsd.h"
 #include "importstate.h"
+#include <QtDBus>
+#include <QByteArray>
 
 const QString telepathyString("telepathy");
 
 void TestContactsd::init()
 {
     mDaemon = new Contactsd(0);
+}
+
+void TestContactsd::envTest()
+{
+    qputenv("CONTACTSD_PLUGINS_DIRS", "/usr/lib/contactsd-1.0/plugins/:/usr/lib/contactsd-1.0/plgins/");
+    mDaemon->loadPlugins(QStringList());
+    qputenv("CONTACTSD_PLUGINS_DIRS", "");
+    mDaemon->loadPlugins(QStringList());
+}
+
+void TestContactsd::instanceTest()
+{
+    Contactsd * daemon = new Contactsd(this);
+    daemon->~Contactsd();
+    QVERIFY2(daemon,0);
+}
+
+void TestContactsd::importNonPlugin()
+{
+    const QString path(QDir::currentPath() + "/data/");
+    qputenv("CONTACTSD_PLUGINS_DIRS", path.toAscii());
+    mDaemon->loadPlugins(QStringList());
+    qputenv("CONTACTSD_PLUGINS_DIRS", "");
+}
+
+void TestContactsd::importTest()
+{
+    const QString host("com.nokia.contactsd");
+    QDBusConnection bus = QDBusConnection::sessionBus();
+    QDBusInterface *interface = new QDBusInterface("com.nokia.contactsd",
+            "/","com.nokia.contacts.importprogress",bus,this);
+    interface->call("hasActiveImports");
 }
 
 void TestContactsd::testLoadAllPlugins()

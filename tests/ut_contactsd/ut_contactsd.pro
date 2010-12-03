@@ -5,7 +5,7 @@ QT += testlib
 QT += dbus
 
 CONFIG(coverage):{
-QMAKE_CXXFLAGS += -c --coverage -ftest-coverage -fprofile-arcs
+QMAKE_CXXFLAGS +=  -ftest-coverage -fprofile-arcs
 LIBS += -lgcov
 }
 
@@ -33,7 +33,7 @@ CONFIG(coverage):{
 QMAKE_CLEAN += *.gcov $(OBJECTS_DIR)*.gcda $(OBJECTS_DIR)*.gcno gcov.analysis gcov.analysis.summary
 gcov.target = gcov
 cov.CONFIG = recursive
-gcov.commands = for d in $$SOURCES; do (gcov -a -c -o $(OBJECTS_DIR) \$$$$d >> gcov.analysis ); done;
+gcov.commands = for d in $$SOURCES; do (gcov -b -a -u -o $(OBJECTS_DIR) \$$$$d >> gcov.analysis ); done;
 gcov.depends = $(TARGET)
 QMAKE_EXTRA_TARGETS += gcov
 }
