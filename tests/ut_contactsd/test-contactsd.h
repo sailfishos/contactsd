@@ -23,7 +23,7 @@
 #include <QObject>
 #include <QtTest/QtTest>
 
-#include <contactsd.h>
+#include <contactsdpluginloader.h>
 
 class TestContactsd : public QObject
 {
@@ -43,7 +43,7 @@ private Q_SLOTS:
     void cleanup();
 
 private:
-    Contactsd *mDaemon;
+    ContactsdPluginLoader *mLoader;
 };
 
 #endif // TEST_CONTACTSD_H

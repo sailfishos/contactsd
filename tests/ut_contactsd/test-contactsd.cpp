@@ -26,21 +26,21 @@ const QString telepathyString("telepathy");
 
 void TestContactsd::init()
 {
-    mDaemon = new Contactsd(0);
+    mLoader = new ContactsdPluginLoader();
 }
 
 void TestContactsd::envTest()
 {
     qputenv("CONTACTSD_PLUGINS_DIRS", "/usr/lib/contactsd-1.0/plugins/:/usr/lib/contactsd-1.0/plgins/");
-    mDaemon->loadPlugins(QStringList());
+    mLoader->loadPlugins(QStringList());
     qputenv("CONTACTSD_PLUGINS_DIRS", "");
-    mDaemon->loadPlugins(QStringList());
+    mLoader->loadPlugins(QStringList());
 }
 
 void TestContactsd::instanceTest()
 {
-    Contactsd * daemon = new Contactsd(this);
-    daemon->~Contactsd();
+    ContactsdPluginLoader * daemon = new ContactsdPluginLoader();
+    daemon->~ContactsdPluginLoader();
     QVERIFY2(daemon,0);
 }
 
@@ -48,7 +48,7 @@ void TestContactsd::importNonPlugin()
 {
     const QString path(QDir::currentPath() + "/data/");
     qputenv("CONTACTSD_PLUGINS_DIRS", path.toAscii());
-    mDaemon->loadPlugins(QStringList());
+    mLoader->loadPlugins(QStringList());
     qputenv("CONTACTSD_PLUGINS_DIRS", "");
 }
 
@@ -63,9 +63,9 @@ void TestContactsd::importTest()
 
 void TestContactsd::testLoadAllPlugins()
 {
-    mDaemon->loadPlugins(QStringList());
+    mLoader->loadPlugins(QStringList());
 
-    QStringList pluginList = mDaemon->loadedPlugins();
+    QStringList pluginList = mLoader->loadedPlugins();
     QVERIFY2(pluginList.contains(telepathyString),
             QString("%1-plugin not Loaded!")
                 .arg(telepathyString).toLatin1());
@@ -73,9 +73,9 @@ void TestContactsd::testLoadAllPlugins()
 
 void TestContactsd::testLoadPlugins()
 {
-    mDaemon->loadPlugins(QStringList() << telepathyString);
+    mLoader->loadPlugins(QStringList() << telepathyString);
 
-    QStringList pluginList = mDaemon->loadedPlugins();
+    QStringList pluginList = mLoader->loadedPlugins();
     QVERIFY2(pluginList.size() == 1,
             QString("%1 plugins loaded, expecting 1")
                 .arg(pluginList.size()).toLatin1());
@@ -144,9 +144,9 @@ void TestContactsd::testImportState()
 
 void TestContactsd::testInvalid()
 {
-    mDaemon->loadPlugins(QStringList() << "invalid");
+    mLoader->loadPlugins(QStringList() << "invalid");
 
-    QStringList pluginList = mDaemon->loadedPlugins();
+    QStringList pluginList = mLoader->loadedPlugins();
     QVERIFY2(pluginList.size() == 0,
             QString("%1 plugins loaded, expecting 0")
                 .arg(pluginList.size()).toLatin1());
@@ -157,8 +157,8 @@ void TestContactsd::testInvalid()
 }
 void TestContactsd::cleanup()
 {
-    if (mDaemon)
-        delete mDaemon;
+    if (mLoader)
+        delete mLoader;
 }
 
 QTEST_MAIN(TestContactsd)
