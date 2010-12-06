@@ -81,7 +81,6 @@ void CDTpAccount::onAccountReady(Tp::PendingOperation *op)
     connect(mAccount.data(),
             SIGNAL(avatarChanged(const Tp::Avatar &)),
             SLOT(onAccountAvatarChanged()));
-
     connect(mAccount.data(),
             SIGNAL(connectionChanged(const Tp::ConnectionPtr &)),
             SLOT(onAccountConnectionChanged(const Tp::ConnectionPtr &)));

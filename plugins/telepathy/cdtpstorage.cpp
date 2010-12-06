@@ -107,16 +107,17 @@ void CDTpStorage::syncAccount(CDTpAccount *accountWrapper,
 
     // Create the IMAddress for this account's self contact
     RDFVariable imAddress(contactImAddress(accountObjectPath, accountId));
-    up.addDeletion(imAddress, nco::imID::iri(), RDFVariable(), defaultGraph);
     inserts << RDFStatement(imAddress, rdf::type::iri(), nco::IMAddress::iri())
             << RDFStatement(imAddress, nco::imID::iri(), LiteralValue(account->normalizedName()));
 
     if (changes & CDTpAccount::Nickname) {
-       up.addDeletion(imAddress, nco::imNickname::iri(), RDFVariable(), defaultGraph);
-       inserts << RDFStatement(imAddress, nco::imNickname::iri(), LiteralValue(account->nickname()));
+        qDebug() << "  nickname changed";
+        up.addDeletion(imAddress, nco::imNickname::iri(), RDFVariable(), defaultGraph);
+        inserts << RDFStatement(imAddress, nco::imNickname::iri(), LiteralValue(account->nickname()));
     }
 
     if (changes & CDTpAccount::Presence) {
+        qDebug() << "  presence changed";
         Tp::Presence presence = account->currentPresence();
         QUrl status = trackerStatusFromTpPresenceStatus(presence.status());
 
@@ -130,6 +131,7 @@ void CDTpStorage::syncAccount(CDTpAccount *accountWrapper,
     }
 
     if (changes & CDTpAccount::Avatar) {
+        qDebug() << "  avatar changed";
         const Tp::Avatar &avatar = account->avatar();
         // TODO: saving to disk needs to be removed here
         saveAccountAvatar(up, avatar.avatarData, avatar.MIMEType, imAddress,
@@ -146,6 +148,7 @@ void CDTpStorage::syncAccount(CDTpAccount *accountWrapper,
                      << RDFStatement(imAccount, nco::hasIMContact::iri(), imAddress);
 
     if (changes & CDTpAccount::DisplayName) {
+        qDebug() << "  display name changed";
         up.addDeletion(imAccount, nco::imDisplayName::iri(), RDFVariable(), privateGraph);
         imAccountInserts << RDFStatement(imAccount, nco::imDisplayName::iri(), LiteralValue(account->displayName()));
     }
