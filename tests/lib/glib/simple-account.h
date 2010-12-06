@@ -52,8 +52,7 @@ GType tp_tests_simple_account_get_type (void);
                               TpTestsSimpleAccountClass))
 
 void tp_tests_simple_account_set_connection (TpTestsSimpleAccount *self,
-    const gchar *object_path, TpConnectionStatus status,
-    TpConnectionStatusReason reason);
+    const gchar *object_path);
 
 G_END_DECLS
 

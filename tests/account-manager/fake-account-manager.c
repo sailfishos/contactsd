@@ -49,9 +49,7 @@ watch_name_owner_cb (TpDBusDaemon *bus_daemon,
       /* The UnitTest is now started, it should have registered that Connection,
        * so we can now set the Account online with that connection. */
       ctx->started = TRUE;
-      tp_tests_simple_account_set_connection (ctx->account, CONNECTION_PATH,
-          TP_CONNECTION_STATUS_CONNECTED,
-          TP_CONNECTION_STATUS_REASON_REQUESTED);
+      tp_tests_simple_account_set_connection (ctx->account, CONNECTION_PATH);
     }
   else if (ctx->started)
     {

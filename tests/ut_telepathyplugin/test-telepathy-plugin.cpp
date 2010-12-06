@@ -157,12 +157,24 @@ void TestTelepathyPlugin::initTestCase()
     TpHandleRepoIface *serviceRepo = tp_base_connection_get_handles(
         mConnService, TP_HANDLE_TYPE_CONTACT);
     mConnService->self_handle = tp_handle_ensure(serviceRepo,
-        "fakeaccountid", NULL, NULL);
+        "fake@account.org", NULL, NULL);
     tp_base_connection_change_status(mConnService,
         TP_CONNECTION_STATUS_CONNECTED,
         TP_CONNECTION_STATUS_REASON_NONE_SPECIFIED);
     mListManager = tp_tests_contacts_connection_get_contact_list_manager(
         TP_TESTS_CONTACTS_CONNECTION(mConnService));
+
+    /* Define the self contact */
+    TpTestsContactsConnectionPresenceStatusIndex presence =
+        TP_TESTS_CONTACTS_CONNECTION_STATUS_AVAILABLE;
+    const gchar *message = "Running unit tests";
+    tp_tests_contacts_connection_change_presences(
+        TP_TESTS_CONTACTS_CONNECTION (mConnService),
+        1, &mConnService->self_handle, &presence, &message);
+    const gchar *aliases = "badger";
+    tp_tests_contacts_connection_change_aliases(
+        TP_TESTS_CONTACTS_CONNECTION (mConnService),
+        1, &mConnService->self_handle, &aliases);
 
     /* Request the UnitTest bus name, so the AM knows we are ready to go */
     TpDBusDaemon *dbus = tp_dbus_daemon_dup(NULL);
