@@ -15,13 +15,11 @@ target.path = /usr/bin/
 INCLUDEPATH += $$TOP_SOURCEDIR/src
 
 HEADERS += test-contactsd.h \
-    $$TOP_SOURCEDIR/src/contactsd.h \
     $$TOP_SOURCEDIR/src/contactsimportprogressadaptor.h \
     $$TOP_SOURCEDIR/src/contactsdpluginloader.h \
     $$TOP_SOURCEDIR/src/importstate.h
 
 SOURCES += test-contactsd.cpp \
-    $$TOP_SOURCEDIR/src/contactsd.cpp \
     $$TOP_SOURCEDIR/src/contactsimportprogressadaptor.cpp  \
     $$TOP_SOURCEDIR/src/contactsdpluginloader.cpp \
     $$TOP_SOURCEDIR/src/importstate.cpp

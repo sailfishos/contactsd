@@ -32,6 +32,7 @@ function lcov_generation() {
         lcov -r /tmp/people_tests-$dir.addinfo "tests/*" -o /tmp/people_tests-$dir.addinfo
         lcov -r /tmp/people_tests-$dir.addinfo "*usr/*" -o /tmp/people_tests-$dir.addinfo
         lcov -r /tmp/people_tests-$dir.addinfo "*moc*" -o /tmp/people_tests-$dir.addinfo
+        lcov -r /tmp/people_tests-$dir.addinfo "contactsdplugininterface.h" -o /tmp/people_tests-$dir.addinfo
     done;
 
     genhtml -o $LCOV_OUTPUT_DIR $(find /tmp -name '*addinfo');
