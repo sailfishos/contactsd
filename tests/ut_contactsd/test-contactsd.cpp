@@ -33,6 +33,8 @@ void TestContactsd::envTest()
 {
     qputenv("CONTACTSD_PLUGINS_DIRS", "/usr/lib/contactsd-1.0/plugins/:/usr/lib/contactsd-1.0/plgins/");
     mLoader->loadPlugins(QStringList());
+    QVERIFY2(mLoader->loadedPlugins().count() > 0, "failed to load plugins from evn variable");
+    qDebug() << mLoader->loadedPlugins();
     qputenv("CONTACTSD_PLUGINS_DIRS", "");
     mLoader->loadPlugins(QStringList());
 }
@@ -46,9 +48,12 @@ void TestContactsd::instanceTest()
 
 void TestContactsd::importNonPlugin()
 {
+    /* This is just a coverage test */
     const QString path(QDir::currentPath() + "/data/");
     qputenv("CONTACTSD_PLUGINS_DIRS", path.toAscii());
     mLoader->loadPlugins(QStringList());
+    QStringList pluginList = mLoader->loadedPlugins();
+    QCOMPARE(pluginList.size(), 0);
     qputenv("CONTACTSD_PLUGINS_DIRS", "");
 }
 
@@ -58,7 +63,35 @@ void TestContactsd::importTest()
     QDBusConnection bus = QDBusConnection::sessionBus();
     QDBusInterface *interface = new QDBusInterface("com.nokia.contactsd",
             "/","com.nokia.contacts.importprogress",bus,this);
-    interface->call("hasActiveImports");
+    QDBusReply<QStringList> result = interface->call("hasActiveImports");
+    QVERIFY2(result.isValid() == true, result.error().message().toLatin1());
+    QCOMPARE(result.value().count(), 0);
+}
+
+void TestContactsd::testFakePlugin()
+{
+    mLoader->loadPlugins(QStringList() << "fakeplugin");
+
+    QStringList pluginList = mLoader->loadedPlugins();
+    QVERIFY2(pluginList.size() == 0,
+            QString("%1 plugins loaded, expecting 0")
+                .arg(pluginList.size()).toLatin1());
+    QVERIFY2(not pluginList.contains("fakeplugin"),
+            QString("%1-plugin not Loaded!")
+                .arg(telepathyString).toLatin1());
+}
+
+void TestContactsd::testDbusPlugin()
+{
+    mLoader->loadPlugins(QStringList() << "dbusplugin");
+
+    QStringList pluginList = mLoader->loadedPlugins();
+    QVERIFY2(pluginList.size() == 1,
+            QString("%1 plugins loaded, expecting 1")
+                .arg(pluginList.size()).toLatin1());
+    QVERIFY2(pluginList.contains("dbusplugin"),
+            QString("%1-plugin not Loaded!")
+                .arg(telepathyString).toLatin1());
 }
 
 void TestContactsd::testLoadAllPlugins()
@@ -140,6 +173,15 @@ void TestContactsd::testImportState()
     QCOMPARE(state.contactsAdded(), 0);
     QCOMPARE(state.contactsRemoved(), 0);
     QCOMPARE(state.contactsMerged(), 0);
+
+    state.addImportingAccount("qq", "qq-account3");
+    QCOMPARE(state.reset(), false);
+}
+
+void TestContactsd::testDbusRegister()
+{
+    QVERIFY2(not mLoader->registerNotificationService(),
+            "Re registry failed as expected");
 }
 
 void TestContactsd::testInvalid()
@@ -153,7 +195,6 @@ void TestContactsd::testInvalid()
     QVERIFY2(not pluginList.contains(telepathyString),
             QString("%1-plugin not Loaded!")
                 .arg(telepathyString).toLatin1());
-
 }
 void TestContactsd::cleanup()
 {

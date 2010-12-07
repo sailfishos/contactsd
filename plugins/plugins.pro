@@ -1,3 +1,3 @@
 TEMPLATE = subdirs
 
-SUBDIRS += telepathy
+SUBDIRS += telepathy fakeplugin dbusplugin
