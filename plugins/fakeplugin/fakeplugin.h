@@ -17,36 +17,37 @@
 **
 ****************************************************************************/
 
-#ifndef TEST_CONTACTSD_H
-#define TEST_CONTACTSD_H
+#ifndef FAKEPLUGIN_H
+#define FAKEPLUGIN_H
 
+#include <ContactsdPluginInterface>
+
+#include <QMap>
 #include <QObject>
-#include <QtTest/QtTest>
+#include <QString>
+#include <QVariant>
 
-#include <contactsdpluginloader.h>
-
-class TestContactsd : public QObject
+class FakePlugin : public QObject, public ContactsdPluginInterface
 {
     Q_OBJECT
+    Q_INTERFACES(ContactsdPluginInterface)
 
-private Q_SLOTS:
+public:
+    FakePlugin();
+    ~FakePlugin();
+
     void init();
-    void envTest();
-    void instanceTest();
-    void importNonPlugin();
-    void importTest();
-    void testFakePlugin();
-    void testDbusPlugin();
-    void testLoadAllPlugins();
-    void testLoadPlugins();
-    void testInvalid();
-    void testImportState();
-    void testDbusRegister();
+    QMap<QString, QVariant> metaData();
+    bool hasActiveImports() const;
+private Q_SLOTS:
+    void timeout();
 
-    void cleanup();
-
+Q_SIGNALS:
+    void importStarted(const QString &service, const QString &account);
+    void importEnded(const QString &service, const QString &account,
+                     int contactsAdded, int contactsRemoved, int contactsMerged);
 private:
-    ContactsdPluginLoader *mLoader;
+    bool mHasActiveImports;
 };
 
-#endif // TEST_CONTACTSD_H
+#endif // FAKEPLUGIN_H

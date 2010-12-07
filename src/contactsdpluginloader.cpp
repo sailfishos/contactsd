@@ -30,8 +30,9 @@
 
 ContactsdPluginLoader::ContactsdPluginLoader()
 {
-    (void) new ContactsImportProgressAdaptor(this);
-    registerNotificationService();
+    if (registerNotificationService()) {
+        (void) new ContactsImportProgressAdaptor(this);
+    }
 }
 
 ContactsdPluginLoader::~ContactsdPluginLoader()
@@ -197,20 +198,25 @@ QString ContactsdPluginLoader::pluginName(ContactsdPluginInterface *plugin)
     return metaData.value(CONTACTSD_PLUGIN_NAME).toString();
 }
 
-void ContactsdPluginLoader::registerNotificationService()
+bool ContactsdPluginLoader::registerNotificationService()
 {
     QDBusConnection connection = QDBusConnection::sessionBus();
     if (!connection.isConnected()) {
         qWarning() << "Could not connect to DBus:" << connection.lastError();
+        return false;
     }
 
     if (!connection.registerService("com.nokia.contactsd")) {
         qWarning() << "Could not register DBus service "
             "'com.nokia.contactsd':" << connection.lastError();
+        return false;
     }
 
     if (!connection.registerObject("/", this)) {
         qWarning() << "Could not register DBus object '/':" <<
             connection.lastError();
+        return false;
     }
+
+    return true;
 }

@@ -41,6 +41,7 @@ public:
     void loadPlugins(const QStringList &plugins);
     void loadPlugins(const QString &pluginsDir, const QStringList &plugins);
     QStringList loadedPlugins() const;
+    bool registerNotificationService();
 
 public Q_SLOTS:
     QStringList hasActiveImports();
@@ -59,7 +60,6 @@ private Q_SLOTS:
                              int contactsAdded, int contactsRemoved, int contactsMerged);
 
 private:
-    void registerNotificationService();
     QString pluginName(ContactsdPluginInterface *plugin);
 
     typedef QMap<QString, QPluginLoader *> PluginStore;
