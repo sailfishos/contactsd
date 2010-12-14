@@ -8,10 +8,6 @@
  * are permitted in any medium without royalty provided the copyright
  * notice and this notice are preserved.
  */
-#include "contacts-conn.h"
-#include "contact-list.h"
-#include "contact-list-manager.h"
-#include "debug.h"
 
 #include <dbus/dbus-glib.h>
 
@@ -24,6 +20,7 @@
 #include <telepathy-glib/handle-repo-static.h>
 #include <telepathy-glib/util.h>
 
+#include "contacts-conn.h"
 #include "debug.h"
 
 static void init_aliasing (gpointer, gpointer);
@@ -41,8 +38,6 @@ G_DEFINE_TYPE_WITH_CODE (TpTestsContactsConnection,
       init_aliasing);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_AVATARS,
       init_avatars);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACTS,
-      tp_contacts_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_PRESENCE,
       tp_presence_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_SIMPLE_PRESENCE,
@@ -54,6 +49,12 @@ G_DEFINE_TYPE_WITH_CODE (TpTestsContactsConnection,
       init_contact_caps)
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_INFO,
       init_contact_info)
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACTS,
+      tp_contacts_mixin_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_LIST,
+      tp_base_contact_list_mixin_list_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_GROUPS,
+      tp_base_contact_list_mixin_groups_iface_init);
     );
 
 /* type definition stuff */
@@ -90,7 +91,7 @@ struct _TpTestsContactsConnectionPrivate
   GHashTable *aliases;
   /* TpHandle => AvatarData */
   GHashTable *avatars;
-  /* TpHandle => ContactsConnectionPresenceStatusIndex */
+  /* TpHandle => TpConnectionPresenceType */
   GHashTable *presence_statuses;
   /* TpHandle => gchar * */
   GHashTable *presence_messages;
@@ -401,7 +402,6 @@ constructed (GObject *object)
 
   tp_contacts_mixin_init (object,
       G_STRUCT_OFFSET (TpTestsContactsConnection, contacts_mixin));
-  tp_base_connection_register_with_contacts_mixin (base);
   tp_contacts_mixin_add_contact_attributes_iface (object,
       TP_IFACE_CONNECTION_INTERFACE_ALIASING,
       aliasing_fill_contact_attributes);
@@ -421,23 +421,28 @@ constructed (GObject *object)
   tp_presence_mixin_init (object,
       G_STRUCT_OFFSET (TpTestsContactsConnection, presence_mixin));
   tp_presence_mixin_simple_presence_register_with_contacts_mixin (object);
+
+  tp_base_connection_register_with_contacts_mixin (base);
+  tp_base_contact_list_mixin_register_with_contacts_mixin (base);
 }
 
 static const TpPresenceStatusOptionalArgumentSpec can_have_message[] = {
-      { "message", "s", NULL, NULL },
-      { NULL }
+    { "message", "s", NULL, NULL },
+    { NULL }
 };
 
-/* Must match TpTestsContactsConnectionPresenceStatusIndex in the .h */
+/* Must match TpConnectionPresenceType in the .h */
 static const TpPresenceStatusSpec my_statuses[] = {
-      { "available", TP_CONNECTION_PRESENCE_TYPE_AVAILABLE, TRUE,
-        can_have_message },
-      { "busy", TP_CONNECTION_PRESENCE_TYPE_BUSY, TRUE, can_have_message },
-      { "away", TP_CONNECTION_PRESENCE_TYPE_AWAY, TRUE, can_have_message },
-      { "offline", TP_CONNECTION_PRESENCE_TYPE_OFFLINE, FALSE, NULL },
-      { "unknown", TP_CONNECTION_PRESENCE_TYPE_UNKNOWN, FALSE, NULL },
-      { "error", TP_CONNECTION_PRESENCE_TYPE_ERROR, FALSE, NULL },
-      { NULL }
+    { "unset", TP_CONNECTION_PRESENCE_TYPE_UNSET, FALSE, NULL },
+    { "offline", TP_CONNECTION_PRESENCE_TYPE_OFFLINE, FALSE, NULL },
+    { "available", TP_CONNECTION_PRESENCE_TYPE_AVAILABLE, TRUE, can_have_message },
+    { "away", TP_CONNECTION_PRESENCE_TYPE_AWAY, TRUE, can_have_message },
+    { "xa", TP_CONNECTION_PRESENCE_TYPE_EXTENDED_AWAY, TRUE, can_have_message },
+    { "hidden", TP_CONNECTION_PRESENCE_TYPE_HIDDEN, TRUE, NULL },
+    { "busy", TP_CONNECTION_PRESENCE_TYPE_BUSY, TRUE, can_have_message },
+    { "unknown", TP_CONNECTION_PRESENCE_TYPE_UNKNOWN, FALSE, NULL },
+    { "error", TP_CONNECTION_PRESENCE_TYPE_ERROR, FALSE, NULL },
+    { NULL, 0, FALSE, NULL },
 };
 
 static gboolean
@@ -466,7 +471,7 @@ my_get_contact_statuses (GObject *object,
     {
       TpHandle handle = g_array_index (contacts, TpHandle, i);
       gpointer key = GUINT_TO_POINTER (handle);
-      TpTestsContactsConnectionPresenceStatusIndex index;
+      TpConnectionPresenceType presence_type;
       const gchar *presence_message;
       GHashTable *parameters;
       gpointer value;
@@ -474,11 +479,11 @@ my_get_contact_statuses (GObject *object,
       if (!g_hash_table_lookup_extended (self->priv->presence_statuses,
           key, NULL, &value))
         {
-          index = TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN;
+          presence_type = TP_CONNECTION_PRESENCE_TYPE_UNKNOWN;
         }
       else
         {
-          index = GPOINTER_TO_UINT (value);
+          presence_type = GPOINTER_TO_UINT (value);
         }
 
       presence_message = g_hash_table_lookup (
@@ -492,7 +497,7 @@ my_get_contact_statuses (GObject *object,
             tp_g_value_slice_new_string (presence_message));
 
       g_hash_table_insert (result, key,
-          tp_presence_status_new (index, parameters));
+          tp_presence_status_new (presence_type, parameters));
       g_hash_table_destroy (parameters);
     }
 
@@ -505,7 +510,7 @@ my_set_own_status (GObject *object,
                    GError **error)
 {
   TpBaseConnection *base_conn = TP_BASE_CONNECTION (object);
-  TpTestsContactsConnectionPresenceStatusIndex index = status->index;
+  TpConnectionPresenceType presence_type = status->index;
   const gchar *message = "";
 
   if (status->optional_arguments != NULL)
@@ -517,113 +522,9 @@ my_set_own_status (GObject *object,
     }
 
   tp_tests_contacts_connection_change_presences (TP_TESTS_CONTACTS_CONNECTION (object),
-      1, &(base_conn->self_handle), &index, &message);
+      1, &(base_conn->self_handle), &presence_type, &message);
 
   return TRUE;
-}
-
-static gchar *
-normalize_contact (TpHandleRepoIface *repo,
-                   const gchar *id,
-                   gpointer context,
-                   GError **error)
-{
-  if (id[0] == '\0')
-    {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_HANDLE,
-          "Contact ID must not be empty");
-      return NULL;
-    }
-
-  return g_utf8_normalize (id, -1, G_NORMALIZE_ALL_COMPOSE);
-}
-
-static gchar *
-normalize_group (TpHandleRepoIface *repo,
-                 const gchar *id,
-                 gpointer context,
-                 GError **error)
-{
-  if (id[0] == '\0')
-    {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_HANDLE,
-          "Contact group name cannot be empty");
-      return NULL;
-    }
-
-  return g_utf8_normalize (id, -1, G_NORMALIZE_ALL_COMPOSE);
-}
-
-static void
-create_handle_repos (TpBaseConnection *conn,
-                     TpHandleRepoIface *repos[NUM_TP_HANDLE_TYPES])
-{
-  repos[TP_HANDLE_TYPE_CONTACT] = tp_dynamic_handle_repo_new
-      (TP_HANDLE_TYPE_CONTACT, normalize_contact, NULL);
-
-  repos[TP_HANDLE_TYPE_LIST] = tp_static_handle_repo_new
-      (TP_HANDLE_TYPE_LIST, test_contact_lists ());
-
-  repos[TP_HANDLE_TYPE_GROUP] = tp_dynamic_handle_repo_new
-      (TP_HANDLE_TYPE_GROUP, normalize_group, NULL);
-}
-
-static void
-alias_updated_cb (TestContactListManager *manager,
-                  TpHandle contact,
-                  TpTestsContactsConnection *self)
-{
-  const gchar *alias;
-
-  alias = test_contact_list_manager_get_alias (manager, contact);
-  tp_tests_contacts_connection_change_aliases (self, 1, &contact, &alias);
-}
-
-static void
-avatar_updated_cb (TestContactListManager *manager,
-                   TpHandle contact,
-                   TpTestsContactsConnection *self)
-{
-  const TestContactListAvatarData *data;
-
-  data = test_contact_list_manager_get_avatar (manager, contact);
-  tp_tests_contacts_connection_change_avatar_data (self, contact, data->data,
-      data->mime_type, data->token);
-}
-
-static void
-presence_updated_cb (TestContactListManager *manager,
-                     TpHandle contact,
-                     TpTestsContactsConnection *self)
-{
-  TpBaseConnection *base = (TpBaseConnection *) self;
-  TpTestsContactsConnectionPresenceStatusIndex status;
-  const gchar *message = NULL;
-
-  /* we ignore the presence indicated by the contact list for our own handle */
-  if (contact == base->self_handle)
-    return;
-
-  switch(test_contact_list_manager_get_presence (manager, contact))
-    {
-    case TEST_CONTACT_LIST_PRESENCE_OFFLINE:
-      status = TP_TESTS_CONTACTS_CONNECTION_STATUS_OFFLINE;
-      break;
-    case TEST_CONTACT_LIST_PRESENCE_UNKNOWN:
-      status = TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN;
-      break;
-    case TEST_CONTACT_LIST_PRESENCE_ERROR:
-      status = TP_TESTS_CONTACTS_CONNECTION_STATUS_ERROR;
-      break;
-    case TEST_CONTACT_LIST_PRESENCE_AWAY:
-      status = TP_TESTS_CONTACTS_CONNECTION_STATUS_AWAY;
-      break;
-    case TEST_CONTACT_LIST_PRESENCE_AVAILABLE:
-      status = TP_TESTS_CONTACTS_CONNECTION_STATUS_AVAILABLE;
-      break;
-    }
-
-  tp_tests_contacts_connection_change_presences (self, 1, &contact, &status, &message);
 }
 
 static GPtrArray *
@@ -639,13 +540,6 @@ create_channel_managers (TpBaseConnection *conn)
           "connection", conn,
           "simulation-delay", self->priv->simulation_delay,
           NULL));
-
-  g_signal_connect (self->priv->list_manager, "alias-updated",
-      G_CALLBACK (alias_updated_cb), self);
-  g_signal_connect (self->priv->list_manager, "avatar-updated",
-      G_CALLBACK (avatar_updated_cb), self);
-  g_signal_connect (self->priv->list_manager, "presence-updated",
-      G_CALLBACK (presence_updated_cb), self);
 
   g_ptr_array_add (ret, self->priv->list_manager);
 
@@ -691,7 +585,6 @@ tp_tests_contacts_connection_class_init (TpTestsContactsConnectionClass *klass)
   g_type_class_add_private (klass, sizeof (TpTestsContactsConnectionPrivate));
 
   base_class->interfaces_always_present = interfaces_always_present;
-  base_class->create_handle_repos = create_handle_repos;
   base_class->create_channel_managers = create_channel_managers;
 
   param_spec = g_param_spec_uint ("simulation-delay", "Simulation delay",
@@ -714,6 +607,8 @@ tp_tests_contacts_connection_class_init (TpTestsContactsConnectionClass *klass)
   klass->properties_class.interfaces = prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (TpTestsContactsConnectionClass, properties_class));
+
+  tp_base_contact_list_mixin_class_init (base_class);
 }
 
 TestContactListManager *
@@ -764,7 +659,7 @@ tp_tests_contacts_connection_change_presences (
     TpTestsContactsConnection *self,
     guint n,
     const TpHandle *handles,
-    const TpTestsContactsConnectionPresenceStatusIndex *indexes,
+    const TpConnectionPresenceType *presence_types,
     const gchar * const *messages)
 {
   GHashTable *presences = g_hash_table_new_full (g_direct_hash, g_direct_equal,
@@ -777,10 +672,10 @@ tp_tests_contacts_connection_change_presences (
       gpointer key = GUINT_TO_POINTER (handles[i]);
 
       DEBUG ("contact#%u -> %s \"%s\"", handles[i],
-          my_statuses[indexes[i]].name, messages[i]);
+          my_statuses[presence_types[i]].name, messages[i]);
 
       g_hash_table_insert (self->priv->presence_statuses, key,
-          GUINT_TO_POINTER (indexes[i]));
+          GUINT_TO_POINTER (presence_types[i]));
       g_hash_table_insert (self->priv->presence_messages, key,
           g_strdup (messages[i]));
 
@@ -791,7 +686,7 @@ tp_tests_contacts_connection_change_presences (
         g_hash_table_insert (parameters, "message",
             tp_g_value_slice_new_string (messages[i]));
 
-      g_hash_table_insert (presences, key, tp_presence_status_new (indexes[i],
+      g_hash_table_insert (presences, key, tp_presence_status_new (presence_types[i],
             parameters));
       g_hash_table_destroy (parameters);
     }

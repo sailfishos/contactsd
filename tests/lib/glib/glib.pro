@@ -15,8 +15,6 @@ SOURCES += \
     contacts-conn.h \
     contact-list-manager.c \
     contact-list-manager.h \
-    contact-list.c \
-    contact-list.h \
     debug.h \
     simple-account.c \
     simple-account.h \

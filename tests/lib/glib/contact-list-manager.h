@@ -14,36 +14,9 @@
 
 #include <glib-object.h>
 
-#include <telepathy-glib/channel-manager.h>
-#include <telepathy-glib/handle.h>
-#include <telepathy-glib/presence-mixin.h>
+#include <telepathy-glib/base-contact-list.h>
 
 G_BEGIN_DECLS
-
-typedef struct _TestContactListManager TestContactListManager;
-typedef struct _TestContactListManagerClass TestContactListManagerClass;
-typedef struct _TestContactListManagerPrivate TestContactListManagerPrivate;
-
-struct _TestContactListManagerClass {
-    GObjectClass parent_class;
-};
-
-struct _TestContactListManager {
-    GObject parent;
-
-    TestContactListManagerPrivate *priv;
-};
-
-GType test_contact_list_manager_get_type (void);
-
-typedef struct _TestContactListAvatarData TestContactListAvatarData;
-
-struct _TestContactListAvatarData
-{
-    GArray *data;
-    gchar *mime_type;
-    gchar *token;
-};
 
 #define TEST_TYPE_CONTACT_LIST_MANAGER \
   (test_contact_list_manager_get_type ())
@@ -61,66 +34,37 @@ struct _TestContactListAvatarData
   (G_TYPE_INSTANCE_GET_CLASS ((obj), TEST_TYPE_CONTACT_LIST_MANAGER, \
                               TestContactListManagerClass))
 
-gboolean test_contact_list_manager_add_to_group (
-    TestContactListManager *self, GObject *channel,
-    TpHandle group, TpHandle member, const gchar *message, GError **error);
+typedef struct _TestContactListManager TestContactListManager;
+typedef struct _TestContactListManagerClass TestContactListManagerClass;
+typedef struct _TestContactListManagerPrivate TestContactListManagerPrivate;
 
-gboolean test_contact_list_manager_remove_from_group (
-    TestContactListManager *self, GObject *channel,
-    TpHandle group, TpHandle member, const gchar *message, GError **error);
+struct _TestContactListManagerClass {
+    TpBaseContactListClass parent_class;
+};
 
-/* elements 1, 2... of this enum must be kept in sync with elements 0, 1...
- * of the array _contact_lists in contact-list-manager.h */
-typedef enum {
-    INVALID_TEST_CONTACT_LIST,
-    TEST_CONTACT_LIST_SUBSCRIBE = 1,
-    TEST_CONTACT_LIST_PUBLISH,
-    TEST_CONTACT_LIST_STORED,
-    NUM_TEST_CONTACT_LISTS
-} TestContactListHandle;
+struct _TestContactListManager {
+    TpBaseContactList parent;
 
-/* this enum must be kept in sync with the array _statuses in
- * contact-list-manager.c */
-typedef enum {
-    TEST_CONTACT_LIST_PRESENCE_OFFLINE = 0,
-    TEST_CONTACT_LIST_PRESENCE_UNKNOWN,
-    TEST_CONTACT_LIST_PRESENCE_ERROR,
-    TEST_CONTACT_LIST_PRESENCE_AWAY,
-    TEST_CONTACT_LIST_PRESENCE_AVAILABLE
-} TestContactListPresence;
+    TestContactListManagerPrivate *priv;
+};
 
-const TpPresenceStatusSpec *test_contact_list_presence_statuses (
-    void);
+GType test_contact_list_manager_get_type (void);
 
-gboolean test_contact_list_manager_add_to_list (
-    TestContactListManager *self, GObject *channel,
-    TestContactListHandle list, TpHandle member, const gchar *message,
-    GError **error);
+void test_contact_list_manager_add_to_group (TestContactListManager *self,
+    const gchar *group_name, TpHandle member);
+void test_contact_list_manager_remove_from_group (TestContactListManager *self,
+    const gchar *group_name, TpHandle member);
 
-gboolean test_contact_list_manager_remove_from_list (
-    TestContactListManager *self, GObject *channel,
-    TestContactListHandle list, TpHandle member, const gchar *message,
-    GError **error);
-
-const gchar **test_contact_lists (void);
-
-TestContactListPresence test_contact_list_manager_get_presence (
-    TestContactListManager *self, TpHandle contact);
-
-const gchar *test_contact_list_manager_get_alias (
-    TestContactListManager *self, TpHandle contact);
-void test_contact_list_manager_set_alias (
-    TestContactListManager *self, TpHandle contact, const gchar *alias);
-
-const TestContactListAvatarData *test_contact_list_manager_get_avatar (
-    TestContactListManager *self, TpHandle contact);
-void test_contact_list_manager_set_avatar (
-    TestContactListManager *self, TpHandle contact,
-    const TestContactListAvatarData *avatar_data);
-
-TestContactListAvatarData *test_contact_list_avatar_data_new (
-    GArray *data, const gchar *mime_type, const gchar *token);
-void test_contact_list_avatar_data_free (gpointer data);
+void test_contact_list_manager_request_subscription (TestContactListManager *self,
+    TpHandle member,  const gchar *message);
+void test_contact_list_manager_unsubscribe (TestContactListManager *self,
+    TpHandle member);
+void test_contact_list_manager_authorize_publication (TestContactListManager *self,
+    TpHandle member);
+void test_contact_list_manager_unpublish (TestContactListManager *self,
+    TpHandle member);
+void test_contact_list_manager_remove_contact (TestContactListManager *self,
+    TpHandle member);
 
 G_END_DECLS
 
