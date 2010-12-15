@@ -56,15 +56,15 @@ void test_contact_list_manager_remove_from_group (TestContactListManager *self,
     const gchar *group_name, TpHandle member);
 
 void test_contact_list_manager_request_subscription (TestContactListManager *self,
-    TpHandle member,  const gchar *message);
+    guint n_members, TpHandle *members,  const gchar *message);
 void test_contact_list_manager_unsubscribe (TestContactListManager *self,
-    TpHandle member);
+    guint n_members, TpHandle *members);
 void test_contact_list_manager_authorize_publication (TestContactListManager *self,
-    TpHandle member);
+    guint n_members, TpHandle *members);
 void test_contact_list_manager_unpublish (TestContactListManager *self,
-    TpHandle member);
-void test_contact_list_manager_remove_contact (TestContactListManager *self,
-    TpHandle member);
+    guint n_members, TpHandle *members);
+void test_contact_list_manager_remove (TestContactListManager *self,
+    guint n_members, TpHandle *members);
 
 G_END_DECLS
 

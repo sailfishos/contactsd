@@ -199,7 +199,8 @@ void TestTelepathyPlugin::testBasicUpdates()
         1, &handle, &alias);
 
     /* Add Alice in the ContactList */
-    test_contact_list_manager_request_subscription(mListManager, handle, "wait");
+    test_contact_list_manager_request_subscription(mListManager, 1, &handle,
+        "wait");
 
     TestExpectation e;
     e.event = TestExpectation::Added;
@@ -265,7 +266,8 @@ void TestTelepathyPlugin::testAuthorization()
     TpHandle handle = ensureContact("romeo");
 
     /* Add Bob in the ContactList, the request will be ignored */
-    test_contact_list_manager_request_subscription(mListManager, handle, "wait");
+    test_contact_list_manager_request_subscription(mListManager, 1, &handle,
+        "wait");
 
     TestExpectation e;
     e.flags = TestExpectation::Authorization;
@@ -279,7 +281,8 @@ void TestTelepathyPlugin::testAuthorization()
     QCOMPARE(mLoop->exec(), 0);
 
     /* Ask again for subscription, say "please" this time so it gets accepted */
-    test_contact_list_manager_request_subscription(mListManager, handle, "please");
+    test_contact_list_manager_request_subscription(mListManager, 1, &handle,
+        "please");
 
     e.event = TestExpectation::Changed;
     e.subscriptionState = "Yes";
@@ -292,7 +295,8 @@ void TestTelepathyPlugin::testAuthorization()
     handle = ensureContact("juliette");
 
     /* Add Bob in the ContactList, the request will be ignored */
-    test_contact_list_manager_request_subscription(mListManager, handle, "wait");
+    test_contact_list_manager_request_subscription(mListManager, 1, &handle,
+        "wait");
 
     e.event = TestExpectation::Added;
     e.accountUri = QString("juliette");
@@ -304,7 +308,8 @@ void TestTelepathyPlugin::testAuthorization()
     QCOMPARE(mLoop->exec(), 0);
 
     /* Ask again for subscription, but this time it will be rejected */
-    test_contact_list_manager_request_subscription(mListManager, handle, "no");
+    test_contact_list_manager_request_subscription(mListManager, 1, &handle,
+        "no");
 
     e.event = TestExpectation::Changed;
     e.subscriptionState = "No";
@@ -345,7 +350,8 @@ void TestTelepathyPlugin::testContactInfo()
 {
     /* Create a contact with no ContactInfo */
     TpHandle handle = ensureContact("skype");
-    test_contact_list_manager_request_subscription(mListManager, handle, "wait");
+    test_contact_list_manager_request_subscription(mListManager, 1, &handle,
+        "wait");
 
     TestExpectation e;
     e.event = TestExpectation::Added;
@@ -392,8 +398,9 @@ void TestTelepathyPlugin::testRemoveContacts()
              i != mContacts.constEnd(); i++) {
         qDebug() << "removing" << i.key() << i.value();
 
-        /* Removing from Stored list will remove from all lists */
-        test_contact_list_manager_remove_contact(mListManager, i.key());
+        // FIXME: We could remove all at once instead of one by one
+        TpHandle handle = i.key();
+        test_contact_list_manager_remove(mListManager, 1, &handle);
 
         e.accountUri = i.value();
         mExpectations.append(e);
@@ -413,7 +420,8 @@ void TestTelepathyPlugin::testSetOffline()
     e.accountUri = QString("kesh");
 
     TpHandle handle = ensureContact("kesh");
-    test_contact_list_manager_request_subscription(mListManager, handle, "please");
+    test_contact_list_manager_request_subscription(mListManager, 1, &handle,
+        "please");
 
     /* First contact is added, then auth req is accepted */
     e.event = TestExpectation::Added;

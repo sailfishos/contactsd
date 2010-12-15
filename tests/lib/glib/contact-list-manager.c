@@ -447,27 +447,27 @@ test_contact_list_manager_remove_from_group (TestContactListManager *self,
 
 typedef struct {
     TestContactListManager *self;
-    TpHandle contact;
+    TpHandleSet *handles;
 } SelfAndContact;
 
 static SelfAndContact *
 self_and_contact_new (TestContactListManager *self,
-                      TpHandle contact)
- {
+  TpHandleSet *handles)
+{
   SelfAndContact *ret = g_slice_new0 (SelfAndContact);
- 
+
   ret->self = g_object_ref (self);
-  ret->contact = contact;
-  tp_handle_ref (self->priv->contact_repo, contact);
+  ret->handles = tp_handle_set_copy (handles);
+
   return ret;
 }
- 
+
 static void
 self_and_contact_destroy (gpointer p)
 {
   SelfAndContact *s = p;
- 
-  tp_handle_unref (s->self->priv->contact_repo, s->contact);
+
+  tp_handle_set_destroy (s->handles);
   g_object_unref (s->self);
   g_slice_free (SelfAndContact, s);
 }
@@ -476,22 +476,32 @@ static gboolean
 receive_authorized (gpointer p)
 {
   SelfAndContact *s = p;
-  ContactDetails *d = lookup_contact (s->self, s->contact);
-
-  if (d == NULL)
-    return FALSE;
-
-  d->subscribe = TP_SUBSCRIPTION_STATE_YES;
-
-  /* if we're not publishing to them, also pretend they have asked us to do so */
-  if (d->publish != TP_SUBSCRIPTION_STATE_YES)
+  GArray *handles_array;
+  guint i;
+  
+  handles_array = tp_handle_set_to_array (s->handles);
+  for (i = 0; i < handles_array->len; i++)
     {
-      d->publish = TP_SUBSCRIPTION_STATE_ASK;
-      tp_clear_pointer (&d->publish_request, g_free);
-      d->publish_request = g_strdup ("automatic publish request");
-    }
+      ContactDetails *d = lookup_contact (s->self,
+          g_array_index (handles_array, TpHandle, i));
 
-  tp_base_contact_list_one_contact_changed (TP_BASE_CONTACT_LIST (s->self), s->contact);
+      if (d == NULL)
+        continue;
+
+      d->subscribe = TP_SUBSCRIPTION_STATE_YES;
+
+      /* if we're not publishing to them, also pretend they have asked us to do so */
+      if (d->publish != TP_SUBSCRIPTION_STATE_YES)
+        {
+          d->publish = TP_SUBSCRIPTION_STATE_ASK;
+          tp_clear_pointer (&d->publish_request, g_free);
+          d->publish_request = g_strdup ("automatic publish request");
+        }
+    }
+  g_array_unref (handles_array);
+
+  tp_base_contact_list_contacts_changed (TP_BASE_CONTACT_LIST (s->self),
+      s->handles, NULL);
 
   return FALSE;
 }
@@ -500,30 +510,50 @@ static gboolean
 receive_unauthorized (gpointer p)
 {
   SelfAndContact *s = p;
-  ContactDetails *d = lookup_contact (s->self, s->contact);
+  GArray *handles_array;
+  guint i;
 
-  if (d == NULL)
-    return FALSE;
+  handles_array = tp_handle_set_to_array (s->handles);
+  for (i = 0; i < handles_array->len; i++)
+    {
+      ContactDetails *d = lookup_contact (s->self,
+          g_array_index (handles_array, TpHandle, i));
 
-  d->subscribe = TP_SUBSCRIPTION_STATE_REMOVED_REMOTELY;
-  tp_base_contact_list_one_contact_changed (TP_BASE_CONTACT_LIST (s->self), s->contact);
+      if (d == NULL)
+        continue;
+
+      d->subscribe = TP_SUBSCRIPTION_STATE_REMOVED_REMOTELY;
+    }
+  g_array_unref (handles_array);
+
+  tp_base_contact_list_contacts_changed (TP_BASE_CONTACT_LIST (s->self),
+      s->handles, NULL);
 
   return FALSE;
 }
 
 void
 test_contact_list_manager_request_subscription (TestContactListManager *self,
-    TpHandle member,  const gchar *message)
+    guint n_members, TpHandle *members,  const gchar *message)
 {
-  ContactDetails *d = ensure_contact (self, member);
+  TpHandleSet *handles;
+  guint i;
   gchar *message_lc;
 
-  if (d->subscribe == TP_SUBSCRIPTION_STATE_YES)
-    return;
+  handles = tp_handle_set_new (self->priv->contact_repo);
+  for (i = 0; i < n_members; i++)
+    {
+      ContactDetails *d = ensure_contact (self, members[i]);
 
-  d->subscribe = TP_SUBSCRIPTION_STATE_ASK;
+      if (d->subscribe == TP_SUBSCRIPTION_STATE_YES)
+        continue;
 
-  tp_base_contact_list_one_contact_changed (TP_BASE_CONTACT_LIST (self), member);
+      d->subscribe = TP_SUBSCRIPTION_STATE_ASK;
+      tp_handle_set_add (handles, members[i]);
+    }
+
+  tp_base_contact_list_contacts_changed (TP_BASE_CONTACT_LIST (self), handles,
+      NULL);
 
   /* Pretend that after a delay, the contact notices the request
    * and allows, rejects or ignore it. In this example connection
@@ -537,7 +567,7 @@ test_contact_list_manager_request_subscription (TestContactListManager *self,
     {
       g_timeout_add_full (G_PRIORITY_DEFAULT,
           self->priv->simulation_delay, receive_authorized,
-          self_and_contact_new (self, member),
+          self_and_contact_new (self, handles),
           self_and_contact_destroy);
     }
   else if (strstr (message_lc, "no") != NULL)
@@ -545,68 +575,114 @@ test_contact_list_manager_request_subscription (TestContactListManager *self,
       g_timeout_add_full (G_PRIORITY_DEFAULT,
           self->priv->simulation_delay,
           receive_unauthorized,
-          self_and_contact_new (self, member),
+          self_and_contact_new (self, handles),
           self_and_contact_destroy);
     }
 
   g_free (message_lc);
+  tp_handle_set_destroy (handles);
 }
 
 void
 test_contact_list_manager_unsubscribe (TestContactListManager *self,
-    TpHandle member)
+    guint n_members, TpHandle *members)
 {
-  ContactDetails *d = lookup_contact (self, member);
+  TpHandleSet *handles;
+  guint i;
 
-  if (d == NULL || d->subscribe == TP_SUBSCRIPTION_STATE_NO)
-    return;
+  handles = tp_handle_set_new (self->priv->contact_repo);
+  for (i = 0; i < n_members; i++)
+    {
+      ContactDetails *d = lookup_contact (self, members[i]);
 
-  d->subscribe = TP_SUBSCRIPTION_STATE_NO;
+      if (d == NULL || d->subscribe == TP_SUBSCRIPTION_STATE_NO)
+        continue;
 
-  tp_base_contact_list_one_contact_changed (TP_BASE_CONTACT_LIST (self), member);
+      d->subscribe = TP_SUBSCRIPTION_STATE_NO;
+      tp_handle_set_add (handles, members[i]);
+    }
+
+  tp_base_contact_list_contacts_changed (TP_BASE_CONTACT_LIST (self), handles,
+      NULL);
+
+  tp_handle_set_destroy (handles);
 }
 
 void
 test_contact_list_manager_authorize_publication (TestContactListManager *self,
-    TpHandle member)
+    guint n_members, TpHandle *members)
 {
-  ContactDetails *d = lookup_contact (self, member);
+  TpHandleSet *handles;
+  guint i;
 
-  if (d == NULL || d->publish != TP_SUBSCRIPTION_STATE_ASK)
-    return;
+  handles = tp_handle_set_new (self->priv->contact_repo);
+  for (i = 0; i < n_members; i++)
+    {
+      ContactDetails *d = lookup_contact (self, members[i]);
 
-  d->publish = TP_SUBSCRIPTION_STATE_YES;
-  tp_clear_pointer (&d->publish_request, g_free);
+      if (d == NULL || d->publish != TP_SUBSCRIPTION_STATE_ASK)
+        continue;
 
-  tp_base_contact_list_one_contact_changed (TP_BASE_CONTACT_LIST (self), member);
+      d->publish = TP_SUBSCRIPTION_STATE_YES;
+      tp_clear_pointer (&d->publish_request, g_free);
+      tp_handle_set_add (handles, members[i]);
+    }
+
+  tp_base_contact_list_contacts_changed (TP_BASE_CONTACT_LIST (self), handles,
+      NULL);
+
+  tp_handle_set_destroy (handles);
 }
 
 void
 test_contact_list_manager_unpublish (TestContactListManager *self,
-    TpHandle member)
+    guint n_members, TpHandle *members)
 {
-  ContactDetails *d = lookup_contact (self, member);
+  TpHandleSet *handles;
+  guint i;
 
-  if (d == NULL || d->publish == TP_SUBSCRIPTION_STATE_NO)
-    return;
+  handles = tp_handle_set_new (self->priv->contact_repo);
+  for (i = 0; i < n_members; i++)
+    {
+      ContactDetails *d = lookup_contact (self, members[i]);
 
-  d->publish = TP_SUBSCRIPTION_STATE_NO;
-  tp_clear_pointer (&d->publish_request, g_free);
+      if (d == NULL || d->publish == TP_SUBSCRIPTION_STATE_NO)
+        continue;
 
-  tp_base_contact_list_one_contact_changed (TP_BASE_CONTACT_LIST (self), member);
+      d->publish = TP_SUBSCRIPTION_STATE_NO;
+      tp_clear_pointer (&d->publish_request, g_free);
+      tp_handle_set_add (handles, members[i]);
+    }
+
+  tp_base_contact_list_contacts_changed (TP_BASE_CONTACT_LIST (self), handles,
+      NULL);
+
+  tp_handle_set_destroy (handles);
 }
 
 void
-test_contact_list_manager_remove_contact (TestContactListManager *self,
-    TpHandle member)
+test_contact_list_manager_remove (TestContactListManager *self,
+    guint n_members, TpHandle *members)
 {
-  ContactDetails *d = lookup_contact (self, member);
+  TpHandleSet *handles;
+  guint i;
 
-  if (d == NULL)
-    return;
+  handles = tp_handle_set_new (self->priv->contact_repo);
+  for (i = 0; i < n_members; i++)
+    {
+      ContactDetails *d = lookup_contact (self, members[i]);
 
-  g_hash_table_remove (self->priv->contact_details, GUINT_TO_POINTER (member));
+      if (d == NULL)
+        continue;
 
-  tp_base_contact_list_one_contact_removed (TP_BASE_CONTACT_LIST (self), member);
+      g_hash_table_remove (self->priv->contact_details,
+          GUINT_TO_POINTER (members[i]));
+      tp_handle_set_add (handles, members[i]);
+    }
+
+  tp_base_contact_list_contacts_changed (TP_BASE_CONTACT_LIST (self), NULL,
+      handles);
+
+  tp_handle_set_destroy (handles);
 }
 
