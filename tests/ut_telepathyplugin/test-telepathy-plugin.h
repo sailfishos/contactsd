@@ -66,7 +66,7 @@ public:
     QString accountUri;
 
     QString alias;
-    TpTestsContactsConnectionPresenceStatusIndex presence;
+    TpConnectionPresenceType presence;
     QByteArray avatarData;
     QString subscriptionState;
     QString publishState;

@@ -12,126 +12,90 @@
 #include "contact-list-manager.h"
 
 #include <string.h>
-
-#include <dbus/dbus-glib.h>
-
 #include <telepathy-glib/telepathy-glib.h>
-
-#include "contact-list.h"
-
-/* elements 0, 1... of this array must be kept in sync with elements 1, 2...
- * of the enum TestContactList in contact-list-manager.h */
-static const gchar *_contact_lists[NUM_TEST_CONTACT_LISTS + 1] = {
-    "subscribe",
-    "publish",
-    "stored",
-    NULL
-};
-
-const gchar **
-test_contact_lists (void)
-{
-  return _contact_lists;
-}
-
-/* this array must be kept in sync with the enum
- * TestContactListPresence in contact-list-manager.h */
-static const TpPresenceStatusSpec _statuses[] = {
-      { "offline", TP_CONNECTION_PRESENCE_TYPE_OFFLINE, FALSE, NULL },
-      { "unknown", TP_CONNECTION_PRESENCE_TYPE_UNKNOWN, FALSE, NULL },
-      { "error", TP_CONNECTION_PRESENCE_TYPE_ERROR, FALSE, NULL },
-      { "away", TP_CONNECTION_PRESENCE_TYPE_AWAY, TRUE, NULL },
-      { "available", TP_CONNECTION_PRESENCE_TYPE_AVAILABLE, TRUE, NULL },
-      { NULL }
-};
-
-const TpPresenceStatusSpec *
-test_contact_list_presence_statuses (void)
-{
-  return _statuses;
-}
-
-typedef struct {
-    gchar *alias;
-    TestContactListAvatarData *avatar_data;
-
-    guint subscribe:1;
-    guint publish:1;
-    guint subscribe_requested:1;
-    guint publish_requested:1;
-
-    TpHandleSet *tags;
-
-} ExampleContactDetails;
-
-static ExampleContactDetails *
-test_contact_details_new (void)
-{
-  return g_slice_new0 (ExampleContactDetails);
-}
-
-static void
-test_contact_details_destroy (gpointer p)
-{
-  ExampleContactDetails *d = p;
-
-  if (d->tags != NULL)
-    tp_handle_set_destroy (d->tags);
-
-  g_free (d->alias);
-  test_contact_list_avatar_data_free (d->avatar_data);
-  g_slice_free (ExampleContactDetails, d);
-}
-
-static void channel_manager_iface_init (gpointer, gpointer);
-
-G_DEFINE_TYPE_WITH_CODE (TestContactListManager,
-    test_contact_list_manager,
-    G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_MANAGER,
-      channel_manager_iface_init))
-
-enum
-{
-  ALIAS_UPDATED,
-  AVATAR_UPDATED,
-  PRESENCE_UPDATED,
-  N_SIGNALS
-};
-
-static guint signals[N_SIGNALS] = { 0 };
-
-enum
-{
-  PROP_CONNECTION = 1,
-  PROP_SIMULATION_DELAY,
-  N_PROPS
-};
 
 struct _TestContactListManagerPrivate
 {
   TpBaseConnection *conn;
   guint simulation_delay;
-  TpHandleRepoIface *contact_repo;
-  TpHandleRepoIface *group_repo;
-
-  TpHandleSet *contacts;
-  /* GUINT_TO_POINTER (handle borrowed from contacts)
-   *    => ExampleContactDetails */
-  GHashTable *contact_details;
-
-  TestContactList *lists[NUM_TEST_CONTACT_LISTS];
-
-  /* GUINT_TO_POINTER (handle borrowed from channel) => ExampleContactGroup */
-  GHashTable *groups;
-
-  /* borrowed TpExportableChannel => GSList of gpointer (request tokens) that
-   * will be satisfied by that channel when the contact list has been
-   * downloaded. The requests are in reverse chronological order */
-  GHashTable *queued_requests;
 
   gulong status_changed_id;
+
+  /* TpHandle => ContactDetails */
+  GHashTable *contact_details;
+
+  TpHandleRepoIface *contact_repo;
+  TpHandleRepoIface *group_repo;
+  TpHandleSet *groups;
 };
+
+static void contact_groups_iface_init (TpContactGroupListInterface *iface);
+
+G_DEFINE_TYPE_WITH_CODE (TestContactListManager, test_contact_list_manager,
+    TP_TYPE_BASE_CONTACT_LIST,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_CONTACT_GROUP_LIST,
+      contact_groups_iface_init))
+
+enum
+{
+  PROP_0,
+  PROP_SIMULATION_DELAY,
+  N_PROPS
+};
+
+typedef struct {
+  TpSubscriptionState subscribe;
+  TpSubscriptionState publish;
+  gchar *publish_request;
+  TpHandleSet *groups;
+
+  TpHandle handle;
+  TpHandleRepoIface *contact_repo;
+} ContactDetails;
+
+static void
+contact_detail_destroy (gpointer p)
+{
+  ContactDetails *d = p;
+
+  g_free (d->publish_request);
+  tp_handle_set_destroy (d->groups);
+  tp_handle_unref (d->contact_repo, d->handle);
+
+  g_slice_free (ContactDetails, d);
+}
+
+static ContactDetails *
+lookup_contact (TestContactListManager *self,
+                TpHandle handle)
+{
+  return g_hash_table_lookup (self->priv->contact_details,
+      GUINT_TO_POINTER (handle));
+}
+
+static ContactDetails *
+ensure_contact (TestContactListManager *self,
+                TpHandle handle)
+{
+  ContactDetails *d = lookup_contact (self, handle);
+
+  if (d == NULL)
+    {
+      d = g_slice_new0 (ContactDetails);
+      d->subscribe = TP_SUBSCRIPTION_STATE_NO;
+      d->publish = TP_SUBSCRIPTION_STATE_NO;
+      d->publish_request = NULL;
+      d->groups = tp_handle_set_new (self->priv->group_repo);
+      d->handle = handle;
+      d->contact_repo = self->priv->contact_repo;
+      tp_handle_ref (d->contact_repo, d->handle);
+
+      g_hash_table_insert (self->priv->contact_details,
+          GUINT_TO_POINTER (handle), d);
+    }
+
+  return d;
+}
 
 static void
 test_contact_list_manager_init (TestContactListManager *self)
@@ -140,94 +104,20 @@ test_contact_list_manager_init (TestContactListManager *self)
       TEST_TYPE_CONTACT_LIST_MANAGER, TestContactListManagerPrivate);
 
   self->priv->contact_details = g_hash_table_new_full (g_direct_hash,
-      g_direct_equal, NULL, test_contact_details_destroy);
-  self->priv->groups = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-      NULL, g_object_unref);
-  self->priv->queued_requests = g_hash_table_new_full (g_direct_hash,
-      g_direct_equal, NULL, NULL);
-
-  /* initialized properly in constructed() */
-  self->priv->contact_repo = NULL;
-  self->priv->group_repo = NULL;
-  self->priv->contacts = NULL;
+      g_direct_equal, NULL, contact_detail_destroy);
 }
 
 static void
-test_contact_list_manager_close_all (TestContactListManager *self)
+close_all (TestContactListManager *self)
 {
-  guint i;
-
-  if (self->priv->queued_requests != NULL)
-    {
-      GHashTable *tmp = self->priv->queued_requests;
-      GHashTableIter iter;
-      gpointer key, value;
-
-      self->priv->queued_requests = NULL;
-      g_hash_table_iter_init (&iter, tmp);
-
-      while (g_hash_table_iter_next (&iter, &key, &value))
-        {
-          GSList *requests = value;
-          GSList *l;
-
-          requests = g_slist_reverse (requests);
-
-          for (l = requests; l != NULL; l = l->next)
-            {
-              tp_channel_manager_emit_request_failed (self,
-                  l->data, TP_ERRORS, TP_ERROR_DISCONNECTED,
-                  "Unable to complete channel request due to disconnection");
-            }
-
-          g_slist_free (requests);
-          g_hash_table_iter_steal (&iter);
-        }
-
-      g_hash_table_destroy (tmp);
-    }
-
-  if (self->priv->contacts != NULL)
-    {
-      tp_handle_set_destroy (self->priv->contacts);
-      self->priv->contacts = NULL;
-    }
-
-  if (self->priv->contact_details != NULL)
-    {
-      GHashTable *tmp = self->priv->contact_details;
-
-      self->priv->contact_details = NULL;
-      g_hash_table_destroy (tmp);
-    }
-
-  if (self->priv->groups != NULL)
-    {
-      GHashTable *tmp = self->priv->groups;
-
-      self->priv->groups = NULL;
-      g_hash_table_destroy (tmp);
-    }
-
-  for (i = 0; i < NUM_TEST_CONTACT_LISTS; i++)
-    {
-      if (self->priv->lists[i] != NULL)
-        {
-          TestContactList *list = self->priv->lists[i];
-
-          /* set self->priv->lists[i] to NULL here so list_closed_cb does
-           * not try to delete the list again */
-          self->priv->lists[i] = NULL;
-          g_object_unref (list);
-        }
-    }
-
   if (self->priv->status_changed_id != 0)
     {
       g_signal_handler_disconnect (self->priv->conn,
           self->priv->status_changed_id);
       self->priv->status_changed_id = 0;
     }
+  tp_clear_pointer (&self->priv->contact_details, g_hash_table_unref);
+  tp_clear_pointer (&self->priv->groups, tp_handle_set_destroy);
 }
 
 static void
@@ -235,10 +125,7 @@ dispose (GObject *object)
 {
   TestContactListManager *self = TEST_CONTACT_LIST_MANAGER (object);
 
-  test_contact_list_manager_close_all (self);
-  g_assert (self->priv->groups == NULL);
-  g_assert (self->priv->lists[0] == NULL);
-  g_assert (self->priv->queued_requests == NULL);
+  close_all (self);
 
   ((GObjectClass *) test_contact_list_manager_parent_class)->dispose (
     object);
@@ -254,10 +141,6 @@ get_property (GObject *object,
 
   switch (property_id)
     {
-    case PROP_CONNECTION:
-      g_value_set_object (value, self->priv->conn);
-      break;
-
     case PROP_SIMULATION_DELAY:
       g_value_set_uint (value, self->priv->simulation_delay);
       break;
@@ -277,13 +160,6 @@ set_property (GObject *object,
 
   switch (property_id)
     {
-    case PROP_CONNECTION:
-      /* We don't ref the connection, because it owns a reference to the
-       * manager, and it guarantees that the manager's lifetime is
-       * less than its lifetime */
-      self->priv->conn = g_value_get_object (value);
-      break;
-
     case PROP_SIMULATION_DELAY:
       self->priv->simulation_delay = g_value_get_uint (value);
       break;
@@ -293,345 +169,161 @@ set_property (GObject *object,
     }
 }
 
-static void
-satisfy_queued_requests (TpExportableChannel *channel,
-                         gpointer user_data)
+static TpHandleSet *
+contact_list_dup_contacts (TpBaseContactList *base)
 {
-  TestContactListManager *self = TEST_CONTACT_LIST_MANAGER (user_data);
-  GSList *requests = g_hash_table_lookup (self->priv->queued_requests,
-      channel);
-
-  /* this is all fine even if requests is NULL */
-  g_hash_table_steal (self->priv->queued_requests, channel);
-  requests = g_slist_reverse (requests);
-  tp_channel_manager_emit_new_channel (self, channel, requests);
-  g_slist_free (requests);
-}
-
-static ExampleContactDetails *
-lookup_contact (TestContactListManager *self,
-                TpHandle contact)
-{
-  return g_hash_table_lookup (self->priv->contact_details,
-      GUINT_TO_POINTER (contact));
-}
-
-static ExampleContactDetails *
-ensure_contact (TestContactListManager *self,
-                TpHandle contact,
-                gboolean *created)
-{
-  ExampleContactDetails *ret = lookup_contact (self, contact);
-
-  if (ret == NULL)
-    {
-      tp_handle_set_add (self->priv->contacts, contact);
-
-      ret = test_contact_details_new ();
-      ret->alias = g_strdup (tp_handle_inspect (self->priv->contact_repo,
-            contact));
-      ret->avatar_data = NULL;
-
-      g_hash_table_insert (self->priv->contact_details,
-          GUINT_TO_POINTER (contact), ret);
-
-      if (created != NULL)
-        *created = TRUE;
-    }
-  else if (created != NULL)
-    {
-      *created = FALSE;
-    }
-
-  return ret;
-}
-
-static void
-test_contact_list_manager_foreach_channel (TpChannelManager *manager,
-                                              TpExportableChannelFunc callback,
-                                              gpointer user_data)
-{
-  TestContactListManager *self = TEST_CONTACT_LIST_MANAGER (manager);
+  TestContactListManager *self = TEST_CONTACT_LIST_MANAGER (base);
+  TpHandleSet *set;
   GHashTableIter iter;
-  gpointer handle, channel;
-  guint i;
+  gpointer k, v;
 
-  for (i = 0; i < NUM_TEST_CONTACT_LISTS; i++)
+  set = tp_handle_set_new (self->priv->contact_repo);
+
+  g_hash_table_iter_init (&iter, self->priv->contact_details);
+
+  while (g_hash_table_iter_next (&iter, &k, &v))
     {
-      if (self->priv->lists[i] != NULL)
-        callback (TP_EXPORTABLE_CHANNEL (self->priv->lists[i]), user_data);
+      ContactDetails *d = v;
+
+      /* add all the interesting items */
+      if (d->subscribe != TP_SUBSCRIPTION_STATE_NO ||
+          d->publish != TP_SUBSCRIPTION_STATE_NO)
+        tp_handle_set_add (set, GPOINTER_TO_UINT (k));
     }
 
-  g_hash_table_iter_init (&iter, self->priv->groups);
+  return set;
+}
 
-  while (g_hash_table_iter_next (&iter, &handle, &channel))
+static void
+contact_list_dup_states (TpBaseContactList *base,
+    TpHandle contact,
+    TpSubscriptionState *subscribe,
+    TpSubscriptionState *publish,
+    gchar **publish_request)
+{
+  TestContactListManager *self = TEST_CONTACT_LIST_MANAGER (base);
+  ContactDetails *d = lookup_contact (self, contact);
+
+  if (d == NULL)
     {
-      callback (TP_EXPORTABLE_CHANNEL (channel), user_data);
+      if (subscribe != NULL)
+        *subscribe = TP_SUBSCRIPTION_STATE_NO;
+
+      if (publish != NULL)
+        *publish = TP_SUBSCRIPTION_STATE_NO;
+
+      if (publish_request != NULL)
+        *publish_request = NULL;
+    }
+  else
+    {
+      if (subscribe != NULL)
+        *subscribe = d->subscribe;
+
+      if (publish != NULL)
+        *publish = d->publish;
+
+      if (publish_request != NULL)
+        *publish_request = g_strdup (d->publish_request);
     }
 }
 
-static ExampleContactGroup *ensure_group (TestContactListManager *self,
-    TpHandle handle);
-
-static TestContactList *ensure_list (TestContactListManager *self,
-    TestContactListHandle handle);
-
-static gboolean
-receive_contact_lists (gpointer p)
+static GStrv
+contact_list_dup_groups (TpBaseContactList *base)
 {
-  TestContactListManager *self = p;
-#if 0
-  TpHandle handle, cambridge, montreal, francophones;
-  ExampleContactDetails *d;
-  TpIntSet *set, *cam_set, *mtl_set, *fr_set;
-  TpIntSetFastIter iter;
-  TestContactList *subscribe, *publish, *stored;
-  ExampleContactGroup *cambridge_group, *montreal_group,
-      *francophones_group;
+  TestContactListManager *self = TEST_CONTACT_LIST_MANAGER (base);
+  GPtrArray *ret;
 
-  if (self->priv->groups == NULL)
+  if (self->priv->groups != NULL)
     {
-      /* connection already disconnected, so don't process the
-       * "data from the server" */
-      return FALSE;
+      TpIntSetFastIter iter;
+      TpHandle group;
+
+      ret = g_ptr_array_sized_new (
+          tp_handle_set_size (self->priv->groups) + 1);
+
+      tp_intset_fast_iter_init (&iter,
+          tp_handle_set_peek (self->priv->groups));
+
+      while (tp_intset_fast_iter_next (&iter, &group))
+        {
+          g_ptr_array_add (ret, g_strdup (tp_handle_inspect (
+              self->priv->group_repo, group)));
+        }
+    }
+  else
+    {
+      ret = g_ptr_array_sized_new (1);
     }
 
-  /* In a real CM we'd have received a contact list from the server at this
-   * point. But this isn't a real CM, so we have to make one up... */
+  g_ptr_array_add (ret, NULL);
+  return (GStrv) g_ptr_array_free (ret, FALSE);
+}
 
-  g_message ("Receiving roster from server");
+static GStrv
+contact_list_dup_contact_groups (TpBaseContactList *base,
+    TpHandle contact)
+{
+  TestContactListManager *self = TEST_CONTACT_LIST_MANAGER (base);
+  GPtrArray *ret = g_ptr_array_new ();
+  ContactDetails *d = lookup_contact (self, contact);
 
-  subscribe = ensure_list (self, TEST_CONTACT_LIST_SUBSCRIBE);
-  publish = ensure_list (self, TEST_CONTACT_LIST_PUBLISH);
-  stored = ensure_list (self, TEST_CONTACT_LIST_STORED);
-
-  cambridge = tp_handle_ensure (self->priv->group_repo, "Cambridge", NULL,
-      NULL);
-  montreal = tp_handle_ensure (self->priv->group_repo, "Montreal", NULL,
-      NULL);
-  francophones = tp_handle_ensure (self->priv->group_repo, "Francophones",
-      NULL, NULL);
-
-  cambridge_group = ensure_group (self, cambridge);
-  montreal_group = ensure_group (self, montreal);
-  francophones_group = ensure_group (self, francophones);
-
-  /* Add various people who are already subscribing and publishing */
-
-  set = tp_intset_new ();
-  cam_set = tp_intset_new ();
-  mtl_set = tp_intset_new ();
-  fr_set = tp_intset_new ();
-
-  handle = tp_handle_ensure (self->priv->contact_repo, "sjoerd@example.com",
-      NULL, NULL);
-  tp_intset_add (set, handle);
-  tp_intset_add (cam_set, handle);
-  d = ensure_contact (self, handle, NULL);
-  g_free (d->alias);
-  d->alias = g_strdup ("Sjoerd");
-  test_contact_list_avatar_data_free (d->avatar_data);
-  d->avatar_data = NULL;
-  d->subscribe = TRUE;
-  d->publish = TRUE;
-  d->tags = tp_handle_set_new (self->priv->group_repo);
-  tp_handle_set_add (d->tags, cambridge);
-  tp_handle_unref (self->priv->contact_repo, handle);
-
-  handle = tp_handle_ensure (self->priv->contact_repo, "guillaume@example.com",
-      NULL, NULL);
-  tp_intset_add (set, handle);
-  tp_intset_add (cam_set, handle);
-  tp_intset_add (fr_set, handle);
-  d = ensure_contact (self, handle, NULL);
-  g_free (d->alias);
-  d->alias = g_strdup ("Guillaume");
-  test_contact_list_avatar_data_free (d->avatar_data);
-  d->avatar_data = NULL;
-  d->subscribe = TRUE;
-  d->publish = TRUE;
-  d->tags = tp_handle_set_new (self->priv->group_repo);
-  tp_handle_set_add (d->tags, cambridge);
-  tp_handle_set_add (d->tags, francophones);
-  tp_handle_unref (self->priv->contact_repo, handle);
-
-  handle = tp_handle_ensure (self->priv->contact_repo, "olivier@example.com",
-      NULL, NULL);
-  tp_intset_add (set, handle);
-  tp_intset_add (mtl_set, handle);
-  tp_intset_add (fr_set, handle);
-  d = ensure_contact (self, handle, NULL);
-  g_free (d->alias);
-  d->alias = g_strdup ("Olivier");
-  test_contact_list_avatar_data_free (d->avatar_data);
-  d->avatar_data = NULL;
-  d->subscribe = TRUE;
-  d->publish = TRUE;
-  d->tags = tp_handle_set_new (self->priv->group_repo);
-  tp_handle_set_add (d->tags, montreal);
-  tp_handle_set_add (d->tags, francophones);
-  tp_handle_unref (self->priv->contact_repo, handle);
-
-  handle = tp_handle_ensure (self->priv->contact_repo, "travis@example.com",
-      NULL, NULL);
-  tp_intset_add (set, handle);
-  d = ensure_contact (self, handle, NULL);
-  g_free (d->alias);
-  d->alias = g_strdup ("Travis");
-  test_contact_list_avatar_data_free (d->avatar_data);
-  d->avatar_data = NULL;
-  d->subscribe = TRUE;
-  d->publish = TRUE;
-  tp_handle_unref (self->priv->contact_repo, handle);
-
-  tp_group_mixin_change_members ((GObject *) subscribe, "",
-      set, NULL, NULL, NULL,
-      0, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-  tp_group_mixin_change_members ((GObject *) publish, "",
-      set, NULL, NULL, NULL,
-      0, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-  tp_group_mixin_change_members ((GObject *) stored, "",
-      set, NULL, NULL, NULL,
-      0, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-
-  tp_intset_fast_iter_init (&iter, set);
-
-  while (tp_intset_fast_iter_next (&iter, &handle))
+  if (d != NULL && d->groups != NULL)
     {
-      g_signal_emit (self, signals[ALIAS_UPDATED], 0, handle);
-      g_signal_emit (self, signals[PRESENCE_UPDATED], 0, handle);
+      TpIntSetFastIter iter;
+      TpHandle group;
+
+      ret = g_ptr_array_sized_new (tp_handle_set_size (d->groups) + 1);
+
+      tp_intset_fast_iter_init (&iter, tp_handle_set_peek (d->groups));
+
+      while (tp_intset_fast_iter_next (&iter, &group))
+        {
+          g_ptr_array_add (ret, g_strdup (tp_handle_inspect (
+              self->priv->group_repo, group)));
+        }
+    }
+  else
+    {
+      ret = g_ptr_array_sized_new (1);
     }
 
-  tp_intset_destroy (set);
+  g_ptr_array_add (ret, NULL);
+  return (GStrv) g_ptr_array_free (ret, FALSE);
+}
 
-  /* Add a couple of people whose presence we've requested. They are
-   * remote-pending in subscribe */
+static TpHandleSet *
+contact_list_dup_group_members (TpBaseContactList *base,
+    const gchar *group)
+{
+  TestContactListManager *self = TEST_CONTACT_LIST_MANAGER (base);
+  TpHandleSet *set;
+  TpHandle group_handle;
+  GHashTableIter iter;
+  gpointer k, v;
 
-  set = tp_intset_new ();
+  set = tp_handle_set_new (self->priv->contact_repo);
 
-  handle = tp_handle_ensure (self->priv->contact_repo, "geraldine@example.com",
-      NULL, NULL);
-  tp_intset_add (set, handle);
-  tp_intset_add (cam_set, handle);
-  tp_intset_add (fr_set, handle);
-  d = ensure_contact (self, handle, NULL);
-  g_free (d->alias);
-  d->alias = g_strdup ("Géraldine");
-  test_contact_list_avatar_data_free (d->avatar_data);
-  d->avatar_data = NULL;
-  d->subscribe_requested = TRUE;
-  d->tags = tp_handle_set_new (self->priv->group_repo);
-  tp_handle_set_add (d->tags, cambridge);
-  tp_handle_set_add (d->tags, francophones);
-  tp_handle_unref (self->priv->contact_repo, handle);
+  g_hash_table_iter_init (&iter, self->priv->contact_details);
 
-  handle = tp_handle_ensure (self->priv->contact_repo, "helen@example.com",
-      NULL, NULL);
-  tp_intset_add (set, handle);
-  tp_intset_add (cam_set, handle);
-  d = ensure_contact (self, handle, NULL);
-  g_free (d->alias);
-  d->alias = g_strdup ("Helen");
-  test_contact_list_avatar_data_free (d->avatar_data);
-  d->avatar_data = NULL;
-  d->subscribe_requested = TRUE;
-  d->tags = tp_handle_set_new (self->priv->group_repo);
-  tp_handle_set_add (d->tags, cambridge);
-  tp_handle_unref (self->priv->contact_repo, handle);
+  group_handle = tp_handle_lookup (self->priv->group_repo, group, NULL, NULL);
 
-  tp_group_mixin_change_members ((GObject *) subscribe, "",
-      NULL, NULL, NULL, set,
-      0, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-  tp_group_mixin_change_members ((GObject *) stored, "",
-      set, NULL, NULL, NULL,
-      0, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-
-  tp_intset_fast_iter_init (&iter, set);
-
-  while (tp_intset_fast_iter_next (&iter, &handle))
+  if (G_UNLIKELY (group_handle == 0))
     {
-      g_signal_emit (self, signals[ALIAS_UPDATED], 0, handle);
-      g_signal_emit (self, signals[PRESENCE_UPDATED], 0, handle);
+      /* clearly it doesn't have members */
+      return set;
     }
 
-  tp_intset_destroy (set);
+  while (g_hash_table_iter_next (&iter, &k, &v))
+    {
+      ContactDetails *d = v;
 
-  /* Receive a couple of authorization requests too. These people are
-   * local-pending in publish */
+      if (d->groups != NULL &&
+          tp_handle_set_is_member (d->groups, group_handle))
+        tp_handle_set_add (set, GPOINTER_TO_UINT (k));
+    }
 
-  handle = tp_handle_ensure (self->priv->contact_repo, "wim@example.com",
-      NULL, NULL);
-  d = ensure_contact (self, handle, NULL);
-  g_free (d->alias);
-  d->alias = g_strdup ("Wim");
-  test_contact_list_avatar_data_free (d->avatar_data);
-  d->avatar_data = NULL;
-  d->publish_requested = TRUE;
-  tp_handle_unref (self->priv->contact_repo, handle);
-
-  set = tp_intset_new_containing (handle);
-  tp_group_mixin_change_members ((GObject *) publish,
-      "I'm more metal than you!",
-      NULL, NULL, set, NULL,
-      handle, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-  tp_group_mixin_change_members ((GObject *) stored, "",
-      set, NULL, NULL, NULL,
-      handle, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-  tp_intset_destroy (set);
-  g_signal_emit (self, signals[ALIAS_UPDATED], 0, handle);
-  g_signal_emit (self, signals[PRESENCE_UPDATED], 0, handle);
-
-  handle = tp_handle_ensure (self->priv->contact_repo, "christian@example.com",
-      NULL, NULL);
-  d = ensure_contact (self, handle, NULL);
-  g_free (d->alias);
-  d->alias = g_strdup ("Christian");
-  test_contact_list_avatar_data_free (d->avatar_data);
-  d->avatar_data = NULL;
-  d->publish_requested = TRUE;
-  tp_handle_unref (self->priv->contact_repo, handle);
-
-  set = tp_intset_new_containing (handle);
-  tp_group_mixin_change_members ((GObject *) publish,
-      "I have some fermented herring for you",
-      NULL, NULL, set, NULL,
-      handle, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-  tp_group_mixin_change_members ((GObject *) stored, "",
-      set, NULL, NULL, NULL,
-      handle, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-  tp_intset_destroy (set);
-  g_signal_emit (self, signals[ALIAS_UPDATED], 0, handle);
-  g_signal_emit (self, signals[PRESENCE_UPDATED], 0, handle);
-
-  tp_group_mixin_change_members ((GObject *) cambridge_group, "",
-      cam_set, NULL, NULL, NULL,
-      0, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-  tp_group_mixin_change_members ((GObject *) montreal_group, "",
-      mtl_set, NULL, NULL, NULL,
-      0, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-  tp_group_mixin_change_members ((GObject *) francophones_group, "",
-      fr_set, NULL, NULL, NULL,
-      0, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-
-  tp_intset_destroy (fr_set);
-  tp_intset_destroy (cam_set);
-  tp_intset_destroy (mtl_set);
-
-  tp_handle_unref (self->priv->group_repo, cambridge);
-  tp_handle_unref (self->priv->group_repo, montreal);
-  tp_handle_unref (self->priv->group_repo, francophones);
-#endif
-
-  /* Now we've received the roster, we can satisfy all the queued requests */
-
-  test_contact_list_manager_foreach_channel ((TpChannelManager *) self,
-      satisfy_queued_requests, self);
-
-  g_assert (g_hash_table_size (self->priv->queued_requests) == 0);
-  g_hash_table_destroy (self->priv->queued_requests);
-  self->priv->queued_requests = NULL;
-
-  return FALSE;
+  return set;
 }
 
 static void
@@ -644,18 +336,13 @@ status_changed_cb (TpBaseConnection *conn,
     {
     case TP_CONNECTION_STATUS_CONNECTED:
         {
-          /* Do network I/O to get the contact list. This connection manager
-           * doesn't really have a server, so simulate a small network delay
-           * then invent a contact list */
-          g_timeout_add_full (G_PRIORITY_DEFAULT,
-              2 * self->priv->simulation_delay, receive_contact_lists,
-              g_object_ref (self), g_object_unref);
+          tp_base_contact_list_set_list_received (TP_BASE_CONTACT_LIST (self));
         }
       break;
 
     case TP_CONNECTION_STATUS_DISCONNECTED:
         {
-          test_contact_list_manager_close_all (self);
+          close_all (self);
         }
       break;
     }
@@ -667,20 +354,31 @@ constructed (GObject *object)
   TestContactListManager *self = TEST_CONTACT_LIST_MANAGER (object);
   void (*chain_up) (GObject *) =
       ((GObjectClass *) test_contact_list_manager_parent_class)->constructed;
+  TpHandleRepoIface *group_repo;
 
   if (chain_up != NULL)
     {
       chain_up (object);
     }
 
+  self->priv->conn = tp_base_contact_list_get_connection (
+      TP_BASE_CONTACT_LIST (self), NULL);
+  self->priv->status_changed_id = g_signal_connect (self->priv->conn,
+      "status-changed", G_CALLBACK (status_changed_cb), self);
+
   self->priv->contact_repo = tp_base_connection_get_handles (self->priv->conn,
       TP_HANDLE_TYPE_CONTACT);
   self->priv->group_repo = tp_base_connection_get_handles (self->priv->conn,
       TP_HANDLE_TYPE_GROUP);
-  self->priv->contacts = tp_handle_set_new (self->priv->contact_repo);
+  self->priv->groups = tp_handle_set_new (group_repo);
+}
 
-  self->priv->status_changed_id = g_signal_connect (self->priv->conn,
-      "status-changed", (GCallback) status_changed_cb, self);
+static void
+contact_groups_iface_init (TpContactGroupListInterface *iface)
+{
+  iface->dup_groups = contact_list_dup_groups;
+  iface->dup_contact_groups = contact_list_dup_contact_groups;
+  iface->dup_group_members = contact_list_dup_group_members;
 }
 
 static void
@@ -688,18 +386,17 @@ test_contact_list_manager_class_init (TestContactListManagerClass *klass)
 {
   GParamSpec *param_spec;
   GObjectClass *object_class = (GObjectClass *) klass;
+  TpBaseContactListClass *base_class =(TpBaseContactListClass *) klass;
+
+  g_type_class_add_private (klass, sizeof (TestContactListManagerPrivate));
 
   object_class->constructed = constructed;
   object_class->dispose = dispose;
   object_class->get_property = get_property;
   object_class->set_property = set_property;
 
-  param_spec = g_param_spec_object ("connection", "Connection object",
-      "The connection that owns this channel manager",
-      TP_TYPE_BASE_CONNECTION,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
+  base_class->dup_states = contact_list_dup_states;
+  base_class->dup_contacts = contact_list_dup_contacts;
 
   param_spec = g_param_spec_uint ("simulation-delay", "Simulation delay",
       "Delay between simulated network events",
@@ -707,456 +404,61 @@ test_contact_list_manager_class_init (TestContactListManagerClass *klass)
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_SIMULATION_DELAY,
       param_spec);
-
-  g_type_class_add_private (klass, sizeof (TestContactListManagerPrivate));
-
-  signals[ALIAS_UPDATED] = g_signal_new ("alias-updated",
-      G_TYPE_FROM_CLASS (klass),
-      G_SIGNAL_RUN_LAST,
-      0,
-      NULL, NULL,
-      g_cclosure_marshal_VOID__UINT, G_TYPE_NONE, 1, G_TYPE_UINT);
-
-  signals[AVATAR_UPDATED] = g_signal_new ("avatar-updated",
-      G_TYPE_FROM_CLASS (klass),
-      G_SIGNAL_RUN_LAST,
-      0,
-      NULL, NULL,
-      g_cclosure_marshal_VOID__UINT, G_TYPE_NONE, 1, G_TYPE_UINT);
-
-  signals[PRESENCE_UPDATED] = g_signal_new ("presence-updated",
-      G_TYPE_FROM_CLASS (klass),
-      G_SIGNAL_RUN_LAST,
-      0,
-      NULL, NULL,
-      g_cclosure_marshal_VOID__UINT, G_TYPE_NONE, 1, G_TYPE_UINT);
 }
 
-static void
-list_closed_cb (TestContactList *chan,
-                TestContactListManager *self)
+void
+test_contact_list_manager_add_to_group (TestContactListManager *self,
+    const gchar *group_name, TpHandle member)
 {
-  TpHandle handle;
+  TpBaseContactList *base = TP_BASE_CONTACT_LIST (self);
+  ContactDetails *d = ensure_contact (self, member);
+  TpHandle group_handle;
 
-  tp_channel_manager_emit_channel_closed_for_object (self,
-      TP_EXPORTABLE_CHANNEL (chan));
+  group_handle = tp_handle_ensure (self->priv->group_repo, group_name, NULL, NULL);
 
-  g_object_get (chan,
-      "handle", &handle,
-      NULL);
+  if (!tp_handle_set_is_member (self->priv->groups, group_handle))
+    {
+      tp_handle_set_add (self->priv->groups, group_handle);
+      tp_base_contact_list_groups_created (base, &group_name, 1);
+    }
 
-  if (self->priv->lists[handle] == NULL)
-    return;
-
-  g_assert (chan == self->priv->lists[handle]);
-  g_object_unref (self->priv->lists[handle]);
-  self->priv->lists[handle] = NULL;
+  tp_handle_set_add (d->groups, group_handle);
+  tp_base_contact_list_one_contact_groups_changed (base, member,
+      &group_name, 1, NULL, 0);
 }
 
-static void
-group_closed_cb (ExampleContactGroup *chan,
-                 TestContactListManager *self)
+void
+test_contact_list_manager_remove_from_group (TestContactListManager *self,
+    const gchar *group_name, TpHandle member)
 {
-  tp_channel_manager_emit_channel_closed_for_object (self,
-      TP_EXPORTABLE_CHANNEL (chan));
-
-  if (self->priv->groups != NULL)
-    {
-      TpHandle handle;
-
-      g_object_get (chan,
-          "handle", &handle,
-          NULL);
-
-      g_hash_table_remove (self->priv->groups, GUINT_TO_POINTER (handle));
-    }
-}
-
-static TestContactListBase *
-new_channel (TestContactListManager *self,
-             TpHandleType handle_type,
-             TpHandle handle,
-             gpointer request_token)
-{
-  TestContactListBase *chan;
-  gchar *object_path;
-  GType type;
-  GSList *requests = NULL;
-
-  if (handle_type == TP_HANDLE_TYPE_LIST)
-    {
-      /* Some Telepathy clients wrongly assume that contact lists of type LIST
-       * have object paths ending with "/subscribe", "/publish" etc. -
-       * telepathy-spec has no such guarantee, so in this example we break
-       * those clients. Please read the spec when implementing it :-) */
-      object_path = g_strdup_printf ("%s/%sContactList",
-          self->priv->conn->object_path, _contact_lists[handle - 1]);
-      type = TEST_TYPE_CONTACT_LIST;
-    }
-  else
-    {
-      /* Using Group%u (with handle as the value of %u) would be OK here too,
-       * but we'll encode the group name into the object path to be kind
-       * to people reading debug logs. */
-      gchar *id = tp_escape_as_identifier (tp_handle_inspect (
-            self->priv->group_repo, handle));
-
-      g_assert (handle_type == TP_HANDLE_TYPE_GROUP);
-      object_path = g_strdup_printf ("%s/Group/%s",
-          self->priv->conn->object_path, id);
-      type = TEST_TYPE_CONTACT_GROUP;
-
-      g_free (id);
-    }
-
-  chan = g_object_new (type,
-      "connection", self->priv->conn,
-      "manager", self,
-      "object-path", object_path,
-      "handle-type", handle_type,
-      "handle", handle,
-      NULL);
-
-  g_free (object_path);
-
-  if (handle_type == TP_HANDLE_TYPE_LIST)
-    {
-      g_signal_connect (chan, "closed", (GCallback) list_closed_cb, self);
-      g_assert (self->priv->lists[handle] == NULL);
-      self->priv->lists[handle] = TEST_CONTACT_LIST (chan);
-    }
-  else
-    {
-      g_signal_connect (chan, "closed", (GCallback) group_closed_cb, self);
-
-      g_assert (g_hash_table_lookup (self->priv->groups,
-            GUINT_TO_POINTER (handle)) == NULL);
-      g_hash_table_insert (self->priv->groups, GUINT_TO_POINTER (handle),
-          TEST_CONTACT_GROUP (chan));
-    }
-
-  if (self->priv->queued_requests == NULL)
-    {
-      if (request_token != NULL)
-        requests = g_slist_prepend (requests, request_token);
-
-      tp_channel_manager_emit_new_channel (self, TP_EXPORTABLE_CHANNEL (chan),
-          requests);
-      g_slist_free (requests);
-    }
-  else if (request_token != NULL)
-    {
-      /* initial contact list not received yet, so we have to wait for it */
-      requests = g_hash_table_lookup (self->priv->queued_requests, chan);
-      g_hash_table_steal (self->priv->queued_requests, chan);
-      requests = g_slist_prepend (requests, request_token);
-      g_hash_table_insert (self->priv->queued_requests, chan, requests);
-    }
-
-  return chan;
-}
-
-static TestContactList *
-ensure_list (TestContactListManager *self,
-             TestContactListHandle handle)
-{
-  if (self->priv->lists[handle] == NULL)
-    {
-      new_channel (self, TP_HANDLE_TYPE_LIST, handle, NULL);
-      g_assert (self->priv->lists[handle] != NULL);
-    }
-
-  return self->priv->lists[handle];
-}
-
-static ExampleContactGroup *
-ensure_group (TestContactListManager *self,
-              TpHandle handle)
-{
-  ExampleContactGroup *group = g_hash_table_lookup (self->priv->groups,
-      GUINT_TO_POINTER (handle));
-
-  if (group == NULL)
-    {
-      group = TEST_CONTACT_GROUP (new_channel (self, TP_HANDLE_TYPE_GROUP,
-            handle, NULL));
-    }
-
-  return group;
-}
-
-static const gchar * const fixed_properties[] = {
-    TP_PROP_CHANNEL_CHANNEL_TYPE,
-    TP_PROP_CHANNEL_TARGET_HANDLE_TYPE,
-    NULL
-};
-
-static const gchar * const allowed_properties[] = {
-    TP_PROP_CHANNEL_TARGET_HANDLE,
-    TP_PROP_CHANNEL_TARGET_ID,
-    NULL
-};
-
-static void
-test_contact_list_manager_foreach_channel_class (TpChannelManager *manager,
-    TpChannelManagerChannelClassFunc func,
-    gpointer user_data)
-{
-    GHashTable *table = tp_asv_new (
-        TP_PROP_CHANNEL_CHANNEL_TYPE,
-            G_TYPE_STRING, TP_IFACE_CHANNEL_TYPE_CONTACT_LIST,
-        TP_PROP_CHANNEL_TARGET_HANDLE_TYPE, G_TYPE_UINT, TP_HANDLE_TYPE_LIST,
-        NULL);
-
-    func (manager, table, allowed_properties, user_data);
-
-    g_hash_table_insert (table, TP_PROP_CHANNEL_TARGET_HANDLE_TYPE,
-        tp_g_value_slice_new_uint (TP_HANDLE_TYPE_GROUP));
-    func (manager, table, allowed_properties, user_data);
-
-    g_hash_table_destroy (table);
-}
-
-static gboolean
-test_contact_list_manager_request (TestContactListManager *self,
-                                      gpointer request_token,
-                                      GHashTable *request_properties,
-                                      gboolean require_new)
-{
-  TpHandleType handle_type;
-  TpHandle handle;
-  TestContactListBase *chan;
-  GError *error = NULL;
-
-  if (tp_strdiff (tp_asv_get_string (request_properties,
-          TP_PROP_CHANNEL_CHANNEL_TYPE),
-      TP_IFACE_CHANNEL_TYPE_CONTACT_LIST))
-    {
-      return FALSE;
-    }
-
-  handle_type = tp_asv_get_uint32 (request_properties,
-      TP_PROP_CHANNEL_TARGET_HANDLE_TYPE, NULL);
-
-  if (handle_type != TP_HANDLE_TYPE_LIST &&
-      handle_type != TP_HANDLE_TYPE_GROUP)
-    {
-      return FALSE;
-    }
-
-  handle = tp_asv_get_uint32 (request_properties,
-      TP_PROP_CHANNEL_TARGET_HANDLE, NULL);
-  g_assert (handle != 0);
-
-  if (tp_channel_manager_asv_has_unknown_properties (request_properties,
-        fixed_properties, allowed_properties, &error))
-    {
-      goto error;
-    }
-
-  if (handle_type == TP_HANDLE_TYPE_LIST)
-    {
-      /* telepathy-glib has already checked that the handle is valid */
-      g_assert (handle < NUM_TEST_CONTACT_LISTS);
-
-      chan = TEST_CONTACT_LIST_BASE (self->priv->lists[handle]);
-    }
-  else
-    {
-      chan = g_hash_table_lookup (self->priv->groups,
-          GUINT_TO_POINTER (handle));
-    }
-
-  if (chan == NULL)
-    {
-      new_channel (self, handle_type, handle, request_token);
-    }
-  else if (require_new)
-    {
-      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-          "A ContactList channel for type #%u, handle #%u already exists",
-          handle_type, handle);
-      goto error;
-    }
-  else
-    {
-      tp_channel_manager_emit_request_already_satisfied (self,
-          request_token, TP_EXPORTABLE_CHANNEL (chan));
-    }
-
-  return TRUE;
-
-error:
-  tp_channel_manager_emit_request_failed (self, request_token,
-      error->domain, error->code, error->message);
-  g_error_free (error);
-  return TRUE;
-}
-
-static gboolean
-test_contact_list_manager_create_channel (TpChannelManager *manager,
-                                             gpointer request_token,
-                                             GHashTable *request_properties)
-{
-    return test_contact_list_manager_request (
-        TEST_CONTACT_LIST_MANAGER (manager), request_token,
-        request_properties, TRUE);
-}
-
-static gboolean
-test_contact_list_manager_ensure_channel (TpChannelManager *manager,
-                                             gpointer request_token,
-                                             GHashTable *request_properties)
-{
-    return test_contact_list_manager_request (
-        TEST_CONTACT_LIST_MANAGER (manager), request_token,
-        request_properties, FALSE);
-}
-
-static void
-channel_manager_iface_init (gpointer g_iface,
-                            gpointer data G_GNUC_UNUSED)
-{
-  TpChannelManagerIface *iface = g_iface;
-
-  iface->foreach_channel = test_contact_list_manager_foreach_channel;
-  iface->foreach_channel_class =
-      test_contact_list_manager_foreach_channel_class;
-  iface->create_channel = test_contact_list_manager_create_channel;
-  iface->ensure_channel = test_contact_list_manager_ensure_channel;
-  /* In this channel manager, Request has the same semantics as Ensure */
-  iface->request_channel = test_contact_list_manager_ensure_channel;
-}
-
-static void
-send_updated_roster (TestContactListManager *self,
-                     TpHandle contact)
-{
-  ExampleContactDetails *d = g_hash_table_lookup (self->priv->contact_details,
-      GUINT_TO_POINTER (contact));
-  const gchar *identifier = tp_handle_inspect (self->priv->contact_repo,
-      contact);
-
-  /* In a real connection manager, we'd transmit these new details to the
-   * server, rather than just printing messages. */
+  TpBaseContactList *base = TP_BASE_CONTACT_LIST (self);
+  ContactDetails *d = lookup_contact (self, member);
+  TpHandle group_handle;
 
   if (d == NULL)
-    {
-      g_message ("Deleting contact %s from server", identifier);
-    }
-  else
-    {
-      g_message ("Transmitting new state of contact %s to server", identifier);
-      g_message ("\talias = %s", d->alias);
-      g_message ("\tavatar_data = %s", d->avatar_data ? d->avatar_data->token : "");
-      g_message ("\tcan see our presence = %s",
-          d->publish ? "yes" :
-          (d->publish_requested ? "no, but has requested it" : "no"));
-      g_message ("\tsends us presence = %s",
-          d->subscribe ? "yes" :
-          (d->subscribe_requested ? "no, but we have requested it" : "no"));
+    return;
 
-      if (d->tags == NULL || tp_handle_set_size (d->tags) == 0)
-        {
-          g_message ("\tnot in any groups");
-        }
-      else
-        {
-          TpIntSet *set = tp_handle_set_peek (d->tags);
-          TpIntSetFastIter iter;
-          TpHandle member;
+  group_handle = tp_handle_ensure (self->priv->group_repo, group_name, NULL, NULL);
 
-          tp_intset_fast_iter_init (&iter, set);
-
-          while (tp_intset_fast_iter_next (&iter, &member))
-            {
-              g_message ("\tin group: %s",
-                  tp_handle_inspect (self->priv->group_repo, member));
-            }
-        }
-    }
-}
-
-gboolean
-test_contact_list_manager_add_to_group (TestContactListManager *self,
-                                           GObject *channel,
-                                           TpHandle group,
-                                           TpHandle member,
-                                           const gchar *message,
-                                           GError **error)
-{
-  gboolean updated;
-  ExampleContactDetails *d = ensure_contact (self, member, &updated);
-  TestContactList *stored = self->priv->lists[
-    TEST_CONTACT_LIST_STORED];
-
-  if (d->tags == NULL)
-    d->tags = tp_handle_set_new (self->priv->group_repo);
-
-  if (!tp_handle_set_is_member (d->tags, group))
-    {
-      tp_handle_set_add (d->tags, group);
-      updated = TRUE;
-    }
-
-  if (updated)
-    {
-      TpIntSet *added = tp_intset_new_containing (member);
-
-      send_updated_roster (self, member);
-      tp_group_mixin_change_members (channel, "", added, NULL, NULL, NULL,
-          self->priv->conn->self_handle, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-      tp_group_mixin_change_members ((GObject *) stored, "",
-          added, NULL, NULL, NULL,
-          self->priv->conn->self_handle, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-      tp_intset_destroy (added);
-    }
-
-  return TRUE;
-}
-
-gboolean
-test_contact_list_manager_remove_from_group (
-    TestContactListManager *self,
-    GObject *channel,
-    TpHandle group,
-    TpHandle member,
-    const gchar *message,
-    GError **error)
-{
-  ExampleContactDetails *d = lookup_contact (self, member);
-
-  /* If not on the roster or not in any groups, we have nothing to do */
-  if (d == NULL || d->tags == NULL)
-    return TRUE;
-
-  if (tp_handle_set_remove (d->tags, group))
-    {
-      TpIntSet *removed = tp_intset_new_containing (member);
-
-      send_updated_roster (self, member);
-      tp_group_mixin_change_members (channel, "", NULL, removed, NULL, NULL,
-          self->priv->conn->self_handle, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-      tp_intset_destroy (removed);
-    }
-
-  return TRUE;
+  tp_handle_set_remove (d->groups, group_handle);
+  tp_base_contact_list_one_contact_groups_changed (base, member,
+      NULL, 0, &group_name, 1);
 }
 
 typedef struct {
     TestContactListManager *self;
-    TpHandle contact;
+    TpHandleSet *handles;
 } SelfAndContact;
 
 static SelfAndContact *
 self_and_contact_new (TestContactListManager *self,
-                      TpHandle contact)
+  TpHandleSet *handles)
 {
   SelfAndContact *ret = g_slice_new0 (SelfAndContact);
 
   ret->self = g_object_ref (self);
-  ret->contact = contact;
-  tp_handle_ref (self->priv->contact_repo, contact);
+  ret->handles = tp_handle_set_copy (handles);
+
   return ret;
 }
 
@@ -1165,98 +467,41 @@ self_and_contact_destroy (gpointer p)
 {
   SelfAndContact *s = p;
 
-  tp_handle_unref (s->self->priv->contact_repo, s->contact);
+  tp_handle_set_destroy (s->handles);
   g_object_unref (s->self);
   g_slice_free (SelfAndContact, s);
-}
-
-static void
-receive_auth_request (TestContactListManager *self,
-                      TpHandle contact)
-{
-  ExampleContactDetails *d;
-  TpIntSet *set;
-  TestContactList *publish = self->priv->lists[
-    TEST_CONTACT_LIST_PUBLISH];
-  TestContactList *stored = self->priv->lists[
-    TEST_CONTACT_LIST_STORED];
-
-  /* if shutting down, do nothing */
-  if (publish == NULL)
-    return;
-
-  /* A remote contact has asked to see our presence.
-   *
-   * In a real connection manager this would be the result of incoming
-   * data from the server. */
-
-  g_message ("From server: %s has sent us a publish request",
-      tp_handle_inspect (self->priv->contact_repo, contact));
-
-  d = ensure_contact (self, contact, NULL);
-
-  if (d->publish)
-    return;
-
-  d->publish_requested = TRUE;
-
-  set = tp_intset_new_containing (contact);
-  tp_group_mixin_change_members ((GObject *) publish,
-      "May I see your presence, please?",
-      NULL, NULL, set, NULL,
-      contact, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-  tp_group_mixin_change_members ((GObject *) stored, "",
-      set, NULL, NULL, NULL,
-      contact, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-  tp_intset_destroy (set);
 }
 
 static gboolean
 receive_authorized (gpointer p)
 {
   SelfAndContact *s = p;
-  ExampleContactDetails *d;
-  TpIntSet *set;
-  TestContactList *subscribe = s->self->priv->lists[
-    TEST_CONTACT_LIST_SUBSCRIBE];
-  TestContactList *stored = s->self->priv->lists[
-    TEST_CONTACT_LIST_STORED];
-
-  /* A remote contact has accepted our request to see their presence.
-   *
-   * In a real connection manager this would be the result of incoming
-   * data from the server. */
-
-  g_message ("From server: %s has accepted our subscribe request",
-      tp_handle_inspect (s->self->priv->contact_repo, s->contact));
-
-  d = ensure_contact (s->self, s->contact, NULL);
-
-  /* if we were already subscribed to them, then nothing really happened */
-  if (d->subscribe)
-    return FALSE;
-
-  d->subscribe_requested = FALSE;
-  d->subscribe = TRUE;
-
-  set = tp_intset_new_containing (s->contact);
-  tp_group_mixin_change_members ((GObject *) subscribe, "",
-      set, NULL, NULL, NULL,
-      s->contact, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-  tp_group_mixin_change_members ((GObject *) stored, "",
-      set, NULL, NULL, NULL,
-      s->contact, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-  tp_intset_destroy (set);
-
-  /* their presence changes to something other than UNKNOWN */
-  g_signal_emit (s->self, signals[PRESENCE_UPDATED], 0, s->contact);
-
-  /* if we're not publishing to them, also pretend they have asked us to
-   * do so */
-  if (!d->publish)
+  GArray *handles_array;
+  guint i;
+  
+  handles_array = tp_handle_set_to_array (s->handles);
+  for (i = 0; i < handles_array->len; i++)
     {
-      receive_auth_request (s->self, s->contact);
+      ContactDetails *d = lookup_contact (s->self,
+          g_array_index (handles_array, TpHandle, i));
+
+      if (d == NULL)
+        continue;
+
+      d->subscribe = TP_SUBSCRIPTION_STATE_YES;
+
+      /* if we're not publishing to them, also pretend they have asked us to do so */
+      if (d->publish != TP_SUBSCRIPTION_STATE_YES)
+        {
+          d->publish = TP_SUBSCRIPTION_STATE_ASK;
+          tp_clear_pointer (&d->publish_request, g_free);
+          d->publish_request = g_strdup ("automatic publish request");
+        }
     }
+  g_array_unref (handles_array);
+
+  tp_base_contact_list_contacts_changed (TP_BASE_CONTACT_LIST (s->self),
+      s->handles, NULL);
 
   return FALSE;
 }
@@ -1265,512 +510,179 @@ static gboolean
 receive_unauthorized (gpointer p)
 {
   SelfAndContact *s = p;
-  ExampleContactDetails *d;
-  TpIntSet *set;
-  TestContactList *subscribe = s->self->priv->lists[
-    TEST_CONTACT_LIST_SUBSCRIBE];
+  GArray *handles_array;
+  guint i;
 
-  /* if shutting down, do nothing */
-  if (subscribe == NULL)
-    return FALSE;
+  handles_array = tp_handle_set_to_array (s->handles);
+  for (i = 0; i < handles_array->len; i++)
+    {
+      ContactDetails *d = lookup_contact (s->self,
+          g_array_index (handles_array, TpHandle, i));
 
-  /* A remote contact has rejected our request to see their presence.
-   *
-   * In a real connection manager this would be the result of incoming
-   * data from the server. */
+      if (d == NULL)
+        continue;
 
-  g_message ("From server: %s has rejected our subscribe request",
-      tp_handle_inspect (s->self->priv->contact_repo, s->contact));
+      d->subscribe = TP_SUBSCRIPTION_STATE_REMOVED_REMOTELY;
+    }
+  g_array_unref (handles_array);
 
-  d = ensure_contact (s->self, s->contact, NULL);
-
-  if (!d->subscribe && !d->subscribe_requested)
-    return FALSE;
-
-  d->subscribe_requested = FALSE;
-  d->subscribe = FALSE;
-
-  set = tp_intset_new_containing (s->contact);
-  tp_group_mixin_change_members ((GObject *) subscribe, "Say 'please'!",
-      NULL, set, NULL, NULL,
-      s->contact, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-  tp_intset_destroy (set);
-
-  /* their presence changes to UNKNOWN */
-  g_signal_emit (s->self, signals[PRESENCE_UPDATED], 0, s->contact);
+  tp_base_contact_list_contacts_changed (TP_BASE_CONTACT_LIST (s->self),
+      s->handles, NULL);
 
   return FALSE;
 }
 
-gboolean
-test_contact_list_manager_add_to_list (TestContactListManager *self,
-                                          GObject *channel,
-                                          TestContactListHandle list,
-                                          TpHandle member,
-                                          const gchar *message,
-                                          GError **error)
+void
+test_contact_list_manager_request_subscription (TestContactListManager *self,
+    guint n_members, TpHandle *members,  const gchar *message)
 {
-  TpIntSet *set;
-  TestContactList *stored = ensure_list (self, TEST_CONTACT_LIST_STORED);
+  TpHandleSet *handles;
+  guint i;
+  gchar *message_lc;
 
-  if (channel == NULL)
-      channel = G_OBJECT (ensure_list (self, list));
-
-  switch (list)
+  handles = tp_handle_set_new (self->priv->contact_repo);
+  for (i = 0; i < n_members; i++)
     {
-    case TEST_CONTACT_LIST_SUBSCRIBE:
-      /* we would like to see member's presence */
-        {
-          gboolean created;
-          ExampleContactDetails *d = ensure_contact (self, member, &created);
-          gchar *message_lc;
+      ContactDetails *d = ensure_contact (self, members[i]);
 
-          /* if they already authorized us, it's a no-op */
-          if (d->subscribe)
-            return TRUE;
+      if (d->subscribe == TP_SUBSCRIPTION_STATE_YES)
+        continue;
 
-          /* In a real connection manager we'd start a network request here */
-          g_message ("Transmitting authorization request to %s: %s",
-              tp_handle_inspect (self->priv->contact_repo, member),
-              message);
-
-          if (created || !d->subscribe_requested)
-            {
-              d->subscribe_requested = TRUE;
-              send_updated_roster (self, member);
-            }
-
-          set = tp_intset_new_containing (member);
-          tp_group_mixin_change_members (channel, message,
-              NULL, NULL, NULL, set,
-              self->priv->conn->self_handle,
-              TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-          /* subscribing to someone implicitly puts them on Stored, too */
-          tp_group_mixin_change_members ((GObject *) stored, "",
-              set, NULL, NULL, NULL,
-              self->priv->conn->self_handle,
-              TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-          tp_intset_destroy (set);
-
-          /* Pretend that after a delay, the contact notices the request
-           * and allows, rejects or ignore it. In this example connection
-           * manager, empty requests are allowed, as are requests that contain
-           * "please" case-insensitively. Requests that contain "wait"
-           * case-insensitively will be ignored. All other requests are denied.
-           */
-          message_lc = g_ascii_strdown (message, -1);
-
-          if (message[0] == '\0' || strstr (message_lc, "please") != NULL)
-            {
-              g_timeout_add_full (G_PRIORITY_DEFAULT,
-                  self->priv->simulation_delay, receive_authorized,
-                  self_and_contact_new (self, member),
-                  self_and_contact_destroy);
-            }
-          else if (strstr (message_lc, "wait") == NULL)
-            {
-              g_timeout_add_full (G_PRIORITY_DEFAULT,
-                  self->priv->simulation_delay,
-                  receive_unauthorized,
-                  self_and_contact_new (self, member),
-                  self_and_contact_destroy);
-            }
-
-          g_free (message_lc);
-        }
-      return TRUE;
-
-    case TEST_CONTACT_LIST_PUBLISH:
-      /* We would like member to see our presence. This is meaningless,
-       * unless they have asked for it. */
-        {
-          ExampleContactDetails *d = lookup_contact (self, member);
-
-          if (d == NULL || !d->publish_requested)
-            {
-              /* the group mixin won't actually allow this to be reached,
-               * because of the flags we set */
-              g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-                  "Can't unilaterally send presence to %s",
-                  tp_handle_inspect (self->priv->contact_repo, member));
-              return FALSE;
-            }
-
-          if (!d->publish)
-            {
-              d->publish = TRUE;
-              d->publish_requested = FALSE;
-              send_updated_roster (self, member);
-
-              set = tp_intset_new_containing (member);
-              tp_group_mixin_change_members (channel, "",
-                  set, NULL, NULL, NULL,
-                  self->priv->conn->self_handle,
-                  TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-              tp_group_mixin_change_members ((GObject *) stored, "",
-                  set, NULL, NULL, NULL,
-                  self->priv->conn->self_handle,
-                  TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-              tp_intset_destroy (set);
-            }
-        }
-      return TRUE;
-
-    case TEST_CONTACT_LIST_STORED:
-      /* we would like member to be on the roster */
-        {
-          gboolean created;
-
-          ensure_contact (self, member, &created);
-
-          if (created)
-            send_updated_roster (self, member);
-
-          set = tp_intset_new_containing (member);
-          tp_group_mixin_change_members (channel, "",
-              set, NULL, NULL, NULL, self->priv->conn->self_handle,
-              TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-          tp_intset_destroy (set);
-        }
-      return TRUE;
-
-    default:
-      g_return_val_if_reached (FALSE);
-    }
-}
-
-static gboolean
-auth_request_cb (gpointer p)
-{
-  SelfAndContact *s = p;
-
-  receive_auth_request (s->self, s->contact);
-
-  return FALSE;
-}
-
-gboolean
-test_contact_list_manager_remove_from_list (TestContactListManager *self,
-                                               GObject *channel,
-                                               TestContactListHandle list,
-                                               TpHandle member,
-                                               const gchar *message,
-                                               GError **error)
-{
-  TpIntSet *set;
-
-  if (channel == NULL)
-      channel = G_OBJECT (ensure_list (self, list));
-
-  switch (list)
-    {
-    case TEST_CONTACT_LIST_PUBLISH:
-      /* we would like member not to see our presence any more, or we
-       * would like to reject a request from them to see our presence */
-        {
-          ExampleContactDetails *d = lookup_contact (self, member);
-
-          if (d != NULL)
-            {
-              if (d->publish_requested)
-                {
-                  g_message ("Rejecting authorization request from %s",
-                      tp_handle_inspect (self->priv->contact_repo, member));
-                  d->publish_requested = FALSE;
-
-                  set = tp_intset_new_containing (member);
-                  tp_group_mixin_change_members (channel, "",
-                      NULL, set, NULL, NULL,
-                      self->priv->conn->self_handle,
-                      TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-                  tp_intset_destroy (set);
-                }
-              else if (d->publish)
-                {
-                  g_message ("Removing authorization from %s",
-                      tp_handle_inspect (self->priv->contact_repo, member));
-                  d->publish = FALSE;
-
-                  set = tp_intset_new_containing (member);
-                  tp_group_mixin_change_members (channel, "",
-                      NULL, set, NULL, NULL,
-                      self->priv->conn->self_handle,
-                      TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-                  tp_intset_destroy (set);
-
-                  /* Pretend that after a delay, the contact notices the change
-                   * and asks for our presence again */
-                  g_timeout_add_full (G_PRIORITY_DEFAULT,
-                      self->priv->simulation_delay, auth_request_cb,
-                      self_and_contact_new (self, member),
-                      self_and_contact_destroy);
-                }
-              else
-                {
-                  /* nothing to do, avoid "updating the roster" */
-                  return TRUE;
-                }
-
-              send_updated_roster (self, member);
-            }
-        }
-      return TRUE;
-
-    case TEST_CONTACT_LIST_SUBSCRIBE:
-      /* we would like to avoid receiving member's presence any more,
-       * or we would like to cancel an outstanding request for their
-       * presence */
-        {
-          ExampleContactDetails *d = lookup_contact (self, member);
-
-          if (d != NULL)
-            {
-              if (d->subscribe_requested)
-                {
-                  g_message ("Cancelling our authorization request to %s",
-                      tp_handle_inspect (self->priv->contact_repo, member));
-                  d->subscribe_requested = FALSE;
-
-                  set = tp_intset_new_containing (member);
-                  tp_group_mixin_change_members (channel, "",
-                      NULL, set, NULL, NULL,
-                      self->priv->conn->self_handle,
-                      TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-                  tp_intset_destroy (set);
-                }
-              else if (d->subscribe)
-                {
-                  g_message ("We no longer want presence from %s",
-                      tp_handle_inspect (self->priv->contact_repo, member));
-                  d->subscribe = FALSE;
-
-                  set = tp_intset_new_containing (member);
-                  tp_group_mixin_change_members (channel, "",
-                      NULL, set, NULL, NULL,
-                      self->priv->conn->self_handle,
-                      TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-                  tp_intset_destroy (set);
-
-                  /* since they're no longer on the subscribe list, we can't
-                   * see their presence, so emit a signal changing it to
-                   * UNKNOWN */
-                  g_signal_emit (self, signals[PRESENCE_UPDATED], 0, member);
-                }
-              else
-                {
-                  /* nothing to do, avoid "updating the roster" */
-                  return TRUE;
-                }
-
-              send_updated_roster (self, member);
-            }
-        }
-      return TRUE;
-
-    case TEST_CONTACT_LIST_STORED:
-      /* we would like to remove member from the roster altogether */
-        {
-          ExampleContactDetails *d = lookup_contact (self, member);
-
-          if (d != NULL)
-            {
-              g_hash_table_remove (self->priv->contact_details,
-                  GUINT_TO_POINTER (member));
-              send_updated_roster (self, member);
-
-              set = tp_intset_new_containing (member);
-              tp_group_mixin_change_members (channel, "",
-                  NULL, set, NULL, NULL,
-                  self->priv->conn->self_handle,
-                  TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-              tp_group_mixin_change_members (
-                  (GObject *) self->priv->lists[TEST_CONTACT_LIST_SUBSCRIBE],
-                  "", NULL, set, NULL, NULL,
-                  self->priv->conn->self_handle,
-                  TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-              tp_group_mixin_change_members (
-                  (GObject *) self->priv->lists[TEST_CONTACT_LIST_PUBLISH],
-                  "", NULL, set, NULL, NULL,
-                  self->priv->conn->self_handle,
-                  TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-              tp_intset_destroy (set);
-
-              tp_handle_set_remove (self->priv->contacts, member);
-
-              /* since they're no longer on the subscribe list, we can't
-               * see their presence, so emit a signal changing it to
-               * UNKNOWN */
-              g_signal_emit (self, signals[PRESENCE_UPDATED], 0, member);
-
-            }
-        }
-      return TRUE;
-
-    default:
-      g_return_val_if_reached (FALSE);
-    }
-}
-
-TestContactListPresence
-test_contact_list_manager_get_presence (TestContactListManager *self,
-                                           TpHandle contact)
-{
-  ExampleContactDetails *d = lookup_contact (self, contact);
-  const gchar *id;
-
-  if (d == NULL || !d->subscribe)
-    {
-      /* we don't know the presence of people not on the subscribe list,
-       * by definition */
-      return TEST_CONTACT_LIST_PRESENCE_UNKNOWN;
+      d->subscribe = TP_SUBSCRIPTION_STATE_ASK;
+      tp_handle_set_add (handles, members[i]);
     }
 
-  id = tp_handle_inspect (self->priv->contact_repo, contact);
+  tp_base_contact_list_contacts_changed (TP_BASE_CONTACT_LIST (self), handles,
+      NULL);
 
-  /* In this example CM, we fake contacts' presence based on their name:
-   * contacts in the first half of the alphabet are available, the rest
-   * (including non-alphabetic and non-ASCII initial letters) are away. */
-  if ((id[0] >= 'A' && id[0] <= 'M') || (id[0] >= 'a' && id[0] <= 'm'))
+  /* Pretend that after a delay, the contact notices the request
+   * and allows, rejects or ignore it. In this example connection
+   * manager, empty requests are allowed, as are requests that contain
+   * "please" case-insensitively. Requests that contain "no"
+   * case-insensitively will be denied. Others are ignored.
+   */
+  message_lc = g_ascii_strdown (message, -1);
+
+  if (message[0] == '\0' || strstr (message_lc, "please") != NULL)
     {
-      return TEST_CONTACT_LIST_PRESENCE_AVAILABLE;
+      g_timeout_add_full (G_PRIORITY_DEFAULT,
+          self->priv->simulation_delay, receive_authorized,
+          self_and_contact_new (self, handles),
+          self_and_contact_destroy);
+    }
+  else if (strstr (message_lc, "no") != NULL)
+    {
+      g_timeout_add_full (G_PRIORITY_DEFAULT,
+          self->priv->simulation_delay,
+          receive_unauthorized,
+          self_and_contact_new (self, handles),
+          self_and_contact_destroy);
     }
 
-  return TEST_CONTACT_LIST_PRESENCE_AWAY;
-}
-
-const gchar *
-test_contact_list_manager_get_alias (TestContactListManager *self,
-                                        TpHandle contact)
-{
-  ExampleContactDetails *d = lookup_contact (self, contact);
-
-  if (d == NULL)
-    {
-      /* we don't have a user-defined alias for people not on the roster */
-      return tp_handle_inspect (self->priv->contact_repo, contact);
-    }
-
-  return d->alias;
+  g_free (message_lc);
+  tp_handle_set_destroy (handles);
 }
 
 void
-test_contact_list_manager_set_alias (TestContactListManager *self,
-                                        TpHandle contact,
-                                        const gchar *alias)
+test_contact_list_manager_unsubscribe (TestContactListManager *self,
+    guint n_members, TpHandle *members)
 {
-  gboolean created;
-  ExampleContactDetails *d = ensure_contact (self, contact, &created);
-  TestContactList *stored = self->priv->lists[
-    TEST_CONTACT_LIST_STORED];
-  gchar *old = d->alias;
-  TpIntSet *set;
+  TpHandleSet *handles;
+  guint i;
 
-  /* FIXME: if stored list hasn't been retrieved yet, queue the change for
-   * later */
-
-  /* if shutting down, do nothing */
-  if (stored == NULL)
-    return;
-
-  d->alias = g_strdup (alias);
-
-  if (created || tp_strdiff (old, alias))
-    send_updated_roster (self, contact);
-
-  g_free (old);
-
-  set = tp_intset_new_containing (contact);
-  tp_group_mixin_change_members ((GObject *) stored, "",
-      set, NULL, NULL, NULL, self->priv->conn->self_handle,
-      TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-  tp_intset_destroy (set);
-
-  g_signal_emit (self, signals[ALIAS_UPDATED], 0, contact);
-}
-
-const TestContactListAvatarData *
-test_contact_list_manager_get_avatar (TestContactListManager *self,
-                                        TpHandle contact)
-{
-  ExampleContactDetails *d = lookup_contact (self, contact);
-
-  if (d == NULL)
+  handles = tp_handle_set_new (self->priv->contact_repo);
+  for (i = 0; i < n_members; i++)
     {
-      /* we don't have a user-defined avatar for people not on the roster */
-      return NULL;
+      ContactDetails *d = lookup_contact (self, members[i]);
+
+      if (d == NULL || d->subscribe == TP_SUBSCRIPTION_STATE_NO)
+        continue;
+
+      d->subscribe = TP_SUBSCRIPTION_STATE_NO;
+      tp_handle_set_add (handles, members[i]);
     }
 
-  return d->avatar_data;
+  tp_base_contact_list_contacts_changed (TP_BASE_CONTACT_LIST (self), handles,
+      NULL);
+
+  tp_handle_set_destroy (handles);
 }
 
 void
-test_contact_list_manager_set_avatar (TestContactListManager *self,
-                                      TpHandle contact,
-                                      const TestContactListAvatarData *avatar_data)
+test_contact_list_manager_authorize_publication (TestContactListManager *self,
+    guint n_members, TpHandle *members)
 {
-  gboolean created;
-  ExampleContactDetails *d = ensure_contact (self, contact, &created);
-  TestContactList *stored = self->priv->lists[
-    TEST_CONTACT_LIST_STORED];
-  TestContactListAvatarData *old = d->avatar_data;
-  TpIntSet *set;
-  const gchar *old_token = old ? old->token : NULL;
-  const gchar *new_token = avatar_data ? avatar_data->token : NULL;
+  TpHandleSet *handles;
+  guint i;
 
-  /* FIXME: if stored list hasn't been retrieved yet, queue the change for
-   * later */
+  handles = tp_handle_set_new (self->priv->contact_repo);
+  for (i = 0; i < n_members; i++)
+    {
+      ContactDetails *d = lookup_contact (self, members[i]);
 
-  /* if shutting down, do nothing */
-  if (stored == NULL)
-    return;
+      if (d == NULL || d->publish != TP_SUBSCRIPTION_STATE_ASK)
+        continue;
 
-  if (avatar_data) {
-      d->avatar_data = test_contact_list_avatar_data_new (avatar_data->data,
-              avatar_data->mime_type, avatar_data->token);
-  } else {
-      d->avatar_data = NULL;
-  }
+      d->publish = TP_SUBSCRIPTION_STATE_YES;
+      tp_clear_pointer (&d->publish_request, g_free);
+      tp_handle_set_add (handles, members[i]);
+    }
 
-  if (created || tp_strdiff (old_token, new_token))
-    send_updated_roster (self, contact);
+  tp_base_contact_list_contacts_changed (TP_BASE_CONTACT_LIST (self), handles,
+      NULL);
 
-  test_contact_list_avatar_data_free (old);
-
-  set = tp_intset_new_containing (contact);
-  tp_group_mixin_change_members ((GObject *) stored, "",
-      set, NULL, NULL, NULL, self->priv->conn->self_handle,
-      TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-  tp_intset_destroy (set);
-
-  g_signal_emit (self, signals[AVATAR_UPDATED], 0, contact);
-}
-
-TestContactListAvatarData *
-test_contact_list_avatar_data_new (GArray *data,
-    const gchar *mime_type,
-    const gchar *token)
-{
-  TestContactListAvatarData *a;
-
-  a = g_slice_new (TestContactListAvatarData);
-  a->data = data ? g_array_ref (data) : NULL;
-  a->mime_type = g_strdup (mime_type);
-  a->token = g_strdup (token);
-
-  return a;
+  tp_handle_set_destroy (handles);
 }
 
 void
-test_contact_list_avatar_data_free (gpointer data)
+test_contact_list_manager_unpublish (TestContactListManager *self,
+    guint n_members, TpHandle *members)
 {
-  TestContactListAvatarData *a = data;
+  TpHandleSet *handles;
+  guint i;
 
-  if (a != NULL)
+  handles = tp_handle_set_new (self->priv->contact_repo);
+  for (i = 0; i < n_members; i++)
     {
-      if (a->data != NULL)
-        g_array_unref (a->data);
-      g_free (a->mime_type);
-      g_free (a->token);
-      g_slice_free (TestContactListAvatarData, a);
+      ContactDetails *d = lookup_contact (self, members[i]);
+
+      if (d == NULL || d->publish == TP_SUBSCRIPTION_STATE_NO)
+        continue;
+
+      d->publish = TP_SUBSCRIPTION_STATE_NO;
+      tp_clear_pointer (&d->publish_request, g_free);
+      tp_handle_set_add (handles, members[i]);
     }
+
+  tp_base_contact_list_contacts_changed (TP_BASE_CONTACT_LIST (self), handles,
+      NULL);
+
+  tp_handle_set_destroy (handles);
 }
+
+void
+test_contact_list_manager_remove (TestContactListManager *self,
+    guint n_members, TpHandle *members)
+{
+  TpHandleSet *handles;
+  guint i;
+
+  handles = tp_handle_set_new (self->priv->contact_repo);
+  for (i = 0; i < n_members; i++)
+    {
+      ContactDetails *d = lookup_contact (self, members[i]);
+
+      if (d == NULL)
+        continue;
+
+      g_hash_table_remove (self->priv->contact_details,
+          GUINT_TO_POINTER (members[i]));
+      tp_handle_set_add (handles, members[i]);
+    }
+
+  tp_base_contact_list_contacts_changed (TP_BASE_CONTACT_LIST (self), NULL,
+      handles);
+
+  tp_handle_set_destroy (handles);
+}
+

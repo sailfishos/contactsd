@@ -37,7 +37,7 @@
 #define BUS_NAME "org.maemo.Contactsd.UnitTest"
 
 TestExpectation::TestExpectation():flags(All), nOnlineAccounts(1),
-    presence(TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN)
+    presence(TP_CONNECTION_PRESENCE_TYPE_UNKNOWN)
 {
 }
 
@@ -58,22 +58,28 @@ void TestExpectation::verify(QContact &contact) const
     if (flags & Presence) {
         QContactPresence::PresenceState actualPresence = contact.detail<QContactPresence>().presenceState();
         switch (presence) {
-        case TP_TESTS_CONTACTS_CONNECTION_STATUS_AVAILABLE:
-            QCOMPARE(actualPresence, QContactPresence::PresenceAvailable);
-            break;
-        case TP_TESTS_CONTACTS_CONNECTION_STATUS_BUSY:
-            QCOMPARE(actualPresence, QContactPresence::PresenceBusy);
-            break;
-        case TP_TESTS_CONTACTS_CONNECTION_STATUS_AWAY:
-            QCOMPARE(actualPresence, QContactPresence::PresenceAway);
-            break;
-        case TP_TESTS_CONTACTS_CONNECTION_STATUS_OFFLINE:
-            QCOMPARE(actualPresence, QContactPresence::PresenceOffline);
-            break;
-        case TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN:
+        case TP_CONNECTION_PRESENCE_TYPE_UNSET:
             QCOMPARE(actualPresence, QContactPresence::PresenceUnknown);
             break;
-        case TP_TESTS_CONTACTS_CONNECTION_STATUS_ERROR:
+        case TP_CONNECTION_PRESENCE_TYPE_OFFLINE:
+            QCOMPARE(actualPresence, QContactPresence::PresenceOffline);
+            break;
+        case TP_CONNECTION_PRESENCE_TYPE_AVAILABLE:
+            QCOMPARE(actualPresence, QContactPresence::PresenceAvailable);
+            break;
+        case TP_CONNECTION_PRESENCE_TYPE_AWAY:
+        case TP_CONNECTION_PRESENCE_TYPE_EXTENDED_AWAY:
+            QCOMPARE(actualPresence, QContactPresence::PresenceAway);
+            break;
+        case TP_CONNECTION_PRESENCE_TYPE_HIDDEN:
+            QCOMPARE(actualPresence, QContactPresence::PresenceHidden);
+            break;
+        case TP_CONNECTION_PRESENCE_TYPE_BUSY:
+            QCOMPARE(actualPresence, QContactPresence::PresenceBusy);
+            break;
+        case TP_CONNECTION_PRESENCE_TYPE_UNKNOWN:
+        case TP_CONNECTION_PRESENCE_TYPE_ERROR:
+            QCOMPARE(actualPresence, QContactPresence::PresenceUnknown);
             break;
         }
     }
@@ -165,8 +171,7 @@ void TestTelepathyPlugin::initTestCase()
         TP_TESTS_CONTACTS_CONNECTION(mConnService));
 
     /* Define the self contact */
-    TpTestsContactsConnectionPresenceStatusIndex presence =
-        TP_TESTS_CONTACTS_CONNECTION_STATUS_AVAILABLE;
+    TpConnectionPresenceType presence = TP_CONNECTION_PRESENCE_TYPE_AVAILABLE;
     const gchar *message = "Running unit tests";
     tp_tests_contacts_connection_change_presences(
         TP_TESTS_CONTACTS_CONNECTION (mConnService),
@@ -194,14 +199,14 @@ void TestTelepathyPlugin::testBasicUpdates()
         1, &handle, &alias);
 
     /* Add Alice in the ContactList */
-    test_contact_list_manager_add_to_list(mListManager, NULL,
-        TEST_CONTACT_LIST_SUBSCRIBE, handle, "wait", NULL);
+    test_contact_list_manager_request_subscription(mListManager, 1, &handle,
+        "wait");
 
     TestExpectation e;
     e.event = TestExpectation::Added;
     e.accountUri = QString("alice");
     e.alias = QString("Alice");
-    e.presence = TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN;
+    e.presence = TP_CONNECTION_PRESENCE_TYPE_UNKNOWN;
     e.subscriptionState = "Requested";
     e.publishState = "No";
     mExpectations.append(e);
@@ -210,8 +215,7 @@ void TestTelepathyPlugin::testBasicUpdates()
     QCOMPARE(mLoop->exec(), 0);
 
     /* Change the presence of Alice to busy */
-    TpTestsContactsConnectionPresenceStatusIndex presence =
-        TP_TESTS_CONTACTS_CONNECTION_STATUS_BUSY;
+    TpConnectionPresenceType presence = TP_CONNECTION_PRESENCE_TYPE_BUSY;
     const gchar *message = "Making coffee";
     tp_tests_contacts_connection_change_presences(
         TP_TESTS_CONTACTS_CONNECTION (mConnService),
@@ -252,7 +256,7 @@ void TestTelepathyPlugin::testSelfContact()
     TestExpectation e;
     e.flags = TestExpectation::VerifyFlags(TestExpectation::Presence | TestExpectation::Avatar);
     e.accountUri = QString("fake@account.org");
-    e.presence = TP_TESTS_CONTACTS_CONNECTION_STATUS_AVAILABLE;
+    e.presence = TP_CONNECTION_PRESENCE_TYPE_AVAILABLE;
     e.verify(contact);
 }
 
@@ -262,8 +266,8 @@ void TestTelepathyPlugin::testAuthorization()
     TpHandle handle = ensureContact("romeo");
 
     /* Add Bob in the ContactList, the request will be ignored */
-    test_contact_list_manager_add_to_list(mListManager, NULL,
-        TEST_CONTACT_LIST_SUBSCRIBE, handle, "wait", NULL);
+    test_contact_list_manager_request_subscription(mListManager, 1, &handle,
+        "wait");
 
     TestExpectation e;
     e.flags = TestExpectation::Authorization;
@@ -277,8 +281,8 @@ void TestTelepathyPlugin::testAuthorization()
     QCOMPARE(mLoop->exec(), 0);
 
     /* Ask again for subscription, say "please" this time so it gets accepted */
-    test_contact_list_manager_add_to_list(mListManager, NULL,
-        TEST_CONTACT_LIST_SUBSCRIBE, handle, "please", NULL);
+    test_contact_list_manager_request_subscription(mListManager, 1, &handle,
+        "please");
 
     e.event = TestExpectation::Changed;
     e.subscriptionState = "Yes";
@@ -291,8 +295,8 @@ void TestTelepathyPlugin::testAuthorization()
     handle = ensureContact("juliette");
 
     /* Add Bob in the ContactList, the request will be ignored */
-    test_contact_list_manager_add_to_list(mListManager, NULL,
-        TEST_CONTACT_LIST_SUBSCRIBE, handle, "wait", NULL);
+    test_contact_list_manager_request_subscription(mListManager, 1, &handle,
+        "wait");
 
     e.event = TestExpectation::Added;
     e.accountUri = QString("juliette");
@@ -304,8 +308,8 @@ void TestTelepathyPlugin::testAuthorization()
     QCOMPARE(mLoop->exec(), 0);
 
     /* Ask again for subscription, but this time it will be rejected */
-    test_contact_list_manager_add_to_list(mListManager, NULL,
-        TEST_CONTACT_LIST_SUBSCRIBE, handle, "no", NULL);
+    test_contact_list_manager_request_subscription(mListManager, 1, &handle,
+        "no");
 
     e.event = TestExpectation::Changed;
     e.subscriptionState = "No";
@@ -346,8 +350,8 @@ void TestTelepathyPlugin::testContactInfo()
 {
     /* Create a contact with no ContactInfo */
     TpHandle handle = ensureContact("skype");
-    test_contact_list_manager_add_to_list(mListManager, NULL,
-        TEST_CONTACT_LIST_SUBSCRIBE, handle, "wait", NULL);
+    test_contact_list_manager_request_subscription(mListManager, 1, &handle,
+        "wait");
 
     TestExpectation e;
     e.event = TestExpectation::Added;
@@ -394,9 +398,9 @@ void TestTelepathyPlugin::testRemoveContacts()
              i != mContacts.constEnd(); i++) {
         qDebug() << "removing" << i.key() << i.value();
 
-        /* Removing from Stored list will remove from all lists */
-        test_contact_list_manager_remove_from_list(mListManager, NULL,
-            TEST_CONTACT_LIST_STORED, i.key(), "", NULL);
+        // FIXME: We could remove all at once instead of one by one
+        TpHandle handle = i.key();
+        test_contact_list_manager_remove(mListManager, 1, &handle);
 
         e.accountUri = i.value();
         mExpectations.append(e);
@@ -416,8 +420,8 @@ void TestTelepathyPlugin::testSetOffline()
     e.accountUri = QString("kesh");
 
     TpHandle handle = ensureContact("kesh");
-    test_contact_list_manager_add_to_list(mListManager, NULL,
-        TEST_CONTACT_LIST_SUBSCRIBE, handle, "please", NULL);
+    test_contact_list_manager_request_subscription(mListManager, 1, &handle,
+        "please");
 
     /* First contact is added, then auth req is accepted */
     e.event = TestExpectation::Added;
@@ -433,7 +437,7 @@ void TestTelepathyPlugin::testSetOffline()
 
     e.flags = TestExpectation::Presence;
     e.event = TestExpectation::Changed;
-    e.presence = TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN;
+    e.presence = TP_CONNECTION_PRESENCE_TYPE_UNKNOWN;
     mExpectations.append(e);
     QCOMPARE(mLoop->exec(), 0);
 }
