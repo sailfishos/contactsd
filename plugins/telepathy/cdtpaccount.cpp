@@ -272,6 +272,11 @@ void CDTpAccount::introspectAccountConnectionRoster()
     connect(connection->becomeReady(Tp::Connection::FeatureRoster),
             SIGNAL(finished(Tp::PendingOperation *)),
             SLOT(onAccountConnectionRosterReady(Tp::PendingOperation *)));
+
+    // Only emit rosterFetching signal when this account is newly created
+    if (not mAccount->hasBeenOnline()) {
+        Q_EMIT rosterFetching(this);
+    }
 }
 
 void CDTpAccount::upgradeContacts(const Tp::Contacts &contacts)
