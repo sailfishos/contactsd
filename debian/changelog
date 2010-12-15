@@ -1,3 +1,9 @@
+contactsd (0.5.44~2) UNRELEASED; urgency=low
+
+    *
+
+ -- Siraj Razick <siraj.razick@collabora.co.uk>  Wed, 01 Dec 2010 20:29:00 +0530
+
 contactsd (0.5.44-1) unstable; urgency=low
     
     * Fixes: NB#185265 - Presence icon gets displayed for imported gtalk contact even when there is no network connection
