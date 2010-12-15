@@ -1,3 +1,22 @@
+contactsd (0.5.44-1) unstable; urgency=low
+    
+    * Fixes: NB#185265 - Presence icon gets displayed for imported gtalk contact even when there is no network connection
+    * Fixes: NB#207732 - Some GTalk contacts get imported without (chat) action buttons
+    * Fixes: NB#196363 - Blocked Skype contacts are also imported.
+    * Fixes: NB#209925 - unable to import gtalk contacts
+    * Fixes: NB#201524 - COREWEB: /usr/bin/contactsd 'ref ref ExternalRefCount QSharedPointer contact
+    * Fixes: NB#209925 - unable to import gtalk contacts
+    * Fixes: NB#185265 - Presence icon gets displayed for imported gtalk contact even when there is no network connection
+    * Fixes: NB#210977 - Skype contacts are not shown
+    * Changes: Imporoved coverage for contactsd unit tests
+    * Changes: Refctoring of account and imcontact sync'ing 
+    * Changes: Using our own Private Graphs for remote contacts
+    * Changes: Various Improvements and bug fixes for glib test case suite 
+    * Changes: More unit tests for contact Info
+
+ -- Siraj Razick <siraj.razick@collabora.co.uk>  Wed, 15 Dec 2010 21:59:00 +0530
+
+
 contactsd (0.5.43-1) unstable; urgency=low
 
     * Fixes: NB#206404 Saving a contact using qtcontacts-tracker causes nco:IMAccount to be removed 
