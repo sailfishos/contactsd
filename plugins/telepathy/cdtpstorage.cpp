@@ -190,15 +190,7 @@ void CDTpStorage::syncAccountContacts(CDTpAccount *accountWrapper,
             continue;
         }
 
-        if (!mUpdateQueue.contains(contactWrapper)) {
-            qDebug() << "Contact Added, queue update:" << contactWrapper->contact()->id();
-            mUpdateQueue.insert(contactWrapper, CDTpContact::All);
-        } else {
-            mUpdateQueue[contactWrapper] = CDTpContact::All;
-        }
-    }
-    if (!mUpdateQueue.isEmpty() && !mQueueTimer.isActive()) {
-        mQueueTimer.start();
+        queueUpdate(contactWrapper, CDTpContact::All);
     }
 
     removeContacts(accountWrapper, contactsRemoved);
@@ -231,15 +223,7 @@ void CDTpStorage::syncAccountContact(CDTpAccount *accountWrapper,
         return;
     }
 
-    if (!mUpdateQueue.contains(contactWrapper)) {
-        qDebug() << "Contact Changed, queue update:" << contactWrapper->contact()->id();
-        mUpdateQueue.insert(contactWrapper, changes);
-    } else {
-        mUpdateQueue[contactWrapper] |= changes;
-    }
-    if (!mUpdateQueue.isEmpty() && !mQueueTimer.isActive()) {
-        mQueueTimer.start();
-    }
+    queueUpdate(contactWrapper, changes);
 }
 
 void CDTpStorage::setAccountContactsOffline(CDTpAccount *accountWrapper)
@@ -871,6 +855,22 @@ QUrl CDTpStorage::trackerStatusFromTpPresenceStatus(
     return nco::presence_status_error::iri();
 }
 
+void CDTpStorage::queueUpdate(CDTpContactPtr contactWrapper, CDTpContact::Changes changes)
+{
+    if (!mUpdateQueue.contains(contactWrapper)) {
+        qDebug() << "queue update for" << contactWrapper->contact()->id();
+        mUpdateQueue.insert(contactWrapper, changes);
+    } else {
+        mUpdateQueue[contactWrapper] |= changes;
+    }
+
+    /* If the queue is too big, flush it now to avoid hitting query size limit */
+    if (mUpdateQueue.size() >= 500) {
+        onQueueTimerTimeout();
+    } else if (!mQueueTimer.isActive()) {
+        mQueueTimer.start();
+    }
+}
 
 void CDTpStorage::onQueueTimerTimeout()
 {

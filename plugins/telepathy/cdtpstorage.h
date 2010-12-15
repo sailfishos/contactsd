@@ -141,6 +141,9 @@ private:
             const RDFVariable &imContact,
             const Tp::ContactInfoField &field);
 
+    void queueUpdate(CDTpContactPtr contactWrapper, CDTpContact::Changes);
+
+
     QHash<CDTpContactPtr, CDTpContact::Changes> mUpdateQueue;
     QTimer mQueueTimer;
 };
