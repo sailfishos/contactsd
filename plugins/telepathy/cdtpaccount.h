@@ -58,7 +58,6 @@ public:
 Q_SIGNALS:
     void ready(CDTpAccount *accountWrapper);
     void changed(CDTpAccount *accountWrapper, CDTpAccount::Changes changes);
-    void rosterFetching(CDTpAccount *acconutWrapper);
     void rosterChanged(CDTpAccount *accountWrapper, bool haveRoster);
     void rosterUpdated(CDTpAccount *acconutWrapper,
             const QList<CDTpContactPtr> &contactsAdded,

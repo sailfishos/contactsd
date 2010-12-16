@@ -88,11 +88,15 @@ void CDTpController::onAccountRemoved(const Tp::AccountPtr &account)
     removeAccount(account->objectPath());
 }
 
-void CDTpController::onAccountRosterFetching(CDTpAccount *accountWrapper)
+void CDTpController::onAccountReady(CDTpAccount *accountWrapper)
 {
-    Tp::AccountPtr account = accountWrapper->account();
+    mStorage->syncAccount(accountWrapper);
 
-    setImportStarted(account);
+    Tp::AccountPtr account = accountWrapper->account();
+    // set contacts importing state if this is a newly created account
+    if (not account->hasBeenOnline()) {
+        setImportStarted(account);
+    }
 }
 
 void CDTpController::onAccountRosterChanged(CDTpAccount *accountWrapper,
@@ -127,15 +131,11 @@ void CDTpController::insertAccount(const Tp::AccountPtr &account)
     CDTpAccount *accountWrapper = new CDTpAccount(account, this);
     connect(accountWrapper,
             SIGNAL(ready(CDTpAccount *)),
-            mStorage,
-            SLOT(syncAccount(CDTpAccount *)));
+            SLOT(onAccountReady(CDTpAccount *)));
     connect(accountWrapper,
             SIGNAL(changed(CDTpAccount *, CDTpAccount::Changes)),
             mStorage,
             SLOT(syncAccount(CDTpAccount *, CDTpAccount::Changes)));
-    connect(accountWrapper,
-            SIGNAL(rosterFetching(CDTpAccount*)),
-            SLOT(onAccountRosterFetching(CDTpAccount *)));
     connect(accountWrapper,
             SIGNAL(rosterChanged(CDTpAccount *, bool)),
             SLOT(onAccountRosterChanged(CDTpAccount *, bool)));

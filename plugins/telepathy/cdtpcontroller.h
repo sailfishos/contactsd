@@ -52,7 +52,7 @@ private Q_SLOTS:
     void onAccountManagerReady(Tp::PendingOperation *op);
     void onAccountAdded(const Tp::AccountPtr &account);
     void onAccountRemoved(const Tp::AccountPtr &account);
-    void onAccountRosterFetching(CDTpAccount *accountWrapper);
+    void onAccountReady(CDTpAccount *accountWrapper);
     void onAccountRosterChanged(CDTpAccount *accountWrapper, bool haveRoster);
     void onAccountRosterUpdated(CDTpAccount *accountWrapper,
             const QList<CDTpContactPtr> &contactsAdded,
