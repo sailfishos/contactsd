@@ -955,6 +955,7 @@ CDTpStorageContactResolver::CDTpStorageContactResolver(
 {
     RDFVariable imContact = RDFVariable::fromType<nco::PersonContact>();
     RDFVariable imAddress = imContact.property<nco::hasIMAddress>();
+    imContact != nco::default_contact_me::iri();
 
     RDFVariableList members;
     Q_FOREACH (const CDTpContactPtr &contactWrapper, remoteContacts()) {
