@@ -79,18 +79,20 @@ public Q_SLOTS:
     void setAccountContactsOffline(CDTpAccount *accountWrapper);
     void removeAccount(const QString &accountObjectPath);
     void removeContacts(CDTpAccount *accountWrapper,
-            const QList<CDTpContactPtr> &contacts, bool not_ = false);
+            const QList<CDTpContactPtr> &contacts);
 
 private Q_SLOTS:
     void onAccountPurgeSelectQueryFinished(CDTpStorageSelectQuery *query);
     void onAccountOfflineSelectQueryFinished(CDTpStorageSelectQuery *query);
     void onAccountDeleteSelectQueryFinished(CDTpStorageSelectQuery *query);
+    void onContactPurgeSelectQueryFinished(CDTpStorageSelectQuery *);
     void onContactDeleteSelectQueryFinished(CDTpStorageSelectQuery *query);
     void onContactUpdateResolverFinished(CDTpStorageContactResolver *resolver);
     void onQueueTimerTimeout();
 
 private:
-    void removeContacts(CDTpStorageSelectQuery *query, bool deleteAccount);
+    void removeContacts(CDTpStorageSelectQuery *query, bool deleteAccount,
+            QList<QUrl> skipIMAddressList = QList<QUrl>());
 
     void saveAccountAvatar(RDFUpdate &query, const QByteArray &data, const QString &mimeType,
             const RDFVariable &imAddress,
@@ -166,6 +168,21 @@ private Q_SLOTS:
 
 private:
     LiveNodes mReply;
+};
+
+class CDTpStorageAccountSelectQuery: public CDTpStorageSelectQuery
+{
+    Q_OBJECT
+
+public:
+    CDTpStorageAccountSelectQuery(CDTpAccount *accountWrapper,
+            const RDFSelect &select, QObject *parent = 0);
+    ~CDTpStorageAccountSelectQuery() {};
+
+    CDTpAccount *accountWrapper() const;
+
+private:
+    CDTpAccount *mAccountWrapper;
 };
 
 class CDTpStorageContactResolver : public QObject

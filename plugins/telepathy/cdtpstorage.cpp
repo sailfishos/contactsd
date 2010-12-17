@@ -22,6 +22,9 @@
 #include <TelepathyQt4/AvatarData>
 #include <TelepathyQt4/ContactCapabilities>
 
+#define MAX_UPDATE_SIZE 999
+#define MAX_REMOVE_SIZE 999
+
 const QUrl CDTpStorage::defaultGraph = QUrl(
         QLatin1String("urn:uuid:08070f5c-a334-4d19-a8b0-12a3071bfab9"));
 const QUrl CDTpStorage::privateGraph = QUrl(
@@ -32,9 +35,10 @@ const QString defaultGenerator = "telepathy";
 CDTpStorage::CDTpStorage(QObject *parent)
     : QObject(parent)
 {
+    //::tracker()->setServiceAttribute("tracker_access_method", QString("QSPARQL_DIRECT"));
+
     mQueueTimer.setSingleShot(true);
     mQueueTimer.setInterval(100);
-
     connect(&mQueueTimer, SIGNAL(timeout()), SLOT(onQueueTimerTimeout()));
 }
 
@@ -171,8 +175,44 @@ void CDTpStorage::syncAccountContacts(CDTpAccount *accountWrapper)
             QList<CDTpContactPtr>());
 
     /* We need to purge contacts that are in tracker but got removed from the
-     * account while contactsd was not running. */
-    removeContacts(accountWrapper, accountWrapper->contacts(), true);
+     * account while contactsd was not running.
+     * We first query all contacts for that account, then will delete those that
+     * are not in the account anymore. We can't use NOT IN() in the query
+     * because with huge contact list it will hit SQL limit. */
+    const QString accountId = accountWrapper->account()->normalizedName();
+    const QString accountPath = accountWrapper->account()->objectPath();
+    RDFVariable imContact = RDFVariable::fromType<nco::PersonContact>();
+    RDFVariable imAddress = imContact.property<nco::hasIMAddress>();
+    imAddress.hasPrefix(QString("telepathy:%1").arg(accountPath));
+    imAddress.notEqual(contactImAddress(accountPath, accountId));
+
+    RDFSelect select;
+    select.addColumn("contact", imContact);
+    select.addColumn("address", imAddress);
+    select.addColumn("Generator", imContact.property<nie::generator>());
+
+    CDTpStorageAccountSelectQuery *query = new CDTpStorageAccountSelectQuery(accountWrapper,  select, this);
+    connect(query,
+            SIGNAL(finished(CDTpStorageSelectQuery *)),
+            SLOT(onContactPurgeSelectQueryFinished(CDTpStorageSelectQuery *)));
+}
+
+void CDTpStorage::onContactPurgeSelectQueryFinished(CDTpStorageSelectQuery *query)
+{
+    LiveNodes result = query->reply();
+    if (result->rowCount() <= 0) {
+        query->deleteLater();
+        return;
+    }
+
+    CDTpStorageAccountSelectQuery *accountQuery =
+        qobject_cast<CDTpStorageAccountSelectQuery*>(query);
+    QList<QUrl> imAddressList;
+    Q_FOREACH (const CDTpContactPtr &contactWrapper, accountQuery->accountWrapper()->contacts()) {
+        imAddressList << contactImAddress(contactWrapper);
+    }
+
+    removeContacts(query, true, imAddressList);
 }
 
 void CDTpStorage::syncAccountContacts(CDTpAccount *accountWrapper,
@@ -279,35 +319,40 @@ void CDTpStorage::onAccountDeleteSelectQueryFinished(CDTpStorageSelectQuery *que
 }
 
 void CDTpStorage::removeContacts(CDTpAccount *accountWrapper,
-        const QList<CDTpContactPtr> &contacts, bool not_)
+        const QList<CDTpContactPtr> &contacts)
 {
-    RDFVariable imContact = RDFVariable::fromType<nco::PersonContact>();
-    RDFVariable imAddress = imContact.property<nco::hasIMAddress>();
+    /* Split the request into smaller batches if necessary */
+    if (contacts.size() > MAX_REMOVE_SIZE) {
+        QList<CDTpContactPtr> batch;
+        for (int i = 0; i < contacts.size(); i++) {
+            batch << contacts[i];
+            if (batch.size() == MAX_REMOVE_SIZE) {
+                removeContacts(accountWrapper, batch);
+                batch.clear();
+            }
+        }
+        if (!batch.isEmpty()) {
+            removeContacts(accountWrapper, batch);
+            batch.clear();
+        }
+        return;
+    }
+
+    /* Cancel queued update if we are going to remove the contact anyway */
+    Q_FOREACH (const CDTpContactPtr &contactWrapper, contacts) {
+        qDebug() << "Contact Removed, cancel update:" << contactWrapper->contact()->id();
+        mUpdateQueue.remove(contactWrapper);
+    }
+
     RDFVariableList members;
     Q_FOREACH (CDTpContactPtr contactWrapper, contacts) {
         members << RDFVariable(contactImAddress(contactWrapper));
     }
 
-    if (not_) {
-        /* We want to remove all contacts from that account, EXCEPT those in
-         * contacts param. */
-        const QString accountId = accountWrapper->account()->normalizedName();
-        const QString accountPath = accountWrapper->account()->objectPath();
-
-        imAddress.isMemberOf(members).not_();
-        imAddress.hasPrefix(QString("telepathy:%1").arg(accountPath));
-        imAddress.notEqual(contactImAddress(accountPath, accountId));
-    } else {
-        imAddress.isMemberOf(members);
-    }
-
-    if (!not_) {
-        /* Cancel queued update if we are going to remove the contact anyway */
-        Q_FOREACH (const CDTpContactPtr &contactWrapper, contacts) {
-            qDebug() << "Contact Removed, cancel update:" << contactWrapper->contact()->id();
-            mUpdateQueue.remove(contactWrapper);
-        }
-    }
+    const QString accountPath = accountWrapper->account()->objectPath();
+    RDFVariable imContact = RDFVariable::fromType<nco::PersonContact>();
+    RDFVariable imAddress = imContact.property<nco::hasIMAddress>();
+    imAddress.isMemberOf(members);
 
     RDFSelect select;
     select.addColumn("Contact", imContact);
@@ -325,7 +370,8 @@ void CDTpStorage::onContactDeleteSelectQueryFinished(CDTpStorageSelectQuery *que
     removeContacts(query, true);
 }
 
-void CDTpStorage::removeContacts(CDTpStorageSelectQuery *query, bool deleteAccount)
+void CDTpStorage::removeContacts(CDTpStorageSelectQuery *query, bool deleteAccount,
+        QList<QUrl> skipIMAddressList)
 {
     query->deleteLater();
 
@@ -335,10 +381,17 @@ void CDTpStorage::removeContacts(CDTpStorageSelectQuery *query, bool deleteAccou
     }
 
     RDFUpdate updateQuery;
+    RDFStatementList deletions;
+    RDFStatementList accountDeletions;
+    RDFStatementList inserts;
     for (int i = 0; i < result->rowCount(); i++) {
         QUrl imContact = QUrl(result->index(i, 0).data().toString());
         QUrl imAddress = QUrl(result->index(i, 1).data().toString());
         const QString generator = result->index(i, 2).data().toString();
+
+        if (skipIMAddressList.contains(imAddress)) {
+            continue;
+        }
 
         qDebug() << "Deleting" << imAddress << "from" << imContact;
         qDebug() << "Also delete local contact:" << (generator == defaultGenerator ? "Yes" : "No");
@@ -346,23 +399,28 @@ void CDTpStorage::removeContacts(CDTpStorageSelectQuery *query, bool deleteAccou
         if (deleteAccount) {
             const QString addressUrl = result->index(i, 1).data().toString();
             const RDFVariable imAccount(QUrl(addressUrl.left(addressUrl.indexOf("!"))));
-            updateQuery.addDeletion(imAccount, nco::hasIMContact::iri(), imAddress, privateGraph);
+            accountDeletions << RDFStatement(imAccount, nco::hasIMContact::iri(), imAddress);
         }
 
-        updateQuery.addDeletion(imAddress, rdf::type::iri(), rdfs::Resource::iri(), defaultGraph);
+        /* Drop everything from its graph */
+        updateQuery.addDeletion(RDFVariable(), rdf::type::iri(), rdfs::Resource::iri(), imAddress);
+        updateQuery.addDeletion(imContact, nco::hasAffiliation::iri(), RDFVariable(), imAddress);
+
+        deletions << RDFStatement(imAddress, rdf::type::iri(), rdfs::Resource::iri());
 
         if (generator == defaultGenerator) {
-            updateQuery.addDeletion(imContact, rdf::type::iri(), rdfs::Resource::iri(), defaultGraph);
+            deletions << RDFStatement(imContact, rdf::type::iri(), rdfs::Resource::iri());
         } else {
-            updateQuery.addDeletion(imContact, nco::hasIMAddress::iri(),
-                    imAddress, defaultGraph);
-            updateQuery.addDeletion(imContact, nie::contentLastModified::iri(),
-                    RDFVariable(), defaultGraph);
-            updateQuery.addInsertion(imContact, nie::contentLastModified::iri(),
-                    LiteralValue(QDateTime::currentDateTime()), defaultGraph);
+            deletions << RDFStatement(imContact, nco::hasIMAddress::iri(), imAddress)
+                      << RDFStatement(imContact, nie::contentLastModified::iri(), RDFVariable());
+            inserts << RDFStatement(imContact, nie::contentLastModified::iri(),
+                LiteralValue(QDateTime::currentDateTime()));
         }
     }
 
+    updateQuery.addDeletion(deletions, defaultGraph);
+    updateQuery.addInsertion(inserts, defaultGraph);
+    updateQuery.addDeletion(accountDeletions, privateGraph);
     ::tracker()->executeQuery(updateQuery);
 }
 
@@ -865,7 +923,7 @@ void CDTpStorage::queueUpdate(CDTpContactPtr contactWrapper, CDTpContact::Change
     }
 
     /* If the queue is too big, flush it now to avoid hitting query size limit */
-    if (mUpdateQueue.size() >= 500) {
+    if (mUpdateQueue.size() >= MAX_UPDATE_SIZE) {
         onQueueTimerTimeout();
     } else if (!mQueueTimer.isActive()) {
         mQueueTimer.start();
@@ -971,5 +1029,11 @@ CDTpStorageContactResolver::CDTpStorageContactResolver(
     connect(query,
             SIGNAL(finished(CDTpStorageSelectQuery *)),
             SLOT(onStorageResolveSelectQueryFinished(CDTpStorageSelectQuery *)));
+}
+
+CDTpStorageAccountSelectQuery::CDTpStorageAccountSelectQuery(
+        CDTpAccount *accountWrapper, const RDFSelect &select, QObject *parent)
+        : CDTpStorageSelectQuery(select, parent), mAccountWrapper(accountWrapper)
+{
 }
 
