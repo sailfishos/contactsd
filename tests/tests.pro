@@ -2,7 +2,7 @@ include(coverage.pri)
 
 TEMPLATE = subdirs
 
-SUBDIRS += lib ut_contactsd account-manager ut_telepathyplugin
+SUBDIRS += lib ut_contactsd account-manager ut_telepathyplugin benchmark
 UNIT_TESTS += ut_contactsd
 
 OTHER_FILES += \

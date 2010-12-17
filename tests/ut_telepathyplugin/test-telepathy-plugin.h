@@ -23,15 +23,12 @@
 #include <QObject>
 #include <QtTest/QtTest>
 #include <QString>
-
 #include <QContactManager>
 
+#include <telepathy-glib/telepathy-glib.h>
 #include <TelepathyQt4/Contact>
 
-#include "tests/lib/glib/simple-account-manager.h"
-#include "tests/lib/glib/simple-account.h"
-#include "tests/lib/glib/contacts-conn.h"
-#include "tests/lib/glib/util.h"
+#include "tests/lib/glib/contact-list-manager.h"
 
 #include "test.h"
 

@@ -17,21 +17,18 @@
 **
 ****************************************************************************/
 
+#include <QContact>
+#include <QContactAvatar>
+#include <QContactOnlineAccount>
+#include <QContactPhoneNumber>
+#include <QContactPresence>
+
+#include "tests/lib/glib/simple-account-manager.h"
+#include "tests/lib/glib/simple-account.h"
+#include "tests/lib/glib/contacts-conn.h"
+#include "tests/lib/glib/util.h"
+
 #include "test-telepathy-plugin.h"
-
-#include <QMap>
-#include <QPair>
-
-#include <QtTracker/Tracker>
-#include <QtTracker/ontologies/nco.h>
-#include <QtTracker/ontologies/nie.h>
-#include <qcontactfilters.h>
-#include <qtcontacts.h>
-
-#include <TelepathyQt4/PendingReady>
-
-#include <telepathy-glib/svc-account-manager.h>
-#include <telepathy-glib/svc-account.h>
 
 #define ACCOUNT_PATH TP_ACCOUNT_OBJECT_PATH_BASE "fakecm/fakeproto/fakeaccount"
 #define BUS_NAME "org.maemo.Contactsd.UnitTest"

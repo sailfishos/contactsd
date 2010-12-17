@@ -12,8 +12,6 @@
 #ifndef __TEST_CONTACT_LIST_MANAGER_H__
 #define __TEST_CONTACT_LIST_MANAGER_H__
 
-#include <glib-object.h>
-
 #include <telepathy-glib/base-contact-list.h>
 
 G_BEGIN_DECLS

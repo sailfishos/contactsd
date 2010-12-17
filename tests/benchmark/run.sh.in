@@ -1,0 +1,3 @@
+#! /bin/sh
+
+@TOP_BUILDDIR@/tools/with-session-bus.sh --config-file=@TOP_BUILDDIR@/tests/dbus-1/session.conf -- @TOP_BUILDDIR@/tests/runtest.sh @TOP_BUILDDIR@/tests/benchmark/benchmark

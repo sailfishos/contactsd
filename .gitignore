@@ -33,6 +33,8 @@ tests/dbus-1/services/org.freedesktop.Telepathy.AccountManager.service
 tests/ut_contactsd/ut_contactsd
 tests/ut_telepathyplugin/ut_telepathyplugin
 tests/account-manager/fake-account-manager
+tests/benchmark/benchmark
+tests/benchmark/run.sh
 
 src/contactsimportprogressadaptor.cpp
 src/contactsimportprogressadaptor.h

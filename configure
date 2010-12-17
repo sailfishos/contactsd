@@ -121,7 +121,8 @@ EOF
 infiles="contactsd-1.0.pc \
          tests/runtest.sh \
          tests/dbus-1/session.conf \
-         tests/dbus-1/services/org.freedesktop.Telepathy.AccountManager.service"
+         tests/dbus-1/services/org.freedesktop.Telepathy.AccountManager.service \
+         tests/benchmark/run.sh"
 for infile in $infiles; do
     echo "Generating $infile"
     # pre-process .in files
