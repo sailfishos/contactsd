@@ -94,7 +94,8 @@ void CDTpController::onAccountReady(CDTpAccount *accountWrapper)
 
     Tp::AccountPtr account = accountWrapper->account();
     // set contacts importing state if this is a newly created account
-    if (not account->hasBeenOnline()) {
+    if (account->isEnabled() &&
+        not account->hasBeenOnline()) {
         setImportStarted(account);
     }
 }

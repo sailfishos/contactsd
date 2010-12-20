@@ -25,6 +25,7 @@
 
 #include "importstate.h"
 
+class QTimer;
 class QPluginLoader;
 class QString;
 class QStringList;
@@ -58,13 +59,18 @@ private Q_SLOTS:
     void onPluginImportStarted(const QString &service, const QString &account);
     void onPluginImportEnded(const QString &service, const QString &account,
                              int contactsAdded, int contactsRemoved, int contactsMerged);
+    void onImportTimeout();
 
 private:
+    void startImportTimer();
+    void stopImportTimer();
     QString pluginName(ContactsdPluginInterface *plugin);
 
     typedef QMap<QString, QPluginLoader *> PluginStore;
     PluginStore mPluginStore;
     ImportState mImportState;
+
+    QTimer *mImportTimer;
 };
 
 #endif

@@ -23,12 +23,17 @@
 #include <QString>
 #include <QStringList>
 #include <QVariant>
+#include <QTimer>
 
 #include "contactsdpluginloader.h"
 #include "contactsdplugininterface.h"
 #include "contactsimportprogressadaptor.h"
 
+// import timeout is 5 minutes
+const int IMPORT_TIMEOUT = 5 * 60 * 1000;
+
 ContactsdPluginLoader::ContactsdPluginLoader()
+    : mImportTimer(0)
 {
     if (registerNotificationService()) {
         (void) new ContactsImportProgressAdaptor(this);
@@ -157,6 +162,7 @@ void ContactsdPluginLoader::onPluginImportStarted(const QString &service, const 
     } else {
         // new import
         mImportState.reset();
+        startImportTimer();
         Q_EMIT importStarted(service);
     }
 
@@ -178,8 +184,12 @@ void ContactsdPluginLoader::onPluginImportEnded(const QString &service, const QS
              << "added" << contactsAdded << "removed" << contactsRemoved
              << "merged" << contactsMerged;
 
-    mImportState.removeImportingAccount(service, account, contactsAdded,
-                                        contactsRemoved, contactsMerged);
+    bool removed = mImportState.removeImportingAccount(service, account, contactsAdded,
+                                                       contactsRemoved, contactsMerged);
+    if (not removed) {
+        qDebug() << Q_FUNC_INFO << "account does not exist";
+        return ;
+    }
 
     if (mImportState.hasActiveImports()) {
         if (not mImportState.serviceHasActiveImports(service)) {
@@ -187,9 +197,40 @@ void ContactsdPluginLoader::onPluginImportEnded(const QString &service, const QS
             Q_EMIT importStateChanged(service, QString());
         }
     } else {
+        stopImportTimer();
         Q_EMIT importEnded(mImportState.contactsAdded(), mImportState.contactsRemoved(),
-                         mImportState.contactsMerged());
+                           mImportState.contactsMerged());
     }
+}
+
+void ContactsdPluginLoader::onImportTimeout()
+{
+    qDebug() << Q_FUNC_INFO;
+
+    stopImportTimer();
+    Q_EMIT importEnded(mImportState.contactsAdded(), mImportState.contactsRemoved(),
+                       mImportState.contactsMerged());
+    mImportState.reset();
+}
+
+void ContactsdPluginLoader::startImportTimer()
+{
+    if (mImportTimer) {
+        stopImportTimer();
+    }
+
+    // Add a timeout timer
+    mImportTimer = new QTimer(this);
+    connect(mImportTimer, SIGNAL(timeout()),
+            this, SLOT(onImportTimeout()));
+    mImportTimer->start(IMPORT_TIMEOUT);
+}
+
+void ContactsdPluginLoader::stopImportTimer()
+{
+    mImportTimer->stop();
+    delete mImportTimer;
+    mImportTimer = 0;
 }
 
 QString ContactsdPluginLoader::pluginName(ContactsdPluginInterface *plugin)

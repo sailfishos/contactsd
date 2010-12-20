@@ -173,9 +173,6 @@ void TestContactsd::testImportState()
     QCOMPARE(state.contactsAdded(), 0);
     QCOMPARE(state.contactsRemoved(), 0);
     QCOMPARE(state.contactsMerged(), 0);
-
-    state.addImportingAccount("qq", "qq-account3");
-    QCOMPARE(state.reset(), false);
 }
 
 void TestContactsd::testDbusRegister()

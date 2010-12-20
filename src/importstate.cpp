@@ -36,17 +36,12 @@ bool ImportState::hasActiveImports()
     return (mService2Accounts.size() != 0);
 }
 
-bool ImportState::reset()
+void ImportState::reset()
 {
-    if (hasActiveImports()) {
-        return false;
-    }
-
     mService2Accounts.clear();
     mContactsAdded = 0;
     mContactsMerged = 0;
     mContactsRemoved = 0;
-    return true;
 }
 
 QStringList ImportState::activeImportingServices()
@@ -70,7 +65,7 @@ void ImportState::addImportingAccount(const QString &service, const QString &acc
     }
 }
 
-void ImportState::removeImportingAccount(const QString &service, const QString &account,
+bool ImportState::removeImportingAccount(const QString &service, const QString &account,
                                          int added, int removed, int merged)
 {
     qDebug() << Q_FUNC_INFO << service << account;
@@ -83,7 +78,10 @@ void ImportState::removeImportingAccount(const QString &service, const QString &
         mContactsMerged += merged;
         mStateStore.setValue(account, Contactsd::Imported);
         mStateStore.sync();
+        return true;
     }
+    else
+        return false;
 }
 
 int ImportState::contactsAdded()

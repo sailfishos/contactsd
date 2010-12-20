@@ -31,9 +31,8 @@ public:
     ImportState();
 
     bool hasActiveImports();
-    // reset the state and return true only when there's no active import
-    // otherwise it will fail and return false.
-    bool reset();
+    // reset the state
+    void reset();
 
     QStringList activeImportingServices();
 
@@ -41,7 +40,9 @@ public:
     bool serviceHasActiveImports(const QString &service);
 
     void addImportingAccount(const QString &service, const QString &account);
-    void removeImportingAccount(const QString &service, const QString &account,
+    // return true if the account is removed successfully,
+    // fales if the account doesn't exist
+    bool removeImportingAccount(const QString &service, const QString &account,
                                 int added, int removed, int merged);
 
     int contactsAdded();
