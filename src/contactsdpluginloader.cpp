@@ -228,9 +228,11 @@ void ContactsdPluginLoader::startImportTimer()
 
 void ContactsdPluginLoader::stopImportTimer()
 {
-    mImportTimer->stop();
-    delete mImportTimer;
-    mImportTimer = 0;
+    if (mImportTimer) {
+        mImportTimer->stop();
+        delete mImportTimer;
+        mImportTimer = 0;
+    }
 }
 
 QString ContactsdPluginLoader::pluginName(ContactsdPluginInterface *plugin)
