@@ -1,8 +1,9 @@
-contactsd (0.5.44~2) UNRELEASED; urgency=low
+contactsd (0.5.45-1) unstable; urgency=low
 
-    *
+    * Fixes: NB#210977 -  Skype contacts are not shown
+    * Changes: Import progress for Telepathy Plugin
 
- -- Siraj Razick <siraj.razick@collabora.co.uk>  Wed, 01 Dec 2010 20:29:00 +0530
+ -- Siraj Razick <siraj.razick@collabora.co.uk>  Mon, 20 Dec 2010 10:22:00 +0530
 
 contactsd (0.5.44-1) unstable; urgency=low
     
