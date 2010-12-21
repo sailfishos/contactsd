@@ -1,3 +1,9 @@
+contactsd (0.5.46-1) unstable; urgency=low
+
+  * Add timeout timer for import progress
+
+ -- Tan Miaoqing <miaoqing.tan@nokia.com>  Tue, 21 Dec 2010 13:35:44 +0200
+
 contactsd (0.5.45-1) unstable; urgency=low
 
     * Fixes: NB#210977 -  Skype contacts are not shown
