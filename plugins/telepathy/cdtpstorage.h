@@ -66,6 +66,10 @@ public:
     static const QUrl defaultGraph;
     static const QUrl privateGraph;
 
+Q_SIGNALS:
+    void syncStarted(CDTpAccountPtr accountWrapper);
+    void syncEnded(CDTpAccountPtr accountWrapper, int contactsAdded, int contactsRemoved);
+
 public Q_SLOTS:
     void syncAccountSet(const QList<QString> &accountPaths);
     void syncAccount(CDTpAccountPtr accountWrapper);

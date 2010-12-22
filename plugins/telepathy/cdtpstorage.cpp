@@ -170,7 +170,6 @@ void CDTpStorage::syncAccount(CDTpAccountPtr accountWrapper,
 
 void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper)
 {
-    // TODO: return the number of contacts that were actually added
     syncAccountContacts(accountWrapper, accountWrapper->contacts(),
             QList<CDTpContactPtr>());
 

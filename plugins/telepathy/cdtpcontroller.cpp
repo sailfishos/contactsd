@@ -28,10 +28,16 @@
 
 CDTpController::CDTpController(QObject *parent)
     : QObject(parent),
-      mImportActive(false)
+      mImportActive(0)
 {
     qDebug() << "Creating storage";
     mStorage = new CDTpStorage(this);
+    connect(mStorage,
+            SIGNAL(syncStarted(CDTpAccountPtr)),
+            SLOT(onSyncStarted(CDTpAccountPtr)));
+    connect(mStorage,
+            SIGNAL(syncEnded(CDTpAccountPtr, int, int)),
+            SLOT(onSyncEnded(CDTpAccountPtr, int, int)));
 
     qDebug() << "Creating account manager";
     mAM = Tp::AccountManager::create();
@@ -48,7 +54,7 @@ CDTpController::~CDTpController()
 
 bool CDTpController::hasActiveImports() const
 {
-    return mImportActive;
+    return mImportActive > 0;
 }
 
 void CDTpController::onAccountManagerReady(Tp::PendingOperation *op)
@@ -91,13 +97,6 @@ void CDTpController::onAccountRemoved(const Tp::AccountPtr &account)
 void CDTpController::onAccountReady(CDTpAccountPtr accountWrapper)
 {
     mStorage->syncAccount(accountWrapper);
-
-    Tp::AccountPtr account = accountWrapper->account();
-    // set contacts importing state if this is a newly created account
-    if (account->isEnabled() &&
-        not account->hasBeenOnline()) {
-        setImportStarted(account);
-    }
 }
 
 void CDTpController::onAccountRosterChanged(CDTpAccountPtr accountWrapper,
@@ -106,10 +105,7 @@ void CDTpController::onAccountRosterChanged(CDTpAccountPtr accountWrapper,
     Tp::AccountPtr account = accountWrapper->account();
 
     if (haveRoster) {
-        // TODO: emit importEnded once syncAccountContacts return the
-        //       number of contacts actually added
         mStorage->syncAccountContacts(accountWrapper);
-        setImportEnded(account, accountWrapper->contacts().size(), 0);
     } else {
         mStorage->setAccountContactsOffline(accountWrapper);
     }
@@ -123,7 +119,6 @@ void CDTpController::onAccountRosterUpdated(CDTpAccountPtr accountWrapper,
 
     mStorage->syncAccountContacts(accountWrapper, contactsAdded,
             contactsRemoved);
-    setImportEnded(account, contactsAdded.size(), contactsRemoved.size());
 }
 
 void CDTpController::insertAccount(const Tp::AccountPtr &account)
@@ -163,20 +158,19 @@ void CDTpController::removeAccount(const QString &accountObjectPath)
     mAccounts.remove(accountObjectPath);
 }
 
-void CDTpController::setImportStarted(const Tp::AccountPtr &account)
+void CDTpController::onSyncStarted(CDTpAccountPtr accountWrapper)
 {
-    qDebug() << Q_FUNC_INFO;
+    mImportActive++;
 
-    mImportActive = true;
+    Tp::AccountPtr account = accountWrapper->account();
     Q_EMIT importStarted(account->serviceName(), account->objectPath());
 }
 
-void CDTpController::setImportEnded(const Tp::AccountPtr &account, int contactsAdded, int contactsRemoved)
+void CDTpController::onSyncEnded(CDTpAccountPtr accountWrapper, int contactsAdded, int contactsRemoved)
 {
-    if (mImportActive) {
-        qDebug() << Q_FUNC_INFO;
-        mImportActive = false;
-        Q_EMIT importEnded(account->serviceName(), account->objectPath(),
-                           contactsAdded, contactsRemoved, 0);
-    }
+    mImportActive--;
+
+    Tp::AccountPtr account = accountWrapper->account();
+    Q_EMIT importEnded(account->serviceName(), account->objectPath(),
+        contactsAdded, contactsRemoved, 0);
 }

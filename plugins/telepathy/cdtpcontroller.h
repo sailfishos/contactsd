@@ -29,11 +29,6 @@
 #include <QList>
 #include <QObject>
 
-namespace Tp
-{
-    class PendingOperation;
-}
-
 class CDTpController : public QObject
 {
     Q_OBJECT
@@ -57,6 +52,8 @@ private Q_SLOTS:
     void onAccountRosterUpdated(CDTpAccountPtr accountWrapper,
             const QList<CDTpContactPtr> &contactsAdded,
             const QList<CDTpContactPtr> &contactsRemoved);
+    void onSyncStarted(CDTpAccountPtr accountWrapper);
+    void onSyncEnded(CDTpAccountPtr accountWrapper, int contactsAdded, int contactsRemoved);
 
 private:
     void insertAccount(const Tp::AccountPtr &account);
@@ -70,7 +67,7 @@ private:
     Tp::AccountManagerPtr mAM;
     Tp::AccountSetPtr mAccountSet;
     QHash<QString, CDTpAccountPtr> mAccounts;
-    bool mImportActive;
+    int mImportActive;
 };
 
 #endif // CDTPCONTROLLER_H
