@@ -731,7 +731,6 @@ void CDTpStorage::addContactInfoToQuery(RDFUpdate &query,
     query.addDeletion(RDFVariable(), rdf::type::iri(), rdfs::Resource::iri(), graph);
     query.addDeletion(imContact, nco::hasAffiliation::iri(), RDFVariable(), graph);
 
-    /* FIXME: Tp::Contact::info() is deprecated */
     Tp::ContactPtr contact = contactWrapper->contact();
     Tp::ContactInfoFieldList  listContactInfo = contact->infoFields().allFields();
 
