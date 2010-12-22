@@ -88,7 +88,7 @@ void CDTpController::onAccountRemoved(const Tp::AccountPtr &account)
     removeAccount(account->objectPath());
 }
 
-void CDTpController::onAccountReady(CDTpAccount *accountWrapper)
+void CDTpController::onAccountReady(CDTpAccountPtr accountWrapper)
 {
     mStorage->syncAccount(accountWrapper);
 
@@ -100,7 +100,7 @@ void CDTpController::onAccountReady(CDTpAccount *accountWrapper)
     }
 }
 
-void CDTpController::onAccountRosterChanged(CDTpAccount *accountWrapper,
+void CDTpController::onAccountRosterChanged(CDTpAccountPtr accountWrapper,
         bool haveRoster)
 {
     Tp::AccountPtr account = accountWrapper->account();
@@ -115,7 +115,7 @@ void CDTpController::onAccountRosterChanged(CDTpAccount *accountWrapper,
     }
 }
 
-void CDTpController::onAccountRosterUpdated(CDTpAccount *accountWrapper,
+void CDTpController::onAccountRosterUpdated(CDTpAccountPtr accountWrapper,
         const QList<CDTpContactPtr> &contactsAdded,
         const QList<CDTpContactPtr> &contactsRemoved)
 {
@@ -129,29 +129,29 @@ void CDTpController::onAccountRosterUpdated(CDTpAccount *accountWrapper,
 void CDTpController::insertAccount(const Tp::AccountPtr &account)
 {
     qDebug() << "Creating wrapper for account" << account->objectPath();
-    CDTpAccount *accountWrapper = new CDTpAccount(account, this);
-    connect(accountWrapper,
-            SIGNAL(ready(CDTpAccount *)),
-            SLOT(onAccountReady(CDTpAccount *)));
-    connect(accountWrapper,
-            SIGNAL(changed(CDTpAccount *, CDTpAccount::Changes)),
+    CDTpAccountPtr accountWrapper = CDTpAccountPtr(new CDTpAccount(account, this));
+    connect(accountWrapper.data(),
+            SIGNAL(ready(CDTpAccountPtr)),
+            SLOT(onAccountReady(CDTpAccountPtr)));
+    connect(accountWrapper.data(),
+            SIGNAL(changed(CDTpAccountPtr, CDTpAccount::Changes)),
             mStorage,
-            SLOT(syncAccount(CDTpAccount *, CDTpAccount::Changes)));
-    connect(accountWrapper,
-            SIGNAL(rosterChanged(CDTpAccount *, bool)),
-            SLOT(onAccountRosterChanged(CDTpAccount *, bool)));
-    connect(accountWrapper,
-            SIGNAL(rosterUpdated(CDTpAccount *,
+            SLOT(syncAccount(CDTpAccountPtr, CDTpAccount::Changes)));
+    connect(accountWrapper.data(),
+            SIGNAL(rosterChanged(CDTpAccountPtr , bool)),
+            SLOT(onAccountRosterChanged(CDTpAccountPtr , bool)));
+    connect(accountWrapper.data(),
+            SIGNAL(rosterUpdated(CDTpAccountPtr ,
                     const QList<CDTpContactPtr> &,
                     const QList<CDTpContactPtr> &)),
-            SLOT(onAccountRosterUpdated(CDTpAccount *,
+            SLOT(onAccountRosterUpdated(CDTpAccountPtr ,
                     const QList<CDTpContactPtr> &,
                     const QList<CDTpContactPtr> &)));
-    connect(accountWrapper,
-            SIGNAL(rosterContactChanged(CDTpAccount *,
+    connect(accountWrapper.data(),
+            SIGNAL(rosterContactChanged(CDTpAccountPtr ,
                     CDTpContactPtr, CDTpContact::Changes)),
             mStorage,
-            SLOT(syncAccountContact(CDTpAccount *,
+            SLOT(syncAccountContact(CDTpAccountPtr ,
                     CDTpContactPtr, CDTpContact::Changes)));
 
     mAccounts.insert(account->objectPath(), accountWrapper);
@@ -160,7 +160,7 @@ void CDTpController::insertAccount(const Tp::AccountPtr &account)
 void CDTpController::removeAccount(const QString &accountObjectPath)
 {
     mStorage->removeAccount(accountObjectPath);
-    delete mAccounts.take(accountObjectPath);
+    mAccounts.remove(accountObjectPath);
 }
 
 void CDTpController::setImportStarted(const Tp::AccountPtr &account)

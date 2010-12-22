@@ -20,21 +20,18 @@
 #ifndef CDTPACCOUNT_H
 #define CDTPACCOUNT_H
 
-#include "cdtpcontact.h"
+#include <QObject>
 
 #include <TelepathyQt4/Account>
 #include <TelepathyQt4/Constants>
 #include <TelepathyQt4/Contact>
 #include <TelepathyQt4/Types>
+#include <TelepathyQt4/PendingOperation>
 
-#include <QObject>
+#include "types.h"
+#include "cdtpcontact.h"
 
-namespace Tp
-{
-    class PendingOperation;
-}
-
-class CDTpAccount : public QObject
+class CDTpAccount : public QObject, public Tp::RefCounted
 {
     Q_OBJECT
 
@@ -56,13 +53,13 @@ public:
     QList<CDTpContactPtr> contacts() const;
 
 Q_SIGNALS:
-    void ready(CDTpAccount *accountWrapper);
-    void changed(CDTpAccount *accountWrapper, CDTpAccount::Changes changes);
-    void rosterChanged(CDTpAccount *accountWrapper, bool haveRoster);
-    void rosterUpdated(CDTpAccount *acconutWrapper,
+    void ready(CDTpAccountPtr accountWrapper);
+    void changed(CDTpAccountPtr accountWrapper, CDTpAccount::Changes changes);
+    void rosterChanged(CDTpAccountPtr accountWrapper, bool haveRoster);
+    void rosterUpdated(CDTpAccountPtr acconutWrapper,
             const QList<CDTpContactPtr> &contactsAdded,
             const QList<CDTpContactPtr> &contactsRemoved);
-    void rosterContactChanged(CDTpAccount *accountWrapper,
+    void rosterContactChanged(CDTpAccountPtr accountWrapper,
             CDTpContactPtr contactWrapper, CDTpContact::Changes changes);
 
 private Q_SLOTS:

@@ -14,6 +14,7 @@ PKGCONFIG += TelepathyQt4 qttracker
 INCLUDEPATH += $$TOP_SOURCEDIR/src
 
 HEADERS  = cdtpaccount.h \
+    types.h \
     cdtpcontact.h \
     cdtpcontroller.h \
     cdtpplugin.h \

@@ -20,15 +20,12 @@
 #ifndef CDTPCONTACT_H
 #define CDTPCONTACT_H
 
-#include <TelepathyQt4/Contact>
-#include <TelepathyQt4/Types>
-#include <TelepathyQt4/SharedPtr>
-
 #include <QObject>
 
-class CDTpAccount;
-class CDTpContact;
-typedef Tp::SharedPtr<CDTpContact> CDTpContactPtr;
+#include <TelepathyQt4/Contact>
+#include <TelepathyQt4/Types>
+
+#include "types.h"
 
 class CDTpContact : public QObject, public Tp::RefCounted
 {
@@ -52,7 +49,7 @@ public:
 
     Tp::ContactPtr contact() const { return mContact; }
 
-    CDTpAccount *accountWrapper() const { return mAccountWrapper; }
+    CDTpAccountPtr accountWrapper() const;
     bool isRemoved() const { return mRemoved; }
 
 Q_SIGNALS:

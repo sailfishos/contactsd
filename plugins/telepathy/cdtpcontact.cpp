@@ -61,6 +61,11 @@ CDTpContact::~CDTpContact()
 {
 }
 
+CDTpAccountPtr CDTpContact::accountWrapper() const
+{
+    return CDTpAccountPtr(mAccountWrapper);
+}
+
 void CDTpContact::onContactAliasChanged()
 {
     Q_EMIT changed(CDTpContactPtr(this), Alias);

@@ -62,7 +62,7 @@ void CDTpAccount::onAccountReady(Tp::PendingOperation *op)
     qDebug() << "Account" << mAccount->objectPath() << "ready";
 
     // signal that the account is ready to use
-    Q_EMIT ready(this);
+    Q_EMIT ready(CDTpAccountPtr(this));
 
     // connect all signals we care about, so we can signal that the account
     // changed accordingly
@@ -91,27 +91,27 @@ void CDTpAccount::onAccountReady(Tp::PendingOperation *op)
 
 void CDTpAccount::onAccountNormalizedNameChanged()
 {
-    Q_EMIT changed(this, All);
+    Q_EMIT changed(CDTpAccountPtr(this), All);
 }
 
 void CDTpAccount::onAccountDisplayNameChanged()
 {
-    Q_EMIT changed(this, DisplayName);
+    Q_EMIT changed(CDTpAccountPtr(this), DisplayName);
 }
 
 void CDTpAccount::onAccountNicknameChanged()
 {
-    Q_EMIT changed(this, Nickname);
+    Q_EMIT changed(CDTpAccountPtr(this), Nickname);
 }
 
 void CDTpAccount::onAccountCurrentPresenceChanged()
 {
-    Q_EMIT changed(this, Presence);
+    Q_EMIT changed(CDTpAccountPtr(this), Presence);
 }
 
 void CDTpAccount::onAccountAvatarChanged()
 {
-    Q_EMIT changed(this, Avatar);
+    Q_EMIT changed(CDTpAccountPtr(this), Avatar);
 }
 
 void CDTpAccount::onAccountConnectionChanged(const Tp::ConnectionPtr &connection)
@@ -127,7 +127,7 @@ void CDTpAccount::onAccountConnectionChanged(const Tp::ConnectionPtr &connection
         // let's emit rosterChanged(false), to inform that right now we don't
         // have a roster configured
         mRosterReady = false;
-        Q_EMIT rosterChanged(this, false);
+        Q_EMIT rosterChanged(CDTpAccountPtr(this), false);
     }
 
     // if we have a new connection, introspect it
@@ -201,9 +201,9 @@ void CDTpAccount::onAccountContactsUpgraded(Tp::PendingOperation *op)
 
         mIntrospectingRoster = false;
         mRosterReady = true;
-        Q_EMIT rosterChanged(this, true);
+        Q_EMIT rosterChanged(CDTpAccountPtr(this), true);
     } else {
-        Q_EMIT rosterUpdated(this, added, QList<CDTpContactPtr>());
+        Q_EMIT rosterUpdated(CDTpAccountPtr(this), added, QList<CDTpContactPtr>());
     }
 }
 
@@ -233,7 +233,7 @@ void CDTpAccount::onAccountContactsChanged(const Tp::Contacts &contactsAdded,
         removed.append(mContacts.take(contact));
     }
 
-    Q_EMIT rosterUpdated(this, QList<CDTpContactPtr>(), removed);
+    Q_EMIT rosterUpdated(CDTpAccountPtr(this), QList<CDTpContactPtr>(), removed);
 
     Q_FOREACH (CDTpContactPtr contactWrapper, removed) {
         contactWrapper->mRemoved = true;
@@ -243,7 +243,7 @@ void CDTpAccount::onAccountContactsChanged(const Tp::Contacts &contactsAdded,
 void CDTpAccount::onAccountContactChanged(CDTpContactPtr contactWrapper,
         CDTpContact::Changes changes)
 {
-    Q_EMIT rosterContactChanged(this, contactWrapper, changes);
+    Q_EMIT rosterContactChanged(CDTpAccountPtr(this), contactWrapper, changes);
 }
 
 void CDTpAccount::introspectAccountConnection()

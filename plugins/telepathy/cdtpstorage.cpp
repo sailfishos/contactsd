@@ -79,7 +79,7 @@ void CDTpStorage::onAccountPurgeSelectQueryFinished(CDTpStorageSelectQuery *quer
     query->deleteLater();
 }
 
-void CDTpStorage::syncAccount(CDTpAccount *accountWrapper)
+void CDTpStorage::syncAccount(CDTpAccountPtr accountWrapper)
 {
     syncAccount(accountWrapper, CDTpAccount::All);
 
@@ -93,7 +93,7 @@ void CDTpStorage::syncAccount(CDTpAccount *accountWrapper)
 
 // TODO: Improve syncAccount so that it only updates the data that really
 //       changed
-void CDTpStorage::syncAccount(CDTpAccount *accountWrapper,
+void CDTpStorage::syncAccount(CDTpAccountPtr accountWrapper,
         CDTpAccount::Changes changes)
 {
     Tp::AccountPtr account = accountWrapper->account();
@@ -168,7 +168,7 @@ void CDTpStorage::syncAccount(CDTpAccount *accountWrapper,
     ::tracker()->executeQuery(up);
 }
 
-void CDTpStorage::syncAccountContacts(CDTpAccount *accountWrapper)
+void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper)
 {
     // TODO: return the number of contacts that were actually added
     syncAccountContacts(accountWrapper, accountWrapper->contacts(),
@@ -215,7 +215,7 @@ void CDTpStorage::onContactPurgeSelectQueryFinished(CDTpStorageSelectQuery *quer
     removeContacts(query, true, imAddressList);
 }
 
-void CDTpStorage::syncAccountContacts(CDTpAccount *accountWrapper,
+void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper,
         const QList<CDTpContactPtr> &contactsAdded,
         const QList<CDTpContactPtr> &contactsRemoved)
 {
@@ -236,7 +236,7 @@ void CDTpStorage::syncAccountContacts(CDTpAccount *accountWrapper,
     removeContacts(accountWrapper, contactsRemoved);
 }
 
-void CDTpStorage::syncAccountContact(CDTpAccount *accountWrapper,
+void CDTpStorage::syncAccountContact(CDTpAccountPtr accountWrapper,
         CDTpContactPtr contactWrapper, CDTpContact::Changes changes)
 {
     Tp::AccountPtr account = accountWrapper->account();
@@ -266,7 +266,7 @@ void CDTpStorage::syncAccountContact(CDTpAccount *accountWrapper,
     queueUpdate(contactWrapper, changes);
 }
 
-void CDTpStorage::setAccountContactsOffline(CDTpAccount *accountWrapper)
+void CDTpStorage::setAccountContactsOffline(CDTpAccountPtr accountWrapper)
 {
     Tp::AccountPtr account = accountWrapper->account();
 
@@ -318,7 +318,7 @@ void CDTpStorage::onAccountDeleteSelectQueryFinished(CDTpStorageSelectQuery *que
     removeContacts(query, false);
 }
 
-void CDTpStorage::removeContacts(CDTpAccount *accountWrapper,
+void CDTpStorage::removeContacts(CDTpAccountPtr accountWrapper,
         const QList<CDTpContactPtr> &contacts)
 {
     /* Split the request into smaller batches if necessary */
@@ -830,7 +830,7 @@ QString CDTpStorage::contactLocalId(const QString &contactAccountObjectPath,
 
 QString CDTpStorage::contactLocalId(CDTpContactPtr contactWrapper)
 {
-    CDTpAccount *accountWrapper = contactWrapper->accountWrapper();
+    CDTpAccountPtr accountWrapper = contactWrapper->accountWrapper();
     Tp::AccountPtr account = accountWrapper->account();
     Tp::ContactPtr contact = contactWrapper->contact();
     return contactLocalId(account->objectPath(), contact->id());
@@ -856,7 +856,7 @@ QUrl CDTpStorage::contactImAddress(const QString &contactAccountObjectPath,
 
 QUrl CDTpStorage::contactImAddress(CDTpContactPtr contactWrapper)
 {
-    CDTpAccount *accountWrapper = contactWrapper->accountWrapper();
+    CDTpAccountPtr accountWrapper = contactWrapper->accountWrapper();
     Tp::AccountPtr account = accountWrapper->account();
     Tp::ContactPtr contact = contactWrapper->contact();
     return contactImAddress(account->objectPath(), contact->id());
@@ -1031,7 +1031,7 @@ CDTpStorageContactResolver::CDTpStorageContactResolver(
 }
 
 CDTpStorageAccountSelectQuery::CDTpStorageAccountSelectQuery(
-        CDTpAccount *accountWrapper, const RDFSelect &select, QObject *parent)
+        CDTpAccountPtr accountWrapper, const RDFSelect &select, QObject *parent)
         : CDTpStorageSelectQuery(select, parent), mAccountWrapper(accountWrapper)
 {
 }

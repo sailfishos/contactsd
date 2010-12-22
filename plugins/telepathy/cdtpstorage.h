@@ -68,17 +68,17 @@ public:
 
 public Q_SLOTS:
     void syncAccountSet(const QList<QString> &accountPaths);
-    void syncAccount(CDTpAccount *accountWrapper);
-    void syncAccount(CDTpAccount *accountWrapper, CDTpAccount::Changes changes);
-    void syncAccountContacts(CDTpAccount *accountWrapper);
-    void syncAccountContacts(CDTpAccount *accountWrapper,
+    void syncAccount(CDTpAccountPtr accountWrapper);
+    void syncAccount(CDTpAccountPtr accountWrapper, CDTpAccount::Changes changes);
+    void syncAccountContacts(CDTpAccountPtr accountWrapper);
+    void syncAccountContacts(CDTpAccountPtr accountWrapper,
             const QList<CDTpContactPtr> &contactsAdded,
             const QList<CDTpContactPtr> &contactsRemoved);
-    void syncAccountContact(CDTpAccount *accountWrapper,
+    void syncAccountContact(CDTpAccountPtr accountWrapper,
             CDTpContactPtr contactWrapper, CDTpContact::Changes changes);
-    void setAccountContactsOffline(CDTpAccount *accountWrapper);
+    void setAccountContactsOffline(CDTpAccountPtr accountWrapper);
     void removeAccount(const QString &accountObjectPath);
-    void removeContacts(CDTpAccount *accountWrapper,
+    void removeContacts(CDTpAccountPtr accountWrapper,
             const QList<CDTpContactPtr> &contacts);
 
 private Q_SLOTS:
@@ -118,7 +118,7 @@ private:
     void addContactRemoveInfoToQuery(RDFStatementList &deletions,
             RDFStatementList &inserts,
             const QString &contactId,
-            CDTpAccount *accountWrapper,
+            CDTpAccountPtr accountWrapper,
             CDTpContactPtr contactWrapper);
     void addContactAuthorizationInfoToQuery(RDFStatementList &inserts,
             RDFVariableList &lists,
@@ -175,14 +175,14 @@ class CDTpStorageAccountSelectQuery: public CDTpStorageSelectQuery
     Q_OBJECT
 
 public:
-    CDTpStorageAccountSelectQuery(CDTpAccount *accountWrapper,
+    CDTpStorageAccountSelectQuery(CDTpAccountPtr accountWrapper,
             const RDFSelect &select, QObject *parent = 0);
     ~CDTpStorageAccountSelectQuery() {};
 
-    CDTpAccount *accountWrapper() const;
+    CDTpAccountPtr accountWrapper() const;
 
 private:
-    CDTpAccount *mAccountWrapper;
+    CDTpAccountPtr mAccountWrapper;
 };
 
 class CDTpStorageContactResolver : public QObject
