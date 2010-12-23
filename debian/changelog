@@ -1,4 +1,4 @@
-contactsd (0.5.46-4) unstable; urgency=low
+contactsd (0.5.46-5) unstable; urgency=low
 
   * some more minor changelog cleanup
 
@@ -32,10 +32,8 @@ contactsd (0.5.45-1) unstable; urgency=low
 
 contactsd (0.5.44-1) unstable; urgency=low
     
-    * Fixes: NB#209925 - unable to import gtalk contacts
-    * Fixes: NB#201524 - COREWEB: /usr/bin/contactsd 'ref ref ExternalRefCount QSharedPointer contact
-    * Fixes: NB#209925 - unable to import gtalk contacts
-    * Fixes: NB#210977 - Skype contacts are not shown
+    * Something about: NB#201524 - COREWEB: /usr/bin/contactsd 'ref ref ExternalRefCount QSharedPointer contact
+    * Something about: NB#209925 - unable to import gtalk contacts
     * Changes: Imporoved coverage for contactsd unit tests
     * Changes: Refctoring of account and imcontact sync'ing 
     * Changes: Using our own Private Graphs for remote contacts
@@ -55,7 +53,6 @@ contactsd (0.5.43-1) unstable; urgency=low
 
 contactsd (0.5.42-1) unstable; urgency=low
 
-    * Fixes: NB#205339 - Contact is still displayed in Contacts after selecting "Block" option from "Authorization request"
     * Changes : Handle Blocked Contacts
 
  -- Siraj Razick <siraj.razick@collabora.co.uk>  Wed, 24 Nov 2010 16:29:00 +0530
