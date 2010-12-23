@@ -1,6 +1,7 @@
 include(coverage.pri)
 
 TEMPLATE = subdirs
+CONFIG += ordered
 
 SUBDIRS += lib ut_contactsd account-manager ut_telepathyplugin benchmark
 UNIT_TESTS += ut_contactsd

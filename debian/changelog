@@ -1,3 +1,10 @@
+contactsd (0.5.46-2) unstable; urgency=low
+
+  * CONFIG += ordered to enable parallel build for tests (-j2)
+  * minor changelog cleanup
+
+ -- Aleksandar Stojiljkovic <aleksandar.stojiljkovic@nokia.com>  Tue, 23 Dec 2010 14:19:44 +0200
+
 contactsd (0.5.46-1) unstable; urgency=low
 
   * Add timeout timer for import progress
@@ -13,7 +20,6 @@ contactsd (0.5.45-1) unstable; urgency=low
 
 contactsd (0.5.44-1) unstable; urgency=low
     
-    * Fixes: NB#185265 - Presence icon gets displayed for imported gtalk contact even when there is no network connection
     * Fixes: NB#207732 - Some GTalk contacts get imported without (chat) action buttons
     * Fixes: NB#196363 - Blocked Skype contacts are also imported.
     * Fixes: NB#209925 - unable to import gtalk contacts
@@ -32,7 +38,6 @@ contactsd (0.5.44-1) unstable; urgency=low
 
 contactsd (0.5.43-1) unstable; urgency=low
 
-    * Fixes: NB#206404 Saving a contact using qtcontacts-tracker causes nco:IMAccount to be removed 
     * Changes: CITA support 
     * Changes : New contactsd-tests package for CITA
     * Changes: Adds support for TelepathyQt4 0.5
