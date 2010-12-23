@@ -1,3 +1,9 @@
+contactsd (0.5.46-3) unstable; urgency=low
+
+  * some more minor changelog cleanup
+
+ -- Aleksandar Stojiljkovic <aleksandar.stojiljkovic@nokia.com>  Tue, 23 Dec 2010 14:44:44 +0200
+
 contactsd (0.5.46-2) unstable; urgency=low
 
   * CONFIG += ordered to enable parallel build for tests (-j2)
@@ -20,7 +26,6 @@ contactsd (0.5.45-1) unstable; urgency=low
 
 contactsd (0.5.44-1) unstable; urgency=low
     
-    * Fixes: NB#207732 - Some GTalk contacts get imported without (chat) action buttons
     * Fixes: NB#196363 - Blocked Skype contacts are also imported.
     * Fixes: NB#209925 - unable to import gtalk contacts
     * Fixes: NB#201524 - COREWEB: /usr/bin/contactsd 'ref ref ExternalRefCount QSharedPointer contact
