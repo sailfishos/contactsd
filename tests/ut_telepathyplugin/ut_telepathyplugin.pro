@@ -2,7 +2,7 @@ include($$TOP_SOURCEDIR/check.pri)
 
 CONFIG += test qt mobility
 
-QT += testlib
+QT += testlib dbus
 MOBILITY += contacts
 
 CONFIG += link_pkgconfig
