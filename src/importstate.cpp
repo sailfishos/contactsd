@@ -36,6 +36,16 @@ bool ImportState::hasActiveImports()
     return (mService2Accounts.size() != 0);
 }
 
+void ImportState::timeout()
+{
+    foreach (const QString &account, mService2Accounts.values()) {
+        mStateStore.setValue(account, Contactsd::Imported);
+    }
+
+    mStateStore.sync();
+    reset();
+}
+
 void ImportState::reset()
 {
     mService2Accounts.clear();

@@ -31,6 +31,9 @@ public:
     ImportState();
 
     bool hasActiveImports();
+    // make all account state as finished and reset the state
+    void timeout();
+
     // reset the state
     void reset();
 

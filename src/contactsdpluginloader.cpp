@@ -210,7 +210,7 @@ void ContactsdPluginLoader::onImportTimeout()
     stopImportTimer();
     Q_EMIT importEnded(mImportState.contactsAdded(), mImportState.contactsRemoved(),
                        mImportState.contactsMerged());
-    mImportState.reset();
+    mImportState.timeout();
 }
 
 void ContactsdPluginLoader::startImportTimer()
