@@ -18,12 +18,14 @@ HEADERS  = cdtpaccount.h \
     cdtpcontact.h \
     cdtpcontroller.h \
     cdtpplugin.h \
+    cdtpquery.h \
     cdtpstorage.h
 
 SOURCES  = cdtpaccount.cpp \
     cdtpcontact.cpp \
     cdtpcontroller.cpp \
     cdtpplugin.cpp \
+    cdtpquery.cpp \
     cdtpstorage.cpp
 
 TARGET = telepathyplugin

@@ -20,24 +20,18 @@
 #ifndef CDTPSTORAGE_H
 #define CDTPSTORAGE_H
 
-#include "cdtpaccount.h"
-#include "cdtpcontact.h"
-
 #include <QByteArray>
 #include <QObject>
 #include <QString>
 #include <QUrl>
 
-#include <QtTracker/ontologies/nco.h>
-#include <QtTracker/ontologies/nie.h>
-#include <QtTracker/QLive>
 #include <QtTracker/Tracker>
 
-using namespace SopranoLive;
+#include "cdtpaccount.h"
+#include "cdtpcontact.h"
+#include "cdtpquery.h"
 
-class CDTpStorageSelectQuery;
-class CDTpStorageContactResolver;
-class CDTpStorageSelectAccountsToDelete;
+using namespace SopranoLive;
 
 class CDTpStorage : public QObject
 {
@@ -86,16 +80,16 @@ public Q_SLOTS:
             const QList<CDTpContactPtr> &contacts);
 
 private Q_SLOTS:
-    void onAccountPurgeSelectQueryFinished(CDTpStorageSelectQuery *query);
-    void onAccountOfflineSelectQueryFinished(CDTpStorageSelectQuery *query);
-    void onAccountDeleteSelectQueryFinished(CDTpStorageSelectQuery *query);
-    void onContactPurgeSelectQueryFinished(CDTpStorageSelectQuery *);
-    void onContactDeleteSelectQueryFinished(CDTpStorageSelectQuery *query);
-    void onContactUpdateResolverFinished(CDTpStorageContactResolver *resolver);
+    void onAccountPurgeSelectQueryFinished(CDTpSelectQuery *query);
+    void onAccountOfflineSelectQueryFinished(CDTpSelectQuery *query);
+    void onAccountDeleteSelectQueryFinished(CDTpSelectQuery *query);
+    void onContactPurgeSelectQueryFinished(CDTpSelectQuery *);
+    void onContactDeleteSelectQueryFinished(CDTpSelectQuery *query);
+    void onContactUpdateSelectQueryFinished(CDTpSelectQuery *query);
     void onQueueTimerTimeout();
 
 private:
-    void removeContacts(CDTpStorageSelectQuery *query, bool deleteAccount,
+    void removeContacts(CDTpContactsSelectQuery *query, bool deleteAccount,
             QList<QUrl> skipIMAddressList = QList<QUrl>());
 
     void saveAccountAvatar(RDFUpdate &query, const QByteArray &data, const QString &mimeType,
@@ -148,70 +142,8 @@ private:
             const Tp::ContactInfoField &field);
 
     void queueUpdate(CDTpContactPtr contactWrapper, CDTpContact::Changes);
-
-
     QHash<CDTpContactPtr, CDTpContact::Changes> mUpdateQueue;
     QTimer mQueueTimer;
-};
-
-class CDTpStorageSelectQuery : public QObject
-{
-    Q_OBJECT
-
-public:
-    CDTpStorageSelectQuery(const RDFSelect &select, QObject *parent = 0);
-    ~CDTpStorageSelectQuery();
-
-    LiveNodes reply() const { return mReply; }
-
-Q_SIGNALS:
-    void finished(CDTpStorageSelectQuery *queryWrapper);
-
-private Q_SLOTS:
-    void onModelUpdated();
-
-private:
-    LiveNodes mReply;
-};
-
-class CDTpStorageAccountSelectQuery: public CDTpStorageSelectQuery
-{
-    Q_OBJECT
-
-public:
-    CDTpStorageAccountSelectQuery(CDTpAccountPtr accountWrapper,
-            const RDFSelect &select, QObject *parent = 0);
-    ~CDTpStorageAccountSelectQuery() {};
-
-    CDTpAccountPtr accountWrapper() const;
-
-private:
-    CDTpAccountPtr mAccountWrapper;
-};
-
-class CDTpStorageContactResolver : public QObject
-{
-    Q_OBJECT
-
-public:
-    CDTpStorageContactResolver(
-            const QHash<CDTpContactPtr, CDTpContact::Changes> &contactsToResolve,
-            QObject *parent = 0);
-    ~CDTpStorageContactResolver();
-
-    QList<CDTpContactPtr> remoteContacts() const;
-    QString storageIdForContact(const CDTpContactPtr &contactWrapper) const;
-    CDTpContact::Changes contactChanges(const CDTpContactPtr &contactWrapper) const;
-
-Q_SIGNALS:
-   void finished(CDTpStorageContactResolver *resolveWrapper);
-
-private Q_SLOTS:
-    void onStorageResolveSelectQueryFinished(CDTpStorageSelectQuery *queryWrapper);
-
-private:
-    QHash<CDTpContactPtr, QString> mResolvedContacts;
-    QHash<CDTpContactPtr, CDTpContact::Changes> mContacts;
 };
 
 #endif // CDTPSTORAGE_H
