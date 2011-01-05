@@ -1,3 +1,10 @@
+contactsd (0.5.47-1) unstable; urgency=low
+
+  * Correctly signal when import start/end when an account is added
+  * Fix a crash that happens a lot with previous version
+
+ -- Xavier Claessens <xavier.claessens@collabora.co.uk>  Wed, 05 Jan 2011 17:07:45 +0100
+
 contactsd (0.5.46-5) unstable; urgency=low
 
   * some more minor changelog cleanup
