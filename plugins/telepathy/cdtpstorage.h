@@ -33,6 +33,8 @@
 
 using namespace SopranoLive;
 
+class CDTpStorageSyncOperations;
+
 class CDTpStorage : public QObject
 {
     Q_OBJECT
@@ -86,15 +88,20 @@ private Q_SLOTS:
     void onContactPurgeSelectQueryFinished(CDTpSelectQuery *);
     void onContactDeleteSelectQueryFinished(CDTpSelectQuery *query);
     void onContactUpdateSelectQueryFinished(CDTpSelectQuery *query);
+    void onAccountsUpdateQueryFinished(CDTpUpdateQuery *query);
     void onQueueTimerTimeout();
 
 private:
-    void removeContacts(CDTpContactsSelectQuery *query, bool deleteAccount,
-            QList<QUrl> skipIMAddressList = QList<QUrl>());
-
     void saveAccountAvatar(RDFUpdate &query, const QByteArray &data, const QString &mimeType,
             const RDFVariable &imAddress,
             RDFStatementList &inserts);
+
+    void addRemoveContactToQuery(RDFUpdate &query,
+            RDFStatementList &inserts,
+            RDFStatementList &deletions,
+            const CDTpContactsSelectItem &item);
+    void addRemoveContactFromAccountToQuery(RDFStatementList &deletions,
+            const CDTpContactsSelectItem &item);
 
     void addContactAliasInfoToQuery(RDFStatementList &inserts,
             RDFVariableList &lists,
@@ -144,6 +151,19 @@ private:
     void queueUpdate(CDTpContactPtr contactWrapper, CDTpContact::Changes);
     QHash<CDTpContactPtr, CDTpContact::Changes> mUpdateQueue;
     QTimer mQueueTimer;
+
+    void oneSyncOperationFinished(CDTpAccountPtr accountWrapper);
+    QHash<CDTpAccountPtr, CDTpStorageSyncOperations> mSyncOperations;
+};
+
+class CDTpStorageSyncOperations
+{
+public:
+    CDTpStorageSyncOperations();
+    bool active;
+    int nPendingOperations;
+    int nContactsAdded;
+    int nContactsRemoved;
 };
 
 #endif // CDTPSTORAGE_H

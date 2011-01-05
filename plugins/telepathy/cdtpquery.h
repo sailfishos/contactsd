@@ -151,4 +151,22 @@ private:
     RDFTransactionPtr mTransaction;
 };
 
+
+/* --- CDTpAccountsUpdateQuery --- */
+
+class CDTpAccountsUpdateQuery : public CDTpUpdateQuery
+{
+    Q_OBJECT
+
+public:
+    CDTpAccountsUpdateQuery(const QList<CDTpAccountPtr> &accounts,
+        RDFUpdate &updateQuery, QObject *parent = 0);
+    ~CDTpAccountsUpdateQuery() {};
+
+    QList<CDTpAccountPtr> accounts() const { return mAccounts; };
+
+private:
+    QList<CDTpAccountPtr> mAccounts;
+};
+
 #endif // CDTPQUERY_H

@@ -220,3 +220,10 @@ void CDTpUpdateQuery::onCommitError(QString message)
     deleteLater();
 }
 
+/* --- CDTpAccountsUpdateQuery --- */
+
+CDTpAccountsUpdateQuery::CDTpAccountsUpdateQuery(const QList<CDTpAccountPtr> &accounts,
+    RDFUpdate &updateQuery, QObject *parent)
+        : CDTpUpdateQuery(updateQuery, parent), mAccounts(accounts)
+{
+}
