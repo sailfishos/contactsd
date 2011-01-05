@@ -49,6 +49,7 @@ void CDTpSelectQuery::setSelect(const RDFSelect &select)
 void CDTpSelectQuery::onModelUpdated()
 {
     Q_EMIT finished(this);
+    deleteLater();
 }
 
 /* --- CDTpContactsSelectQuery --- */
@@ -186,5 +187,36 @@ void CDTpContactResolver::ensureParsed()
     }
 
     mReplyParsed = true;
+}
+
+/* --- CDTpUpdateQuery --- */
+
+CDTpUpdateQuery::CDTpUpdateQuery(RDFUpdate &updateQuery, QObject *parent)
+    : QObject(parent), mSparql(updateQuery.getQuery())
+{
+    mTransaction = ::tracker()->createTransaction();
+    connect(mTransaction.data(),
+        SIGNAL(commitFinished()),
+        SLOT(onCommitFinished()));
+    connect(mTransaction.data(),
+        SIGNAL(commitError(QString)),
+        SLOT(onCommitError(QString)));
+
+    ::tracker()->executeQuery(updateQuery);
+    mTransaction->commit();
+}
+
+void CDTpUpdateQuery::onCommitFinished()
+{
+    Q_EMIT finished(this);
+    deleteLater();
+}
+
+void CDTpUpdateQuery::onCommitError(QString message)
+{
+    qDebug() << "query finished with error" << message;
+    qDebug() << mSparql;
+    Q_EMIT finished(this);
+    deleteLater();
 }
 

@@ -78,8 +78,6 @@ void CDTpStorage::onAccountPurgeSelectQueryFinished(CDTpSelectQuery *query)
 
         removeAccount(accountObjectPath);
     }
-
-    query->deleteLater();
 }
 
 void CDTpStorage::syncAccount(CDTpAccountPtr accountWrapper)
@@ -168,7 +166,7 @@ void CDTpStorage::syncAccount(CDTpAccountPtr accountWrapper,
 
     up.addInsertion(inserts, defaultGraph);
     up.addInsertion(imAccountInserts, privateGraph);
-    ::tracker()->executeQuery(up);
+    new CDTpUpdateQuery(up);
 }
 
 void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper)
@@ -195,7 +193,6 @@ void CDTpStorage::onContactPurgeSelectQueryFinished(CDTpSelectQuery *query)
 
     LiveNodes result = query->reply();
     if (result->rowCount() <= 0) {
-        query->deleteLater();
         return;
     }
 
@@ -271,8 +268,6 @@ void CDTpStorage::setAccountContactsOffline(CDTpAccountPtr accountWrapper)
 
 void CDTpStorage::onAccountOfflineSelectQueryFinished(CDTpSelectQuery *query)
 {
-    query->deleteLater();
-
     RDFVariable unknownState = trackerStatusFromTpPresenceStatus(QLatin1String("unknown"));
     CDTpAccountContactsSelectQuery *contactsQuery =
         qobject_cast<CDTpAccountContactsSelectQuery*>(query);
@@ -298,7 +293,7 @@ void CDTpStorage::onAccountOfflineSelectQueryFinished(CDTpSelectQuery *query)
             LiteralValue(QDateTime::currentDateTime()), defaultGraph);
     }
 
-    ::tracker()->executeQuery(updateQuery);
+    new CDTpUpdateQuery(updateQuery);
 }
 
 void CDTpStorage::removeAccount(const QString &accountObjectPath)
@@ -309,7 +304,7 @@ void CDTpStorage::removeAccount(const QString &accountObjectPath)
     RDFUpdate updateQuery;
     const RDFVariable imAccount(QUrl(QString("telepathy:%1").arg(accountObjectPath)));
     updateQuery.addDeletion(imAccount, rdf::type::iri(), rdfs::Resource::iri(), privateGraph);
-    ::tracker()->executeQuery(updateQuery);
+    new CDTpUpdateQuery(updateQuery);
 
     /* Delete all imAddress from that account */
     CDTpContactsSelectQuery *query = new CDTpContactsSelectQuery(accountObjectPath, this);
@@ -363,8 +358,6 @@ void CDTpStorage::onContactDeleteSelectQueryFinished(CDTpSelectQuery *query)
 void CDTpStorage::removeContacts(CDTpContactsSelectQuery *query, bool deleteAccount,
         QList<QUrl> skipIMAddressList)
 {
-    query->deleteLater();
-
     if (query->items().size() <= 0) {
         return;
     }
@@ -416,13 +409,11 @@ void CDTpStorage::removeContacts(CDTpContactsSelectQuery *query, bool deleteAcco
     updateQuery.addDeletion(deletions, defaultGraph);
     updateQuery.addInsertion(inserts, defaultGraph);
     updateQuery.addDeletion(accountDeletions, privateGraph);
-    ::tracker()->executeQuery(updateQuery);
+    new CDTpUpdateQuery(updateQuery);
 }
 
 void CDTpStorage::onContactUpdateSelectQueryFinished(CDTpSelectQuery *query)
 {
-    query->deleteLater();
-
     RDFUpdate updateQuery;
     RDFStatementList inserts;
     RDFStatementList imAccountInserts;
@@ -528,7 +519,7 @@ void CDTpStorage::onContactUpdateSelectQueryFinished(CDTpSelectQuery *query)
     Q_FOREACH (const RDFUpdate &query, updateQueryQueue) {
         updateQuery.appendUpdate(query);
     }
-    ::tracker()->executeQuery(updateQuery);
+    new CDTpUpdateQuery(updateQuery);
 }
 
 void CDTpStorage::saveAccountAvatar(RDFUpdate &query, const QByteArray &data, const QString &mimeType,

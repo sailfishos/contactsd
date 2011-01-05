@@ -129,4 +129,26 @@ private:
     QHash<CDTpContactPtr, QString> mResolvedContacts;
 };
 
+/* --- CDTpUpdateQuery --- */
+
+class CDTpUpdateQuery : public QObject
+{
+    Q_OBJECT
+
+public:
+    CDTpUpdateQuery(RDFUpdate &updateQuery, QObject *parent = 0);
+    ~CDTpUpdateQuery() {};
+
+Q_SIGNALS:
+    void finished(CDTpUpdateQuery *query);
+
+private Q_SLOTS:
+    void onCommitFinished();
+    void onCommitError(QString message);
+
+private:
+    QString mSparql;
+    RDFTransactionPtr mTransaction;
+};
+
 #endif // CDTPQUERY_H
