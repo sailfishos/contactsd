@@ -158,9 +158,13 @@ void CDTpStorage::syncAccount(CDTpAccountPtr accountWrapper,
         imAccountInserts << RDFStatement(imAccount, nco::imDisplayName::iri(), LiteralValue(account->displayName()));
     }
 
-    // link the IMAddress to me-contact
+    // link the IMAddress to me-contact via an affiliation
     const QString strLocalUID = QString::number(0x7FFFFFFF);
-    inserts << RDFStatement(nco::default_contact_me::iri(), nco::hasIMAddress::iri(), imAddress)
+    RDFVariable imAffiliation(contactAffiliation(accountObjectPath, accountId));
+    inserts << RDFStatement(imAffiliation, rdf::type::iri(), nco::Affiliation::iri())
+            << RDFStatement(imAffiliation, rdfs::label::iri(), LiteralValue("Other"))
+            << RDFStatement(imAffiliation, nco::hasIMAddress::iri(), imAddress);
+    inserts << RDFStatement(nco::default_contact_me::iri(), nco::hasAffiliation::iri(), imAffiliation)
             << RDFStatement(nco::default_contact_me::iri(), nco::contactUID::iri(), LiteralValue(strLocalUID))
             << RDFStatement(nco::default_contact_me::iri(), nco::contactLocalUID::iri(), LiteralValue(strLocalUID));
 
@@ -424,24 +428,30 @@ void CDTpStorage::addRemoveContactToQuery(RDFUpdate &query,
         const CDTpContactsSelectItem &item)
 {
     const QUrl imContact(item.imContact);
+    const QUrl imAffiliation(item.imAffiliation);
     const QUrl imAddress(item.imAddress);
     bool deleteIMContact = (item.generator == defaultGenerator);
 
     qDebug() << "Deleting" << imAddress << "from" << imContact;
     qDebug() << "Also delete local contact:" << (deleteIMContact ? "Yes" : "No");
 
-    /* Drop the imAddress */
+    /* Drop the imAddress and its affiliation */
+    deletions << RDFStatement(imAffiliation, rdf::type::iri(), rdfs::Resource::iri());
     deletions << RDFStatement(imAddress, rdf::type::iri(), rdfs::Resource::iri());
 
-    /* If nobody modified the imContact, drop it completly. Otherwise drop only
-     * the hasIMAddress property */
     if (deleteIMContact) {
+        /* The PersonContact is still owned by contactsd, drop it entirely */
         deletions << RDFStatement(imContact, rdf::type::iri(), rdfs::Resource::iri());
     } else {
-        deletions << RDFStatement(imContact, nco::hasIMAddress::iri(), imAddress)
-                  << RDFStatement(imContact, nie::contentLastModified::iri(), RDFVariable());
-        inserts << RDFStatement(imContact, nie::contentLastModified::iri(),
-                       LiteralValue(QDateTime::currentDateTime()));
+        /* The PersonContact got modified by someone else, drop only the
+         * hasAffiliation and keep the local contact in case it contains
+         * additional info */
+        deletions << RDFStatement(imContact, nco::hasAffiliation::iri(), imAffiliation);
+
+        /* Update last modified time */
+        const QDateTime datetime = QDateTime::currentDateTime();
+        deletions << RDFStatement(imContact, nie::contentLastModified::iri(), RDFVariable());
+        inserts << RDFStatement(imContact, nie::contentLastModified::iri(), LiteralValue(datetime));
     }
 
     /* Drop ContactInfo stuff */
@@ -484,44 +494,46 @@ void CDTpStorage::onContactUpdateSelectQueryFinished(CDTpSelectQuery *query)
             mSyncOperations[accountWrapper].nPendingOperations--;
         }
 
-        Tp::ContactPtr contact = contactWrapper->contact();
-        QString accountObjectPath = accountWrapper->account()->objectPath();
-        const QString id = contact->id();
         QString localId = resolver->storageIdForContact(contactWrapper);
-
         bool resolved = !localId.isEmpty();
         if (!resolved) {
-            localId = contactLocalId(accountObjectPath, id);
+            localId = contactLocalId(contactWrapper);
             mSyncOperations[accountWrapper].nContactsAdded++;
         }
+
+        const QString accountObjectPath = accountWrapper->account()->objectPath();
+        const QString id = contactWrapper->contact()->id();
 
         qDebug() << "Updating" << id << "(" << localId << ")";
 
         RDFVariableList imAddressPropertyList;
         RDFVariableList imContactPropertyList;
         const RDFVariable imContact(contactIri(localId));
-        const RDFVariable imAddress(contactImAddress(accountObjectPath, id));
+        const RDFVariable imAddress(contactImAddress(contactWrapper));
         const QDateTime datetime = QDateTime::currentDateTime();
 
-        /* Create an imContact if we couldn't resolve, otherwise just update
-         * its contentLastModified */
+        /* Create an imContact if we couldn't resolve to an existing one.
+         * Otherwise just update its contentLastModified */
         if (!resolved) {
+            inserts << RDFStatement(imAddress, rdf::type::iri(), nco::IMAddress::iri())
+                    << RDFStatement(imAddress, nco::imID::iri(), LiteralValue(id));
+
+            RDFVariable imAffiliation(contactAffiliation(contactWrapper));
+            inserts << RDFStatement(imAffiliation, rdf::type::iri(), nco::Affiliation::iri())
+                    << RDFStatement(imAffiliation, rdfs::label::iri(), LiteralValue("Other"))
+                    << RDFStatement(imAffiliation, nco::hasIMAddress::iri(), imAddress);
+
             inserts << RDFStatement(imContact, rdf::type::iri(), nco::PersonContact::iri())
                     << RDFStatement(imContact, nco::contactLocalUID::iri(), LiteralValue(localId))
                     << RDFStatement(imContact, nco::contactUID::iri(), LiteralValue(localId))
                     << RDFStatement(imContact, nie::contentCreated::iri(), LiteralValue(datetime))
                     << RDFStatement(imContact, nie::contentLastModified::iri(), LiteralValue(datetime))
                     << RDFStatement(imContact, nie::generator::iri(), LiteralValue(defaultGenerator))
-                    << RDFStatement(imContact, nco::hasIMAddress::iri(), imAddress);
-
+                    << RDFStatement(imContact, nco::hasAffiliation::iri(), imAffiliation);
         } else {
             imContactPropertyList << nie::contentLastModified::iri();
             inserts << RDFStatement(imContact, nie::contentLastModified::iri(), LiteralValue(datetime));
         }
-
-        // Insert the IMAddress
-        inserts << RDFStatement(imAddress, rdf::type::iri(), nco::IMAddress::iri())
-                << RDFStatement(imAddress, nco::imID::iri(), LiteralValue(id));
 
         const CDTpContact::Changes changes = resolver->contactChanges(contactWrapper);
         if (changes & CDTpContact::Alias) {
@@ -753,7 +765,7 @@ void CDTpStorage::addContactInfoToQuery(RDFUpdate &query,
     query.addDeletion(imContact, nco::hasAffiliation::iri(), RDFVariable(), graph);
 
     Tp::ContactPtr contact = contactWrapper->contact();
-    Tp::ContactInfoFieldList  listContactInfo = contact->infoFields().allFields();
+    Tp::ContactInfoFieldList listContactInfo = contact->infoFields().allFields();
 
     if (listContactInfo.count() == 0) {
         qDebug() << "No contact info present";
@@ -881,6 +893,22 @@ QUrl CDTpStorage::contactImAddress(CDTpContactPtr contactWrapper)
     Tp::AccountPtr account = accountWrapper->account();
     Tp::ContactPtr contact = contactWrapper->contact();
     return contactImAddress(account->objectPath(), contact->id());
+}
+
+QUrl CDTpStorage::contactAffiliation(const QString &contactAccountObjectPath,
+        const QString &contactId)
+{
+    return QUrl(QString("affiliationtelepathy:%1!%2")
+            .arg(contactAccountObjectPath)
+            .arg(contactId));
+}
+
+QUrl CDTpStorage::contactAffiliation(CDTpContactPtr contactWrapper)
+{
+    CDTpAccountPtr accountWrapper = contactWrapper->accountWrapper();
+    Tp::AccountPtr account = accountWrapper->account();
+    Tp::ContactPtr contact = contactWrapper->contact();
+    return contactAffiliation(account->objectPath(), contact->id());
 }
 
 QUrl CDTpStorage::trackerStatusFromTpPresenceType(uint tpPresenceType)

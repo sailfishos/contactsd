@@ -64,10 +64,11 @@ CDTpContactsSelectQuery::CDTpContactsSelectQuery(const QString &accountObjectPat
     : CDTpSelectQuery(parent), mReplyParsed(false)
 {
     RDFVariable imContact = RDFVariable::fromType<nco::PersonContact>();
-    RDFVariable imAddress = imContact.property<nco::hasIMAddress>();
+    RDFVariable imAffiliation = imContact.property<nco::hasAffiliation>();
+    RDFVariable imAddress = imAffiliation.property<nco::hasIMAddress>();
     imAddress.hasPrefix(QString("telepathy:%1").arg(accountObjectPath));
 
-    setSelect(imContact, imAddress);
+    setSelect(imContact, imAffiliation, imAddress);
 }
 
 CDTpContactsSelectQuery::CDTpContactsSelectQuery(QObject *parent)
@@ -84,7 +85,8 @@ QList<CDTpContactsSelectItem> CDTpContactsSelectQuery::items()
 void CDTpContactsSelectQuery::setSelect(const QList<CDTpContactPtr> &contacts)
 {
     RDFVariable imContact = RDFVariable::fromType<nco::PersonContact>();
-    RDFVariable imAddress = imContact.property<nco::hasIMAddress>();
+    RDFVariable imAffiliation = imContact.property<nco::hasAffiliation>();
+    RDFVariable imAddress = imAffiliation.property<nco::hasIMAddress>();
     imContact.notEqual(nco::default_contact_me::iri());
 
     RDFVariableList members;
@@ -93,13 +95,15 @@ void CDTpContactsSelectQuery::setSelect(const QList<CDTpContactPtr> &contacts)
     }
     imAddress.isMemberOf(members);
 
-    setSelect(imContact, imAddress);
+    setSelect(imContact, imAffiliation, imAddress);
 }
 
-void CDTpContactsSelectQuery::setSelect(const RDFVariable &imContact, const RDFVariable &imAddress)
+void CDTpContactsSelectQuery::setSelect(const RDFVariable &imContact,
+    const RDFVariable &imAffiliation, const RDFVariable &imAddress)
 {
     RDFSelect select;
     select.addColumn("contact", imContact);
+    select.addColumn("affiliation", imAffiliation);
     select.addColumn("address", imAddress);
     select.addColumn("generator", imContact.property<nie::generator>());
     select.addColumn("localUID", imContact.property<nco::contactLocalUID>());
@@ -109,7 +113,6 @@ void CDTpContactsSelectQuery::setSelect(const RDFVariable &imContact, const RDFV
 
 void CDTpContactsSelectQuery::ensureParsed()
 {
-
     if (mReplyParsed) {
         return;
     }
@@ -117,10 +120,11 @@ void CDTpContactsSelectQuery::ensureParsed()
     LiveNodes result = reply();
     for (int i = 0; i < result->rowCount(); i++) {
         CDTpContactsSelectItem item;
-        item.imContact = result->index(i, 0).data().toString();
-        item.imAddress = result->index(i, 1).data().toString();
-        item.generator = result->index(i, 2).data().toString();
-        item.localUID = result->index(i, 3).data().toString();
+        item.imContact     = result->index(i, 0).data().toString();
+        item.imAffiliation = result->index(i, 1).data().toString();
+        item.imAddress     = result->index(i, 2).data().toString();
+        item.generator     = result->index(i, 3).data().toString();
+        item.localUID      = result->index(i, 4).data().toString();
 
         mItems << item;
     }
@@ -135,13 +139,15 @@ CDTpAccountContactsSelectQuery::CDTpAccountContactsSelectQuery(CDTpAccountPtr ac
 {
     const QString accountId = accountWrapper->account()->normalizedName();
     const QString accountPath = accountWrapper->account()->objectPath();
+
     RDFVariable imContact = RDFVariable::fromType<nco::PersonContact>();
-    RDFVariable imAddress = imContact.property<nco::hasIMAddress>();
+    RDFVariable imAffiliation = imContact.property<nco::hasAffiliation>();
+    RDFVariable imAddress = imAffiliation.property<nco::hasIMAddress>();
     imAddress.hasPrefix(QString("telepathy:%1").arg(accountPath));
     imAddress.notEqual(CDTpStorage::contactImAddress(accountPath, accountId));
     imContact.notEqual(nco::default_contact_me::iri());
 
-    setSelect(imContact, imAddress);
+    setSelect(imContact, imAffiliation, imAddress);
 }
 
 /* --- CDTpContactResolver --- */

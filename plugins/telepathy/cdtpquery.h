@@ -61,6 +61,7 @@ class CDTpContactsSelectItem
 {
 public:
     QString imContact;
+    QString imAffiliation;
     QString imAddress;
     QString generator;
     QString localUID;
@@ -79,7 +80,8 @@ public:
 
 protected:
     CDTpContactsSelectQuery(QObject *parent = 0);
-    void setSelect(const RDFVariable &imContact, const RDFVariable &imAddress);
+    void setSelect(const RDFVariable &imContact, const RDFVariable &imAffiliation,
+        const RDFVariable &imAddress);
     void setSelect(const QList<CDTpContactPtr> &contacts);
 
 private:

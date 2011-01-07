@@ -54,6 +54,10 @@ public:
             const QString &contactId);
     static QUrl contactImAddress(CDTpContactPtr contactWrapper);
 
+    static QUrl contactAffiliation(const QString &contactAccountObjectPath,
+            const QString &contactId);
+    static QUrl contactAffiliation(CDTpContactPtr contactWrapper);
+
     static QUrl trackerStatusFromTpPresenceType(uint tpPresenceType);
     static QUrl trackerStatusFromTpPresenceStatus(
             const QString &tpPresenceStatus);
