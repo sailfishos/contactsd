@@ -133,14 +133,17 @@ private:
             RDFVariableList &lists,
             const RDFVariable &imAddress,
             CDTpContactPtr contactWrapper);
+    void addRemoveContactInfoToQuery(RDFUpdate &query,
+            const RDFVariable &imContact,
+            const QUrl &graph);
     void addContactInfoToQuery(RDFUpdate &query,
             const RDFVariable &imContact,
             CDTpContactPtr contactWrapper);
     void addContactVoicePhoneNumberToQuery(RDFStatementList &inserts,
-            const RDFVariable &imAffiliation,
+            const RDFVariable &affiliation,
             const QString &phoneNumber);
     void addContactAddressToQuery(RDFStatementList &inserts,
-            const RDFVariable &imAffiliation,
+            const RDFVariable &affiliation,
             const QString &pobox,
             const QString &extendedAddress,
             const QString &streetAddress,
@@ -148,7 +151,11 @@ private:
             const QString &region,
             const QString &postalcode,
             const QString &country);
-    RDFVariable createAffiliation(RDFStatementList &inserts,
+    void addContactEmailToQuery(RDFStatementList &inserts,
+        const RDFVariable &affiliation,
+        const QString &email);
+    RDFVariable ensureAffiliation(QHash<QString, RDFVariable> &map,
+            RDFStatementList &inserts,
             const RDFVariable &imContact,
             const Tp::ContactInfoField &field);
 
