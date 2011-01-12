@@ -250,17 +250,7 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper,
         const QList<CDTpContactPtr> &contactsAdded,
         const QList<CDTpContactPtr> &contactsRemoved)
 {
-    Tp::AccountPtr account = accountWrapper->account();
-    QString accountObjectPath = account->objectPath();
-
     Q_FOREACH (CDTpContactPtr contactWrapper, contactsAdded) {
-        Tp::ContactPtr contact = contactWrapper->contact();
-
-        /* Don't add contacts that are blocked or already removed */
-        if (contact->isBlocked() || contactWrapper->isRemoved()) {
-            continue;
-        }
-
         queueUpdate(contactWrapper, CDTpContact::All);
     }
 
@@ -270,30 +260,7 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper,
 void CDTpStorage::syncAccountContact(CDTpAccountPtr accountWrapper,
         CDTpContactPtr contactWrapper, CDTpContact::Changes changes)
 {
-    Tp::AccountPtr account = accountWrapper->account();
-    Tp::ContactPtr contact = contactWrapper->contact();
-
-    /* If blocked status changed, it is either an addition or removal,
-     * not a real update */
-    if (changes & CDTpContact::Blocked) {
-        qDebug() << "Contact Block Status changed";
-
-        if (contact->isBlocked()) {
-            removeContacts(accountWrapper, QList<CDTpContactPtr>() << contactWrapper);
-        } else {
-            syncAccountContacts(accountWrapper,
-                    QList<CDTpContactPtr>() << contactWrapper,
-                    QList<CDTpContactPtr>());
-        }
-
-        return;
-    }
-
-    /* Ignore updates of blocked/removed contacts */
-    if (contact->isBlocked() || contactWrapper->isRemoved()) {
-        return;
-    }
-
+    Q_UNUSED(accountWrapper);
     queueUpdate(contactWrapper, changes);
 }
 
@@ -480,7 +447,11 @@ void CDTpStorage::onContactUpdateSelectQueryFinished(CDTpSelectQuery *query)
     CDTpContactResolver *resolver = qobject_cast<CDTpContactResolver*>(query);
     Q_FOREACH (CDTpContactPtr contactWrapper, resolver->remoteContacts()) {
         CDTpAccountPtr accountWrapper = contactWrapper->accountWrapper();
-        if (contactWrapper->isRemoved()) {
+
+        /* Abort the update if the contact is not visible anymore. This could
+         * happen if the contact got removed/blocked/etc while we were
+         * resolving it. */
+        if (!contactWrapper->isVisible()) {
             oneSyncOperationFinished(accountWrapper);
             continue;
         }

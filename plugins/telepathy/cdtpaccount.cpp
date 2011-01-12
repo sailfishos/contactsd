@@ -47,7 +47,14 @@ CDTpAccount::~CDTpAccount()
 
 QList<CDTpContactPtr> CDTpAccount::contacts() const
 {
-    return mContacts.values();
+    QList<CDTpContactPtr> contacts;
+    Q_FOREACH (const CDTpContactPtr &contactWrapper, mContacts) {
+        if (contactWrapper->isVisible()) {
+            contacts << contactWrapper;
+        }
+    }
+
+    return contacts;
 }
 
 void CDTpAccount::onAccountReady(Tp::PendingOperation *op)
@@ -193,7 +200,10 @@ void CDTpAccount::onAccountContactsUpgraded(Tp::PendingOperation *op)
     QList<CDTpContactPtr> added;
     Q_FOREACH (const Tp::ContactPtr &contact, pc->contacts()) {
         qDebug() << "  creating wrapper for contact" << contact->id();
-        added.append(insertContact(contact));
+        CDTpContactPtr contactWrapper = insertContact(contact);
+        if (contactWrapper->isVisible()) {
+            added.append(contactWrapper);
+        }
     }
     if (!mRosterReady) {
         qDebug() << "Account" << mAccount->objectPath() <<
@@ -230,20 +240,41 @@ void CDTpAccount::onAccountContactsChanged(const Tp::Contacts &contactsAdded,
                 "but was removed from roster";
             continue;
         }
-        removed.append(mContacts.take(contact));
+        CDTpContactPtr contactWrapper = mContacts.take(contact);
+        if (contactWrapper->isVisible()) {
+            removed.append(contactWrapper);
+        }
+        contactWrapper->setRemoved(true);
     }
 
     Q_EMIT rosterUpdated(CDTpAccountPtr(this), QList<CDTpContactPtr>(), removed);
-
-    Q_FOREACH (CDTpContactPtr contactWrapper, removed) {
-        contactWrapper->mRemoved = true;
-    }
 }
 
 void CDTpAccount::onAccountContactChanged(CDTpContactPtr contactWrapper,
         CDTpContact::Changes changes)
 {
-    Q_EMIT rosterContactChanged(CDTpAccountPtr(this), contactWrapper, changes);
+    if ((changes & CDTpContact::Visibility) != 0) {
+        // Visibility of this contact changed. Transform this update operation
+        // to an add/remove operation
+        qDebug() << "Visibility changed for contact" << contactWrapper->contact()->id();
+        if (contactWrapper->isVisible()) {
+            Q_EMIT rosterUpdated(CDTpAccountPtr(this),
+                QList<CDTpContactPtr>() << contactWrapper,
+                QList<CDTpContactPtr>());
+        } else {
+            contactWrapper->setRemoved(true);
+            Q_EMIT rosterUpdated(CDTpAccountPtr(this),
+                QList<CDTpContactPtr>(),
+                QList<CDTpContactPtr>() << contactWrapper);
+        }
+
+        return;
+    }
+
+    // Forward changes only if contact is visible
+    if (contactWrapper->isVisible()) {
+        Q_EMIT rosterContactChanged(CDTpAccountPtr(this), contactWrapper, changes);
+    }
 }
 
 void CDTpAccount::introspectAccountConnection()

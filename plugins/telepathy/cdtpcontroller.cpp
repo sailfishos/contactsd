@@ -102,8 +102,6 @@ void CDTpController::onAccountReady(CDTpAccountPtr accountWrapper)
 void CDTpController::onAccountRosterChanged(CDTpAccountPtr accountWrapper,
         bool haveRoster)
 {
-    Tp::AccountPtr account = accountWrapper->account();
-
     if (haveRoster) {
         mStorage->syncAccountContacts(accountWrapper);
     } else {
@@ -115,8 +113,6 @@ void CDTpController::onAccountRosterUpdated(CDTpAccountPtr accountWrapper,
         const QList<CDTpContactPtr> &contactsAdded,
         const QList<CDTpContactPtr> &contactsRemoved)
 {
-    Tp::AccountPtr account = accountWrapper->account();
-
     mStorage->syncAccountContacts(accountWrapper, contactsAdded,
             contactsRemoved);
 }
