@@ -470,7 +470,7 @@ void CDTpStorage::onContactUpdateSelectQueryFinished(CDTpSelectQuery *query)
     RDFUpdate updateQuery;
     RDFStatementList inserts;
     RDFStatementList imAccountInserts;
-    QList<RDFUpdate> updateQueryQueue;
+    RDFUpdate contactInfoQuery;
     QList<CDTpAccountPtr> accounts;
 
     CDTpContactResolver *resolver = qobject_cast<CDTpContactResolver*>(query);
@@ -559,13 +559,10 @@ void CDTpStorage::onContactUpdateSelectQueryFinished(CDTpSelectQuery *query)
         }
         if (changes & CDTpContact::Infomation) {
             qDebug() << "  vcard information changed";
-            /* ContactInfo insertions are made into per-contact graph, so we can't
-             * use 'inserts' here. We also have to make sure those insertions are
-             * made *after* imContact insertions, so we queue them into a list,
-             * and we'll append them later. */
-            RDFUpdate query;
-            addContactInfoToQuery(query, imContact, contactWrapper);
-            updateQueryQueue << query;
+            /* Some ContactInfo insertions are made into per-contact graph. Also
+             * some must be done *after* imContact insertions, so we add them
+             * into another RDFUpdate, and we'll append it later. */
+            addContactInfoToQuery(contactInfoQuery, inserts, imContact, contactWrapper);
         }
 
         // Link the IMAccount to this IMAddress
@@ -587,9 +584,7 @@ void CDTpStorage::onContactUpdateSelectQueryFinished(CDTpSelectQuery *query)
 
     updateQuery.addInsertion(inserts, defaultGraph);
     updateQuery.addInsertion(imAccountInserts, privateGraph);
-    Q_FOREACH (const RDFUpdate &query, updateQueryQueue) {
-        updateQuery.appendUpdate(query);
-    }
+    updateQuery.appendUpdate(contactInfoQuery);
 
     CDTpAccountsUpdateQuery *q = new CDTpAccountsUpdateQuery(accounts, updateQuery, this);
     connect(q,
@@ -759,6 +754,7 @@ void CDTpStorage::addRemoveContactInfoToQuery(RDFUpdate &query,
 }
 
 void CDTpStorage::addContactInfoToQuery(RDFUpdate &query,
+        RDFStatementList &inserts,
         const RDFVariable &imContact,
         CDTpContactPtr contactWrapper)
 {
@@ -778,7 +774,7 @@ void CDTpStorage::addContactInfoToQuery(RDFUpdate &query,
     }
 
     QHash<QString, RDFVariable> affiliationsMap;
-    RDFStatementList inserts;
+    RDFStatementList graphInserts;
 
     Q_FOREACH (const Tp::ContactInfoField &field, listContactInfo) {
         if (field.fieldValue.count() == 0) {
@@ -790,12 +786,12 @@ void CDTpStorage::addContactInfoToQuery(RDFUpdate &query,
          *  - How do we write affiliation for "org" ?
          */
         if (!field.fieldName.compare("tel")) {
-            addContactVoicePhoneNumberToQuery(inserts,
-                    ensureAffiliation(affiliationsMap, inserts, imContact, field),
+            addContactVoicePhoneNumberToQuery(graphInserts, inserts,
+                    ensureAffiliation(affiliationsMap, graphInserts, imContact, field),
                     field.fieldValue.at(0));
         } else if (!field.fieldName.compare("adr")) {
-            addContactAddressToQuery(inserts,
-                    ensureAffiliation(affiliationsMap, inserts, imContact, field),
+            addContactAddressToQuery(graphInserts,
+                    ensureAffiliation(affiliationsMap, graphInserts, imContact, field),
                     field.fieldValue.at(0),
                     field.fieldValue.at(1),
                     field.fieldValue.at(2),
@@ -804,20 +800,20 @@ void CDTpStorage::addContactInfoToQuery(RDFUpdate &query,
                     field.fieldValue.at(5),
                     field.fieldValue.at(6));
         } else if (!field.fieldName.compare("email")) {
-            addContactEmailToQuery(inserts,
-                    ensureAffiliation(affiliationsMap, inserts, imContact, field),
+            addContactEmailToQuery(graphInserts, inserts,
+                    ensureAffiliation(affiliationsMap, graphInserts, imContact, field),
                     field.fieldValue.at(0));
         } else if (!field.fieldName.compare("url")) {
-            RDFVariable affiliation = ensureAffiliation(affiliationsMap, inserts, imContact, field);
-            inserts << RDFStatement(affiliation, nco::url::iri(), LiteralValue(field.fieldValue.at(0)));
+            RDFVariable affiliation = ensureAffiliation(affiliationsMap, graphInserts, imContact, field);
+            graphInserts << RDFStatement(affiliation, nco::url::iri(), LiteralValue(field.fieldValue.at(0)));
         } else if (!field.fieldName.compare("title")) {
-            RDFVariable affiliation = ensureAffiliation(affiliationsMap, inserts, imContact, field);
-            inserts << RDFStatement(affiliation, nco::title::iri(), LiteralValue(field.fieldValue.at(0)));
+            RDFVariable affiliation = ensureAffiliation(affiliationsMap, graphInserts, imContact, field);
+            graphInserts << RDFStatement(affiliation, nco::title::iri(), LiteralValue(field.fieldValue.at(0)));
         } else if (!field.fieldName.compare("role")) {
-            RDFVariable affiliation = ensureAffiliation(affiliationsMap, inserts, imContact, field);
-            inserts << RDFStatement(affiliation, nco::role::iri(), LiteralValue(field.fieldValue.at(0)));
+            RDFVariable affiliation = ensureAffiliation(affiliationsMap, graphInserts, imContact, field);
+            graphInserts << RDFStatement(affiliation, nco::role::iri(), LiteralValue(field.fieldValue.at(0)));
         } else if (!field.fieldName.compare("note") || !field.fieldName.compare("desc")) {
-            inserts << RDFStatement(imContact, nco::note::iri(), LiteralValue(field.fieldValue.at(0)));
+            graphInserts << RDFStatement(imContact, nco::note::iri(), LiteralValue(field.fieldValue.at(0)));
         } else if (!field.fieldName.compare("bday")) {
             /* Tracker will reject anything not [-]CCYY-MM-DDThh:mm:ss[Z|(+|-)hh:mm]
              * VCard spec allows only ISO 8601, but most IM clients allows
@@ -829,7 +825,7 @@ void CDTpStorage::addContactInfoToQuery(RDFUpdate &query,
             }
 
             if (date.isValid()) {
-                inserts << RDFStatement(imContact, nco::birthDate::iri(), LiteralValue(date));
+                graphInserts << RDFStatement(imContact, nco::birthDate::iri(), LiteralValue(date));
             } else {
                 qDebug() << "Unsupported bday format:" << field.fieldValue.at(0);
             }
@@ -838,11 +834,11 @@ void CDTpStorage::addContactInfoToQuery(RDFUpdate &query,
         }
     }
 
-    query.addInsertion(inserts, graph);
+    query.addInsertion(graphInserts, graph);
 }
 
 RDFVariable CDTpStorage::ensureAffiliation(QHash<QString, RDFVariable> &map,
-        RDFStatementList &inserts,
+        RDFStatementList &graphInserts,
         const RDFVariable &imContact,
         const Tp::ContactInfoField &field)
 {
@@ -869,16 +865,17 @@ RDFVariable CDTpStorage::ensureAffiliation(QHash<QString, RDFVariable> &map,
     if (!map.contains(type)) {
         static uint counter = 0;
         RDFVariable affiliation = RDFVariable(QString("affiliation%1").arg(++counter));
-        inserts << RDFStatement(affiliation, rdf::type::iri(), nco::Affiliation::iri())
-                << RDFStatement(affiliation, rdfs::label::iri(), LiteralValue(type))
-                << RDFStatement(imContact, nco::hasAffiliation::iri(), affiliation);
+        graphInserts << RDFStatement(affiliation, rdf::type::iri(), nco::Affiliation::iri())
+                     << RDFStatement(affiliation, rdfs::label::iri(), LiteralValue(type))
+                     << RDFStatement(imContact, nco::hasAffiliation::iri(), affiliation);
         map.insert(type, affiliation);
     }
 
     return map[type];
 }
 
-void CDTpStorage::addContactVoicePhoneNumberToQuery(RDFStatementList &inserts,
+void CDTpStorage::addContactVoicePhoneNumberToQuery(RDFStatementList &graphInserts,
+        RDFStatementList &inserts,
         const RDFVariable &affiliation,
         const QString &phoneNumber)
 {
@@ -887,10 +884,10 @@ void CDTpStorage::addContactVoicePhoneNumberToQuery(RDFStatementList &inserts,
             << RDFStatement(voicePhoneNumber, maemo::localPhoneNumber::iri(), LiteralValue(phoneNumber))
             << RDFStatement(voicePhoneNumber, nco::phoneNumber::iri(), LiteralValue(phoneNumber));
 
-    inserts << RDFStatement(affiliation, nco::hasPhoneNumber::iri(), voicePhoneNumber);
+    graphInserts << RDFStatement(affiliation, nco::hasPhoneNumber::iri(), voicePhoneNumber);
 }
 
-void CDTpStorage::addContactAddressToQuery(RDFStatementList &inserts,
+void CDTpStorage::addContactAddressToQuery(RDFStatementList &graphInserts,
         const RDFVariable &affiliation,
         const QString &pobox,
         const QString &extendedAddress,
@@ -902,19 +899,20 @@ void CDTpStorage::addContactAddressToQuery(RDFStatementList &inserts,
 {
     static uint counter = 0;
     RDFVariable imPostalAddress = RDFVariable(QString("address%1").arg(++counter));
-    inserts << RDFStatement(imPostalAddress, rdf::type::iri(), nco::PostalAddress::iri())
-            << RDFStatement(imPostalAddress, nco::pobox::iri(), LiteralValue(pobox))
-            << RDFStatement(imPostalAddress, nco::extendedAddress::iri(), LiteralValue(extendedAddress))
-            << RDFStatement(imPostalAddress, nco::streetAddress::iri(), LiteralValue(streetAddress))
-            << RDFStatement(imPostalAddress, nco::locality::iri(), LiteralValue(locality))
-            << RDFStatement(imPostalAddress, nco::region::iri(), LiteralValue(region))
-            << RDFStatement(imPostalAddress, nco::postalcode::iri(), LiteralValue(postalcode))
-            << RDFStatement(imPostalAddress, nco::country::iri(), LiteralValue(country));
+    graphInserts << RDFStatement(imPostalAddress, rdf::type::iri(), nco::PostalAddress::iri())
+                 << RDFStatement(imPostalAddress, nco::pobox::iri(), LiteralValue(pobox))
+                 << RDFStatement(imPostalAddress, nco::extendedAddress::iri(), LiteralValue(extendedAddress))
+                 << RDFStatement(imPostalAddress, nco::streetAddress::iri(), LiteralValue(streetAddress))
+                 << RDFStatement(imPostalAddress, nco::locality::iri(), LiteralValue(locality))
+                 << RDFStatement(imPostalAddress, nco::region::iri(), LiteralValue(region))
+                 << RDFStatement(imPostalAddress, nco::postalcode::iri(), LiteralValue(postalcode))
+                 << RDFStatement(imPostalAddress, nco::country::iri(), LiteralValue(country));
 
-    inserts << RDFStatement(affiliation, nco::hasPostalAddress::iri(), imPostalAddress);
+    graphInserts << RDFStatement(affiliation, nco::hasPostalAddress::iri(), imPostalAddress);
 }
 
-void CDTpStorage::addContactEmailToQuery(RDFStatementList &inserts,
+void CDTpStorage::addContactEmailToQuery(RDFStatementList &graphInserts,
+        RDFStatementList &inserts,
         const RDFVariable &affiliation,
         const QString &email)
 {
@@ -922,7 +920,7 @@ void CDTpStorage::addContactEmailToQuery(RDFStatementList &inserts,
     inserts << RDFStatement(emailAddress, rdf::type::iri(), nco::EmailAddress::iri())
             << RDFStatement(emailAddress, nco::emailAddress::iri(), LiteralValue(email));
 
-    inserts << RDFStatement(affiliation, nco::hasEmailAddress::iri(), emailAddress);
+    graphInserts << RDFStatement(affiliation, nco::hasEmailAddress::iri(), emailAddress);
 }
 
 QString CDTpStorage::contactLocalId(const QString &contactAccountObjectPath,
