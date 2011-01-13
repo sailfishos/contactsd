@@ -78,7 +78,7 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir, const QString
         qDebug() << "Trying to load plugin" << absFileName;
         loader = new QPluginLoader(absFileName);
         if (!loader->load()) {
-            qWarning() << "Error loading plugin" << absFileName <<
+            qDebug() << "Error loading plugin" << absFileName <<
                 "-" << loader->errorString();
             delete loader;
             continue;
@@ -88,7 +88,7 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir, const QString
         ContactsdPluginInterface *plugin =
             qobject_cast<ContactsdPluginInterface *>(basePlugin);
         if (!plugin) {
-            qWarning() << "Error loading plugin" << absFileName << "- does not "
+            qDebug() << "Error loading plugin" << absFileName << "- does not "
                 "implement ContactsdPluginInterface";
             loader->unload();
             delete loader;
