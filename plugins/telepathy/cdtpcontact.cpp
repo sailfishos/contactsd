@@ -44,18 +44,16 @@ CDTpContact::CDTpContact(Tp::ContactPtr contact, CDTpAccount *accountWrapper)
             SIGNAL(avatarDataChanged(const Tp::AvatarData &)),
             SLOT(onContactAvatarDataChanged()));
     connect(contact.data(),
-            SIGNAL(subscriptionStateChanged(Tp::Contact::PresenceState,
-                    const Tp::Channel::GroupMemberChangeDetails &)),
+            SIGNAL(subscriptionStateChanged(Tp::Contact::PresenceState)),
             SLOT(onContactAuthorizationChanged()));
     connect(contact.data(),
-            SIGNAL(publishStateChanged(Tp::Contact::PresenceState,
-                    const Tp::Channel::GroupMemberChangeDetails &)),
+            SIGNAL(publishStateChanged(Tp::Contact::PresenceState)),
             SLOT(onContactAuthorizationChanged()));
     connect(contact.data(),
             SIGNAL(infoFieldsChanged(const Tp::Contact::InfoFields &)),
             SLOT(onContactInfoChanged()));
     connect(contact.data(),
-            SIGNAL(blockStatusChanged(bool, const Tp::Channel::GroupMemberChangeDetails &)),
+            SIGNAL(blockStatusChanged(bool)),
             SLOT(onBlockStatusChanged()));
 }
 
