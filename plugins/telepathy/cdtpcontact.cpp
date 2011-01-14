@@ -29,6 +29,8 @@ CDTpContact::CDTpContact(Tp::ContactPtr contact, CDTpAccount *accountWrapper)
       mAccountWrapper(accountWrapper),
       mRemoved(false)
 {
+    updateVisibility();
+
     connect(contact.data(),
             SIGNAL(aliasChanged(const QString &)),
             SLOT(onContactAliasChanged()));
@@ -68,36 +70,70 @@ CDTpAccountPtr CDTpContact::accountWrapper() const
 
 void CDTpContact::onContactAliasChanged()
 {
-    Q_EMIT changed(CDTpContactPtr(this), Alias);
+    emitChanged(Alias);
 }
 
 void CDTpContact::onContactPresenceChanged()
 {
-    Q_EMIT changed(CDTpContactPtr(this), Presence);
+    emitChanged(Presence);
 }
 
 void CDTpContact::onContactCapabilitiesChanged()
 {
-    Q_EMIT changed(CDTpContactPtr(this), Capabilities);
+    emitChanged(Capabilities);
 }
 
 void CDTpContact::onContactAvatarDataChanged()
 {
-    Q_EMIT changed(CDTpContactPtr(this), Avatar);
+    emitChanged(Avatar);
 }
 
 void CDTpContact::onContactAuthorizationChanged()
 {
-    Q_EMIT changed(CDTpContactPtr(this), Authorization);
+    emitChanged(Authorization);
 }
 
 void CDTpContact::onContactInfoChanged()
 {
-    Q_EMIT changed(CDTpContactPtr(this), Infomation);
+    emitChanged(Infomation);
 }
 
 void CDTpContact::onBlockStatusChanged()
 {
-    Q_EMIT changed(CDTpContactPtr(this), Blocked);
+    emitChanged(Blocked);
+}
+
+void CDTpContact::emitChanged(CDTpContact::Changes changes)
+{
+    // Check if this change also modified the visibility
+    bool wasVisible = mVisible;
+    updateVisibility();
+    if (mVisible != wasVisible) {
+        changes |= Visibility;
+    }
+
+    Q_EMIT changed(CDTpContactPtr(this), changes);
+}
+
+void CDTpContact::updateVisibility()
+{
+    /* Don't import contacts blocked, removed or incoming auth requests (because
+     * user never asked for them). Note that we still import contacts that have
+     * publishState==subscribeState==No, because that case happens if we sent an
+     * auth request but it got rejected. In the case we received an auth request
+     * and we rejected it, with our implementation, the contact is completely
+     * removed from the roster so it won't appear here at all (some other IM
+     * clients could still keep the contact in the roster with
+     * publishState==subscribeState==No, but that's really corner case so we
+     * don't care). */
+    mVisible = !mRemoved && !mContact->isBlocked() &&
+        (mContact->publishState() != Tp::Contact::PresenceStateAsk ||
+         mContact->subscriptionState() != Tp::Contact::PresenceStateNo);
+}
+
+void CDTpContact::setRemoved(bool value)
+{
+    mRemoved = value;
+    updateVisibility();
 }
 

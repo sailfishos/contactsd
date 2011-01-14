@@ -40,7 +40,8 @@ public:
         Authorization = (1 << 4),
         Infomation    = (1 << 5),
         Blocked       = (1 << 6),
-        All           = (1 << 7) -1
+        Visibility    = (1 << 7),
+        All           = (1 << 8) -1
     };
     Q_DECLARE_FLAGS(Changes, Change)
 
@@ -51,6 +52,7 @@ public:
 
     CDTpAccountPtr accountWrapper() const;
     bool isRemoved() const { return mRemoved; }
+    bool isVisible() const { return mVisible; }
 
 Q_SIGNALS:
     void changed(CDTpContactPtr contact, CDTpContact::Changes changes);
@@ -65,10 +67,15 @@ private Q_SLOTS:
     void onBlockStatusChanged();
 
 private:
+    void emitChanged(CDTpContact::Changes changes);
+    void updateVisibility();
+    void setRemoved(bool value);
+
     friend class CDTpAccount;
     Tp::ContactPtr mContact;
     CDTpAccount *mAccountWrapper;
     bool mRemoved;
+    bool mVisible;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(CDTpContact::Changes)
