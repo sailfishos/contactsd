@@ -45,6 +45,17 @@ struct _TpTestsContactsConnection {
 
 GType tp_tests_contacts_connection_get_type (void);
 
+/* Must match my_statuses in the .c */
+typedef enum {
+    TP_TESTS_CONTACTS_CONNECTION_STATUS_UNSET,
+    TP_TESTS_CONTACTS_CONNECTION_STATUS_AVAILABLE,
+    TP_TESTS_CONTACTS_CONNECTION_STATUS_BUSY,
+    TP_TESTS_CONTACTS_CONNECTION_STATUS_AWAY,
+    TP_TESTS_CONTACTS_CONNECTION_STATUS_OFFLINE,
+    TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN,
+    TP_TESTS_CONTACTS_CONNECTION_STATUS_ERROR
+} TpTestsContactsConnectionPresenceStatusIndex;
+
 /* TYPE MACROS */
 #define TP_TESTS_TYPE_CONTACTS_CONNECTION \
   (tp_tests_contacts_connection_get_type ())
@@ -71,7 +82,7 @@ void tp_tests_contacts_connection_change_aliases (
 
 void tp_tests_contacts_connection_change_presences (
     TpTestsContactsConnection *self, guint n, const TpHandle *handles,
-    const TpConnectionPresenceType *indexes,
+    const TpTestsContactsConnectionPresenceStatusIndex *indexes,
     const gchar * const *messages);
 
 void tp_tests_contacts_connection_change_avatar_tokens (
@@ -101,7 +112,7 @@ void tp_tests_contacts_connection_set_default_contact_info (
     TpTestsContactsConnection *self,
     GPtrArray *info);
 
-/* Legacy version (no Contacts interface) */
+/* Legacy version (no Contacts interface, and no immortal handles) */
 
 typedef struct _TpTestsLegacyContactsConnection TpTestsLegacyContactsConnection;
 typedef struct _TpTestsLegacyContactsConnectionClass TpTestsLegacyContactsConnectionClass;

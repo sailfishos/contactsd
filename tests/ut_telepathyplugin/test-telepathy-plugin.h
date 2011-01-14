@@ -28,6 +28,7 @@
 #include <telepathy-glib/telepathy-glib.h>
 #include <TelepathyQt4/Contact>
 
+#include "tests/lib/glib/contacts-conn.h"
 #include "tests/lib/glib/contact-list-manager.h"
 
 #include "test.h"
@@ -63,7 +64,7 @@ public:
     QString accountUri;
 
     QString alias;
-    TpConnectionPresenceType presence;
+    TpTestsContactsConnectionPresenceStatusIndex presence;
     QByteArray avatarData;
     QString subscriptionState;
     QString publishState;

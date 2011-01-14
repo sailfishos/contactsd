@@ -68,7 +68,8 @@ TestBenchmark::TestBenchmark(QObject *parent) :
         TP_TESTS_CONTACTS_CONNECTION(mConnService));
 
     /* Define the self contact */
-    TpConnectionPresenceType presence = TP_CONNECTION_PRESENCE_TYPE_AVAILABLE;
+    TpTestsContactsConnectionPresenceStatusIndex presence =
+            TP_TESTS_CONTACTS_CONNECTION_STATUS_AVAILABLE;
     const gchar *message = "Running benchmark";
     tp_tests_contacts_connection_change_presences(
         TP_TESTS_CONTACTS_CONNECTION (mConnService),

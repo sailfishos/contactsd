@@ -25,7 +25,6 @@
 
 #include "tests/lib/glib/simple-account-manager.h"
 #include "tests/lib/glib/simple-account.h"
-#include "tests/lib/glib/contacts-conn.h"
 #include "tests/lib/glib/util.h"
 
 #include "test-telepathy-plugin.h"
@@ -34,7 +33,7 @@
 #define BUS_NAME "org.maemo.Contactsd.UnitTest"
 
 TestExpectation::TestExpectation():flags(All), nOnlineAccounts(1),
-    presence(TP_CONNECTION_PRESENCE_TYPE_UNKNOWN)
+    presence(TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN)
 {
 }
 
@@ -55,27 +54,21 @@ void TestExpectation::verify(QContact &contact) const
     if (flags & Presence) {
         QContactPresence::PresenceState actualPresence = contact.detail<QContactPresence>().presenceState();
         switch (presence) {
-        case TP_CONNECTION_PRESENCE_TYPE_UNSET:
-            QCOMPARE(actualPresence, QContactPresence::PresenceUnknown);
-            break;
-        case TP_CONNECTION_PRESENCE_TYPE_OFFLINE:
-            QCOMPARE(actualPresence, QContactPresence::PresenceOffline);
-            break;
-        case TP_CONNECTION_PRESENCE_TYPE_AVAILABLE:
+        case TP_TESTS_CONTACTS_CONNECTION_STATUS_AVAILABLE:
             QCOMPARE(actualPresence, QContactPresence::PresenceAvailable);
             break;
-        case TP_CONNECTION_PRESENCE_TYPE_AWAY:
-        case TP_CONNECTION_PRESENCE_TYPE_EXTENDED_AWAY:
-            QCOMPARE(actualPresence, QContactPresence::PresenceAway);
-            break;
-        case TP_CONNECTION_PRESENCE_TYPE_HIDDEN:
-            QCOMPARE(actualPresence, QContactPresence::PresenceHidden);
-            break;
-        case TP_CONNECTION_PRESENCE_TYPE_BUSY:
+        case TP_TESTS_CONTACTS_CONNECTION_STATUS_BUSY:
             QCOMPARE(actualPresence, QContactPresence::PresenceBusy);
             break;
-        case TP_CONNECTION_PRESENCE_TYPE_UNKNOWN:
-        case TP_CONNECTION_PRESENCE_TYPE_ERROR:
+        case TP_TESTS_CONTACTS_CONNECTION_STATUS_AWAY:
+            QCOMPARE(actualPresence, QContactPresence::PresenceAway);
+            break;
+        case TP_TESTS_CONTACTS_CONNECTION_STATUS_OFFLINE:
+            QCOMPARE(actualPresence, QContactPresence::PresenceOffline);
+            break;
+        case TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN:
+        case TP_TESTS_CONTACTS_CONNECTION_STATUS_ERROR:
+        case TP_TESTS_CONTACTS_CONNECTION_STATUS_UNSET:
             QCOMPARE(actualPresence, QContactPresence::PresenceUnknown);
             break;
         }
@@ -168,7 +161,8 @@ void TestTelepathyPlugin::initTestCase()
         TP_TESTS_CONTACTS_CONNECTION(mConnService));
 
     /* Define the self contact */
-    TpConnectionPresenceType presence = TP_CONNECTION_PRESENCE_TYPE_AVAILABLE;
+    TpTestsContactsConnectionPresenceStatusIndex presence =
+            TP_TESTS_CONTACTS_CONNECTION_STATUS_AVAILABLE;
     const gchar *message = "Running unit tests";
     tp_tests_contacts_connection_change_presences(
         TP_TESTS_CONTACTS_CONNECTION (mConnService),
@@ -203,7 +197,7 @@ void TestTelepathyPlugin::testBasicUpdates()
     e.event = TestExpectation::Added;
     e.accountUri = QString("alice");
     e.alias = QString("Alice");
-    e.presence = TP_CONNECTION_PRESENCE_TYPE_UNKNOWN;
+    e.presence = TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN;
     e.subscriptionState = "Requested";
     e.publishState = "No";
     mExpectations.append(e);
@@ -212,7 +206,8 @@ void TestTelepathyPlugin::testBasicUpdates()
     QCOMPARE(mLoop->exec(), 0);
 
     /* Change the presence of Alice to busy */
-    TpConnectionPresenceType presence = TP_CONNECTION_PRESENCE_TYPE_BUSY;
+    TpTestsContactsConnectionPresenceStatusIndex presence =
+            TP_TESTS_CONTACTS_CONNECTION_STATUS_BUSY;
     const gchar *message = "Making coffee";
     tp_tests_contacts_connection_change_presences(
         TP_TESTS_CONTACTS_CONNECTION (mConnService),
@@ -253,7 +248,7 @@ void TestTelepathyPlugin::testSelfContact()
     TestExpectation e;
     e.flags = TestExpectation::VerifyFlags(TestExpectation::Presence | TestExpectation::Avatar);
     e.accountUri = QString("fake@account.org");
-    e.presence = TP_CONNECTION_PRESENCE_TYPE_AVAILABLE;
+    e.presence = TP_TESTS_CONTACTS_CONNECTION_STATUS_AVAILABLE;
     e.verify(contact);
 }
 
@@ -423,8 +418,6 @@ void TestTelepathyPlugin::testSetOffline()
     /* First contact is added, then auth req is accepted */
     e.event = TestExpectation::Added;
     mExpectations.append(e);
-    e.event = TestExpectation::Changed;
-    mExpectations.append(e);
     QCOMPARE(mLoop->exec(), 0);
 
     /* Now set the account offline, kesh should be updated to have Unknown presence */
@@ -434,7 +427,7 @@ void TestTelepathyPlugin::testSetOffline()
 
     e.flags = TestExpectation::Presence;
     e.event = TestExpectation::Changed;
-    e.presence = TP_CONNECTION_PRESENCE_TYPE_UNKNOWN;
+    e.presence = TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN;
     mExpectations.append(e);
     QCOMPARE(mLoop->exec(), 0);
 }

@@ -17,7 +17,6 @@
 struct _TestContactListManagerPrivate
 {
   TpBaseConnection *conn;
-  guint simulation_delay;
 
   gulong status_changed_id;
 
@@ -35,13 +34,6 @@ G_DEFINE_TYPE_WITH_CODE (TestContactListManager, test_contact_list_manager,
     TP_TYPE_BASE_CONTACT_LIST,
     G_IMPLEMENT_INTERFACE (TP_TYPE_CONTACT_GROUP_LIST,
       contact_groups_iface_init))
-
-enum
-{
-  PROP_0,
-  PROP_SIMULATION_DELAY,
-  N_PROPS
-};
 
 typedef struct {
   TpSubscriptionState subscribe;
@@ -129,44 +121,6 @@ dispose (GObject *object)
 
   ((GObjectClass *) test_contact_list_manager_parent_class)->dispose (
     object);
-}
-
-static void
-get_property (GObject *object,
-              guint property_id,
-              GValue *value,
-              GParamSpec *pspec)
-{
-  TestContactListManager *self = TEST_CONTACT_LIST_MANAGER (object);
-
-  switch (property_id)
-    {
-    case PROP_SIMULATION_DELAY:
-      g_value_set_uint (value, self->priv->simulation_delay);
-      break;
-
-    default:
-      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
-    }
-}
-
-static void
-set_property (GObject *object,
-              guint property_id,
-              const GValue *value,
-              GParamSpec *pspec)
-{
-  TestContactListManager *self = TEST_CONTACT_LIST_MANAGER (object);
-
-  switch (property_id)
-    {
-    case PROP_SIMULATION_DELAY:
-      self->priv->simulation_delay = g_value_get_uint (value);
-      break;
-
-    default:
-      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
-    }
 }
 
 static TpHandleSet *
@@ -354,7 +308,6 @@ constructed (GObject *object)
   TestContactListManager *self = TEST_CONTACT_LIST_MANAGER (object);
   void (*chain_up) (GObject *) =
       ((GObjectClass *) test_contact_list_manager_parent_class)->constructed;
-  TpHandleRepoIface *group_repo;
 
   if (chain_up != NULL)
     {
@@ -370,7 +323,7 @@ constructed (GObject *object)
       TP_HANDLE_TYPE_CONTACT);
   self->priv->group_repo = tp_base_connection_get_handles (self->priv->conn,
       TP_HANDLE_TYPE_GROUP);
-  self->priv->groups = tp_handle_set_new (group_repo);
+  self->priv->groups = tp_handle_set_new (self->priv->group_repo);
 }
 
 static void
@@ -384,7 +337,6 @@ contact_groups_iface_init (TpContactGroupListInterface *iface)
 static void
 test_contact_list_manager_class_init (TestContactListManagerClass *klass)
 {
-  GParamSpec *param_spec;
   GObjectClass *object_class = (GObjectClass *) klass;
   TpBaseContactListClass *base_class =(TpBaseContactListClass *) klass;
 
@@ -392,18 +344,9 @@ test_contact_list_manager_class_init (TestContactListManagerClass *klass)
 
   object_class->constructed = constructed;
   object_class->dispose = dispose;
-  object_class->get_property = get_property;
-  object_class->set_property = set_property;
 
   base_class->dup_states = contact_list_dup_states;
   base_class->dup_contacts = contact_list_dup_contacts;
-
-  param_spec = g_param_spec_uint ("simulation-delay", "Simulation delay",
-      "Delay between simulated network events",
-      0, G_MAXUINT32, 1000,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_SIMULATION_DELAY,
-      param_spec);
 }
 
 void
@@ -478,7 +421,7 @@ receive_authorized (gpointer p)
   SelfAndContact *s = p;
   GArray *handles_array;
   guint i;
-  
+
   handles_array = tp_handle_set_to_array (s->handles);
   for (i = 0; i < handles_array->len; i++)
     {
@@ -555,25 +498,17 @@ test_contact_list_manager_request_subscription (TestContactListManager *self,
   tp_base_contact_list_contacts_changed (TP_BASE_CONTACT_LIST (self), handles,
       NULL);
 
-  /* Pretend that after a delay, the contact notices the request
-   * and allows, rejects or ignore it. In this example connection
-   * manager, empty requests are allowed, as are requests that contain
-   * "please" case-insensitively. Requests that contain "no"
-   * case-insensitively will be denied. Others are ignored.
-   */
   message_lc = g_ascii_strdown (message, -1);
-
-  if (message[0] == '\0' || strstr (message_lc, "please") != NULL)
+  if (strstr (message_lc, "please") != NULL)
     {
-      g_timeout_add_full (G_PRIORITY_DEFAULT,
-          self->priv->simulation_delay, receive_authorized,
+      g_idle_add_full (G_PRIORITY_DEFAULT,
+          receive_authorized,
           self_and_contact_new (self, handles),
           self_and_contact_destroy);
     }
   else if (strstr (message_lc, "no") != NULL)
     {
-      g_timeout_add_full (G_PRIORITY_DEFAULT,
-          self->priv->simulation_delay,
+      g_idle_add_full (G_PRIORITY_DEFAULT,
           receive_unauthorized,
           self_and_contact_new (self, handles),
           self_and_contact_destroy);
