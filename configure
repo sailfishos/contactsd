@@ -13,13 +13,14 @@
 #     even minor -> stable series
 #     increment micro for each release within a series
 #   set nano_version to 0
+#   update debian/changelog, use dch
 #   make the release, tag it
 #   set nano_version to 1
 
 MAJOR_VERSION=0
 MINOR_VERSION=5
-MICRO_VERSION=47
-NANO_VERSION=1
+MICRO_VERSION=48
+NANO_VERSION=0
 
 if [ $NANO_VERSION -eq "0" ]; then
     VERSION="$MAJOR_VERSION.$MINOR_VERSION.$MICRO_VERSION"

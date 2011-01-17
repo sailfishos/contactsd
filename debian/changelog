@@ -1,3 +1,18 @@
+contactsd (0.5.48-1) unstable; urgency=low
+
+  * Changes: Use the displayName of the account instead of serviceName for import status
+  * Changes: support more fields from ContactInfo
+  * Changes: Do not import local-pending contacts
+  * Fixes: NB#185265 - Presence icon gets displayed for imported gtalk contact even when there is no network connection
+  * Fixes: NB#199163 - When contactsd starts, telepathy plugin should sync latest accounts information to nco#default-contact-me
+  * Fixes: NB#213950 - COREWEB: /usr/bin/contactsd 'QCoreApplication::exec main'
+  * Fixes: NB#211337 - <Portal Certification> Windows Live - Contact created even without responding to the authorization requested
+  * Fixes: NB#215021 - Contactsd gets incorrect names for importing IM services
+  * Fixes: NB#217560 - Tests.xml file missing in contactsd-tests package.
+  * Fixes: NB#196363 - Blocked Skype contacts are also imported.
+
+ -- Xavier Claessens <xavier.claessens@collabora.co.uk>  Mon, 17 Jan 2011 09:47:47 +0100
+
 contactsd (0.5.47-1) unstable; urgency=low
 
   * Correctly signal when import start/end when an account is added
