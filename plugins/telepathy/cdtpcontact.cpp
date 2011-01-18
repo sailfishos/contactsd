@@ -47,7 +47,7 @@ CDTpContact::CDTpContact(Tp::ContactPtr contact, CDTpAccount *accountWrapper)
             SIGNAL(subscriptionStateChanged(Tp::Contact::PresenceState)),
             SLOT(onContactAuthorizationChanged()));
     connect(contact.data(),
-            SIGNAL(publishStateChanged(Tp::Contact::PresenceState)),
+            SIGNAL(publishStateChanged(Tp::Contact::PresenceState, const QString &)),
             SLOT(onContactAuthorizationChanged()));
     connect(contact.data(),
             SIGNAL(infoFieldsChanged(const Tp::Contact::InfoFields &)),
