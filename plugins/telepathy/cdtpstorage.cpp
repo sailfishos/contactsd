@@ -104,6 +104,7 @@ void CDTpStorage::syncAccount(CDTpAccountPtr accountWrapper,
 
     const QString accountObjectPath = account->objectPath();
     const QString accountId = account->normalizedName();
+    const QDateTime datetime = QDateTime::currentDateTime();
 
     qDebug() << "Syncing account" << accountObjectPath << "to storage" << accountId;
 
@@ -132,7 +133,7 @@ void CDTpStorage::syncAccount(CDTpAccountPtr accountWrapper,
 
         inserts << RDFStatement(imAddress, nco::imPresence::iri(), RDFVariable(status))
                 << RDFStatement(imAddress, nco::imStatusMessage::iri(), LiteralValue(presence.statusMessage()))
-                << RDFStatement(imAddress, nco::presenceLastModified::iri(), LiteralValue(QDateTime::currentDateTime()));
+                << RDFStatement(imAddress, nco::presenceLastModified::iri(), LiteralValue(datetime));
     }
 
     if (changes & CDTpAccount::Avatar) {
@@ -166,7 +167,9 @@ void CDTpStorage::syncAccount(CDTpAccountPtr accountWrapper,
             << RDFStatement(imAffiliation, nco::hasIMAddress::iri(), imAddress);
     inserts << RDFStatement(nco::default_contact_me::iri(), nco::hasAffiliation::iri(), imAffiliation)
             << RDFStatement(nco::default_contact_me::iri(), nco::contactUID::iri(), LiteralValue(strLocalUID))
-            << RDFStatement(nco::default_contact_me::iri(), nco::contactLocalUID::iri(), LiteralValue(strLocalUID));
+            << RDFStatement(nco::default_contact_me::iri(), nco::contactLocalUID::iri(), LiteralValue(strLocalUID))
+            << RDFStatement(nco::default_contact_me::iri(), nie::contentLastModified::iri(), LiteralValue(datetime));
+    up.addDeletion(nco::default_contact_me::iri(), nie::contentLastModified::iri(), RDFVariable(), defaultGraph);
 
     up.addInsertion(inserts, defaultGraph);
     up.addInsertion(imAccountInserts, privateGraph);
