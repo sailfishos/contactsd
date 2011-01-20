@@ -159,7 +159,7 @@ void CDTpController::onSyncStarted(CDTpAccountPtr accountWrapper)
     mImportActive++;
 
     Tp::AccountPtr account = accountWrapper->account();
-    Q_EMIT importStarted(account->displayName(), account->objectPath());
+    Q_EMIT importStarted(accountWrapper->providerName(), account->objectPath());
 }
 
 void CDTpController::onSyncEnded(CDTpAccountPtr accountWrapper, int contactsAdded, int contactsRemoved)
@@ -167,6 +167,6 @@ void CDTpController::onSyncEnded(CDTpAccountPtr accountWrapper, int contactsAdde
     mImportActive--;
 
     Tp::AccountPtr account = accountWrapper->account();
-    Q_EMIT importEnded(account->displayName(), account->objectPath(),
+    Q_EMIT importEnded(accountWrapper->providerName(), account->objectPath(),
         contactsAdded, contactsRemoved, 0);
 }

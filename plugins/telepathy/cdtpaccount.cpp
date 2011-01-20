@@ -25,6 +25,7 @@
 #include <TelepathyQt4/PendingContacts>
 #include <TelepathyQt4/PendingOperation>
 #include <TelepathyQt4/PendingReady>
+#include <TelepathyQt4/Profile>
 
 #include <QDebug>
 
@@ -55,6 +56,16 @@ QList<CDTpContactPtr> CDTpAccount::contacts() const
     }
 
     return contacts;
+}
+
+QString CDTpAccount::providerName() const
+{
+    Tp::ProfilePtr profile = mAccount->profile();
+    if (profile != 0) {
+        return profile->provider();
+    }
+
+    return mAccount->serviceName();
 }
 
 void CDTpAccount::onAccountReady(Tp::PendingOperation *op)
