@@ -45,7 +45,7 @@ int main(int argc, char **argv)
     int i = 1; // ignore argv[0]
 
     logger->setParent(&app);
-    logger->setConsoleLoggingEnabled(false);
+    logger->setConsoleLoggingEnabled(!qgetenv("CONTACTSD_DEBUG").isEmpty());
     while (i < args.count()) {
         arg = args.at(i);
         if (arg == "--plugins") {
