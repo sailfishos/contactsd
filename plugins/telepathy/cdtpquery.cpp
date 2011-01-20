@@ -105,7 +105,7 @@ void CDTpContactsSelectQuery::setSelect(const RDFVariable &imContact,
     select.addColumn("contact", imContact);
     select.addColumn("affiliation", imAffiliation);
     select.addColumn("address", imAddress);
-    select.addColumn("generator", imContact.property<nie::generator>());
+    select.addColumn("generator", imContact.optional().property<nie::generator>());
     select.addColumn("localUID", imContact.property<nco::contactLocalUID>());
 
     CDTpSelectQuery::setSelect(select);
