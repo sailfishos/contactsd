@@ -1,25 +1,26 @@
-include($$TOP_SOURCEDIR/check.pri)
+TARGET = ut_telepathyplugin
+target.path = $$BINDIR
+
+include(check.pri)
+include(tests.pri)
+
+TEMPLATE = app
 
 CONFIG += test qt mobility
-
 QT += testlib dbus
 MOBILITY += contacts
-
 CONFIG += link_pkgconfig
 PKGCONFIG += TelepathyQt4 qttracker telepathy-glib
-
 DEFINES += QT_NO_KEYWORDS
 
-LIBS += -Wl,-rpath,$$TOP_BUILDDIR/tests/lib/glib -L$$TOP_BUILDDIR/tests/lib/glib -ltestsglib
-INCLUDEPATH += $$TOP_SOURCEDIR
+INCLUDEPATH += ..
+QMAKE_LIBDIR += ../libtelepathy
+LIBS += -llibtelepathy
 
 CONFIG(coverage): {
 QMAKE_CXXFLAGS += -c -g --coverage -ftest-coverage -fprofile-arcs
 LIBS += -lgcov
 }
-
-TARGET = ut_telepathyplugin
-target.path = /usr/bin/
 
 HEADERS += test-telepathy-plugin.h \
     test.h

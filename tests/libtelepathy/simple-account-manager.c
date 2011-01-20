@@ -190,3 +190,26 @@ tp_tests_simple_account_manager_add_account (
 
   tp_svc_account_manager_emit_account_validity_changed (self, object_path, valid);
 }
+
+static void
+remove_from_array (GPtrArray *array, const gchar *str)
+{
+  guint i;
+
+  for (i = 0; i < array->len; i++)
+    if (!tp_strdiff (str, g_ptr_array_index (array, i)))
+      {
+        g_ptr_array_remove_index_fast (array, i);
+        return;
+      }
+}
+
+void
+tp_tests_simple_account_manager_remove_account (
+    TpTestsSimpleAccountManager *self,
+    const gchar *object_path)
+{
+  remove_from_array (self->priv->valid_accounts, object_path);
+  remove_from_array (self->priv->valid_accounts, object_path);
+  tp_svc_account_manager_emit_account_removed (self, object_path);
+}

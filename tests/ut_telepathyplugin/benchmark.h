@@ -26,7 +26,7 @@
 
 #include <telepathy-glib/telepathy-glib.h>
 
-#include "tests/lib/glib/contact-list-manager.h"
+#include "lib/contact-list-manager.h"
 
 QTM_USE_NAMESPACE
 

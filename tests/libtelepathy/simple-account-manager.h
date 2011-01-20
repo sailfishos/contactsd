@@ -57,6 +57,10 @@ void tp_tests_simple_account_manager_add_account (
     const gchar *object_path,
     gboolean valid);
 
+void tp_tests_simple_account_manager_remove_account (
+    TpTestsSimpleAccountManager *self,
+    const gchar *object_path);
+
 G_END_DECLS
 
 #endif /* #ifndef __TP_TESTS_SIMPLE_ACCOUNT_MANAGER_H__ */

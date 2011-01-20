@@ -200,9 +200,16 @@ tp_tests_simple_account_set_property (GObject *object,
 
   switch (property_id) {
     case PROP_PARAMETERS:
-      if (self->priv->parameters)
-        g_hash_table_unref (self->priv->parameters);
-      self->priv->parameters = g_value_dup_boxed (value);
+      if (g_value_get_boxed (value) != NULL)
+        {
+          if (self->priv->parameters)
+            g_hash_table_unref (self->priv->parameters);
+          self->priv->parameters = g_value_dup_boxed (value);
+        }
+      else
+        {
+          g_hash_table_remove_all (self->priv->parameters);
+        }
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, spec);
@@ -518,4 +525,10 @@ tp_tests_simple_account_set_connection (TpTestsSimpleAccount *self,
           connection_ready_cb, self);
       g_object_unref (dbus);
     }
+}
+
+void
+tp_tests_simple_account_removed (TpTestsSimpleAccount *self)
+{
+  tp_svc_account_emit_removed (self);
 }

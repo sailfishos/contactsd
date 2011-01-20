@@ -1,0 +1,11 @@
+#! /bin/sh
+
+tmpdir=$(mktemp -d)
+trap "rm -rf $tmpdir" INT TERM EXIT
+
+export XDG_DATA_HOME=$tmpdir/local
+export XDG_CACHE_HOME=$tmpdir/cache
+export XDG_CONFIG_HOME=$tmpdir/config
+
+@SCRIPTDIR@/with-session-bus.sh --config-file=@SCRIPTDIR@/session.conf -- \
+  @SCRIPTDIR@/@WITH_DAEMON@ @BINDIR@/ut_telepathyplugin $@

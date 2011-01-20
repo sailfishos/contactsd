@@ -20,10 +20,10 @@
 #include <QDebug>
 #include <QCoreApplication>
 
-#include "tests/lib/glib/simple-account-manager.h"
-#include "tests/lib/glib/simple-account.h"
-#include "tests/lib/glib/contacts-conn.h"
-#include "tests/lib/glib/util.h"
+#include "lib/simple-account-manager.h"
+#include "lib/simple-account.h"
+#include "lib/contacts-conn.h"
+#include "lib/util.h"
 
 #include "benchmark.h"
 

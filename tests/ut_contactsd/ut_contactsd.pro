@@ -10,7 +10,7 @@ LIBS += -lgcov
 }
 
 TARGET = ut_contactsd
-target.path = /usr/bin/
+target.path = $$BINDIR
 
 INCLUDEPATH += $$TOP_SOURCEDIR/src
 

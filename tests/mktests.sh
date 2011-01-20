@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-package=qtcontacts-tracker-tests
+package=contactsd-tests
 
 srcdir=`dirname "$0"`
 srcdir=`cd "$srcdir" && pwd`
@@ -8,15 +8,21 @@ srcdir=`cd "$srcdir" && pwd`
 cat <<EOF
 <testdefinition version="0.1">
   <suite name="$package">
-    <description>Unit and regression tests for QtContacts' tracker backend</description>
-    <set name="$package">
+    <description>Unit and regression tests for Contacts Daemon</description>
 EOF
 
 for suite in "$@"
 do
     test -f "$suite/$suite.skip" && continue
 
-    cat <<EOF
+    if [ -f $suite/$suite-wrapper.sh ]; then
+        command="$suite-wrapper.sh"
+    else
+        command="$suite"
+    fi
+
+cat <<EOF
+    <set name="$suite">
 EOF
 
     "$suite/$suite" -functions | sed -ne 's/()$//p' | while read test
@@ -31,10 +37,10 @@ EOF
             description="$suite::$test(): no description available"
         fi
 
-        cat <<EOF
+cat <<EOF
       <case $attributes>
         <description>$description</description>
-        <step>/usr/bin/$suite $test</step>
+        <step>/usr/bin/$command $test</step>
       </case>
 EOF
     done
@@ -44,12 +50,12 @@ EOF
         <scratchbox>true</scratchbox>
         <hardware>true</hardware>
       </environments>
+    </set>
 EOF
 
 done
 
 cat <<EOF
-    </set>
   </suite>
 </testdefinition>
 EOF

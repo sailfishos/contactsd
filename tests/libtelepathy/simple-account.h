@@ -54,6 +54,8 @@ GType tp_tests_simple_account_get_type (void);
 void tp_tests_simple_account_set_connection (TpTestsSimpleAccount *self,
     const gchar *object_path);
 
+void tp_tests_simple_account_removed (TpTestsSimpleAccount *self);
+
 G_END_DECLS
 
 #endif /* #ifndef __TP_TESTS_SIMPLE_ACCOUNT_H__ */

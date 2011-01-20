@@ -28,8 +28,10 @@
 #include <telepathy-glib/telepathy-glib.h>
 #include <TelepathyQt4/Contact>
 
-#include "tests/lib/glib/contacts-conn.h"
-#include "tests/lib/glib/contact-list-manager.h"
+#include "libtelepathy/contacts-conn.h"
+#include "libtelepathy/contact-list-manager.h"
+#include "libtelepathy/simple-account-manager.h"
+#include "libtelepathy/simple-account.h"
 
 #include "test.h"
 
@@ -45,19 +47,20 @@ public:
     };
 
     enum VerifyFlags {
-        None          = 0,
-        Alias         = (1 << 0),
-        Presence      = (1 << 1),
-        Avatar        = (1 << 2),
-        Authorization = (1 << 3),
-        Info          = (1 << 4),
-        All           = (1 << 5) - 1
+        None           = 0,
+        Alias          = (1 << 0),
+        Presence       = (1 << 1),
+        Avatar         = (1 << 2),
+        Authorization  = (1 << 3),
+        Info           = (1 << 4),
+        OnlineAccounts = (1 << 5),
+        All            = (1 << 6) - 1
     };
 
     TestExpectation();
     void verify(QContact &contact) const;
 
-    VerifyFlags flags;
+    int flags;
     Event event;
 
     int nOnlineAccounts;
@@ -69,6 +72,9 @@ public:
     QString subscriptionState;
     QString publishState;
     QList<QContactDetail> details;
+
+    bool fetching;
+    QContactManager::Error fetchError;
 };
 
 /**
@@ -84,6 +90,7 @@ protected Q_SLOTS:
     void contactsAdded(const QList<QContactLocalId>& contactIds);
     void contactsChanged(const QList<QContactLocalId>& contactIds);
     void contactsRemoved(const QList<QContactLocalId>& contactIds);
+    void onContactsFetched();
 
 private Q_SLOTS:
     void initTestCase();
@@ -100,15 +107,28 @@ private Q_SLOTS:
     void cleanupTestCase();
 
 private:
+    enum TestState {
+        TestStateNone,
+        TestStateInit,
+        TestStateReady,
+        TestStateDisconnecting,
+        TestStateCleanup
+    } mState;
+
     QContactManager *mContactManager;
+    TpTestsSimpleAccountManager *mAccountManager;
+    TpTestsSimpleAccount *mAccount;
+
     TpBaseConnection *mConnService;
+    TpConnection *mConnection;
     TestContactListManager *mListManager;
 
-    QHash<TpHandle, QString> mContacts;
     TpHandle ensureContact(const gchar *id);
+    int mContactCount;
 
-    QList<TestExpectation> mExpectations;
+    TestExpectation mExpectation;
     void verify(TestExpectation::Event, const QList<QContactLocalId>&);
+    void fetchAndVerifyContacts(const QList<QContactLocalId> &contactIds);
 
     QList<QContactDetail> createContactInfo(GPtrArray **infoPtrArray);
 };

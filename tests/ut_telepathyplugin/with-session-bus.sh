@@ -12,13 +12,6 @@
 
 set -e
 
-tmpdir=$(mktemp -d)
-trap "rm -rf $tmpdir; exit" INT TERM EXIT
-
-export XDG_DATA_HOME=$tmpdir/.local
-export XDG_CACHE_HOME=$tmpdir/.cache
-export XDG_CONFIG_HOME=$tmpdir/.config
-
 me=with-session-bus
 
 dbus_daemon_args="--print-address=5 --print-pid=6 --fork"

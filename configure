@@ -119,11 +119,7 @@ TOP_BUILDDIR = \$\$quote($TOP_BUILDDIR)
 CONFIG += \$\$quote($ENABLE_COVERAGE)
 EOF
 
-infiles="contactsd-1.0.pc \
-         tests/runtest.sh \
-         tests/dbus-1/session.conf \
-         tests/dbus-1/services/org.freedesktop.Telepathy.AccountManager.service \
-         tests/benchmark/run.sh"
+infiles="contactsd-1.0.pc"
 for infile in $infiles; do
     echo "Generating $infile"
     # pre-process .in files

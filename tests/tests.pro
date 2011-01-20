@@ -3,16 +3,16 @@ include(coverage.pri)
 TEMPLATE = subdirs
 CONFIG += ordered
 
-SUBDIRS += lib ut_contactsd account-manager ut_telepathyplugin benchmark
-UNIT_TESTS += ut_contactsd
+SUBDIRS += libtelepathy ut_contactsd ut_telepathyplugin
+ut_telepathyplugin.depends += libtelepathy
 
-OTHER_FILES += \
-    mktests.sh \
-    run-all.sh
+UNIT_TESTS += ut_contactsd ut_telepathyplugin
+
+OTHER_FILES += mktests.sh
 
 testxml.target = tests.xml
 testxml.commands = $$PWD/mktests.sh $$UNIT_TESTS >$@ || rm -f $@
-testxml.depends = $$UNIT_TESTS/*
+testxml.depends = $$UNIT_TESTS
 
 install_testxml.files = $$testxml.target
 install_testxml.path = $$PREFIX/share/contactsd-tests

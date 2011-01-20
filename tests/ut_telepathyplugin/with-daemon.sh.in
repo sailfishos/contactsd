@@ -1,0 +1,22 @@
+#! /bin/sh
+
+tracker-control -rs > /dev/null
+
+export CONTACTSD_PLUGINS_DIRS=@PLUGINDIR@
+@BINDIR@/contactsd &
+pid=$!
+
+cleanup ()
+{
+  kill -INT $pid
+  tracker-control -r > /dev/null
+}
+trap cleanup INT HUP TERM
+
+e=0
+"$@" || e=$?
+
+trap - INT HUP TERM
+cleanup
+
+exit $e
