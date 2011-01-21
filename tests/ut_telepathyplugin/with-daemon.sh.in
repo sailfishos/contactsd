@@ -16,7 +16,8 @@ trap cleanup INT HUP TERM
 "$@" &
 ut_pid=$!
 
-sleep 2
+# FIXME: It is ugly to hardcode such path
+/usr/lib/mission-control/mcclient6-wait-for-name "org.freedesktop.Telepathy.AccountManager"
 
 # Start Contacts Daemon in background
 export CONTACTSD_PLUGINS_DIRS=@PLUGINDIR@

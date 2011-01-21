@@ -34,7 +34,7 @@ Section: libdevel
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, testrunner-lite, ci-testing,
   libtelepathy-glib0 (>= 0.13.7), libqtm-contacts, libqtcontacts-tracker,
-  contactsd, tracker
+  contactsd, tracker, libmcclient6
 XB-Maemo-CI-Packages: libqttracker1pre6, libqtcontacts-tracker, contactsd,
   tracker
 XB-Maemo-CI-Stage: fast, staging, acceptance
