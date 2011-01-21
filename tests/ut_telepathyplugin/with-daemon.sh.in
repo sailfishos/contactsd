@@ -1,20 +1,32 @@
-#! /bin/sh
+#! /bin/bash
+
+set -m
 
 tracker-control -rs > /dev/null
 
-export CONTACTSD_PLUGINS_DIRS=@PLUGINDIR@
-@BINDIR@/contactsd &
-pid=$!
-
 cleanup ()
 {
-  kill -INT $pid
+  kill -INT $contactsd_pid
+  kill -INT $ut_pid
   tracker-control -r > /dev/null
 }
 trap cleanup INT HUP TERM
 
+# Start the unit test in background so it register the AM
+"$@" &
+ut_pid=$!
+
+sleep 1
+
+# Start Contacts Daemon in background
+export CONTACTSD_PLUGINS_DIRS=@PLUGINDIR@
+@BINDIR@/contactsd &
+contactsd_pid=$!
+
+# Move unit test to front
 e=0
-"$@" || e=$?
+fg %1
+e=$?
 
 trap - INT HUP TERM
 cleanup

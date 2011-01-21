@@ -5,7 +5,6 @@ daemon.commands = \
     sed -e \"s,@BINDIR@,$$BINDIR,g\" \
         -e \"s,@PLUGINDIR@,$$LIBDIR/contactsd-1.0/plugins,g\" \
     $< > $@ && chmod +x $@ || rm -f $@
-daemon.commands += chmod +x $@
 
 wrapper.target = ut_telepathyplugin-wrapper.sh
 wrapper.depends = ut_telepathyplugin-wrapper.sh.in
