@@ -285,14 +285,13 @@ void TestTelepathyPlugin::testAuthorization()
     QCOMPARE(mLoop->exec(), 0);
 }
 
-QList<QContactDetail> TestTelepathyPlugin::createContactInfo(GPtrArray **infoPtrArray)
+QList<QContactDetail> TestTelepathyPlugin::createContactInfoTel(
+    GPtrArray **infoPtrArray, const gchar *number)
 {
     QList<QContactDetail> ret;
+
     *infoPtrArray = g_ptr_array_new_with_free_func((GDestroyNotify) g_value_array_free);
-
-    gchar *randNumber = g_strdup_printf("%d", qrand());
-    const gchar *fieldValues[] = { randNumber, NULL };
-
+    const gchar *fieldValues[] = { number, NULL };
     g_ptr_array_add (*infoPtrArray, tp_value_array_build(3,
         G_TYPE_STRING, "tel",
         G_TYPE_STRV, NULL,
@@ -301,12 +300,10 @@ QList<QContactDetail> TestTelepathyPlugin::createContactInfo(GPtrArray **infoPtr
 
     QContactPhoneNumber phoneNumber;
     phoneNumber.setContexts("Other");
-    phoneNumber.setDetailUri(QString("tel:%1").arg(randNumber));
-    phoneNumber.setNumber(QString("%1").arg(randNumber));
+    phoneNumber.setDetailUri(QString("tel:%1").arg(number));
+    phoneNumber.setNumber(QString("%1").arg(number));
     phoneNumber.setSubTypes("Voice");
     ret << phoneNumber;
-
-    g_free(randNumber);
 
     return ret;
 }
@@ -328,19 +325,49 @@ void TestTelepathyPlugin::testContactInfo()
     mExpectation.flags = TestExpectation::Info | TestExpectation::OnlineAccounts;
 
     /* Set some ContactInfo on the contact */
-    mExpectation.details = createContactInfo(&infoPtrArray);
+    mExpectation.details = createContactInfoTel(&infoPtrArray, "123");
     tp_tests_contacts_connection_change_contact_info(
         TP_TESTS_CONTACTS_CONNECTION(mConnService), handle, infoPtrArray);
     g_ptr_array_unref(infoPtrArray);
     QCOMPARE(mLoop->exec(), 0);
 
     /* Change the ContactInfo */
-    mExpectation.details = createContactInfo(&infoPtrArray);
+    mExpectation.details = createContactInfoTel(&infoPtrArray, "456");
     tp_tests_contacts_connection_change_contact_info(
         TP_TESTS_CONTACTS_CONNECTION(mConnService), handle, infoPtrArray);
     g_ptr_array_unref(infoPtrArray);
     QCOMPARE(mLoop->exec(), 0);
 }
+
+void TestTelepathyPlugin::testBug220851()
+{
+    /* Create a contact with no ContactInfo */
+    TpHandle handle = ensureContact("bug220851");
+    test_contact_list_manager_request_subscription(mListManager, 1, &handle,
+        "wait");
+
+    mExpectation.event = TestExpectation::Added;
+    mExpectation.flags = TestExpectation::OnlineAccounts;
+    mExpectation.accountUri = QString("bug220851");
+    QCOMPARE(mLoop->exec(), 0);
+
+    /* An address has 7 fields normally. Verify it's fine to give less */
+    GPtrArray *infoPtrArray = g_ptr_array_new_with_free_func((GDestroyNotify) g_value_array_free);
+    const gchar *fieldValues[] = { "pobox", "extendedAddress", NULL };
+
+    g_ptr_array_add (infoPtrArray, tp_value_array_build(3,
+        G_TYPE_STRING, "adr",
+        G_TYPE_STRV, NULL,
+        G_TYPE_STRV, fieldValues,
+        G_TYPE_INVALID));
+
+    tp_tests_contacts_connection_change_contact_info(
+        TP_TESTS_CONTACTS_CONNECTION(mConnService), handle, infoPtrArray);
+    g_ptr_array_unref(infoPtrArray);
+    mExpectation.event = TestExpectation::Changed;
+    QCOMPARE(mLoop->exec(), 0);
+}
+
 
 void TestTelepathyPlugin::testRemoveContacts()
 {

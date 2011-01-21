@@ -96,12 +96,16 @@ private Q_SLOTS:
     void initTestCase();
     void init();
 
+    /* Generic tests */
     void testBasicUpdates();
     void testSelfContact();
     void testAuthorization();
     void testContactInfo();
     void testRemoveContacts();
     void testSetOffline();
+
+    /* Specific tests */
+    void testBug220851();
 
     void cleanup();
     void cleanupTestCase();
@@ -130,7 +134,8 @@ private:
     void verify(TestExpectation::Event, const QList<QContactLocalId>&);
     void fetchAndVerifyContacts(const QList<QContactLocalId> &contactIds);
 
-    QList<QContactDetail> createContactInfo(GPtrArray **infoPtrArray);
+    QList<QContactDetail> createContactInfoTel(GPtrArray **infoPtrArray,
+        const gchar *number);
 };
 
 #endif

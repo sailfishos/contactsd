@@ -727,6 +727,15 @@ void CDTpStorage::addRemoveContactInfoToQuery(RDFUpdate &query,
     query.addDeletion(imContact, nco::note::iri(), RDFVariable(), graph);
 }
 
+QString CDTpStorage::safeStringListAt(const QStringList &list, int i)
+{
+    if (i >= list.size()) {
+        return QString();
+    }
+
+    return list.at(i);
+}
+
 void CDTpStorage::addContactInfoToQuery(RDFUpdate &query,
         RDFStatementList &inserts,
         const RDFVariable &imContact,
@@ -762,46 +771,46 @@ void CDTpStorage::addContactInfoToQuery(RDFUpdate &query,
         if (!field.fieldName.compare("tel")) {
             addContactVoicePhoneNumberToQuery(graphInserts, inserts,
                     ensureAffiliation(affiliationsMap, graphInserts, imContact, field),
-                    field.fieldValue.at(0));
+                    safeStringListAt(field.fieldValue, 0));
         } else if (!field.fieldName.compare("adr")) {
             addContactAddressToQuery(graphInserts,
                     ensureAffiliation(affiliationsMap, graphInserts, imContact, field),
-                    field.fieldValue.at(0),
-                    field.fieldValue.at(1),
-                    field.fieldValue.at(2),
-                    field.fieldValue.at(3),
-                    field.fieldValue.at(4),
-                    field.fieldValue.at(5),
-                    field.fieldValue.at(6));
+                    safeStringListAt(field.fieldValue, 0),
+                    safeStringListAt(field.fieldValue, 1),
+                    safeStringListAt(field.fieldValue, 2),
+                    safeStringListAt(field.fieldValue, 3),
+                    safeStringListAt(field.fieldValue, 4),
+                    safeStringListAt(field.fieldValue, 5),
+                    safeStringListAt(field.fieldValue, 6));
         } else if (!field.fieldName.compare("email")) {
             addContactEmailToQuery(graphInserts, inserts,
                     ensureAffiliation(affiliationsMap, graphInserts, imContact, field),
-                    field.fieldValue.at(0));
+                    safeStringListAt(field.fieldValue, 0));
         } else if (!field.fieldName.compare("url")) {
             RDFVariable affiliation = ensureAffiliation(affiliationsMap, graphInserts, imContact, field);
-            graphInserts << RDFStatement(affiliation, nco::url::iri(), LiteralValue(field.fieldValue.at(0)));
+            graphInserts << RDFStatement(affiliation, nco::url::iri(), LiteralValue(safeStringListAt(field.fieldValue, 0)));
         } else if (!field.fieldName.compare("title")) {
             RDFVariable affiliation = ensureAffiliation(affiliationsMap, graphInserts, imContact, field);
-            graphInserts << RDFStatement(affiliation, nco::title::iri(), LiteralValue(field.fieldValue.at(0)));
+            graphInserts << RDFStatement(affiliation, nco::title::iri(), LiteralValue(safeStringListAt(field.fieldValue, 0)));
         } else if (!field.fieldName.compare("role")) {
             RDFVariable affiliation = ensureAffiliation(affiliationsMap, graphInserts, imContact, field);
-            graphInserts << RDFStatement(affiliation, nco::role::iri(), LiteralValue(field.fieldValue.at(0)));
+            graphInserts << RDFStatement(affiliation, nco::role::iri(), LiteralValue(safeStringListAt(field.fieldValue, 0)));
         } else if (!field.fieldName.compare("note") || !field.fieldName.compare("desc")) {
-            graphInserts << RDFStatement(imContact, nco::note::iri(), LiteralValue(field.fieldValue.at(0)));
+            graphInserts << RDFStatement(imContact, nco::note::iri(), LiteralValue(safeStringListAt(field.fieldValue, 0)));
         } else if (!field.fieldName.compare("bday")) {
             /* Tracker will reject anything not [-]CCYY-MM-DDThh:mm:ss[Z|(+|-)hh:mm]
              * VCard spec allows only ISO 8601, but most IM clients allows
              * any string. */
             /* FIXME: support more date format for compatibility */
-            QDate date = QDate::fromString(field.fieldValue.at(0), "yyyy-MM-dd");
+            QDate date = QDate::fromString(safeStringListAt(field.fieldValue, 0), "yyyy-MM-dd");
             if (!date.isValid()) {
-                date = QDate::fromString(field.fieldValue.at(0), "yyyyMMdd");
+                date = QDate::fromString(safeStringListAt(field.fieldValue, 0), "yyyyMMdd");
             }
 
             if (date.isValid()) {
                 graphInserts << RDFStatement(imContact, nco::birthDate::iri(), LiteralValue(date));
             } else {
-                qDebug() << "Unsupported bday format:" << field.fieldValue.at(0);
+                qDebug() << "Unsupported bday format:" << safeStringListAt(field.fieldValue, 0);
             }
         } else {
             qDebug() << "Unsupported VCard field" << field.fieldName;

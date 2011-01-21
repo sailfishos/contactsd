@@ -161,6 +161,7 @@ private:
             RDFStatementList &graphInserts,
             const RDFVariable &imContact,
             const Tp::ContactInfoField &field);
+    QString safeStringListAt(const QStringList &list, int i);
 
     void queueUpdate(CDTpContactPtr contactWrapper, CDTpContact::Changes);
     QHash<CDTpContactPtr, CDTpContact::Changes> mUpdateQueue;
