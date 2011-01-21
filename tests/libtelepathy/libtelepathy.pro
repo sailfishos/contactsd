@@ -9,6 +9,7 @@ PKGCONFIG += telepathy-glib
 HEADERS += \
     contacts-conn.h \
     contact-list-manager.h \
+    debug.h \
     simple-account.h \
     simple-account-manager.h \
     simple-conn.h \
@@ -18,7 +19,7 @@ HEADERS += \
 SOURCES += \
     contacts-conn.c \
     contact-list-manager.c \
-    debug.h \
+    debug.c \
     simple-account.c \
     simple-account-manager.c \
     simple-conn.c \

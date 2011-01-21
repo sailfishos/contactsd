@@ -27,6 +27,7 @@
 #include <TelepathyQt4/Debug>
 
 #include "libtelepathy/util.h"
+#include "libtelepathy/debug.h"
 
 #include "test-telepathy-plugin.h"
 
@@ -80,6 +81,7 @@ void TestTelepathyPlugin::initTestCase()
 
     if (!qgetenv("CONTACTSD_DEBUG").isEmpty()) {
         tp_debug_set_flags("all");
+        test_debug_enable(TRUE);
         debugEnabled = true;
     }
 

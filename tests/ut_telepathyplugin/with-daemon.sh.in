@@ -16,7 +16,7 @@ trap cleanup INT HUP TERM
 "$@" &
 ut_pid=$!
 
-sleep 1
+sleep 2
 
 # Start Contacts Daemon in background
 export CONTACTSD_PLUGINS_DIRS=@PLUGINDIR@
