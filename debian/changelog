@@ -1,3 +1,11 @@
+contactsd (0.5.49-1) unstable; urgency=low
+
+  * Changes: add telepathy plugin unit tests to contactsd-tests package
+  * Fixes: NB#215021 - Contactsd gets incorrect names for importing IM services
+  * Fixes: NB#220851 - Crash when an IM contact has special postal address
+
+ -- Xavier Claessens <xavier.claessens@collabora.co.uk>  Fri, 21 Jan 2011 16:09:17 +0100
+
 contactsd (0.5.48-2) unstable; urgency=low
 
   * Version bumpup
