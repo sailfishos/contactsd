@@ -22,6 +22,7 @@
 
 #include <TelepathyQt4/AvatarData>
 #include <TelepathyQt4/ContactCapabilities>
+#include <TelepathyQt4/ConnectionCapabilities>
 
 #include "cdtpstorage.h"
 
@@ -283,6 +284,7 @@ void CDTpStorage::onAccountOfflineSelectQueryFinished(CDTpSelectQuery *query)
     RDFVariable unknownState = trackerStatusFromTpPresenceStatus(QLatin1String("unknown"));
     CDTpAccountContactsSelectQuery *contactsQuery =
         qobject_cast<CDTpAccountContactsSelectQuery*>(query);
+    CDTpAccountPtr accountWrapper = contactsQuery->accountWrapper();
 
     RDFUpdate updateQuery;
 
@@ -290,6 +292,7 @@ void CDTpStorage::onAccountOfflineSelectQueryFinished(CDTpSelectQuery *query)
         QUrl imContact(item.imContact);
         QUrl imAddress(item.imAddress);
 
+        /* Update presence */
         updateQuery.addDeletion(imAddress, nco::imPresence::iri(),
             RDFVariable(), defaultGraph);
         updateQuery.addDeletion(imAddress, nco::presenceLastModified::iri(),
@@ -303,6 +306,16 @@ void CDTpStorage::onAccountOfflineSelectQueryFinished(CDTpSelectQuery *query)
             LiteralValue(QDateTime::currentDateTime()),defaultGraph);
         updateQuery.addInsertion(imContact, nie::contentLastModified::iri(),
             LiteralValue(QDateTime::currentDateTime()), defaultGraph);
+
+        /* Update capabilities */
+        RDFVariableList imAddressPropertyList;
+        RDFStatementList inserts;
+        addContactCapabilitiesInfoToQuery(inserts, imAddressPropertyList,
+            imAddress, accountWrapper->account()->capabilities());
+        Q_FOREACH (RDFVariable property, imAddressPropertyList) {
+            updateQuery.addDeletion(imAddress, property, RDFVariable(), defaultGraph);
+        }
+        updateQuery.addInsertion(inserts, defaultGraph);
     }
 
     new CDTpUpdateQuery(updateQuery);
@@ -519,7 +532,7 @@ void CDTpStorage::onContactUpdateSelectQueryFinished(CDTpSelectQuery *query)
         if (changes & CDTpContact::Capabilities) {
             qDebug() << "  capabilities changed";
             addContactCapabilitiesInfoToQuery(inserts, imAddressPropertyList,
-                imAddress, contactWrapper);
+                imAddress, contactWrapper->contact()->capabilities());
         }
         if (changes & CDTpContact::Avatar) {
             qDebug() << "  avatar changed";
@@ -632,23 +645,21 @@ void CDTpStorage::addContactPresenceInfoToQuery(RDFStatementList &inserts,
 void CDTpStorage::addContactCapabilitiesInfoToQuery(RDFStatementList &inserts,
         RDFVariableList &properties,
         const RDFVariable &imAddress,
-        CDTpContactPtr contactWrapper)
+        Tp::CapabilitiesBase capabilities)
 {
-    Tp::ContactPtr contact = contactWrapper->contact();
-
     properties << nco::imCapability::iri();
 
-    if (contact->capabilities().textChats()) {
+    if (capabilities.textChats()) {
         inserts << RDFStatement(imAddress, nco::imCapability::iri(),
                     nco::im_capability_text_chat::iri());
     }
 
-    if (contact->capabilities().streamedMediaAudioCalls()) {
+    if (capabilities.streamedMediaAudioCalls()) {
         inserts << RDFStatement(imAddress, nco::imCapability::iri(),
                     nco::im_capability_audio_calls::iri());
     }
 
-    if (contact->capabilities().streamedMediaVideoCalls()) {
+    if (capabilities.streamedMediaVideoCalls()) {
         inserts << RDFStatement(imAddress, nco::imCapability::iri(),
                     nco::im_capability_video_calls::iri());
     }

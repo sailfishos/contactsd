@@ -118,7 +118,7 @@ private:
     void addContactCapabilitiesInfoToQuery(RDFStatementList &inserts,
             RDFVariableList &lists,
             const RDFVariable &imAddress,
-            CDTpContactPtr contactWrapper);
+            Tp::CapabilitiesBase capabilities);
     void addContactAvatarInfoToQuery(RDFUpdate &query,
             RDFStatementList &inserts,
             RDFVariableList &lists,
