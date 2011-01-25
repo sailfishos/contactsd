@@ -40,8 +40,8 @@ public:
     virtual void init() = 0;
     virtual PluginMetaData metaData() = 0;
 
-    // TODO we don't need this function!!!!!!!!!!!!!!!!!!!!!!!
-    virtual bool hasActiveImports() const = 0;
+    // deprecated - a trivial implementation is given to preserve ABI
+    virtual bool hasActiveImports() const { return false; };
 
 /* The plugin that wants to provide contacts importing feature
    must decalre the following signals:

@@ -126,8 +126,6 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir, const QString
         connect(basePlugin, SIGNAL(importEnded(const QString &, const QString &, int, int, int)),
                 this, SLOT(onPluginImportEnded(const QString &, const QString &, int,int,int)));
         plugin->init();
-
-        // TODO check if this plugin has active import??? or not necessarily since it's just start
     }
 }
 

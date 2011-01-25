@@ -60,9 +60,4 @@ QMap<QString, QVariant> CDTpPlugin::metaData()
     return data;
 }
 
-bool CDTpPlugin::hasActiveImports() const
-{
-    return mController ? mController->hasActiveImports() :  false;
-}
-
 Q_EXPORT_PLUGIN2(CDTpPlugin, CDTpPlugin)

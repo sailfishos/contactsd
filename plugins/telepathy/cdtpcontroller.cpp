@@ -26,9 +26,7 @@
 #include <TelepathyQt4/AccountManager>
 #include <TelepathyQt4/PendingReady>
 
-CDTpController::CDTpController(QObject *parent)
-    : QObject(parent),
-      mImportActive(0)
+CDTpController::CDTpController(QObject *parent) : QObject(parent)
 {
     qDebug() << "Creating storage";
     mStorage = new CDTpStorage(this);
@@ -50,11 +48,6 @@ CDTpController::CDTpController(QObject *parent)
 
 CDTpController::~CDTpController()
 {
-}
-
-bool CDTpController::hasActiveImports() const
-{
-    return mImportActive > 0;
 }
 
 void CDTpController::onAccountManagerReady(Tp::PendingOperation *op)
@@ -156,16 +149,12 @@ void CDTpController::removeAccount(const QString &accountObjectPath)
 
 void CDTpController::onSyncStarted(CDTpAccountPtr accountWrapper)
 {
-    mImportActive++;
-
     Tp::AccountPtr account = accountWrapper->account();
     Q_EMIT importStarted(accountWrapper->providerName(), account->objectPath());
 }
 
 void CDTpController::onSyncEnded(CDTpAccountPtr accountWrapper, int contactsAdded, int contactsRemoved)
 {
-    mImportActive--;
-
     Tp::AccountPtr account = accountWrapper->account();
     Q_EMIT importEnded(accountWrapper->providerName(), account->objectPath(),
         contactsAdded, contactsRemoved, 0);

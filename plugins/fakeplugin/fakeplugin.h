@@ -38,7 +38,6 @@ public:
 
     void init();
     QMap<QString, QVariant> metaData();
-    bool hasActiveImports() const;
 private Q_SLOTS:
     void timeout();
 

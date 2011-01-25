@@ -37,8 +37,6 @@ public:
     CDTpController(QObject *parent = 0);
     ~CDTpController();
 
-    bool hasActiveImports() const;
-
 Q_SIGNALS:
     void importStarted(const QString &service, const QString &account);
     void importEnded(const QString &service, const QString &account, int contactsAdded, int contactsRemoved, int contactsMerged);
@@ -67,7 +65,6 @@ private:
     Tp::AccountManagerPtr mAM;
     Tp::AccountSetPtr mAccountSet;
     QHash<QString, CDTpAccountPtr> mAccounts;
-    int mImportActive;
 };
 
 #endif // CDTPCONTROLLER_H

@@ -40,7 +40,6 @@ public:
 
     void init();
     QMap<QString, QVariant> metaData();
-    bool hasActiveImports() const;
 
 Q_SIGNALS:
     void importStarted(const QString &service, const QString &account);

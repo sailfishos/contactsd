@@ -15,11 +15,6 @@ void DbusPlugin::init()
 {
 }
 
-bool DbusPlugin::hasActiveImports() const
-{
-    return mHasActiveImports;
-}
-
 QMap<QString, QVariant> DbusPlugin::metaData()
 {
     QMap<QString, QVariant> data;

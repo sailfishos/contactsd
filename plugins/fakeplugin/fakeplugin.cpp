@@ -13,11 +13,6 @@ void FakePlugin::init()
 {
 }
 
-bool FakePlugin::hasActiveImports() const
-{
-    return mHasActiveImports;
-}
-
 QMap<QString, QVariant> FakePlugin::metaData()
 {
     QMap<QString, QVariant> data;
