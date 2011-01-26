@@ -26,6 +26,7 @@
 #include <QUrl>
 
 #include <QtTracker/Tracker>
+#include <QtSparql/QSparqlQuery>
 
 #include "cdtpaccount.h"
 #include "cdtpcontact.h"
@@ -94,6 +95,7 @@ private Q_SLOTS:
     void onContactUpdateSelectQueryFinished(CDTpSelectQuery *query);
     void onAccountsUpdateQueryFinished(CDTpUpdateQuery *query);
     void onQueueTimerTimeout();
+    void onQueryFinished();
 
 private:
     void saveAccountAvatar(RDFUpdate &query, const QByteArray &data, const QString &mimeType,
@@ -164,10 +166,12 @@ private:
     QString safeStringListAt(const QStringList &list, int i);
 
     void queueUpdate(CDTpContactPtr contactWrapper, CDTpContact::Changes);
+    void oneSyncOperationFinished(CDTpAccountPtr accountWrapper);
+    void executeQuery(const QSparqlQuery &query);
+
+private:
     QHash<CDTpContactPtr, CDTpContact::Changes> mUpdateQueue;
     QTimer mQueueTimer;
-
-    void oneSyncOperationFinished(CDTpAccountPtr accountWrapper);
     QHash<CDTpAccountPtr, CDTpStorageSyncOperations> mSyncOperations;
 };
 

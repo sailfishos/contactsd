@@ -24,7 +24,10 @@
 #include <TelepathyQt4/ContactCapabilities>
 #include <TelepathyQt4/ConnectionCapabilities>
 
+#include <QtSparql>
+
 #include "cdtpstorage.h"
+#include "sparqlconnectionmanager.h"
 
 #define MAX_UPDATE_SIZE 999
 #define MAX_REMOVE_SIZE 999
@@ -1055,6 +1058,40 @@ void CDTpStorage::onQueueTimerTimeout()
             SLOT(onContactUpdateSelectQueryFinished(CDTpSelectQuery *)));
 
     mUpdateQueue.clear();
+}
+
+void CDTpStorage::executeQuery(const QSparqlQuery &query)
+{
+    QSparqlConnection &connection = com::nokia::contactsd::SparqlConnectionManager::defaultConnection();
+    QSparqlResult *result = connection.exec(query);
+
+    if (not result) {
+        qWarning() << Q_FUNC_INFO << " - QSparqlConnection::exec() == 0";
+        return;
+    }
+    if (result->hasError()) {
+        qDebug() << Q_FUNC_INFO << result->lastError().message();
+        delete result;
+        return;
+    }
+
+    result->setParent(this);
+    connect(result, SIGNAL(finished()), SLOT(onQueryFinished()), Qt::QueuedConnection);
+}
+
+void CDTpStorage::onQueryFinished()
+{
+    QSparqlResult *const result = qobject_cast<QSparqlResult *>(sender());
+
+    if (not result) {
+        qWarning() << Q_FUNC_INFO << ("Ignoring signal from invalid sender.");
+        return;
+    }
+
+    if (result->hasError()) {
+        qDebug() << Q_FUNC_INFO << result->lastError().message();
+    }
+    result->deleteLater();
 }
 
 void CDTpStorage::oneSyncOperationFinished(CDTpAccountPtr accountWrapper)
