@@ -37,7 +37,9 @@ CDTpAccount::CDTpAccount(const Tp::AccountPtr &account, QObject *parent)
 {
     qDebug() << "Introspecting account" << account->objectPath();
     connect(mAccount->becomeReady(
-            Tp::Account::FeatureCore | Tp::Account::FeatureAvatar),
+            Tp::Features() << Tp::Account::FeatureCore
+                           << Tp::Account::FeatureAvatar
+                           << Tp::Account::FeatureCapabilities),
             SIGNAL(finished(Tp::PendingOperation *)),
             SLOT(onAccountReady(Tp::PendingOperation *)));
 }
