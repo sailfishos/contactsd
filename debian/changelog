@@ -1,3 +1,9 @@
+contactsd (0.5.49-2) unstable; urgency=low
+
+  * Changes: Do not assume nco:IMAccount inherit from nco:IMAddress
+
+ -- Xavier Claessens <xavier.claessens@collabora.co.uk>  Mon, 31 Jan 2011 10:04:11 +0100
+
 contactsd (0.5.49-1) unstable; urgency=low
 
   * Changes: add telepathy plugin unit tests to contactsd-tests package
