@@ -118,7 +118,8 @@ void CDTpStorage::syncAccount(CDTpAccountPtr accountWrapper,
     // Create the IMAddress for this account's self contact
     RDFVariable imAddress(contactImAddress(accountObjectPath, accountId));
     inserts << RDFStatement(imAddress, rdf::type::iri(), nco::IMAddress::iri())
-            << RDFStatement(imAddress, nco::imID::iri(), LiteralValue(account->normalizedName()));
+            << RDFStatement(imAddress, nco::imID::iri(), LiteralValue(account->normalizedName()))
+            << RDFStatement(imAddress, nco::imProtocol::iri(), LiteralValue(account->protocolName()));
 
     if (changes & CDTpAccount::Nickname) {
         qDebug() << "  nickname changed";
@@ -153,7 +154,6 @@ void CDTpStorage::syncAccount(CDTpAccountPtr accountWrapper,
     RDFVariable imAccount(QUrl(QString("telepathy:%1").arg(accountObjectPath)));
     imAccountInserts << RDFStatement(imAccount, rdf::type::iri(), nco::IMAccount::iri())
                      << RDFStatement(imAccount, nco::imAccountType::iri(), LiteralValue(account->protocolName()))
-                     << RDFStatement(imAccount, nco::imProtocol::iri(), LiteralValue(account->protocolName()))
                      << RDFStatement(imAccount, nco::imAccountAddress::iri(), imAddress)
                      << RDFStatement(imAccount, nco::hasIMContact::iri(), imAddress);
 
@@ -502,7 +502,9 @@ void CDTpStorage::onContactUpdateSelectQueryFinished(CDTpSelectQuery *query)
          * Otherwise just update its contentLastModified */
         if (!resolved) {
             inserts << RDFStatement(imAddress, rdf::type::iri(), nco::IMAddress::iri())
-                    << RDFStatement(imAddress, nco::imID::iri(), LiteralValue(id));
+                    << RDFStatement(imAddress, nco::imID::iri(), LiteralValue(id))
+                    << RDFStatement(imAddress, nco::imProtocol::iri(),
+                                    LiteralValue(accountWrapper->account()->protocolName()));
 
             RDFVariable imAffiliation(contactAffiliation(contactWrapper));
             inserts << RDFStatement(imAffiliation, rdf::type::iri(), nco::Affiliation::iri())
