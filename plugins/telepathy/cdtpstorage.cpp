@@ -39,8 +39,6 @@ const QString defaultGenerator = "telepathy";
 CDTpStorage::CDTpStorage(QObject *parent)
     : QObject(parent)
 {
-    //::tracker()->setServiceAttribute("tracker_access_method", QString("QSPARQL_DIRECT"));
-
     mQueueTimer.setSingleShot(true);
     mQueueTimer.setInterval(100);
     connect(&mQueueTimer, SIGNAL(timeout()), SLOT(onQueueTimerTimeout()));
@@ -93,8 +91,6 @@ void CDTpStorage::syncAccount(CDTpAccountPtr accountWrapper)
     }
 }
 
-// TODO: Improve syncAccount so that it only updates the data that really
-//       changed
 void CDTpStorage::syncAccount(CDTpAccountPtr accountWrapper,
         CDTpAccount::Changes changes)
 {
@@ -321,7 +317,7 @@ void CDTpStorage::updateQueuedContacts()
         builder.insertProperty(imAddress, "nco:imProtocol", literal(accountWrapper->account()->protocolName()));
 
         const QString imAccount = literalIMAccount(accountWrapper);
-        builder.insertProperty(imAccount, "nco:hasIMContact", imAddress);
+        builder.insertProperty(imAccount, "nco:hasIMContact", imAddress, literalPrivateGraph);
 
         imAddresses << imAddress;
     }
