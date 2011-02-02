@@ -99,94 +99,77 @@ void CDTpStorage::syncAccount(CDTpAccountPtr accountWrapper,
         return;
     }
 
-    const QString accountObjectPath = account->objectPath();
-    const QString accountId = account->normalizedName();
-    const QDateTime datetime = QDateTime::currentDateTime();
+    const QString imAddress = literalIMAddress(accountWrapper);
+    const QString imAccount = literalIMAccount(accountWrapper);
 
-    qDebug() << "Syncing account" << accountObjectPath << "to storage" << accountId;
+    qDebug() << "Syncing account" << imAddress;
 
-    RDFUpdate up;
-    RDFStatementList inserts;
+    CDTpStorageBuilder builder;
 
-    // Create the IMAddress for this account's self contact
-    RDFVariable imAddress(contactImAddress(accountObjectPath, accountId));
-    inserts << RDFStatement(imAddress, rdf::type::iri(), nco::IMAddress::iri())
-            << RDFStatement(imAddress, nco::imID::iri(), LiteralValue(account->normalizedName()))
-            << RDFStatement(imAddress, nco::imProtocol::iri(), LiteralValue(account->protocolName()));
+    // Ensure the IMAccount exists
+    builder.createResource(imAccount, "nco:IMAccount", literalPrivateGraph);
+    builder.insertProperty(imAccount, "nco:imAccountType", literal(account->protocolName()), literalPrivateGraph);
+    builder.insertProperty(imAccount, "nco:imAccountAddress", imAddress, literalPrivateGraph);
+    builder.insertProperty(imAccount, "nco:hasIMContact", imAddress, literalPrivateGraph);
 
+    // Ensure the self contact has an IMAddress
+    builder.createResource(imAddress, "nco:IMAddress");
+    builder.insertProperty(imAddress, "nco:imID", literal(account->normalizedName()));
+    builder.insertProperty(imAddress, "nco:imProtocol", literal(account->protocolName()));
+
+    builder.updateProperty("nco:default-contact-me", "nie:contentLastModified", literalTimeStamp());
+
+    // Apply updates
     if (changes & CDTpAccount::Nickname) {
         qDebug() << "  nickname changed";
-        up.addDeletion(imAddress, nco::imNickname::iri(), RDFVariable(), QUrl(defaultGraph));
-        inserts << RDFStatement(imAddress, nco::imNickname::iri(), LiteralValue(account->nickname()));
+        builder.updateProperty(imAddress, "nco:imNickname", literal(account->nickname()));
     }
-
     if (changes & CDTpAccount::Presence) {
         qDebug() << "  presence changed";
-        Tp::Presence presence = account->currentPresence();
-        QUrl status = trackerStatusFromTpPresenceStatus(presence.status());
-
-        up.addDeletion(imAddress, nco::imPresence::iri(), RDFVariable(), QUrl(defaultGraph));
-        up.addDeletion(imAddress, nco::imStatusMessage::iri(), RDFVariable(), QUrl(defaultGraph));
-        up.addDeletion(imAddress, nco::presenceLastModified::iri(), RDFVariable(), QUrl(defaultGraph));
-
-        inserts << RDFStatement(imAddress, nco::imPresence::iri(), RDFVariable(status))
-                << RDFStatement(imAddress, nco::imStatusMessage::iri(), LiteralValue(presence.statusMessage()))
-                << RDFStatement(imAddress, nco::presenceLastModified::iri(), LiteralValue(datetime));
+        addPresenceToBuilder(builder, imAddress, account->currentPresence());
     }
-
     if (changes & CDTpAccount::Avatar) {
         qDebug() << "  avatar changed";
-        const Tp::Avatar &avatar = account->avatar();
-        // TODO: saving to disk needs to be removed here
-        saveAccountAvatar(up, avatar.avatarData, avatar.MIMEType, imAddress,
-            inserts);
+        addAccountAvatarToBuilder(builder, imAddress, account->avatar());
     }
-
-    // Create an IMAccount
-    RDFStatementList imAccountInserts;
-    RDFVariable imAccount(QUrl(QString("telepathy:%1").arg(accountObjectPath)));
-    imAccountInserts << RDFStatement(imAccount, rdf::type::iri(), nco::IMAccount::iri())
-                     << RDFStatement(imAccount, nco::imAccountType::iri(), LiteralValue(account->protocolName()))
-                     << RDFStatement(imAccount, nco::imAccountAddress::iri(), imAddress)
-                     << RDFStatement(imAccount, nco::hasIMContact::iri(), imAddress);
-
     if (changes & CDTpAccount::DisplayName) {
         qDebug() << "  display name changed";
-        up.addDeletion(imAccount, nco::imDisplayName::iri(), RDFVariable(), QUrl(privateGraph));
-        imAccountInserts << RDFStatement(imAccount, nco::imDisplayName::iri(), LiteralValue(account->displayName()));
+        builder.updateProperty(imAccount, "nco:imDisplayName", literal(account->displayName()), literalPrivateGraph);
     }
+    QString finalQuery = builder.getRawQuery();
 
-    // link the IMAddress to me-contact via an affiliation
-    const QString strLocalUID = QString::number(0x7FFFFFFF);
-    RDFVariable imAffiliation(contactAffiliation(accountObjectPath, accountId));
-    inserts << RDFStatement(imAffiliation, rdf::type::iri(), nco::Affiliation::iri())
-            << RDFStatement(imAffiliation, rdfs::label::iri(), LiteralValue("Other"))
-            << RDFStatement(imAffiliation, nco::hasIMAddress::iri(), imAddress);
-    inserts << RDFStatement(nco::default_contact_me::iri(), nco::hasAffiliation::iri(), imAffiliation)
-            << RDFStatement(nco::default_contact_me::iri(), nco::contactUID::iri(), LiteralValue(strLocalUID))
-            << RDFStatement(nco::default_contact_me::iri(), nco::contactLocalUID::iri(), LiteralValue(strLocalUID))
-            << RDFStatement(nco::default_contact_me::iri(), nie::contentLastModified::iri(), LiteralValue(datetime));
-    up.addDeletion(nco::default_contact_me::iri(), nie::contentLastModified::iri(), RDFVariable(), QUrl(defaultGraph));
+    // Ensure the IMAddress is bound to the default-contact-me via an affiliation
+    finalQuery += QString(QLatin1String(
+        "INSERT {\n"
+        "    GRAPH %1 {\n"
+        "        nco:default-contact-me nco:hasAffiliation _:affiliation.\n"
+        "        _:affiliation a nco:Affiliation;\n"
+        "                      nco:hasIMAddress %2;\n"
+        "                      rdfs:label \"Others\".\n"
+        "    }\n"
+        "}\n"
+        "WHERE {\n"
+        "    FILTER (NOT EXISTS { nco:default-contact-me nco:hasAffiliation [ nco:hasIMAddress %2 ] })\n"
+        "}\n\n"))
+        .arg(literalDefaultGraph).arg(imAddress);
 
-    up.addInsertion(inserts, QUrl(defaultGraph));
-    up.addInsertion(imAccountInserts, QUrl(privateGraph));
-    new CDTpUpdateQuery(up);
+    new CDTpSparqlQuery(QSparqlQuery(finalQuery, QSparqlQuery::InsertStatement), this);
 }
 
-void CDTpStorage::saveAccountAvatar(RDFUpdate &query, const QByteArray &data, const QString &mimeType,
-        const RDFVariable &imAddress, RDFStatementList &inserts)
+void CDTpStorage::addAccountAvatarToBuilder(CDTpStorageBuilder &builder,
+        const QString &imAddress, const Tp::Avatar &avatar) const
 {
-    Q_UNUSED(mimeType);
+    /* FIXME: also delete the dataObject */
+    builder.deleteProperty(imAddress, "nco:imAvatar");
 
-    query.addDeletion(imAddress, nco::imAvatar::iri(), RDFVariable(), QUrl(defaultGraph));
-
-    if (data.isEmpty()) {
+    if (avatar.avatarData.isEmpty()) {
         return;
     }
 
+    /* FIXME: Save data on disk, but AM should give us a filename, really */
     QString fileName = QString("%1/.contacts/avatars/%2")
         .arg(QDir::homePath())
-        .arg(QString(QCryptographicHash::hash(data, QCryptographicHash::Sha1).toHex()));
+        .arg(QString(QCryptographicHash::hash(avatar.avatarData, QCryptographicHash::Sha1).toHex()));
     qDebug() << "Saving account avatar to" << fileName;
 
     QFile avatarFile(fileName);
@@ -195,15 +178,13 @@ void CDTpStorage::saveAccountAvatar(RDFUpdate &query, const QByteArray &data, co
             "file" << fileName << "for writing";
         return;
     }
-    avatarFile.write(data);
+    avatarFile.write(avatar.avatarData);
     avatarFile.close();
 
-    RDFVariable dataObject(QUrl::fromLocalFile(fileName));
-    query.addDeletion(dataObject, nie::url::iri(), RDFVariable(), QUrl(defaultGraph));
-
-    inserts << RDFStatement(dataObject, rdf::type::iri(), nie::DataObject::iri())
-            << RDFStatement(dataObject, nie::url::iri(), dataObject)
-            << RDFStatement(imAddress, nco::imAvatar::iri(), dataObject);
+    const QString dataObject = builder.uniquify("_:dataObject");
+    builder.createResource(dataObject, "nie:DataObject");
+    builder.insertProperty(dataObject, "nie:url", literal(fileName));
+    builder.insertProperty(imAddress, "nco:imAvatar", dataObject);
 }
 
 void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper)
@@ -269,7 +250,7 @@ void CDTpStorage::setAccountContactsOffline(CDTpAccountPtr accountWrapper)
 
     // Update capabilities of all contacts, since we don't know them anymore,
     // reset them to the account's caps.
-    addContactCapabilitiesToBuilder(builder, "?imAddress",
+    addCapabilitiesToBuilder(builder, "?imAddress",
             accountWrapper->account()->capabilities());
 
     new CDTpSparqlQuery(builder.getSparqlQuery(), this);
@@ -373,11 +354,11 @@ void CDTpStorage::updateQueuedContacts()
         }
         if (changes & CDTpContact::Presence) {
             qDebug() << "  presence changed";
-            addContactPresenceToBuilder(builder, imAddress, contactWrapper);
+            addPresenceToBuilder(builder, imAddress, contact->presence());
         }
         if (changes & CDTpContact::Capabilities) {
             qDebug() << "  capabilities changed";
-            addContactCapabilitiesToBuilder(builder, imAddress, contact->capabilities());
+            addCapabilitiesToBuilder(builder, imAddress, contact->capabilities());
         }
         if (changes & CDTpContact::Avatar) {
             qDebug() << "  avatar changed";
@@ -406,7 +387,7 @@ void CDTpStorage::updateQueuedContacts()
     }
 
     CDTpAccountsSparqlQuery *query = new CDTpAccountsSparqlQuery(accounts,
-            QSparqlQuery(finalQuery, QSparqlQuery::InsertStatement));
+            QSparqlQuery(finalQuery, QSparqlQuery::InsertStatement), this);
     connect(query,
             SIGNAL(finished(CDTpSparqlQuery *)),
             SLOT(onAccountsSparqlQueryFinished(CDTpSparqlQuery *)));
@@ -420,17 +401,16 @@ void CDTpStorage::addContactAliasToBuilder(CDTpStorageBuilder &builder,
     builder.updateProperty(imAddress, "nco:imNickname", literal(contact->alias()));
 }
 
-void CDTpStorage::addContactPresenceToBuilder(CDTpStorageBuilder &builder,
+void CDTpStorage::addPresenceToBuilder(CDTpStorageBuilder &builder,
         const QString &imAddress,
-        CDTpContactPtr contactWrapper) const
+        const Tp::Presence &presence) const
 {
-    Tp::ContactPtr contact = contactWrapper->contact();
-    builder.updateProperty(imAddress, "nco:imPresence", presenceType(contact->presence().type()));
-    builder.updateProperty(imAddress, "nco:imStatusMessage", literal(contact->presence().statusMessage()));
+    builder.updateProperty(imAddress, "nco:imPresence", presenceType(presence.type()));
+    builder.updateProperty(imAddress, "nco:imStatusMessage", literal(presence.statusMessage()));
     builder.updateProperty(imAddress, "nco:presenceLastModified", literalTimeStamp());
 }
 
-void CDTpStorage::addContactCapabilitiesToBuilder(CDTpStorageBuilder &builder,
+void CDTpStorage::addCapabilitiesToBuilder(CDTpStorageBuilder &builder,
         const QString &imAddress,
         Tp::CapabilitiesBase capabilities) const
 {
@@ -774,6 +754,13 @@ QString CDTpStorage::literalIMAddress(const CDTpContactPtr &contactWrapper) cons
     return literalIMAddress(accountPath, contactId);
 }
 
+QString CDTpStorage::literalIMAddress(const CDTpAccountPtr &accountWrapper) const
+{
+    const QString accountPath = accountWrapper->account()->objectPath();
+    const QString accountId = accountWrapper->account()->normalizedName();
+    return literalIMAddress(accountPath, accountId);
+}
+
 QString CDTpStorage::literalIMAccount(const CDTpAccountPtr &accountWrapper) const
 {
     const QString accountPath = accountWrapper->account()->objectPath();
@@ -989,44 +976,6 @@ QUrl CDTpStorage::contactImAddress(CDTpContactPtr contactWrapper)
     Tp::AccountPtr account = accountWrapper->account();
     Tp::ContactPtr contact = contactWrapper->contact();
     return contactImAddress(account->objectPath(), contact->id());
-}
-
-QUrl CDTpStorage::contactAffiliation(const QString &contactAccountObjectPath,
-        const QString &contactId)
-{
-    return QUrl(QString("affiliationtelepathy:%1!%2")
-            .arg(contactAccountObjectPath)
-            .arg(contactId));
-}
-
-QUrl CDTpStorage::contactAffiliation(CDTpContactPtr contactWrapper)
-{
-    CDTpAccountPtr accountWrapper = contactWrapper->accountWrapper();
-    Tp::AccountPtr account = accountWrapper->account();
-    Tp::ContactPtr contact = contactWrapper->contact();
-    return contactAffiliation(account->objectPath(), contact->id());
-}
-
-QUrl CDTpStorage::trackerStatusFromTpPresenceStatus(
-        const QString &tpPresenceStatus)
-{
-    static QHash<QString, QUrl> mapping;
-    if (mapping.isEmpty()) {
-        mapping.insert("offline", nco::presence_status_offline::iri());
-        mapping.insert("available", nco::presence_status_available::iri());
-        mapping.insert("away", nco::presence_status_away::iri());
-        mapping.insert("xa", nco::presence_status_extended_away::iri());
-        mapping.insert("dnd", nco::presence_status_busy::iri());
-        mapping.insert("busy", nco::presence_status_busy::iri());
-        mapping.insert("hidden", nco::presence_status_hidden::iri());
-        mapping.insert("unknown", nco::presence_status_unknown::iri());
-    }
-
-    QHash<QString, QUrl>::const_iterator i(mapping.constFind(tpPresenceStatus));
-    if (i != mapping.end()) {
-        return *i;
-    }
-    return nco::presence_status_error::iri();
 }
 
 void CDTpStorage::onAccountsUpdateQueryFinished(CDTpUpdateQuery *query)

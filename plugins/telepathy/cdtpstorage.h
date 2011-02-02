@@ -55,14 +55,6 @@ public:
             const QString &contactId);
     static QUrl contactImAddress(CDTpContactPtr contactWrapper);
 
-    static QUrl contactAffiliation(const QString &contactAccountObjectPath,
-            const QString &contactId);
-    static QUrl contactAffiliation(CDTpContactPtr contactWrapper);
-
-    static QUrl trackerStatusFromTpPresenceStatus(
-            const QString &tpPresenceStatus);
-
-
 Q_SIGNALS:
     void syncStarted(CDTpAccountPtr accountWrapper);
     void syncEnded(CDTpAccountPtr accountWrapper, int contactsAdded, int contactsRemoved);
@@ -99,10 +91,10 @@ private:
     void addContactAliasToBuilder(CDTpStorageBuilder &builder,
             const QString &imAddress,
             CDTpContactPtr contactWrapper) const;
-    void addContactPresenceToBuilder(CDTpStorageBuilder &builder,
+    void addPresenceToBuilder(CDTpStorageBuilder &builder,
             const QString &imAddress,
-            CDTpContactPtr contactWrapper) const;
-    void addContactCapabilitiesToBuilder(CDTpStorageBuilder &builder,
+            const Tp::Presence &presence) const;
+    void addCapabilitiesToBuilder(CDTpStorageBuilder &builder,
             const QString &imAddress,
             Tp::CapabilitiesBase capabilities) const;
     void addContactAvatarToBuilder(CDTpStorageBuilder &builder,
@@ -123,6 +115,9 @@ private:
     void addRemoveContactInfoToBuilder(CDTpStorageBuilder &builder,
             const QString &imContact,
             const QString &graph) const;
+    void addAccountAvatarToBuilder(CDTpStorageBuilder &builder,
+            const QString &imAddress,
+            const Tp::Avatar &avatar) const;
 
     void oneSyncOperationFinished(CDTpAccountPtr accountWrapper);
 
@@ -133,32 +128,20 @@ private:
     QString literalTimeStamp() const;
     QString literalIMAddress(const QString &accountPath, const QString &contactId) const;
     QString literalIMAddress(const CDTpContactPtr &contactWrapper) const;
+    QString literalIMAddress(const CDTpAccountPtr &accountWrapper) const;
     QString literalIMAccount(const CDTpAccountPtr &accountWrapper) const;
     QString literalContactInfo(const Tp::ContactInfoField &field, int i) const;
 
     //FIXME: cleanup
-    void saveAccountAvatar(RDFUpdate &query, const QByteArray &data, const QString &mimeType,
-            const RDFVariable &imAddress,
-            RDFStatementList &inserts);
-
     void addRemoveContactToQuery(RDFUpdate &query,
             RDFStatementList &inserts,
             RDFStatementList &deletions,
             const CDTpContactsSelectItem &item);
     void addRemoveContactFromAccountToQuery(RDFStatementList &deletions,
             const CDTpContactsSelectItem &item);
-
-    void addContactRemoveInfoToQuery(RDFStatementList &deletions,
-            RDFStatementList &inserts,
-            const QString &contactId,
-            CDTpAccountPtr accountWrapper,
-            CDTpContactPtr contactWrapper);
     void addRemoveContactInfoToQuery(RDFUpdate &query,
             const RDFVariable &imContact,
             const QUrl &graph);
-
-    QString presenceStatusFromTpPresenceType(uint tpPresenceType);
-
 
 private:
     QHash<CDTpContactPtr, CDTpContact::Changes> mUpdateQueue;
