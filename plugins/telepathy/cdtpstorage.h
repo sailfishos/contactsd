@@ -35,6 +35,7 @@
 using namespace SopranoLive;
 
 class CDTpStorageSyncOperations;
+class CDTpStorageBuilder;
 
 class CDTpStorage : public QObject
 {
@@ -44,13 +45,12 @@ public:
     CDTpStorage(QObject *parent = 0);
     ~CDTpStorage();
 
-    static QString contactLocalId(const QString &contactAccountObjectPath,
-            const QString &contactId);
-    static QString contactLocalId(CDTpContactPtr contactWrapper);
+    static const QString literalDefaultGraph;
+    static const QString literalPrivateGraph;
 
-    static QUrl contactIri(const QString &contactLocalId);
-    static QUrl contactIri(CDTpContactPtr contactWrapper);
-
+    //FIXME: cleanup
+    static const QString defaultGraph;
+    static const QString privateGraph;
     static QUrl contactImAddress(const QString &contactAccountObjectPath,
             const QString &contactId);
     static QUrl contactImAddress(CDTpContactPtr contactWrapper);
@@ -59,13 +59,9 @@ public:
             const QString &contactId);
     static QUrl contactAffiliation(CDTpContactPtr contactWrapper);
 
-    static QUrl trackerStatusFromTpPresenceType(uint tpPresenceType);
     static QUrl trackerStatusFromTpPresenceStatus(
             const QString &tpPresenceStatus);
-    static QUrl authStatus(Tp::Contact::PresenceState);
 
-    static const QUrl defaultGraph;
-    static const QUrl privateGraph;
 
 Q_SIGNALS:
     void syncStarted(CDTpAccountPtr accountWrapper);
@@ -87,17 +83,60 @@ public Q_SLOTS:
             const QList<CDTpContactPtr> &contacts);
 
 private Q_SLOTS:
+    void onQueueTimerTimeout();
+    void onAccountsSparqlQueryFinished(CDTpSparqlQuery *query);
+
+    //FIXME: cleanup
     void onAccountPurgeSelectQueryFinished(CDTpSelectQuery *query);
-    void onAccountOfflineSelectQueryFinished(CDTpSelectQuery *query);
     void onAccountDeleteSelectQueryFinished(CDTpSelectQuery *query);
     void onContactPurgeSelectQueryFinished(CDTpSelectQuery *);
     void onContactDeleteSelectQueryFinished(CDTpSelectQuery *query);
-    void onContactUpdateSelectQueryFinished(CDTpSelectQuery *query);
     void onAccountsUpdateQueryFinished(CDTpUpdateQuery *query);
-    void onQueueTimerTimeout();
-    void onQueryFinished();
 
 private:
+    void queueContactUpdate(CDTpContactPtr contactWrapper, CDTpContact::Changes);
+    void updateQueuedContacts();
+    void addContactAliasToBuilder(CDTpStorageBuilder &builder,
+            const QString &imAddress,
+            CDTpContactPtr contactWrapper) const;
+    void addContactPresenceToBuilder(CDTpStorageBuilder &builder,
+            const QString &imAddress,
+            CDTpContactPtr contactWrapper) const;
+    void addContactCapabilitiesToBuilder(CDTpStorageBuilder &builder,
+            const QString &imAddress,
+            Tp::CapabilitiesBase capabilities) const;
+    void addContactAvatarToBuilder(CDTpStorageBuilder &builder,
+            const QString &imAddress,
+            CDTpContactPtr contactWrapper) const;
+    void addContactAuthorizationToBuilder(CDTpStorageBuilder &builder,
+            const QString &imAddress,
+            CDTpContactPtr contactWrapper) const;
+    void addContactInfoToBuilder(CDTpStorageBuilder &builder,
+            const QString &imAddress,
+            const QString &imContact,
+            CDTpContactPtr contactWrapper) const;
+    QString ensureContactAffiliationToBuilder(CDTpStorageBuilder &builder,
+            const QString &imContact,
+            const QString &graph,
+            const Tp::ContactInfoField &field,
+            QHash<QString, QString> &affiliations) const;
+    void addRemoveContactInfoToBuilder(CDTpStorageBuilder &builder,
+            const QString &imContact,
+            const QString &graph) const;
+
+    void oneSyncOperationFinished(CDTpAccountPtr accountWrapper);
+
+    QString presenceType(Tp::ConnectionPresenceType presenceType) const;
+    QString presenceState(Tp::Contact::PresenceState presenceState) const;
+    QString literal(const QString &str) const;
+    QString literal(const QDateTime &dateTimeValue) const;
+    QString literalTimeStamp() const;
+    QString literalIMAddress(const QString &accountPath, const QString &contactId) const;
+    QString literalIMAddress(const CDTpContactPtr &contactWrapper) const;
+    QString literalIMAccount(const CDTpAccountPtr &accountWrapper) const;
+    QString literalContactInfo(const Tp::ContactInfoField &field, int i) const;
+
+    //FIXME: cleanup
     void saveAccountAvatar(RDFUpdate &query, const QByteArray &data, const QString &mimeType,
             const RDFVariable &imAddress,
             RDFStatementList &inserts);
@@ -109,65 +148,17 @@ private:
     void addRemoveContactFromAccountToQuery(RDFStatementList &deletions,
             const CDTpContactsSelectItem &item);
 
-    void addContactAliasInfoToQuery(RDFStatementList &inserts,
-            RDFVariableList &lists,
-            const RDFVariable &imAddress,
-            CDTpContactPtr contactWrapper);
-    void addContactPresenceInfoToQuery(RDFStatementList &inserts,
-            RDFVariableList &lists,
-            const RDFVariable &imAddress,
-            CDTpContactPtr contactWrapper);
-    void addContactCapabilitiesInfoToQuery(RDFStatementList &inserts,
-            RDFVariableList &lists,
-            const RDFVariable &imAddress,
-            Tp::CapabilitiesBase capabilities);
-    void addContactAvatarInfoToQuery(RDFUpdate &query,
-            RDFStatementList &inserts,
-            RDFVariableList &lists,
-            const RDFVariable &imAddress,
-            CDTpContactPtr contactWrapper);
     void addContactRemoveInfoToQuery(RDFStatementList &deletions,
             RDFStatementList &inserts,
             const QString &contactId,
             CDTpAccountPtr accountWrapper,
             CDTpContactPtr contactWrapper);
-    void addContactAuthorizationInfoToQuery(RDFStatementList &inserts,
-            RDFVariableList &lists,
-            const RDFVariable &imAddress,
-            CDTpContactPtr contactWrapper);
     void addRemoveContactInfoToQuery(RDFUpdate &query,
             const RDFVariable &imContact,
             const QUrl &graph);
-    void addContactInfoToQuery(RDFUpdate &query,
-            RDFStatementList &inserts,
-            const RDFVariable &imContact,
-            CDTpContactPtr contactWrapper);
-    void addContactVoicePhoneNumberToQuery(RDFStatementList &graphInserts,
-            RDFStatementList &inserts,
-            const RDFVariable &affiliation,
-            const QString &phoneNumber);
-    void addContactAddressToQuery(RDFStatementList &graphInserts,
-            const RDFVariable &affiliation,
-            const QString &pobox,
-            const QString &extendedAddress,
-            const QString &streetAddress,
-            const QString &locality,
-            const QString &region,
-            const QString &postalcode,
-            const QString &country);
-    void addContactEmailToQuery(RDFStatementList &graphInserts,
-            RDFStatementList &inserts,
-            const RDFVariable &affiliation,
-            const QString &email);
-    RDFVariable ensureAffiliation(QHash<QString, RDFVariable> &map,
-            RDFStatementList &graphInserts,
-            const RDFVariable &imContact,
-            const Tp::ContactInfoField &field);
-    QString safeStringListAt(const QStringList &list, int i);
 
-    void queueUpdate(CDTpContactPtr contactWrapper, CDTpContact::Changes);
-    void oneSyncOperationFinished(CDTpAccountPtr accountWrapper);
-    void executeQuery(const QSparqlQuery &query);
+    QString presenceStatusFromTpPresenceType(uint tpPresenceType);
+
 
 private:
     QHash<CDTpContactPtr, CDTpContact::Changes> mUpdateQueue;
@@ -175,9 +166,38 @@ private:
     QHash<CDTpAccountPtr, CDTpStorageSyncOperations> mSyncOperations;
 };
 
-class CDTpStorageSyncOperations
+class CDTpStorageBuilder
 {
 public:
+    CDTpStorageBuilder();
+    void createResource(const QString &resource, const QString &type, const QString &graph = CDTpStorage::literalDefaultGraph);
+    void insertProperty(const QString &resource, const QString &property, const QString &value, const QString &graph = CDTpStorage::literalDefaultGraph);
+    void deleteResource(const QString &resource);
+    QString deleteProperty(const QString &resource, const QString &property);
+    QString deleteProperty(const QString &resource, const QString &property, const QString &graph);
+    QString deletePropertyAndLinkedResource(const QString &resource, const QString &property);
+    QString updateProperty(const QString &resource, const QString &property, const QString &value, const QString &graph = CDTpStorage::literalDefaultGraph);
+
+    void addCustomSelection(const QString &selection);
+
+    QString uniquify(const QString &v = QString("?v"));
+    QString getRawQuery() const;
+    QSparqlQuery getSparqlQuery() const;
+    void reset();
+
+private:
+    QString join(const QStringList &lines, const QString &indent) const;
+
+    QHash<QString, QStringList> insertPart;
+    QStringList insertPartWhere;
+    QStringList deletePart;
+    QStringList deletePartWhere;
+    QStringList customSelection;
+    int vCount;
+};
+
+struct CDTpStorageSyncOperations
+{
     CDTpStorageSyncOperations();
     bool active;
     int nPendingOperations;

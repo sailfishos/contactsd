@@ -22,6 +22,7 @@
 #include <QContactFetchByIdRequest>
 #include <QContactOnlineAccount>
 #include <QContactPhoneNumber>
+#include <QContactAddress>
 #include <QContactPresence>
 
 #include <TelepathyQt4/Debug>
@@ -287,27 +288,19 @@ void TestTelepathyPlugin::testAuthorization()
     QCOMPARE(mLoop->exec(), 0);
 }
 
-QList<QContactDetail> TestTelepathyPlugin::createContactInfoTel(
-    GPtrArray **infoPtrArray, const gchar *number)
+GPtrArray *TestTelepathyPlugin::createContactInfoTel(const gchar *number)
 {
-    QList<QContactDetail> ret;
+    GPtrArray *infoPtrArray;
 
-    *infoPtrArray = g_ptr_array_new_with_free_func((GDestroyNotify) g_value_array_free);
+    infoPtrArray = g_ptr_array_new_with_free_func((GDestroyNotify) g_value_array_free);
     const gchar *fieldValues[] = { number, NULL };
-    g_ptr_array_add (*infoPtrArray, tp_value_array_build(3,
+    g_ptr_array_add (infoPtrArray, tp_value_array_build(3,
         G_TYPE_STRING, "tel",
         G_TYPE_STRV, NULL,
         G_TYPE_STRV, fieldValues,
         G_TYPE_INVALID));
 
-    QContactPhoneNumber phoneNumber;
-    phoneNumber.setContexts("Other");
-    phoneNumber.setDetailUri(QString("tel:%1").arg(number));
-    phoneNumber.setNumber(QString("%1").arg(number));
-    phoneNumber.setSubTypes("Voice");
-    ret << phoneNumber;
-
-    return ret;
+    return infoPtrArray;
 }
 
 void TestTelepathyPlugin::testContactInfo()
@@ -322,23 +315,26 @@ void TestTelepathyPlugin::testContactInfo()
     mExpectation.accountUri = QString("skype");
     QCOMPARE(mLoop->exec(), 0);
 
-    GPtrArray *infoPtrArray;
     mExpectation.event = TestExpectation::Changed;
     mExpectation.flags = TestExpectation::Info | TestExpectation::OnlineAccounts;
 
     /* Set some ContactInfo on the contact */
-    mExpectation.details = createContactInfoTel(&infoPtrArray, "123");
+    GPtrArray *infoPtrArray = createContactInfoTel("123");
     tp_tests_contacts_connection_change_contact_info(
         TP_TESTS_CONTACTS_CONNECTION(mConnService), handle, infoPtrArray);
-    g_ptr_array_unref(infoPtrArray);
+
+    mExpectation.contactInfo = infoPtrArray;
     QCOMPARE(mLoop->exec(), 0);
+    g_ptr_array_unref(infoPtrArray);
 
     /* Change the ContactInfo */
-    mExpectation.details = createContactInfoTel(&infoPtrArray, "456");
+    infoPtrArray = createContactInfoTel("456");
     tp_tests_contacts_connection_change_contact_info(
         TP_TESTS_CONTACTS_CONNECTION(mConnService), handle, infoPtrArray);
-    g_ptr_array_unref(infoPtrArray);
+
+    mExpectation.contactInfo = infoPtrArray;
     QCOMPARE(mLoop->exec(), 0);
+    g_ptr_array_unref(infoPtrArray);
 }
 
 void TestTelepathyPlugin::testBug220851()
@@ -355,8 +351,7 @@ void TestTelepathyPlugin::testBug220851()
 
     /* An address has 7 fields normally. Verify it's fine to give less */
     GPtrArray *infoPtrArray = g_ptr_array_new_with_free_func((GDestroyNotify) g_value_array_free);
-    const gchar *fieldValues[] = { "pobox", "extendedAddress", NULL };
-
+    const gchar *fieldValues[] = { "pobox", "extendedaddress", "street", NULL };
     g_ptr_array_add (infoPtrArray, tp_value_array_build(3,
         G_TYPE_STRING, "adr",
         G_TYPE_STRV, NULL,
@@ -365,11 +360,13 @@ void TestTelepathyPlugin::testBug220851()
 
     tp_tests_contacts_connection_change_contact_info(
         TP_TESTS_CONTACTS_CONNECTION(mConnService), handle, infoPtrArray);
-    g_ptr_array_unref(infoPtrArray);
-    mExpectation.event = TestExpectation::Changed;
-    QCOMPARE(mLoop->exec(), 0);
-}
 
+    mExpectation.event = TestExpectation::Changed;
+    mExpectation.flags = TestExpectation::Info | TestExpectation::OnlineAccounts;
+    mExpectation.contactInfo = infoPtrArray;
+    QCOMPARE(mLoop->exec(), 0);
+    g_ptr_array_unref(infoPtrArray);
+}
 
 void TestTelepathyPlugin::testRemoveContacts()
 {
@@ -430,16 +427,22 @@ void TestTelepathyPlugin::onContactsFetched()
             debug() << contact;
             mExpectation.verify(contact);
         } else {
+            bool foundSelf = false;
+            int contactCount = 0;
             mExpectation.flags = TestExpectation::Presence;
             Q_FOREACH (QContact contact, req->contacts()) {
                 if (contact.localId() == mContactManager->selfContactId()) {
+                    foundSelf = true;
                     mExpectation.presence = TP_TESTS_CONTACTS_CONNECTION_STATUS_OFFLINE;
                 } else {
+                    contactCount++;
                     mExpectation.presence = TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN;
                 }
                 debug() << contact;
                 mExpectation.verify(contact);
             }
+            QVERIFY2(foundSelf, "We were expecting self contact to be updated");
+            QCOMPARE(contactCount, mContactCount - 1);
         }
     }
 
@@ -524,8 +527,8 @@ void TestTelepathyPlugin::contactsRemoved(const QList<QContactLocalId>& contactI
 }
 
 TestExpectation::TestExpectation():flags(All), nOnlineAccounts(1),
-    presence(TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN), fetching(false),
-    fetchError(QContactManager::NoError)
+    presence(TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN), contactInfo(NULL),
+    fetching(false), fetchError(QContactManager::NoError)
 {
 }
 
@@ -537,6 +540,7 @@ void TestExpectation::verify(QContact &contact) const
         if (nOnlineAccounts == 1) {
             QCOMPARE(contact.detail<QContactOnlineAccount>().accountUri(), accountUri);
             QCOMPARE(contact.detail<QContactOnlineAccount>().value("AccountPath"), QString(ACCOUNT_PATH));
+
         }
     }
 
@@ -587,28 +591,74 @@ void TestExpectation::verify(QContact &contact) const
     }
 
     if (flags & Info) {
-        QList<QContactDetail> contactDetails;
+        uint nMatchedField = 0;
 
-        /* Keep only the details we care about */
         Q_FOREACH (const QContactDetail &detail, contact.details()) {
             if (detail.definitionName() == "PhoneNumber") {
-                contactDetails << detail;
+                QContactPhoneNumber phoneNumber = static_cast<QContactPhoneNumber>(detail);
+                verifyContactInfo(contactInfo, "tel", QStringList() << phoneNumber.number());
+                nMatchedField++;
+            }
+            else if (detail.definitionName() == "Address") {
+                QContactAddress address = static_cast<QContactAddress>(detail);
+                verifyContactInfo(contactInfo, "adr",
+                        QStringList() << address.postOfficeBox()
+                                      << QString("unmapped") // extended address is not mapped
+                                      << address.street()
+                                      << address.locality()
+                                      << address.region()
+                                      << address.postcode()
+                                      << address.country());
+                nMatchedField++;
             }
         }
 
-        Q_FOREACH (const QContactDetail &detail, details) {
-            bool matched = false;
-            for (int i = 0; i < contactDetails.size(); i++) {
-                if (detail == contactDetails[i]) {
-                    matched = true;
-                    contactDetails.removeAt(i);
-                    break;
-                }
-            }
-            QVERIFY2(matched, "Expected detail not found");
+        if (contactInfo != NULL) {
+            QCOMPARE(nMatchedField, contactInfo->len);
         }
-        QVERIFY2(contactDetails.isEmpty(), "Detail not expected");
     }
+}
+
+void TestExpectation::verifyContactInfo(GPtrArray *infoPtrArray, QString name,
+        const QStringList values) const
+{
+    QVERIFY2(infoPtrArray != NULL, "Found ContactInfo field, was expecting none");
+
+    bool found = false;
+    for (uint i = 0; i < contactInfo->len; i++) {
+        gchar *c_name;
+        gchar **c_parameters;
+        gchar **c_values;
+
+        tp_value_array_unpack((GValueArray*) g_ptr_array_index(contactInfo, i),
+            3, &c_name, &c_parameters, &c_values);
+
+        /* if c_values_len < values.count() it could still be OK if all
+         * additional values are empty. */
+        gint c_values_len = g_strv_length(c_values);
+        if (QString(c_name) != name || c_values_len > values.count()) {
+            continue;
+        }
+
+        bool match = true;
+        for (int j = 0; j < values.count(); j++) {
+            if (values[j] == QString("unmapped")) {
+                continue;
+            }
+            if ((j < c_values_len && values[j] != QString(c_values[j])) ||
+                (j >= c_values_len && !values[j].isEmpty())) {
+                match = false;
+                break;
+            }
+        }
+
+        if (match) {
+            found = true;
+            break;
+        }
+    }
+
+    QVERIFY2(found, "Unexpected ContactInfo field");
 }
 
 QTEST_MAIN(TestTelepathyPlugin)

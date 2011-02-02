@@ -59,7 +59,8 @@ public:
 
     TestExpectation();
     void verify(QContact &contact) const;
-
+    void verifyContactInfo(GPtrArray *infoPtrArray, QString expectedName,
+            const QStringList expectedValues) const;
     int flags;
     Event event;
 
@@ -71,7 +72,7 @@ public:
     QByteArray avatarData;
     QString subscriptionState;
     QString publishState;
-    QList<QContactDetail> details;
+    GPtrArray *contactInfo;
 
     bool fetching;
     QContactManager::Error fetchError;
@@ -111,6 +112,12 @@ private Q_SLOTS:
     void cleanupTestCase();
 
 private:
+    TpHandle ensureContact(const gchar *id);
+    GPtrArray *createContactInfoTel(const gchar *number);
+    void verify(TestExpectation::Event, const QList<QContactLocalId>&);
+    void fetchAndVerifyContacts(const QList<QContactLocalId> &contactIds);
+
+private:
     enum TestState {
         TestStateNone,
         TestStateInit,
@@ -127,15 +134,9 @@ private:
     TpConnection *mConnection;
     TestContactListManager *mListManager;
 
-    TpHandle ensureContact(const gchar *id);
     int mContactCount;
 
     TestExpectation mExpectation;
-    void verify(TestExpectation::Event, const QList<QContactLocalId>&);
-    void fetchAndVerifyContacts(const QList<QContactLocalId> &contactIds);
-
-    QList<QContactDetail> createContactInfoTel(GPtrArray **infoPtrArray,
-        const gchar *number);
 };
 
 #endif

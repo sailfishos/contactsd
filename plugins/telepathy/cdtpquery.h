@@ -23,6 +23,7 @@
 #include <QObject>
 
 #include <QtTracker/Tracker>
+#include <QtSparql>
 
 #include "cdtpaccount.h"
 #include "cdtpcontact.h"
@@ -64,7 +65,6 @@ public:
     QString imAffiliation;
     QString imAddress;
     QString generator;
-    QString localUID;
 };
 
 class CDTpContactsSelectQuery: public CDTpSelectQuery
@@ -107,30 +107,6 @@ private:
     CDTpAccountPtr mAccountWrapper;
 };
 
-/* --- CDTpContactResolver --- */
-
-class CDTpContactResolver : public CDTpContactsSelectQuery
-{
-    Q_OBJECT
-
-public:
-    CDTpContactResolver(
-            const QHash<CDTpContactPtr, CDTpContact::Changes> &contactsToResolve,
-            QObject *parent = 0);
-    ~CDTpContactResolver() {};
-
-    QList<CDTpContactPtr> remoteContacts() const;
-    CDTpContact::Changes contactChanges(const CDTpContactPtr &contactWrapper) const;
-    QString storageIdForContact(const CDTpContactPtr &contactWrapper);
-
-private:
-    void ensureParsed();
-
-    bool mReplyParsed;
-    QHash<CDTpContactPtr, CDTpContact::Changes> mContacts;
-    QHash<CDTpContactPtr, QString> mResolvedContacts;
-};
-
 /* --- CDTpUpdateQuery --- */
 
 class CDTpUpdateQuery : public QObject
@@ -170,5 +146,40 @@ public:
 private:
     QList<CDTpAccountPtr> mAccounts;
 };
+
+/* --- CDTpSparqlQuery --- */
+
+class CDTpSparqlQuery : public QObject
+{
+    Q_OBJECT
+
+public:
+    CDTpSparqlQuery(QSparqlQuery sparqlQuery, QObject *parent = 0);
+    ~CDTpSparqlQuery() {};
+
+Q_SIGNALS:
+    void finished(CDTpSparqlQuery *query);
+
+private Q_SLOTS:
+    void onQueryFinished();
+};
+
+/* --- CDTpAccountsSparqlQuery --- */
+
+class CDTpAccountsSparqlQuery : public CDTpSparqlQuery
+{
+    Q_OBJECT
+
+public:
+    CDTpAccountsSparqlQuery(const QList<CDTpAccountPtr> &accounts,
+        QSparqlQuery sparqlQuery, QObject *parent = 0);
+    ~CDTpAccountsSparqlQuery() {};
+
+    QList<CDTpAccountPtr> accounts() const { return mAccounts; };
+
+private:
+    QList<CDTpAccountPtr> mAccounts;
+};
+
 
 #endif // CDTPQUERY_H

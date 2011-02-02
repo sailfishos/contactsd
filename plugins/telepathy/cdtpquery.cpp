@@ -23,6 +23,7 @@
 
 #include "cdtpquery.h"
 #include "cdtpstorage.h"
+#include "sparqlconnectionmanager.h"
 
 using namespace SopranoLive;
 
@@ -106,7 +107,6 @@ void CDTpContactsSelectQuery::setSelect(const RDFVariable &imContact,
     select.addColumn("affiliation", imAffiliation);
     select.addColumn("address", imAddress);
     select.addColumn("generator", imContact.optional().property<nie::generator>());
-    select.addColumn("localUID", imContact.property<nco::contactLocalUID>());
 
     CDTpSelectQuery::setSelect(select);
 }
@@ -124,7 +124,6 @@ void CDTpContactsSelectQuery::ensureParsed()
         item.imAffiliation = result->index(i, 1).data().toString();
         item.imAddress     = result->index(i, 2).data().toString();
         item.generator     = result->index(i, 3).data().toString();
-        item.localUID      = result->index(i, 4).data().toString();
 
         mItems << item;
     }
@@ -148,51 +147,6 @@ CDTpAccountContactsSelectQuery::CDTpAccountContactsSelectQuery(CDTpAccountPtr ac
     imContact.notEqual(nco::default_contact_me::iri());
 
     setSelect(imContact, imAffiliation, imAddress);
-}
-
-/* --- CDTpContactResolver --- */
-
-CDTpContactResolver::CDTpContactResolver(
-        const QHash<CDTpContactPtr, CDTpContact::Changes> &contactsToResolve,
-        QObject *parent)
-    : CDTpContactsSelectQuery(parent), mReplyParsed(false),
-      mContacts(contactsToResolve)
-{
-    setSelect(remoteContacts());
-}
-
-QList<CDTpContactPtr> CDTpContactResolver::remoteContacts() const
-{
-    return mContacts.keys();
-}
-
-CDTpContact::Changes CDTpContactResolver::contactChanges(const CDTpContactPtr &contactWrapper) const
-{
-    return mContacts[contactWrapper];
-}
-
-QString CDTpContactResolver::storageIdForContact(const CDTpContactPtr &contactWrapper)
-{
-    ensureParsed();
-    return mResolvedContacts[contactWrapper];
-}
-
-void CDTpContactResolver::ensureParsed()
-{
-    if (mReplyParsed) {
-        return;
-    }
-
-    QList<CDTpContactPtr> contactsToResolve = remoteContacts();
-    Q_FOREACH (const CDTpContactsSelectItem &item, items()) {
-        Q_FOREACH (CDTpContactPtr contactWrapper, contactsToResolve) {
-            if (CDTpStorage::contactImAddress(contactWrapper) == item.imAddress) {
-                mResolvedContacts[contactWrapper] = item.localUID;
-            }
-        }
-    }
-
-    mReplyParsed = true;
 }
 
 /* --- CDTpUpdateQuery --- */
@@ -233,3 +187,54 @@ CDTpAccountsUpdateQuery::CDTpAccountsUpdateQuery(const QList<CDTpAccountPtr> &ac
         : CDTpUpdateQuery(updateQuery, parent), mAccounts(accounts)
 {
 }
+
+/* --- CDTpSparqlQuery --- */
+
+CDTpSparqlQuery::CDTpSparqlQuery(QSparqlQuery sparqlQuery, QObject *parent)
+        : QObject(parent)
+{
+    QSparqlConnection &connection = com::nokia::contactsd::SparqlConnectionManager::defaultConnection();
+    QSparqlResult *result = connection.exec(sparqlQuery);
+
+    if (not result) {
+        qWarning() << Q_FUNC_INFO << " - QSparqlConnection::exec() == 0";
+        deleteLater();
+        return;
+    }
+    if (result->hasError()) {
+        qWarning() << Q_FUNC_INFO << result->lastError().message();
+        delete result;
+        deleteLater();
+        return;
+    }
+
+    result->setParent(this);
+    connect(result, SIGNAL(finished()), SLOT(onQueryFinished()), Qt::QueuedConnection);
+}
+
+void CDTpSparqlQuery::onQueryFinished()
+{
+    QSparqlResult *const result = qobject_cast<QSparqlResult *>(sender());
+
+    if (not result) {
+        qWarning() << "QSparqlQuery finished with error:" << "Invalid signal sender";
+    } else {
+        if (result->hasError()) {
+            qDebug() << "QSparqlQuery finished with error:" << result->lastError().message();
+        }
+        result->deleteLater();
+    }
+
+    Q_EMIT finished(this);
+
+    deleteLater();
+}
+
+/* --- CDTpAccountsSparqlQuery --- */
+
+CDTpAccountsSparqlQuery::CDTpAccountsSparqlQuery(const QList<CDTpAccountPtr> &accounts,
+    QSparqlQuery sparqlQuery, QObject *parent)
+        : CDTpSparqlQuery(sparqlQuery, parent), mAccounts(accounts)
+{
+}
+
