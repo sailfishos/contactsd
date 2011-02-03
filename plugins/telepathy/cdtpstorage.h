@@ -166,7 +166,7 @@ public:
     QString uniquify(const QString &v = QString("?v"));
     QString getRawQuery() const;
     QSparqlQuery getSparqlQuery() const;
-    void reset();
+    void clear();
 
 private:
     QString join(const QStringList &lines, const QString &indent) const;

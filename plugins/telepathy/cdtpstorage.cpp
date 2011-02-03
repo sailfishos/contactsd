@@ -232,16 +232,12 @@ void CDTpStorage::setAccountContactsOffline(CDTpAccountPtr accountWrapper)
     qDebug() << "Setting presence to UNKNOWN for all contacts of account"
              << accountWrapper->account()->objectPath();
 
-    const QString accountId = accountWrapper->account()->normalizedName();
-    const QString accountPath = accountWrapper->account()->objectPath();
-    const QString selfIMAddress = literalIMAddress(accountPath, accountId);
-
     // Select all imAddress and their imContact, except for the self contact,
     // because we know that self contact has presence Offline, and that's
     // already done in SyncAccount().
     CDTpStorageBuilder builder;
-    builder.addCustomSelection(QString(QLatin1String("FILTER(?imAddress != %1)")).arg(selfIMAddress));
-    builder.addCustomSelection(QString(QLatin1String("<telepathy:%1> nco:hasIMContact ?imAddress")).arg(accountPath));
+    builder.addCustomSelection(QString(QLatin1String("FILTER(?imAddress != %1)")).arg(literalIMAddress(accountWrapper)));
+    builder.addCustomSelection(QString(QLatin1String("%1 nco:hasIMContact ?imAddress")).arg(literalIMAccount(accountWrapper)));
     builder.addCustomSelection(QString(QLatin1String("?imContact nco:hasAffiliation [ nco:hasIMAddress ?imAddress ]")));
     builder.updateProperty("?imAddress", "nco:imPresence", "nco:presence-status-unknown");
     builder.updateProperty("?imAddress", "nco:presenceLastModified", literalTimeStamp());
@@ -302,7 +298,7 @@ void CDTpStorage::updateQueuedContacts()
         imAddresses << imAddress;
     }
     finalQuery += builder.getRawQuery();
-    builder.reset();
+    builder.clear();
 
     // Ensure all imAddresses are bound to a PersonContact
     finalQuery += QString(QLatin1String(
@@ -329,12 +325,7 @@ void CDTpStorage::updateQueuedContacts()
     QHash<CDTpContactPtr, CDTpContact::Changes>::const_iterator i;
     for (i = mUpdateQueue.constBegin(); i != mUpdateQueue.constEnd(); ++i) {
         const CDTpContactPtr contactWrapper = i.key();
-        const CDTpAccountPtr accountWrapper = contactWrapper->accountWrapper();
-        const Tp::ContactPtr contact = contactWrapper->contact();
-
-        const QString accountPath = accountWrapper->account()->objectPath();
-        const QString contactId = contact->id();
-        const QString imAddress = literalIMAddress(accountPath, contactId);
+        const QString imAddress = literalIMAddress(contactWrapper);
 
         // bind imContact to imAddress
         const QString imContact = builder.uniquify("?imContact");
@@ -346,6 +337,7 @@ void CDTpStorage::updateQueuedContacts()
         builder.updateProperty(imContact, "nie:contentLastModified", literalTimeStamp());
 
         // Apply all changes
+        const Tp::ContactPtr contact = contactWrapper->contact();
         const CDTpContact::Changes changes = i.value();
         if (changes & CDTpContact::Alias) {
             qDebug() << "  alias changed";
@@ -1114,10 +1106,12 @@ QSparqlQuery CDTpStorageBuilder::getSparqlQuery() const
     return QSparqlQuery(getRawQuery(), QSparqlQuery::InsertStatement);
 }
 
-void CDTpStorageBuilder::reset()
+void CDTpStorageBuilder::clear()
 {
-    deletePart.clear();
     insertPart.clear();
+    insertPartWhere.clear();
+    deletePart.clear();
+    deletePartWhere.clear();
     customSelection.clear();
     vCount = 0;
 }
