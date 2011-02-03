@@ -159,8 +159,7 @@ void CDTpStorage::syncAccount(CDTpAccountPtr accountWrapper,
 void CDTpStorage::addAccountAvatarToBuilder(CDTpStorageBuilder &builder,
         const QString &imAddress, const Tp::Avatar &avatar) const
 {
-    /* FIXME: also delete the dataObject */
-    builder.deleteProperty(imAddress, "nco:imAvatar");
+    builder.deletePropertyAndLinkedResource(imAddress, "nco:imAvatar");
 
     if (avatar.avatarData.isEmpty()) {
         return;
@@ -447,8 +446,7 @@ void CDTpStorage::addContactAvatarToBuilder(CDTpStorageBuilder &builder,
     }
 
     /* Remove current avatar */
-    /* FIXME: also delete the dataObject */
-    builder.deleteProperty(imAddress, "nco:imAvatar");
+    builder.deletePropertyAndLinkedResource(imAddress, "nco:imAvatar");
 
     /* Insert new avatar */
     if (!contact->avatarToken().isEmpty()) {
