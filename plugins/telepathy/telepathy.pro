@@ -9,7 +9,7 @@ LIBS += -lgcov
 }
 
 CONFIG += link_pkgconfig
-PKGCONFIG += TelepathyQt4 qttracker
+PKGCONFIG += TelepathyQt4
 
 INCLUDEPATH += $$TOP_SOURCEDIR/src
 

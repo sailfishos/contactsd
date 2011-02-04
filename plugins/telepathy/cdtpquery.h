@@ -22,129 +22,52 @@
 
 #include <QObject>
 
-#include <QtTracker/Tracker>
 #include <QtSparql>
 
 #include "cdtpaccount.h"
 #include "cdtpcontact.h"
 
-using namespace SopranoLive;
-
-/* --- CDTpSelectQuery --- */
-
-class CDTpSelectQuery : public QObject
+class CDTpQueryBuilder
 {
-    Q_OBJECT
-
 public:
-    CDTpSelectQuery(const RDFSelect &select, QObject *parent = 0);
-    ~CDTpSelectQuery() {};
+    CDTpQueryBuilder();
+    ~CDTpQueryBuilder() { clear(); };
 
-    LiveNodes reply() const { return mReply; }
+    static const QString defaultGraph;
+    static const QString privateGraph;
+    static const QString indent;
+    static const QString indent2;
 
-Q_SIGNALS:
-    void finished(CDTpSelectQuery *query);
+    void createResource(const QString &resource, const QString &type, const QString &graph = defaultGraph);
+    void insertProperty(const QString &resource, const QString &property, const QString &value, const QString &graph = defaultGraph);
+    void deleteResource(const QString &resource);
+    void deleteProperty(const QString &resource, const QString &property, const QString &value);
+    QString deleteProperty(const QString &resource, const QString &property);
+    QString deletePropertyWithGraph(const QString &resource, const QString &property, const QString &graph);
+    QString deletePropertyAndLinkedResource(const QString &resource, const QString &property);
+    QString updateProperty(const QString &resource, const QString &property, const QString &value, const QString &graph = defaultGraph);
 
-protected:
-    CDTpSelectQuery(QObject *parent = 0);
-    void setSelect(const RDFSelect &select);
+    void appendRawSelection(const QString &str);
+    void appendSubBuilder(CDTpQueryBuilder *subBuilder);
+    void mergeWithOptional(CDTpQueryBuilder &builder);
 
-private Q_SLOTS:
-    void onModelUpdated();
+    QString uniquify(const QString &v = QString("?v"));
+    QString getRawQuery() const;
+    QSparqlQuery getSparqlQuery() const;
+    void clear();
 
 private:
-    LiveNodes mReply;
-};
+    void append(QString &part, const QString &str);
+    QString setIndentation(const QString &part, const QString &indentation) const;
 
-/* --- CDTpContactsSelectQuery --- */
+    QHash<QString, QString> insertPart;
+    QString insertPartWhere;
+    QString deletePart;
+    QString deletePartWhere;
 
-class CDTpContactsSelectItem
-{
-public:
-    QString imContact;
-    QString imAffiliation;
-    QString imAddress;
-    QString generator;
-};
+    int vCount;
 
-class CDTpContactsSelectQuery: public CDTpSelectQuery
-{
-    Q_OBJECT
-
-public:
-    CDTpContactsSelectQuery(const QList<CDTpContactPtr> &contacts, QObject *parent = 0);
-    CDTpContactsSelectQuery(const QString &accountObjectPath, QObject *parent = 0);
-    ~CDTpContactsSelectQuery() {};
-
-    QList<CDTpContactsSelectItem> items();
-
-protected:
-    CDTpContactsSelectQuery(QObject *parent = 0);
-    void setSelect(const RDFVariable &imContact, const RDFVariable &imAffiliation,
-        const RDFVariable &imAddress);
-    void setSelect(const QList<CDTpContactPtr> &contacts);
-
-private:
-    void ensureParsed();
-
-    bool mReplyParsed;
-    QList<CDTpContactsSelectItem> mItems;
-};
-
-/* --- CDTpAccountContactsSelectQuery --- */
-
-class CDTpAccountContactsSelectQuery: public CDTpContactsSelectQuery
-{
-    Q_OBJECT
-
-public:
-    CDTpAccountContactsSelectQuery(CDTpAccountPtr accountWrapper, QObject *parent = 0);
-    ~CDTpAccountContactsSelectQuery() {};
-
-    CDTpAccountPtr accountWrapper() const { return mAccountWrapper; };
-
-private:
-    CDTpAccountPtr mAccountWrapper;
-};
-
-/* --- CDTpUpdateQuery --- */
-
-class CDTpUpdateQuery : public QObject
-{
-    Q_OBJECT
-
-public:
-    CDTpUpdateQuery(RDFUpdate &updateQuery, QObject *parent = 0);
-    ~CDTpUpdateQuery() {};
-
-Q_SIGNALS:
-    void finished(CDTpUpdateQuery *query);
-
-private Q_SLOTS:
-    void onCommitFinished();
-    void onCommitError(QString message);
-
-private:
-    QString mSparql;
-    RDFTransactionPtr mTransaction;
-};
-
-
-/* --- CDTpAccountsUpdateQuery --- */
-
-class CDTpAccountsUpdateQuery : public CDTpUpdateQuery
-{
-    Q_OBJECT
-
-public:
-    CDTpAccountsUpdateQuery(const QList<CDTpAccountPtr> &accounts,
-        RDFUpdate &updateQuery, QObject *parent = 0);
-    ~CDTpAccountsUpdateQuery() {};
-
-    QList<CDTpAccountPtr> accounts() const { return mAccounts; };
-
-private:
-    QList<CDTpAccountPtr> mAccounts;
+    QList<CDTpQueryBuilder*> subBuilders;
 };
 
 /* --- CDTpSparqlQuery --- */

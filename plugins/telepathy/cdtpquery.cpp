@@ -17,175 +17,187 @@
 **
 ****************************************************************************/
 
-#include <QtTracker/ontologies/nco.h>
-#include <QtTracker/ontologies/nie.h>
-#include <QtTracker/Tracker>
-
 #include "cdtpquery.h"
 #include "cdtpstorage.h"
 #include "sparqlconnectionmanager.h"
 
-using namespace SopranoLive;
+/* --- CDTpQueryBuilder --- */
 
-/* --- CDTpSelectQuery --- */
+const QString CDTpQueryBuilder::defaultGraph = QLatin1String("<urn:uuid:08070f5c-a334-4d19-a8b0-12a3071bfab9>");
+const QString CDTpQueryBuilder::privateGraph = QLatin1String("<urn:uuid:679293d4-60f0-49c7-8d63-f1528fe31f66>");
+const QString CDTpQueryBuilder::indent = QLatin1String("    ");
+const QString CDTpQueryBuilder::indent2 = indent + indent;
 
-CDTpSelectQuery::CDTpSelectQuery(const RDFSelect &select, QObject *parent)
-    : QObject(parent)
-{
-    setSelect(select);
-}
-
-CDTpSelectQuery::CDTpSelectQuery(QObject *parent) : QObject(parent)
+CDTpQueryBuilder::CDTpQueryBuilder() : vCount(0)
 {
 }
 
-void CDTpSelectQuery::setSelect(const RDFSelect &select)
+void CDTpQueryBuilder::createResource(const QString &resource, const QString &type, const QString &graph)
 {
-    mReply = ::tracker()->modelQuery(select);
-    connect(mReply.model(),
-            SIGNAL(modelUpdated()),
-            SLOT(onModelUpdated()));
+    append(insertPart[graph], QString(QLatin1String("%1 a %2.")).arg(resource).arg(type));
 }
 
-void CDTpSelectQuery::onModelUpdated()
+void CDTpQueryBuilder::insertProperty(const QString &resource, const QString &property, const QString &value, const QString &graph)
 {
-    Q_EMIT finished(this);
-    deleteLater();
+    append(insertPart[graph], QString(QLatin1String("%1 %2 %3.")).arg(resource).arg(property).arg(value));
 }
 
-/* --- CDTpContactsSelectQuery --- */
-
-CDTpContactsSelectQuery::CDTpContactsSelectQuery(const QList<CDTpContactPtr> &contacts, QObject *parent)
-    : CDTpSelectQuery(parent), mReplyParsed(false)
+void CDTpQueryBuilder::deleteResource(const QString &resource)
 {
-    setSelect(contacts);
+    append(deletePart, QString(QLatin1String("%1 a rdfs:Resource.")).arg(resource));
 }
 
-CDTpContactsSelectQuery::CDTpContactsSelectQuery(const QString &accountObjectPath, QObject *parent)
-    : CDTpSelectQuery(parent), mReplyParsed(false)
+void CDTpQueryBuilder::deleteProperty(const QString &resource, const QString &property, const QString &value)
 {
-    RDFVariable imContact = RDFVariable::fromType<nco::PersonContact>();
-    RDFVariable imAffiliation = imContact.property<nco::hasAffiliation>();
-    RDFVariable imAddress = imAffiliation.property<nco::hasIMAddress>();
-    imAddress.hasPrefix(QString("telepathy:%1").arg(accountObjectPath));
-
-    setSelect(imContact, imAffiliation, imAddress);
+    append(deletePart, QString(QLatin1String("%1 %2 %3.")).arg(resource).arg(property).arg(value));
 }
 
-CDTpContactsSelectQuery::CDTpContactsSelectQuery(QObject *parent)
-    : CDTpSelectQuery(parent), mReplyParsed(false)
+QString CDTpQueryBuilder::deleteProperty(const QString &resource, const QString &property)
 {
+    const QString value = uniquify();
+
+    append(deletePart, QString(QLatin1String("%1 %2 %3.")).arg(resource).arg(property).arg(value));
+    append(deletePartWhere, QString(QLatin1String("OPTIONAL { %1 %2 %3 }."))
+            .arg(resource).arg(property).arg(value));
+
+    return value;
 }
 
-QList<CDTpContactsSelectItem> CDTpContactsSelectQuery::items()
+QString CDTpQueryBuilder::deletePropertyWithGraph(const QString &resource, const QString &property, const QString &graph)
 {
-    ensureParsed();
-    return mItems;
+    const QString value = uniquify();
+
+    append(deletePart, QString(QLatin1String("%1 %2 %3.")).arg(resource).arg(property).arg(value));
+    append(deletePartWhere, QString(QLatin1String("OPTIONAL { GRAPH %1 { %2 %3 %4 } }."))
+            .arg(graph).arg(resource).arg(property).arg(value));
+
+    return value;
 }
 
-void CDTpContactsSelectQuery::setSelect(const QList<CDTpContactPtr> &contacts)
+
+QString CDTpQueryBuilder::deletePropertyAndLinkedResource(const QString &resource, const QString &property)
 {
-    RDFVariable imContact = RDFVariable::fromType<nco::PersonContact>();
-    RDFVariable imAffiliation = imContact.property<nco::hasAffiliation>();
-    RDFVariable imAddress = imAffiliation.property<nco::hasIMAddress>();
-    imContact.notEqual(nco::default_contact_me::iri());
-
-    RDFVariableList members;
-    Q_FOREACH (CDTpContactPtr contactWrapper, contacts) {
-        members << RDFVariable(CDTpStorage::contactImAddress(contactWrapper));
-    }
-    imAddress.isMemberOf(members);
-
-    setSelect(imContact, imAffiliation, imAddress);
+    const QString oldValue = deleteProperty(resource, property);
+    deleteResource(oldValue);
+    return oldValue;
 }
 
-void CDTpContactsSelectQuery::setSelect(const RDFVariable &imContact,
-    const RDFVariable &imAffiliation, const RDFVariable &imAddress)
+QString CDTpQueryBuilder::updateProperty(const QString &resource, const QString &property, const QString &value, const QString &graph)
 {
-    RDFSelect select;
-    select.addColumn("contact", imContact);
-    select.addColumn("affiliation", imAffiliation);
-    select.addColumn("address", imAddress);
-    select.addColumn("generator", imContact.optional().property<nie::generator>());
-
-    CDTpSelectQuery::setSelect(select);
+    const QString oldValue = deleteProperty(resource, property);
+    insertProperty(resource, property, value, graph);
+    return oldValue;
 }
 
-void CDTpContactsSelectQuery::ensureParsed()
+void CDTpQueryBuilder::appendRawSelection(const QString &str)
 {
-    if (mReplyParsed) {
-        return;
-    }
+    append(insertPartWhere, str);
+    append(deletePartWhere, str);
+}
 
-    LiveNodes result = reply();
-    for (int i = 0; i < result->rowCount(); i++) {
-        CDTpContactsSelectItem item;
-        item.imContact     = result->index(i, 0).data().toString();
-        item.imAffiliation = result->index(i, 1).data().toString();
-        item.imAddress     = result->index(i, 2).data().toString();
-        item.generator     = result->index(i, 3).data().toString();
+void CDTpQueryBuilder::appendSubBuilder(CDTpQueryBuilder *builder)
+{
+    subBuilders << builder;
+}
 
-        mItems << item;
+QString CDTpQueryBuilder::uniquify(const QString &v)
+{
+    return QString(QLatin1String("%1_%2")).arg(v).arg(++vCount);
+}
+
+void CDTpQueryBuilder::mergeWithOptional(CDTpQueryBuilder &builder)
+{
+    // Append insertPart
+    QHash<QString, QString>::const_iterator i;
+    for (i = builder.insertPart.constBegin(); i != builder.insertPart.constEnd(); ++i) {
+        append(insertPart[i.key()], i.value());
     }
 
-    mReplyParsed = true;
+    // Append deletePart
+    append(deletePart, builder.deletePart);
+
+    // Append Where part
+    static const QString optionalTemplate = QString(QLatin1String("OPTIONAL {\n%1\n}."));
+    append(insertPartWhere, optionalTemplate.arg(setIndentation(builder.insertPartWhere, indent)));
+    append(deletePartWhere, optionalTemplate.arg(setIndentation(builder.deletePartWhere, indent)));
 }
 
-/* --- CDTpAccountContactsSelectQuery --- */
-
-CDTpAccountContactsSelectQuery::CDTpAccountContactsSelectQuery(CDTpAccountPtr accountWrapper, QObject *parent)
-    : CDTpContactsSelectQuery(parent), mAccountWrapper(accountWrapper)
+QString CDTpQueryBuilder::getRawQuery() const
 {
-    const QString accountId = accountWrapper->account()->normalizedName();
-    const QString accountPath = accountWrapper->account()->objectPath();
+    // DELETE part
+    QString deleteLines = setIndentation(deletePart, indent);
 
-    RDFVariable imContact = RDFVariable::fromType<nco::PersonContact>();
-    RDFVariable imAffiliation = imContact.property<nco::hasAffiliation>();
-    RDFVariable imAddress = imAffiliation.property<nco::hasIMAddress>();
-    imAddress.hasPrefix(QString("telepathy:%1").arg(accountPath));
-    imAddress.notEqual(CDTpStorage::contactImAddress(accountPath, accountId));
-    imContact.notEqual(nco::default_contact_me::iri());
+    // INSERT part
+    QString insertLines;
+    QHash<QString, QString>::const_iterator i;
+    for (i = insertPart.constBegin(); i != insertPart.constEnd(); ++i) {
+        QString graphLines = setIndentation(i.value(), indent2);
+        if (!graphLines.isEmpty()) {
+            insertLines += indent + QString(QLatin1String("GRAPH %1 {\n")).arg(i.key());
+            insertLines += graphLines + QLatin1String("\n");
+            insertLines += indent + QLatin1String("}\n");
+        }
+    }
 
-    setSelect(imContact, imAffiliation, imAddress);
+    // WHERE part
+    QString insertWhereLines = setIndentation(insertPartWhere, indent);
+    QString deleteWhereLines = setIndentation(deletePartWhere, indent);
+
+    // Build final query
+    QString rawQuery;
+    if (!deleteLines.isEmpty()) {
+        rawQuery += QString(QLatin1String("DELETE {\n%1\n}\n")).arg(deleteLines);
+        if (!deleteWhereLines.isEmpty()) {
+            rawQuery += QString(QLatin1String("WHERE {\n%1\n}\n")).arg(deleteWhereLines);
+        }
+    }
+    if (!insertLines.isEmpty()) {
+        rawQuery += QString(QLatin1String("INSERT {\n%1\n}\n")).arg(insertLines);
+        if (!insertWhereLines.isEmpty()) {
+            rawQuery += QString(QLatin1String("WHERE {\n%1\n}\n")).arg(insertWhereLines);
+        }
+    }
+
+    // Recurse to sub builders
+    Q_FOREACH (CDTpQueryBuilder *subBuilder, subBuilders) {
+        rawQuery += subBuilder->getRawQuery();
+    }
+
+    return rawQuery;
 }
 
-/* --- CDTpUpdateQuery --- */
-
-CDTpUpdateQuery::CDTpUpdateQuery(RDFUpdate &updateQuery, QObject *parent)
-    : QObject(parent), mSparql(updateQuery.getQuery())
+void CDTpQueryBuilder::append(QString &part, const QString &str)
 {
-    mTransaction = ::tracker()->createTransaction();
-    connect(mTransaction.data(),
-        SIGNAL(commitFinished()),
-        SLOT(onCommitFinished()));
-    connect(mTransaction.data(),
-        SIGNAL(commitError(QString)),
-        SLOT(onCommitError(QString)));
-
-    ::tracker()->executeQuery(updateQuery);
-    mTransaction->commit();
+    if (!part.isEmpty()) {
+        part += QLatin1String("\n");
+    }
+    part += str;
 }
 
-void CDTpUpdateQuery::onCommitFinished()
+QString CDTpQueryBuilder::setIndentation(const QString &part, const QString &indentation) const
 {
-    Q_EMIT finished(this);
-    deleteLater();
+    if (part.isEmpty()) {
+        return QString();
+    }
+    return indentation + QString(part).replace('\n', QLatin1String("\n") + indentation);
 }
 
-void CDTpUpdateQuery::onCommitError(QString message)
+QSparqlQuery CDTpQueryBuilder::getSparqlQuery() const
 {
-    qDebug() << "query finished with error" << message;
-    qDebug() << mSparql;
-    Q_EMIT finished(this);
-    deleteLater();
+    return QSparqlQuery(getRawQuery(), QSparqlQuery::InsertStatement);
 }
 
-/* --- CDTpAccountsUpdateQuery --- */
-
-CDTpAccountsUpdateQuery::CDTpAccountsUpdateQuery(const QList<CDTpAccountPtr> &accounts,
-    RDFUpdate &updateQuery, QObject *parent)
-        : CDTpUpdateQuery(updateQuery, parent), mAccounts(accounts)
+void CDTpQueryBuilder::clear()
 {
+    insertPart.clear();
+    insertPartWhere.clear();
+    deletePart.clear();
+    deletePartWhere.clear();
+    vCount = 0;
+
+    Q_FOREACH (CDTpQueryBuilder *subBuilder, subBuilders) {
+        delete subBuilder;
+    }
 }
 
 /* --- CDTpSparqlQuery --- */
