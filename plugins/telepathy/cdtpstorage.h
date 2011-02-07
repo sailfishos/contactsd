@@ -50,30 +50,34 @@ Q_SIGNALS:
     void syncEnded(CDTpAccountPtr accountWrapper, int contactsAdded, int contactsRemoved);
 
 public Q_SLOTS:
-    void removeAccount(const QString &accountPath);
-    void syncAccountSet(const QList<QString> &accountPaths);
+    void syncAccounts(const QList<CDTpAccountPtr> &accounts);
     void syncAccount(CDTpAccountPtr accountWrapper);
-    void syncAccount(CDTpAccountPtr accountWrapper, CDTpAccount::Changes changes);
+    void updateAccount(CDTpAccountPtr accountWrapper, CDTpAccount::Changes changes);
+    void removeAccount(CDTpAccountPtr accountWrapper);
     void syncAccountContacts(CDTpAccountPtr accountWrapper);
     void syncAccountContacts(CDTpAccountPtr accountWrapper,
             const QList<CDTpContactPtr> &contactsAdded,
             const QList<CDTpContactPtr> &contactsRemoved);
-    void syncAccountContact(CDTpAccountPtr accountWrapper,
-            CDTpContactPtr contactWrapper, CDTpContact::Changes changes);
-    void setAccountContactsOffline(CDTpAccountPtr accountWrapper);
+    void updateContact(CDTpContactPtr contactWrapper, CDTpContact::Changes changes);
 
 private Q_SLOTS:
     void onQueueTimerTimeout();
-    void onAccountsSparqlQueryFinished(CDTpSparqlQuery *query);
 
 private:
-    void removeContacts(CDTpAccountPtr accountWrapper,
-            const QList<CDTpContactPtr> &contacts);
-    void queueContactUpdate(CDTpContactPtr contactWrapper, CDTpContact::Changes);
-    void updateQueuedContacts();
-    void addAccountAvatarToBuilder(CDTpQueryBuilder &builder,
-            const QString &imAddress,
-            const Tp::Avatar &avatar) const;
+    void queueContactUpdate(CDTpContactPtr contactWrapper, CDTpContact::Changes changes);
+
+    void addCreateAccountsToBuilder(CDTpQueryBuilder &builder,
+            const QList<CDTpAccountPtr> &accounts) const;
+    void addUpdateAccountToBuilder(CDTpQueryBuilder &builder,
+            CDTpAccountPtr accountWrapper,
+            CDTpAccount::Changes changes) const;
+    void addSyncAccountContactsToBuilder(CDTpQueryBuilder &builder,
+            CDTpAccountPtr accountWrapper) const;
+    void addCreateContactsToBuilder(CDTpQueryBuilder &builder,
+            const QList<CDTpContactPtr> &contacts) const;
+    void addUpdateContactToBuilder(CDTpQueryBuilder &builder,
+            CDTpContactPtr contactWrapper,
+            CDTpContact::Changes changes) const;
     void addContactAliasToBuilder(CDTpQueryBuilder &builder,
             const QString &imAddress,
             CDTpContactPtr contactWrapper) const;
@@ -86,6 +90,8 @@ private:
     void addContactAvatarToBuilder(CDTpQueryBuilder &builder,
             const QString &imAddress,
             CDTpContactPtr contactWrapper) const;
+    void addAccountAvatarToBuilder(CDTpQueryBuilder &builder,
+            const QString &imAddress, const Tp::Avatar &avatar) const;
     void addContactAuthorizationToBuilder(CDTpQueryBuilder &builder,
             const QString &imAddress,
             CDTpContactPtr contactWrapper) const;
@@ -98,13 +104,16 @@ private:
             const QString &graph,
             const Tp::ContactInfoField &field,
             QHash<QString, QString> &affiliations) const;
+    void addRemoveContactsToBuilder(CDTpQueryBuilder &builder,
+            CDTpAccountPtr accountWrapper,
+            const QList<CDTpContactPtr> &contacts) const;
+    void addRemoveContactToBuilder(CDTpQueryBuilder &builder,
+            const QString &imAddress) const;
     void addRemoveContactInfoToBuilder(CDTpQueryBuilder &builder,
             const QString &imContact,
             const QString &graph) const;
-    void addRemoveContactToBuilder(CDTpQueryBuilder &builder,
-            const QString &imAddress) const;
-
-    void oneSyncOperationFinished(CDTpAccountPtr accountWrapper);
+    void addSetContactsUnknownToBuilder(CDTpQueryBuilder &builder,
+            CDTpAccountPtr accountWrapper) const;
 
     QString presenceType(Tp::ConnectionPresenceType presenceType) const;
     QString presenceState(Tp::Contact::PresenceState presenceState) const;
@@ -114,14 +123,12 @@ private:
     QString literalIMAddress(const QString &accountPath, const QString &contactId) const;
     QString literalIMAddress(const CDTpContactPtr &contactWrapper) const;
     QString literalIMAddress(const CDTpAccountPtr &accountWrapper) const;
-    QString literalIMAccount(const QString &accountPath) const;
     QString literalIMAccount(const CDTpAccountPtr &accountWrapper) const;
     QString literalContactInfo(const Tp::ContactInfoField &field, int i) const;
 
 private:
     QHash<CDTpContactPtr, CDTpContact::Changes> mUpdateQueue;
     QTimer mQueueTimer;
-    QHash<CDTpAccountPtr, CDTpStorageSyncOperations> mSyncOperations;
 };
 
 struct CDTpStorageSyncOperations

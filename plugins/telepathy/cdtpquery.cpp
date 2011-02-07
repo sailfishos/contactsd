@@ -95,9 +95,14 @@ void CDTpQueryBuilder::appendRawSelection(const QString &str)
     append(deletePartWhere, str);
 }
 
-void CDTpQueryBuilder::appendSubBuilder(CDTpQueryBuilder *builder)
+void CDTpQueryBuilder::appendRawQuery(const QString &str)
 {
-    subBuilders << builder;
+    subQueries << str;
+}
+
+void CDTpQueryBuilder::appendRawQuery(const CDTpQueryBuilder &builder)
+{
+    subQueries << builder.getRawQuery();
 }
 
 QString CDTpQueryBuilder::uniquify(const QString &v)
@@ -105,7 +110,7 @@ QString CDTpQueryBuilder::uniquify(const QString &v)
     return QString(QLatin1String("%1_%2")).arg(v).arg(++vCount);
 }
 
-void CDTpQueryBuilder::mergeWithOptional(CDTpQueryBuilder &builder)
+void CDTpQueryBuilder::mergeWithOptional(const CDTpQueryBuilder &builder)
 {
     // Append insertPart
     QHash<QString, QString>::const_iterator i;
@@ -158,9 +163,9 @@ QString CDTpQueryBuilder::getRawQuery() const
         }
     }
 
-    // Recurse to sub builders
-    Q_FOREACH (CDTpQueryBuilder *subBuilder, subBuilders) {
-        rawQuery += subBuilder->getRawQuery();
+    // Append raw queries
+    Q_FOREACH (const QString &subQuery, subQueries) {
+        rawQuery += subQuery;
     }
 
     return rawQuery;
@@ -193,11 +198,8 @@ void CDTpQueryBuilder::clear()
     insertPartWhere.clear();
     deletePart.clear();
     deletePartWhere.clear();
+    subQueries.clear();
     vCount = 0;
-
-    Q_FOREACH (CDTpQueryBuilder *subBuilder, subBuilders) {
-        delete subBuilder;
-    }
 }
 
 /* --- CDTpSparqlQuery --- */
@@ -207,6 +209,8 @@ CDTpSparqlQuery::CDTpSparqlQuery(QSparqlQuery sparqlQuery, QObject *parent)
 {
     QSparqlConnection &connection = com::nokia::contactsd::SparqlConnectionManager::defaultConnection();
     QSparqlResult *result = connection.exec(sparqlQuery);
+
+    qDebug() << "\n" << sparqlQuery.query() << "\n";
 
     if (not result) {
         qWarning() << Q_FUNC_INFO << " - QSparqlConnection::exec() == 0";

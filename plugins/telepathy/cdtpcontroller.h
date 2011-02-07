@@ -46,15 +46,11 @@ private Q_SLOTS:
     void onAccountAdded(const Tp::AccountPtr &account);
     void onAccountRemoved(const Tp::AccountPtr &account);
     void onAccountReady(CDTpAccountPtr accountWrapper);
-    void onAccountRosterChanged(CDTpAccountPtr accountWrapper, bool haveRoster);
-    void onAccountRosterUpdated(CDTpAccountPtr accountWrapper,
-            const QList<CDTpContactPtr> &contactsAdded,
-            const QList<CDTpContactPtr> &contactsRemoved);
     void onSyncStarted(CDTpAccountPtr accountWrapper);
     void onSyncEnded(CDTpAccountPtr accountWrapper, int contactsAdded, int contactsRemoved);
 
 private:
-    void insertAccount(const Tp::AccountPtr &account);
+    CDTpAccountPtr insertAccount(const Tp::AccountPtr &account);
     void removeAccount(const QString &accountObjectPath);
 
     void setImportStarted(const Tp::AccountPtr &account);
@@ -64,7 +60,7 @@ private:
     CDTpStorage *mStorage;
     Tp::AccountManagerPtr mAM;
     Tp::AccountSetPtr mAccountSet;
-    QHash<QString, CDTpAccountPtr> mAccounts;
+    QHash<Tp::AccountPtr, CDTpAccountPtr> mAccounts;
 };
 
 #endif // CDTPCONTROLLER_H

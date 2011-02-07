@@ -40,42 +40,15 @@ CDTpStorage::~CDTpStorage()
 {
 }
 
-void CDTpStorage::removeAccount(const QString &accountPath)
+void CDTpStorage::syncAccounts(const QList<CDTpAccountPtr> &accounts)
 {
-    const QString imAccount = literalIMAccount(accountPath);
-    qDebug() << "Removing account" << imAccount;
-
     CDTpQueryBuilder builder;
 
-    /* Bind imAddress to all contacts of this imAccount */
-    const QString imAddress = builder.uniquify("?imAddress");
-    const QString selection = (QString(QLatin1String(
-            "%1 a nco:IMAddress.\n"
-            "%2 nco:hasIMContact %1.")).arg(imAddress).arg(imAccount));
-
-    /* Delete/update local contact */
-    builder.appendRawSelection(selection);
-    addRemoveContactToBuilder(builder, imAddress);
-
-    /* Delete imAddress and imAccount in a sub builder because they are needed
-     * for the selection of builder. */
-    CDTpQueryBuilder *subBuilder = new CDTpQueryBuilder();
-    subBuilder->appendRawSelection(selection);
-    subBuilder->deleteResource(imAddress);
-    subBuilder->deleteResource(imAccount);
-    builder.appendSubBuilder(subBuilder);
-
-    new CDTpSparqlQuery(builder.getSparqlQuery(), this);
-}
-
-void CDTpStorage::syncAccountSet(const QList<QString> &accountPaths)
-{
+    /* Purge accounts and their contacts that does not exist anymore */
     QStringList imAccounts;
-    Q_FOREACH (const QString &accountPath, accountPaths) {
-        imAccounts << literalIMAccount(accountPath);
+    Q_FOREACH (const CDTpAccountPtr &accountWrapper, accounts) {
+        imAccounts << literalIMAccount(accountWrapper);
     }
-
-    CDTpQueryBuilder builder;
 
     /* Bind imAccount to all accounts that does not exist anymore,
      * and imAddress to all contacts of this imAccount */
@@ -94,56 +67,124 @@ void CDTpStorage::syncAccountSet(const QList<QString> &accountPaths)
 
     /* Delete imAddress and imAccount in a sub builder because they are needed
      * for the selection of builder. */
-    CDTpQueryBuilder *subBuilder = new CDTpQueryBuilder();
-    subBuilder->appendRawSelection(selection);
-    subBuilder->deleteResource(imAddress);
-    subBuilder->deleteResource(imAccount);
-    builder.appendSubBuilder(subBuilder);
+    CDTpQueryBuilder subBuilder;
+    subBuilder.appendRawSelection(selection);
+    subBuilder.deleteResource(imAddress);
+    subBuilder.deleteResource(imAccount);
+    builder.appendRawQuery(subBuilder);
+
+    /* Sync accounts and their contacts */
+    subBuilder.clear();
+    addCreateAccountsToBuilder(subBuilder, accounts);
+    builder.appendRawQuery(subBuilder);
 
     new CDTpSparqlQuery(builder.getSparqlQuery(), this);
 }
 
 void CDTpStorage::syncAccount(CDTpAccountPtr accountWrapper)
 {
-    syncAccount(accountWrapper, CDTpAccount::All);
-
-    /* If contactsd leaves while account is still online, and get restarted
-     * when account is offline then contacts in tracker still have presence.
-     * This happens when rebooting the device. */
-    if (!accountWrapper->account()->connection()) {
-        setAccountContactsOffline(accountWrapper);
-    }
+    CDTpQueryBuilder builder;
+    addCreateAccountsToBuilder(builder, QList<CDTpAccountPtr>() << accountWrapper);
+    new CDTpSparqlQuery(builder.getSparqlQuery(), this);
 }
 
-void CDTpStorage::syncAccount(CDTpAccountPtr accountWrapper,
+void CDTpStorage::updateAccount(CDTpAccountPtr accountWrapper,
         CDTpAccount::Changes changes)
 {
-    Tp::AccountPtr account = accountWrapper->account();
-    if (account->normalizedName().isEmpty()) {
-        return;
-    }
+    CDTpQueryBuilder builder;
+    addUpdateAccountToBuilder(builder, accountWrapper, changes);
+    new CDTpSparqlQuery(builder.getSparqlQuery(), this);
+}
 
+void CDTpStorage::removeAccount(CDTpAccountPtr accountWrapper)
+{
     const QString imAccount = literalIMAccount(accountWrapper);
-    const QString imAddress = literalIMAddress(accountWrapper);
-
-    qDebug() << "Syncing account" << imAddress;
+    qDebug() << "Removing account" << imAccount;
 
     CDTpQueryBuilder builder;
 
-    // Ensure the IMAccount exists
-    builder.createResource(imAccount, "nco:IMAccount", CDTpQueryBuilder::privateGraph);
-    builder.insertProperty(imAccount, "nco:imAccountType", literal(account->protocolName()), CDTpQueryBuilder::privateGraph);
-    builder.insertProperty(imAccount, "nco:imAccountAddress", imAddress, CDTpQueryBuilder::privateGraph);
-    builder.insertProperty(imAccount, "nco:hasIMContact", imAddress, CDTpQueryBuilder::privateGraph);
+    /* Bind imAddress to all contacts of this imAccount */
+    const QString imAddress = builder.uniquify("?imAddress");
+    const QString selection = (QString(QLatin1String(
+            "%1 a nco:IMAddress.\n"
+            "%2 nco:hasIMContact %1.")).arg(imAddress).arg(imAccount));
 
-    // Ensure the self contact has an IMAddress
-    builder.createResource(imAddress, "nco:IMAddress");
-    builder.insertProperty(imAddress, "nco:imID", literal(account->normalizedName()));
-    builder.insertProperty(imAddress, "nco:imProtocol", literal(account->protocolName()));
+    /* Delete/update local contact */
+    builder.appendRawSelection(selection);
+    addRemoveContactToBuilder(builder, imAddress);
 
-    builder.updateProperty("nco:default-contact-me", "nie:contentLastModified", literalTimeStamp());
+    /* Delete imAddress and imAccount in a sub builder because they are needed
+     * for the selection of builder. */
+    CDTpQueryBuilder subBuilder;
+    subBuilder.appendRawSelection(selection);
+    subBuilder.deleteResource(imAddress);
+    subBuilder.deleteResource(imAccount);
+    builder.appendRawQuery(subBuilder);
 
-    // Apply updates
+    new CDTpSparqlQuery(builder.getSparqlQuery(), this);
+}
+
+void CDTpStorage::addCreateAccountsToBuilder(CDTpQueryBuilder &builder,
+        const QList<CDTpAccountPtr> &accounts) const
+{
+    QStringList imAddresses;
+    Q_FOREACH (const CDTpAccountPtr &accountWrapper, accounts) {
+        Tp::AccountPtr account = accountWrapper->account();
+        const QString imAccount = literalIMAccount(accountWrapper);
+        const QString imAddress = literalIMAddress(accountWrapper);
+
+        qDebug() << "Syncing account" << imAddress;
+
+        // Ensure the IMAccount exists
+        builder.createResource(imAccount, "nco:IMAccount", CDTpQueryBuilder::privateGraph);
+        builder.insertProperty(imAccount, "nco:imAccountType", literal(account->protocolName()), CDTpQueryBuilder::privateGraph);
+        builder.insertProperty(imAccount, "nco:imAccountAddress", imAddress, CDTpQueryBuilder::privateGraph);
+        builder.insertProperty(imAccount, "nco:hasIMContact", imAddress, CDTpQueryBuilder::privateGraph);
+
+        // Ensure the self contact has an IMAddress
+        builder.createResource(imAddress, "nco:IMAddress");
+        builder.insertProperty(imAddress, "nco:imID", literal(account->normalizedName()));
+        builder.insertProperty(imAddress, "nco:imProtocol", literal(account->protocolName()));
+
+        // Assume everything changed
+        addUpdateAccountToBuilder(builder, accountWrapper, CDTpAccount::All);
+
+        // Create account's contacts
+        CDTpQueryBuilder subBuilder;
+        addSyncAccountContactsToBuilder(subBuilder, accountWrapper);
+        builder.appendRawQuery(subBuilder);
+
+        imAddresses << imAddress;
+    }
+
+    // Ensure the IMAddresses are bound to the default-contact-me via an affiliation
+    builder.appendRawQuery(QString(QLatin1String(
+        "INSERT {\n"
+        "    GRAPH %1 {\n"
+        "        nco:default-contact-me nco:hasAffiliation _:affiliation.\n"
+        "        _:affiliation a nco:Affiliation;\n"
+        "                      nco:hasIMAddress ?imAddress;\n"
+        "                      rdfs:label \"Others\".\n"
+        "    }\n"
+        "}\n"
+        "WHERE {\n"
+        "    ?imAddress a nco:IMAddress.\n"
+        "    FILTER (?imAddress IN (%2) &&\n"
+        "            NOT EXISTS { nco:default-contact-me nco:hasAffiliation [ nco:hasIMAddress ?imAddress ] })\n"
+        "}\n"))
+        .arg(CDTpQueryBuilder::defaultGraph).arg(imAddresses.join(",")));
+}
+
+void CDTpStorage::addUpdateAccountToBuilder(CDTpQueryBuilder &builder,
+        CDTpAccountPtr accountWrapper,
+        CDTpAccount::Changes changes) const
+{
+    Tp::AccountPtr account = accountWrapper->account();
+    const QString imAccount = literalIMAccount(accountWrapper);
+    const QString imAddress = literalIMAddress(accountWrapper);
+
+    qDebug() << "Update account" << imAddress;
+
     if (changes & CDTpAccount::Nickname) {
         qDebug() << "  nickname changed";
         builder.updateProperty(imAddress, "nco:imNickname", literal(account->nickname()));
@@ -158,68 +199,55 @@ void CDTpStorage::syncAccount(CDTpAccountPtr accountWrapper,
     }
     if (changes & CDTpAccount::DisplayName) {
         qDebug() << "  display name changed";
-        builder.updateProperty(imAccount, "nco:imDisplayName", literal(account->displayName()), CDTpQueryBuilder::privateGraph);
-    }
-    QString finalQuery = builder.getRawQuery();
-
-    // Ensure the IMAddress is bound to the default-contact-me via an affiliation
-    finalQuery += QString(QLatin1String(
-        "INSERT {\n"
-        "    GRAPH %1 {\n"
-        "        nco:default-contact-me nco:hasAffiliation _:affiliation.\n"
-        "        _:affiliation a nco:Affiliation;\n"
-        "                      nco:hasIMAddress %2;\n"
-        "                      rdfs:label \"Others\".\n"
-        "    }\n"
-        "}\n"
-        "WHERE {\n"
-        "    FILTER (NOT EXISTS { nco:default-contact-me nco:hasAffiliation [ nco:hasIMAddress %2 ] })\n"
-        "}\n\n"))
-        .arg(CDTpQueryBuilder::defaultGraph).arg(imAddress);
-
-    new CDTpSparqlQuery(QSparqlQuery(finalQuery, QSparqlQuery::InsertStatement), this);
-}
-
-void CDTpStorage::addAccountAvatarToBuilder(CDTpQueryBuilder &builder,
-        const QString &imAddress, const Tp::Avatar &avatar) const
-{
-    builder.deletePropertyAndLinkedResource(imAddress, "nco:imAvatar");
-
-    if (avatar.avatarData.isEmpty()) {
-        return;
+        builder.updateProperty(imAccount, "nco:imDisplayName", literal(account->displayName()),
+                CDTpQueryBuilder::privateGraph);
     }
 
-    /* FIXME: Save data on disk, but AM should give us a filename, really */
-    QString fileName = QString("%1/.contacts/avatars/%2")
-        .arg(QDir::homePath())
-        .arg(QString(QCryptographicHash::hash(avatar.avatarData, QCryptographicHash::Sha1).toHex()));
-    qDebug() << "Saving account avatar to" << fileName;
-
-    QFile avatarFile(fileName);
-    if (!avatarFile.open(QIODevice::WriteOnly)) {
-        qWarning() << "Unable to save account avatar: error opening avatar "
-            "file" << fileName << "for writing";
-        return;
-    }
-    avatarFile.write(avatar.avatarData);
-    avatarFile.close();
-
-    const QString dataObject = builder.uniquify("_:dataObject");
-    builder.createResource(dataObject, "nie:DataObject");
-    builder.insertProperty(dataObject, "nie:url", literal(fileName));
-    builder.insertProperty(imAddress, "nco:imAvatar", dataObject);
+    builder.updateProperty("nco:default-contact-me", "nie:contentLastModified", literalTimeStamp());
 }
 
 void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper)
 {
-    CDTpStorageSyncOperations &op = mSyncOperations[accountWrapper];
-    if (!op.active) {
-        op.active = true;
-        Q_EMIT syncStarted(accountWrapper);
+    CDTpQueryBuilder builder;
+    addSyncAccountContactsToBuilder(builder, accountWrapper);
+    new CDTpSparqlQuery(builder.getSparqlQuery(), this);
+}
+
+void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper,
+        const QList<CDTpContactPtr> &contactsAdded,
+        const QList<CDTpContactPtr> &contactsRemoved)
+{
+    CDTpQueryBuilder builder;
+
+    if (!contactsAdded.isEmpty()) {
+        addCreateContactsToBuilder(builder, contactsAdded);
     }
 
-    syncAccountContacts(accountWrapper, accountWrapper->contacts(),
-            QList<CDTpContactPtr>());
+    if (!contactsRemoved.isEmpty()) {
+        Q_FOREACH (const CDTpContactPtr &contactWrapper, contactsRemoved) {
+            qDebug() << "Removing contact, cancel update:" << literalIMAddress(contactWrapper);
+            mUpdateQueue.remove(contactWrapper);
+        }
+        addRemoveContactsToBuilder(builder, accountWrapper, contactsRemoved);
+    }
+
+    new CDTpSparqlQuery(builder.getSparqlQuery(), this);
+}
+
+void CDTpStorage::updateContact(CDTpContactPtr contactWrapper, CDTpContact::Changes changes)
+{
+    queueContactUpdate(contactWrapper, changes);
+}
+
+void CDTpStorage::addSyncAccountContactsToBuilder(CDTpQueryBuilder &builder,
+        CDTpAccountPtr accountWrapper) const
+{
+    /* If account does not have a roster, mark all its contacts with UNKNOWN
+     * presence/caps. */
+    if (!accountWrapper->hasRoster()) {
+        addSetContactsUnknownToBuilder(builder, accountWrapper);
+        return;
+    }
 
     /* Purge contacts not in the account anymore */
     QStringList imAddresses;
@@ -227,8 +255,6 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper)
         imAddresses << literalIMAddress(contactWrapper);
     }
     imAddresses << literalIMAddress(accountWrapper);
-
-    CDTpQueryBuilder builder;
 
     /* Bind imAddress to all contacts that does not exist anymore */
     const QString imAccount = literalIMAccount(accountWrapper);
@@ -244,82 +270,15 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper)
 
     /* Delete imAddress and imAccount in a sub builder because they are needed
      * for the selection of builder. */
-    CDTpQueryBuilder *subBuilder = new CDTpQueryBuilder();
-    subBuilder->appendRawSelection(selection);
-    subBuilder->deleteResource(imAddress);
-    subBuilder->deleteProperty(imAccount, "nco:hasIMContact", imAddress);
-    builder.appendSubBuilder(subBuilder);
+    CDTpQueryBuilder subBuilder;
+    subBuilder.appendRawSelection(selection);
+    subBuilder.deleteResource(imAddress);
+    subBuilder.deleteProperty(imAccount, "nco:hasIMContact", imAddress);
+    builder.appendRawQuery(subBuilder);
 
-    new CDTpSparqlQuery(builder.getSparqlQuery(), this);
-}
-
-void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper,
-        const QList<CDTpContactPtr> &contactsAdded,
-        const QList<CDTpContactPtr> &contactsRemoved)
-{
-    Q_FOREACH (CDTpContactPtr contactWrapper, contactsAdded) {
-        queueContactUpdate(contactWrapper, CDTpContact::All);
-    }
-
-    removeContacts(accountWrapper, contactsRemoved);
-}
-
-void CDTpStorage::syncAccountContact(CDTpAccountPtr accountWrapper,
-        CDTpContactPtr contactWrapper, CDTpContact::Changes changes)
-{
-    Q_UNUSED(accountWrapper);
-    queueContactUpdate(contactWrapper, changes);
-}
-
-void CDTpStorage::removeContacts(CDTpAccountPtr accountWrapper,
-        const QList<CDTpContactPtr> &contacts)
-{
-    /* Split the request into smaller batches if necessary */
-    if (contacts.size() > MAX_REMOVE_SIZE) {
-        QList<CDTpContactPtr> batch;
-        for (int i = 0; i < contacts.size(); i++) {
-            batch << contacts[i];
-            if (batch.size() == MAX_REMOVE_SIZE) {
-                removeContacts(accountWrapper, batch);
-                batch.clear();
-            }
-        }
-        if (!batch.isEmpty()) {
-            removeContacts(accountWrapper, batch);
-            batch.clear();
-        }
-        return;
-    }
-
-    if (contacts.isEmpty()) {
-        return;
-    }
-
-    /* Cancel queued update if we are going to remove the contact anyway */
-    QStringList imAddresses;
-    Q_FOREACH (const CDTpContactPtr &contactWrapper, contacts) {
-        const QString imAddress = literalIMAddress(contactWrapper);
-
-        qDebug() << "Removing contact, cancel update:" << imAddress;
-        mUpdateQueue.remove(contactWrapper);
-
-        imAddresses << imAddress;
-    }
-
-    CDTpQueryBuilder builder;
-
-    /* Bind imAddress to all those contacts */
-    const QString imAddress = builder.uniquify("?imAddress");
-    builder.appendRawSelection(QString(QLatin1String(
-            "%1 a nco:IMAddress.\n"
-            "FILTER (%1 IN (%2)).")).arg(imAddress).arg(imAddresses.join(",")));
-
-    const QString imAccount = literalIMAccount(accountWrapper);
-    addRemoveContactToBuilder(builder, imAddress);
-    builder.deleteResource(imAddress);
-    builder.deleteProperty(imAccount, "nco:hasIMContact", imAddress);
-
-    new CDTpSparqlQuery(builder.getSparqlQuery(), this);
+    subBuilder.clear();
+    addCreateContactsToBuilder(subBuilder, accountWrapper->contacts());
+    builder.appendRawQuery(subBuilder);
 }
 
 void CDTpStorage::queueContactUpdate(CDTpContactPtr contactWrapper, CDTpContact::Changes changes)
@@ -327,35 +286,38 @@ void CDTpStorage::queueContactUpdate(CDTpContactPtr contactWrapper, CDTpContact:
     if (!mUpdateQueue.contains(contactWrapper)) {
         qDebug() << "queue update for" << contactWrapper->contact()->id();
         mUpdateQueue.insert(contactWrapper, changes);
-        mSyncOperations[contactWrapper->accountWrapper()].nPendingOperations++;
     } else {
         mUpdateQueue[contactWrapper] |= changes;
     }
 
-    /* If the queue is too big, flush it now to avoid hitting query size limit */
-    if (mUpdateQueue.size() >= MAX_UPDATE_SIZE) {
-        onQueueTimerTimeout();
-    } else if (!mQueueTimer.isActive()) {
+    if (!mQueueTimer.isActive()) {
         mQueueTimer.start();
     }
 }
 
 void CDTpStorage::onQueueTimerTimeout()
 {
-    if (!mUpdateQueue.isEmpty()) {
-        updateQueuedContacts();
-        mUpdateQueue.clear();
+    if (mUpdateQueue.isEmpty()) {
+        return;
     }
+
+    CDTpQueryBuilder builder;
+
+    QHash<CDTpContactPtr, CDTpContact::Changes>::const_iterator i;
+    for (i = mUpdateQueue.constBegin(); i != mUpdateQueue.constEnd(); ++i) {
+        addUpdateContactToBuilder(builder, i.key(), i.value());
+    }
+    mUpdateQueue.clear();
+
+    new CDTpSparqlQuery(builder.getSparqlQuery(), this);
 }
 
-void CDTpStorage::updateQueuedContacts()
+void CDTpStorage::addCreateContactsToBuilder(CDTpQueryBuilder &builder,
+        const QList<CDTpContactPtr> &contacts) const
 {
-    QString finalQuery;
-
     // Ensure all imAddress exists and are linked from imAccount
-    CDTpQueryBuilder builder;
     QStringList imAddresses;
-    Q_FOREACH (const CDTpContactPtr contactWrapper, mUpdateQueue.keys()) {
+    Q_FOREACH (const CDTpContactPtr contactWrapper, contacts) {
         CDTpAccountPtr accountWrapper = contactWrapper->accountWrapper();
 
         const QString imAddress = literalIMAddress(contactWrapper);
@@ -368,11 +330,9 @@ void CDTpStorage::updateQueuedContacts()
 
         imAddresses << imAddress;
     }
-    finalQuery += builder.getRawQuery();
-    builder.clear();
 
     // Ensure all imAddresses are bound to a PersonContact
-    finalQuery += QString(QLatin1String(
+    builder.appendRawQuery(QString(QLatin1String(
         "INSERT {\n"
         "    GRAPH %1 {\n"
         "        _:contact a nco:PersonContact;\n"
@@ -390,70 +350,59 @@ void CDTpStorage::updateQueuedContacts()
         "            NOT EXISTS { ?contact nco:hasAffiliation [ nco:hasIMAddress ?imAddress ] })\n"
         "}\n\n"))
         .arg(CDTpQueryBuilder::defaultGraph).arg(literalTimeStamp())
-        .arg(defaultGenerator).arg(imAddresses.join(QLatin1String(",")));
+        .arg(defaultGenerator).arg(imAddresses.join(QLatin1String(","))));
 
-    // Update all contacts...
-    QHash<CDTpContactPtr, CDTpContact::Changes>::const_iterator i;
-    for (i = mUpdateQueue.constBegin(); i != mUpdateQueue.constEnd(); ++i) {
-        const CDTpContactPtr contactWrapper = i.key();
-        const QString imAddress = literalIMAddress(contactWrapper);
-
-        // bind imContact to imAddress
-        const QString imContact = builder.uniquify("?imContact");
-        builder.appendRawSelection(QString(QLatin1String(
-                "%1 a nco:PersonContact.\n"
-                "%1 nco:hasAffiliation [ nco:hasIMAddress %2 ]."))
-                .arg(imContact).arg(imAddress));
-
-        // Update contact's timestamp
-        builder.updateProperty(imContact, "nie:contentLastModified", literalTimeStamp());
-
-        // Apply all changes
-        const Tp::ContactPtr contact = contactWrapper->contact();
-        const CDTpContact::Changes changes = i.value();
-        if (changes & CDTpContact::Alias) {
-            qDebug() << "  alias changed";
-            addContactAliasToBuilder(builder, imAddress, contactWrapper);
-        }
-        if (changes & CDTpContact::Presence) {
-            qDebug() << "  presence changed";
-            addPresenceToBuilder(builder, imAddress, contact->presence());
-        }
-        if (changes & CDTpContact::Capabilities) {
-            qDebug() << "  capabilities changed";
-            addCapabilitiesToBuilder(builder, imAddress, contact->capabilities());
-        }
-        if (changes & CDTpContact::Avatar) {
-            qDebug() << "  avatar changed";
-            addContactAvatarToBuilder(builder, imAddress, contactWrapper);
-        }
-        if (changes & CDTpContact::Authorization) {
-            qDebug() << "  authorization changed";
-            addContactAuthorizationToBuilder(builder, imAddress, contactWrapper);
-        }
-        if (changes & CDTpContact::Infomation) {
-            qDebug() << "  vcard information changed";
-            addContactInfoToBuilder(builder, imAddress, imContact, contactWrapper);
-        }
+    // Assume everything changed
+    CDTpQueryBuilder subBuilder;
+    Q_FOREACH (const CDTpContactPtr contactWrapper, contacts) {
+        addUpdateContactToBuilder(subBuilder, contactWrapper, CDTpContact::All);
     }
-    finalQuery += builder.getRawQuery();
+    builder.appendRawQuery(subBuilder);
+}
 
-    /* Keep only one sync operation per account instead of per contact */
-    QList<CDTpAccountPtr> accounts;
-    Q_FOREACH (const CDTpContactPtr contactWrapper, mUpdateQueue.keys()) {
-        CDTpAccountPtr accountWrapper = contactWrapper->accountWrapper();
-        if (!accounts.contains(accountWrapper)) {
-            accounts << accountWrapper;
-        } else {
-            oneSyncOperationFinished(accountWrapper);
-        }
+void CDTpStorage::addUpdateContactToBuilder(CDTpQueryBuilder &builder,
+        CDTpContactPtr contactWrapper,
+        CDTpContact::Changes changes) const
+{
+    const Tp::ContactPtr contact = contactWrapper->contact();
+    const QString imAddress = literalIMAddress(contactWrapper);
+    const QString imContact = builder.uniquify("?imContact");
+
+    qDebug() << "Update contact" << imAddress;
+
+    // bind imContact to imAddress
+    builder.appendRawSelection(QString(QLatin1String(
+            "%1 a nco:PersonContact.\n"
+            "%1 nco:hasAffiliation [ nco:hasIMAddress %2 ]."))
+            .arg(imContact).arg(imAddress));
+
+    // Apply changes
+    if (changes & CDTpContact::Alias) {
+        qDebug() << "  alias changed";
+        addContactAliasToBuilder(builder, imAddress, contactWrapper);
+    }
+    if (changes & CDTpContact::Presence) {
+        qDebug() << "  presence changed";
+        addPresenceToBuilder(builder, imAddress, contact->presence());
+    }
+    if (changes & CDTpContact::Capabilities) {
+        qDebug() << "  capabilities changed";
+        addCapabilitiesToBuilder(builder, imAddress, contact->capabilities());
+    }
+    if (changes & CDTpContact::Avatar) {
+        qDebug() << "  avatar changed";
+        addContactAvatarToBuilder(builder, imAddress, contactWrapper);
+    }
+    if (changes & CDTpContact::Authorization) {
+        qDebug() << "  authorization changed";
+        addContactAuthorizationToBuilder(builder, imAddress, contactWrapper);
+    }
+    if (changes & CDTpContact::Infomation) {
+        qDebug() << "  vcard information changed";
+        addContactInfoToBuilder(builder, imAddress, imContact, contactWrapper);
     }
 
-    CDTpAccountsSparqlQuery *query = new CDTpAccountsSparqlQuery(accounts,
-            QSparqlQuery(finalQuery, QSparqlQuery::InsertStatement), this);
-    connect(query,
-            SIGNAL(finished(CDTpSparqlQuery *)),
-            SLOT(onAccountsSparqlQueryFinished(CDTpSparqlQuery *)));
+    builder.updateProperty(imContact, "nie:contentLastModified", literalTimeStamp());
 }
 
 void CDTpStorage::addContactAliasToBuilder(CDTpQueryBuilder &builder,
@@ -519,6 +468,36 @@ void CDTpStorage::addContactAvatarToBuilder(CDTpQueryBuilder &builder,
         builder.insertProperty(dataObject, "nie:url", literal(contact->avatarData().fileName));
         builder.insertProperty(imAddress, "nco:imAvatar", dataObject);
     }
+}
+
+void CDTpStorage::addAccountAvatarToBuilder(CDTpQueryBuilder &builder,
+        const QString &imAddress, const Tp::Avatar &avatar) const
+{
+    builder.deletePropertyAndLinkedResource(imAddress, "nco:imAvatar");
+
+    if (avatar.avatarData.isEmpty()) {
+        return;
+    }
+
+    /* FIXME: Save data on disk, but AM should give us a filename, really */
+    QString fileName = QString("%1/.contacts/avatars/%2")
+        .arg(QDir::homePath())
+        .arg(QString(QCryptographicHash::hash(avatar.avatarData, QCryptographicHash::Sha1).toHex()));
+    qDebug() << "Saving account avatar to" << fileName;
+
+    QFile avatarFile(fileName);
+    if (!avatarFile.open(QIODevice::WriteOnly)) {
+        qWarning() << "Unable to save account avatar: error opening avatar "
+            "file" << fileName << "for writing";
+        return;
+    }
+    avatarFile.write(avatar.avatarData);
+    avatarFile.close();
+
+    const QString dataObject = builder.uniquify("_:dataObject");
+    builder.createResource(dataObject, "nie:DataObject");
+    builder.insertProperty(dataObject, "nie:url", literal(fileName));
+    builder.insertProperty(imAddress, "nco:imAvatar", dataObject);
 }
 
 void CDTpStorage::addContactAuthorizationToBuilder(CDTpQueryBuilder &builder,
@@ -668,19 +647,26 @@ QString CDTpStorage::ensureContactAffiliationToBuilder(CDTpQueryBuilder &builder
     return affiliations[type];
 }
 
-void CDTpStorage::addRemoveContactInfoToBuilder(CDTpQueryBuilder &builder,
-        const QString &imContact,
-        const QString &graph) const
+void CDTpStorage::addRemoveContactsToBuilder(CDTpQueryBuilder &builder,
+        CDTpAccountPtr accountWrapper,
+        const QList<CDTpContactPtr> &contacts) const
 {
-    builder.deletePropertyWithGraph(imContact, "nco:birthDate", graph);
-    builder.deletePropertyWithGraph(imContact, "nco:note", graph);
+    QStringList imAddresses;
+    Q_FOREACH (const CDTpContactPtr &contactWrapper, contacts) {
+        imAddresses << literalIMAddress(contactWrapper);
+    }
 
-    /* Remove affiliation and its sub resources */
-    const QString affiliation = builder.deletePropertyWithGraph(imContact, "nco:hasAffiliation", graph);
-    builder.deletePropertyAndLinkedResource(affiliation, "nco:hasPhoneNumber");
-    builder.deletePropertyAndLinkedResource(affiliation, "nco:hasPostalAddress");
-    builder.deletePropertyAndLinkedResource(affiliation, "nco:emailAddress");
-    builder.deleteResource(affiliation);
+    const QString imAccount = literalIMAccount(accountWrapper);
+    const QString imAddress = builder.uniquify("?imAddress");
+
+    /* Bind imAddress to all those contacts */
+    builder.appendRawSelection(QString(QLatin1String(
+            "%1 a nco:IMAddress.\n"
+            "FILTER (%1 IN (%2)).")).arg(imAddress).arg(imAddresses.join(",")));
+
+    addRemoveContactToBuilder(builder, imAddress);
+    builder.deleteResource(imAddress);
+    builder.deleteProperty(imAccount, "nco:hasIMContact", imAddress);
 }
 
 void CDTpStorage::addRemoveContactToBuilder(CDTpQueryBuilder &builder,
@@ -726,58 +712,52 @@ void CDTpStorage::addRemoveContactToBuilder(CDTpQueryBuilder &builder,
     builder.mergeWithOptional(tmpBuilder);
 }
 
-void CDTpStorage::setAccountContactsOffline(CDTpAccountPtr accountWrapper)
+void CDTpStorage::addRemoveContactInfoToBuilder(CDTpQueryBuilder &builder,
+        const QString &imContact,
+        const QString &graph) const
 {
-    qDebug() << "Setting presence to UNKNOWN for all contacts of account"
-             << accountWrapper->account()->objectPath();
+    builder.deletePropertyWithGraph(imContact, "nco:birthDate", graph);
+    builder.deletePropertyWithGraph(imContact, "nco:note", graph);
 
-    CDTpQueryBuilder builder;
+    /* Remove affiliation and its sub resources */
+    const QString affiliation = builder.deletePropertyWithGraph(imContact, "nco:hasAffiliation", graph);
+    builder.deletePropertyAndLinkedResource(affiliation, "nco:hasPhoneNumber");
+    builder.deletePropertyAndLinkedResource(affiliation, "nco:hasPostalAddress");
+    builder.deletePropertyAndLinkedResource(affiliation, "nco:emailAddress");
+    builder.deleteResource(affiliation);
+}
 
-    /* Bind ?imAddress to all account's contacts, and ?imContact to their
+void CDTpStorage::addSetContactsUnknownToBuilder(CDTpQueryBuilder &builder,
+        CDTpAccountPtr accountWrapper) const
+{
+    Tp::AccountPtr account = accountWrapper->account();
+
+    qDebug() << "Setting all contacts to UNKNOWN:" << account->objectPath();
+
+    /* Bind imAddress to all account's contacts, and imContact to their
      * respective nco:PersonContact. Except for the self contact, because we
      * know that self contact has presence Offline, and that's already set in
      * SyncAccount(). */
+    const QString imAddress = builder.uniquify("?imAddress");
+    const QString imContact = builder.uniquify("?imContact");
     builder.appendRawSelection(QString(QLatin1String(
             "%1 a nco:IMAccount.\n"
-            "%1 nco:hasIMContact ?imAddress.\n"
-            "?imContact a nco:PersonContact.\n"
-            "?imContact nco:hasAffiliation [ nco:hasIMAddress ?imAddress ].\n"
-            "FILTER(?imAddress != %2)."))
-            .arg(literalIMAccount(accountWrapper))
+            "%1 nco:hasIMContact %2.\n"
+            "%3 a nco:PersonContact.\n"
+            "%3 nco:hasAffiliation [ nco:hasIMAddress %2 ].\n"
+            "FILTER(%2 != %4)."))
+            .arg(literalIMAccount(accountWrapper)).arg(imAddress).arg(imContact)
             .arg(literalIMAddress(accountWrapper)));
 
     // FIXME: we could use addPresenceToBuilder() somehow
-    builder.updateProperty("?imAddress", "nco:imPresence", "nco:presence-status-unknown");
-    builder.updateProperty("?imAddress", "nco:presenceLastModified", literalTimeStamp());
-    builder.updateProperty("?imContact", "nie:contentLastModified", literalTimeStamp());
+    builder.updateProperty(imAddress, "nco:imPresence", "nco:presence-status-unknown");
+    builder.updateProperty(imAddress, "nco:presenceLastModified", literalTimeStamp());
+    builder.updateProperty(imContact, "nie:contentLastModified", literalTimeStamp());
 
     // Update capabilities of all contacts, since we don't know them anymore,
     // reset them to the account's caps.
-    addCapabilitiesToBuilder(builder, "?imAddress",
+    addCapabilitiesToBuilder(builder, imAddress,
             accountWrapper->account()->capabilities());
-
-    new CDTpSparqlQuery(builder.getSparqlQuery(), this);
-}
-
-void CDTpStorage::onAccountsSparqlQueryFinished(CDTpSparqlQuery *query)
-{
-    CDTpAccountsSparqlQuery *accountsQuery = qobject_cast<CDTpAccountsSparqlQuery *>(query);
-    Q_FOREACH (const CDTpAccountPtr &accountWrapper, accountsQuery->accounts()) {
-        oneSyncOperationFinished(accountWrapper);
-    }
-}
-
-void CDTpStorage::oneSyncOperationFinished(CDTpAccountPtr accountWrapper)
-{
-    CDTpStorageSyncOperations &op = mSyncOperations[accountWrapper];
-    op.nPendingOperations--;
-
-    if (op.nPendingOperations == 0) {
-        if (op.active) {
-            Q_EMIT syncEnded(accountWrapper, op.nContactsAdded, op.nContactsRemoved);
-        }
-        mSyncOperations.remove(accountWrapper);
-    }
 }
 
 QString CDTpStorage::presenceType(Tp::ConnectionPresenceType presenceType) const
@@ -899,15 +879,9 @@ QString CDTpStorage::literalIMAddress(const CDTpAccountPtr &accountWrapper) cons
     return literalIMAddress(accountPath, accountId);
 }
 
-QString CDTpStorage::literalIMAccount(const QString &accountPath) const
-{
-    return QString("<telepathy:%1>").arg(accountPath);
-}
-
-
 QString CDTpStorage::literalIMAccount(const CDTpAccountPtr &accountWrapper) const
 {
-    return literalIMAccount(accountWrapper->account()->objectPath());
+    return QString("<telepathy:%1>").arg(accountWrapper->account()->objectPath());
 }
 
 QString CDTpStorage::literalContactInfo(const Tp::ContactInfoField &field, int i) const

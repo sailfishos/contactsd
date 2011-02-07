@@ -48,8 +48,9 @@ public:
     QString updateProperty(const QString &resource, const QString &property, const QString &value, const QString &graph = defaultGraph);
 
     void appendRawSelection(const QString &str);
-    void appendSubBuilder(CDTpQueryBuilder *subBuilder);
-    void mergeWithOptional(CDTpQueryBuilder &builder);
+    void appendRawQuery(const QString &str);
+    void appendRawQuery(const CDTpQueryBuilder &builder);
+    void mergeWithOptional(const CDTpQueryBuilder &builder);
 
     QString uniquify(const QString &v = QString("?v"));
     QString getRawQuery() const;
@@ -64,10 +65,9 @@ private:
     QString insertPartWhere;
     QString deletePart;
     QString deletePartWhere;
+    QList<QString> subQueries;
 
     int vCount;
-
-    QList<CDTpQueryBuilder*> subBuilders;
 };
 
 /* --- CDTpSparqlQuery --- */

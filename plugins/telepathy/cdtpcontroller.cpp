@@ -38,10 +38,28 @@ CDTpController::CDTpController(QObject *parent) : QObject(parent)
             SLOT(onSyncEnded(CDTpAccountPtr, int, int)));
 
     qDebug() << "Creating account manager";
-    mAM = Tp::AccountManager::create();
+    const QDBusConnection &bus = QDBusConnection::sessionBus();
+    Tp::AccountFactoryPtr accountFactory = Tp::AccountFactory::create(bus,
+            Tp::Features() << Tp::Account::FeatureCore
+                           << Tp::Account::FeatureAvatar
+                           << Tp::Account::FeatureCapabilities);
+    Tp::ConnectionFactoryPtr connectionFactory = Tp::ConnectionFactory::create(bus,
+            Tp::Features() << Tp::Connection::FeatureCore
+                           << Tp::Connection::FeatureRoster);
+    Tp::ChannelFactoryPtr channelFactory = Tp::ChannelFactory::create(bus);
+    Tp::ContactFactoryPtr contactFactory = Tp::ContactFactory::create(
+            Tp::Features() << Tp::Contact::FeatureAlias
+                           << Tp::Contact::FeatureAvatarToken
+                           << Tp::Contact::FeatureAvatarData
+                           << Tp::Contact::FeatureSimplePresence
+                           << Tp::Contact::FeatureInfo
+                           << Tp::Contact::FeatureLocation
+                           << Tp::Contact::FeatureCapabilities);
+    mAM = Tp::AccountManager::create(bus, accountFactory, connectionFactory,
+            channelFactory, contactFactory);
 
-    qDebug() << "Introspecting account manager";
-    connect(mAM->becomeReady(),
+    // Wait for AM to become ready
+    connect(mAM->becomeReady(Tp::AccountManager::FeatureCore),
             SIGNAL(finished(Tp::PendingOperation*)),
             SLOT(onAccountManagerReady(Tp::PendingOperation*)));
 }
@@ -63,6 +81,8 @@ void CDTpController::onAccountManagerReady(Tp::PendingOperation *op)
     QVariantMap filter;
     filter.insert("valid", true);
     filter.insert("enabled", true);
+    filter.insert("hasBeenOnline", true);
+
     mAccountSet = mAM->filterAccounts(filter);
     connect(mAccountSet.data(),
             SIGNAL(accountAdded(const Tp::AccountPtr &)),
@@ -70,81 +90,64 @@ void CDTpController::onAccountManagerReady(Tp::PendingOperation *op)
     connect(mAccountSet.data(),
             SIGNAL(accountRemoved(const Tp::AccountPtr &)),
              SLOT(onAccountRemoved(const Tp::AccountPtr &)));
+
     Q_FOREACH (const Tp::AccountPtr &account, mAccountSet->accounts()) {
         insertAccount(account);
     }
-    mStorage->syncAccountSet(mAccounts.keys());
+
+    mStorage->syncAccounts(mAccounts.values());
 }
 
 void CDTpController::onAccountAdded(const Tp::AccountPtr &account)
 {
-    qDebug() << "Account" << account->objectPath() << "added";
-    insertAccount(account);
+    if (mAccounts.contains(account)) {
+        qWarning() << "Internal error, account was already in controller";
+        return;
+    }
+
+    CDTpAccountPtr accountWrapper = insertAccount(account);
+    mStorage->syncAccount(accountWrapper);
 }
 
 void CDTpController::onAccountRemoved(const Tp::AccountPtr &account)
 {
-    removeAccount(account->objectPath());
-}
-
-void CDTpController::onAccountReady(CDTpAccountPtr accountWrapper)
-{
-    mStorage->syncAccount(accountWrapper);
-}
-
-void CDTpController::onAccountRosterChanged(CDTpAccountPtr accountWrapper,
-        bool haveRoster)
-{
-    if (haveRoster) {
-        mStorage->syncAccountContacts(accountWrapper);
-    } else {
-        mStorage->setAccountContactsOffline(accountWrapper);
+    if (!mAccounts.contains(account)) {
+        qWarning() << "Internal error, account was not in controller";
+        return;
     }
+    mStorage->removeAccount(mAccounts[account]);
+    mAccounts.remove(account);
 }
 
-void CDTpController::onAccountRosterUpdated(CDTpAccountPtr accountWrapper,
-        const QList<CDTpContactPtr> &contactsAdded,
-        const QList<CDTpContactPtr> &contactsRemoved)
-{
-    mStorage->syncAccountContacts(accountWrapper, contactsAdded,
-            contactsRemoved);
-}
-
-void CDTpController::insertAccount(const Tp::AccountPtr &account)
+CDTpAccountPtr CDTpController::insertAccount(const Tp::AccountPtr &account)
 {
     qDebug() << "Creating wrapper for account" << account->objectPath();
     CDTpAccountPtr accountWrapper = CDTpAccountPtr(new CDTpAccount(account, this));
-    connect(accountWrapper.data(),
-            SIGNAL(ready(CDTpAccountPtr)),
-            SLOT(onAccountReady(CDTpAccountPtr)));
+    mAccounts.insert(account, accountWrapper);
+
+    // Connect change notifications
     connect(accountWrapper.data(),
             SIGNAL(changed(CDTpAccountPtr, CDTpAccount::Changes)),
             mStorage,
-            SLOT(syncAccount(CDTpAccountPtr, CDTpAccount::Changes)));
+            SLOT(updateAccount(CDTpAccountPtr, CDTpAccount::Changes)));
     connect(accountWrapper.data(),
-            SIGNAL(rosterChanged(CDTpAccountPtr , bool)),
-            SLOT(onAccountRosterChanged(CDTpAccountPtr , bool)));
+            SIGNAL(rosterChanged(CDTpAccountPtr)),
+            mStorage,
+            SLOT(syncAccountContacts(CDTpAccountPtr)));
     connect(accountWrapper.data(),
-            SIGNAL(rosterUpdated(CDTpAccountPtr ,
+            SIGNAL(rosterUpdated(CDTpAccountPtr,
                     const QList<CDTpContactPtr> &,
                     const QList<CDTpContactPtr> &)),
-            SLOT(onAccountRosterUpdated(CDTpAccountPtr ,
+            mStorage,
+            SLOT(syncAccountContacts(CDTpAccountPtr,
                     const QList<CDTpContactPtr> &,
                     const QList<CDTpContactPtr> &)));
     connect(accountWrapper.data(),
-            SIGNAL(rosterContactChanged(CDTpAccountPtr ,
-                    CDTpContactPtr, CDTpContact::Changes)),
+            SIGNAL(rosterContactChanged(CDTpContactPtr, CDTpContact::Changes)),
             mStorage,
-            SLOT(syncAccountContact(CDTpAccountPtr ,
-                    CDTpContactPtr, CDTpContact::Changes)));
+            SLOT(updateContact(CDTpContactPtr, CDTpContact::Changes)));
 
-    mAccounts.insert(account->objectPath(), accountWrapper);
-}
-
-void CDTpController::removeAccount(const QString &accountObjectPath)
-{
-    mStorage->removeAccount(accountObjectPath);
-    mAccounts.remove(accountObjectPath);
+    return accountWrapper;
 }
 
 void CDTpController::onSyncStarted(CDTpAccountPtr accountWrapper)

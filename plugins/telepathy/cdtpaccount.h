@@ -41,7 +41,7 @@ public:
         Nickname    = (1 << 1),
         Presence    = (1 << 2),
         Avatar      = (1 << 3),
-        All         = (1 << 4) -1
+        All         = (1 << 5) -1
     };
     Q_DECLARE_FLAGS(Changes, Change)
 
@@ -50,47 +50,35 @@ public:
 
     Tp::AccountPtr account() const { return mAccount; }
     QString providerName() const;
-
     QList<CDTpContactPtr> contacts() const;
+    bool hasRoster() const { return mHasRoster; };
 
 Q_SIGNALS:
-    void ready(CDTpAccountPtr accountWrapper);
     void changed(CDTpAccountPtr accountWrapper, CDTpAccount::Changes changes);
-    void rosterChanged(CDTpAccountPtr accountWrapper, bool haveRoster);
+    void rosterChanged(CDTpAccountPtr accountWrapper);
     void rosterUpdated(CDTpAccountPtr acconutWrapper,
             const QList<CDTpContactPtr> &contactsAdded,
             const QList<CDTpContactPtr> &contactsRemoved);
-    void rosterContactChanged(CDTpAccountPtr accountWrapper,
-            CDTpContactPtr contactWrapper, CDTpContact::Changes changes);
+    void rosterContactChanged(CDTpContactPtr contactWrapper, CDTpContact::Changes changes);
 
 private Q_SLOTS:
-    void onAccountReady(Tp::PendingOperation *op);
-    void onAccountNormalizedNameChanged();
     void onAccountDisplayNameChanged();
     void onAccountNicknameChanged();
     void onAccountCurrentPresenceChanged();
     void onAccountAvatarChanged();
     void onAccountConnectionChanged(const Tp::ConnectionPtr &connection);
-    void onAccountConnectionStatusChanged(Tp::ConnectionStatus status);
-    void onAccountConnectionReady(Tp::PendingOperation *op);
-    void onAccountConnectionRosterReady(Tp::PendingOperation *op);
-    void onAccountContactsUpgraded(Tp::PendingOperation *op);
-    void onAccountContactsChanged(const Tp::Contacts &contactsAdded,
-            const Tp::Contacts &contactsRemoved);
     void onAccountContactChanged(CDTpContactPtr contactWrapper,
             CDTpContact::Changes changes);
+    void onAllKnownContactsChanged(const Tp::Contacts &contactsAdded,
+            const Tp::Contacts &contactsRemoved);
 
 private:
-    void introspectAccountConnection();
-    void introspectAccountConnectionRoster();
-    void upgradeContacts(const Tp::Contacts &contacts);
+    void setConnection(const Tp::ConnectionPtr &connection);
     CDTpContactPtr insertContact(const Tp::ContactPtr &contact);
-    void clearContacts();
 
     Tp::AccountPtr mAccount;
-    bool mIntrospectingRoster;
-    bool mRosterReady;
     QHash<Tp::ContactPtr, CDTpContactPtr> mContacts;
+    bool mHasRoster;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(CDTpAccount::Changes)
