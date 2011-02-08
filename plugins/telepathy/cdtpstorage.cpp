@@ -49,6 +49,11 @@ void CDTpStorage::syncAccounts(const QList<CDTpAccountPtr> &accounts)
 
     CDTpQueryBuilder builder;
 
+    /* Ensure the default-contact-me exists. NB#215973 */
+    builder.createResource("nco:default-contact-me", "nco:PersonContact");
+
+    CDTpQueryBuilder subBuilder;
+
     /* Purge accounts and their contacts that does not exist anymore */
     QStringList imAccounts;
     Q_FOREACH (const CDTpAccountPtr &accountWrapper, accounts) {
@@ -57,8 +62,8 @@ void CDTpStorage::syncAccounts(const QList<CDTpAccountPtr> &accounts)
 
     /* Bind imAccount to all accounts that does not exist anymore,
      * and imAddress to all contacts of this imAccount */
-    const QString imAccount = builder.uniquify("?imAccount");
-    const QString imAddress = builder.uniquify("?imAddress");
+    const QString imAccount = subBuilder.uniquify("?imAccount");
+    const QString imAddress = subBuilder.uniquify("?imAddress");
     const QString selection = QString(QLatin1String(
             "%1 a nco:IMAccount.\n"
             "FILTER (%1 NOT IN (%2)).\n"
@@ -67,21 +72,24 @@ void CDTpStorage::syncAccounts(const QList<CDTpAccountPtr> &accounts)
             .arg(imAccount).arg(imAccounts.join(",")).arg(imAddress);
 
     /* Delete/update local contact */
-    builder.appendRawSelection(selection);
-    addRemoveContactToBuilder(builder, imAddress);
+    subBuilder.appendRawSelection(selection);
+    addRemoveContactToBuilder(subBuilder, imAddress);
+
+    builder.appendRawQuery(subBuilder);
+    subBuilder.clear();
 
     /* Delete imAddress and imAccount in a sub builder because they are needed
      * for the selection of builder. */
-    CDTpQueryBuilder subBuilder;
     subBuilder.appendRawSelection(selection);
     subBuilder.deleteResource(imAddress);
     subBuilder.deleteResource(imAccount);
     builder.appendRawQuery(subBuilder);
+    subBuilder.clear();
 
     /* Sync accounts and their contacts */
-    subBuilder.clear();
     addCreateAccountsToBuilder(subBuilder, accounts);
     builder.appendRawQuery(subBuilder);
+    subBuilder.clear();
 
     /* Execute the query and get a callback when it's done */
     CDTpAccountsSparqlQuery *query = new CDTpAccountsSparqlQuery(accounts,
