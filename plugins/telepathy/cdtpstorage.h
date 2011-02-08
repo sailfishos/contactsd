@@ -31,8 +31,6 @@
 #include "cdtpcontact.h"
 #include "cdtpquery.h"
 
-class CDTpStorageSyncOperations;
-
 class CDTpStorage : public QObject
 {
     Q_OBJECT
@@ -62,6 +60,7 @@ public Q_SLOTS:
 
 private Q_SLOTS:
     void onQueueTimerTimeout();
+    void onSyncOperationEnded(CDTpSparqlQuery *query);
 
 private:
     void queueContactUpdate(CDTpContactPtr contactWrapper, CDTpContact::Changes changes);
@@ -129,15 +128,6 @@ private:
 private:
     QHash<CDTpContactPtr, CDTpContact::Changes> mUpdateQueue;
     QTimer mQueueTimer;
-};
-
-struct CDTpStorageSyncOperations
-{
-    CDTpStorageSyncOperations();
-    bool active;
-    int nPendingOperations;
-    int nContactsAdded;
-    int nContactsRemoved;
 };
 
 #endif // CDTPSTORAGE_H

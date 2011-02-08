@@ -42,6 +42,11 @@ CDTpStorage::~CDTpStorage()
 
 void CDTpStorage::syncAccounts(const QList<CDTpAccountPtr> &accounts)
 {
+    /* We started sync operation */
+    Q_FOREACH (const CDTpAccountPtr &accountWrapper, accounts) {
+        Q_EMIT syncStarted(accountWrapper);
+    }
+
     CDTpQueryBuilder builder;
 
     /* Purge accounts and their contacts that does not exist anymore */
@@ -78,14 +83,30 @@ void CDTpStorage::syncAccounts(const QList<CDTpAccountPtr> &accounts)
     addCreateAccountsToBuilder(subBuilder, accounts);
     builder.appendRawQuery(subBuilder);
 
-    new CDTpSparqlQuery(builder.getSparqlQuery(), this);
+    /* Execute the query and get a callback when it's done */
+    CDTpAccountsSparqlQuery *query = new CDTpAccountsSparqlQuery(accounts,
+            builder.getSparqlQuery(), this);
+    connect(query,
+            SIGNAL(finished(CDTpSparqlQuery *)),
+            SLOT(onSyncOperationEnded(CDTpSparqlQuery *)));
 }
 
 void CDTpStorage::syncAccount(CDTpAccountPtr accountWrapper)
 {
+    /* We started sync operation */
+    Q_EMIT syncStarted(accountWrapper);
+
+    /* Sync account and its contacts */
     CDTpQueryBuilder builder;
-    addCreateAccountsToBuilder(builder, QList<CDTpAccountPtr>() << accountWrapper);
-    new CDTpSparqlQuery(builder.getSparqlQuery(), this);
+    QList<CDTpAccountPtr> accounts = QList<CDTpAccountPtr>() << accountWrapper;
+    addCreateAccountsToBuilder(builder, accounts);
+
+    /* Execute the query and get a callback when it's done */
+    CDTpAccountsSparqlQuery *query = new CDTpAccountsSparqlQuery(accounts,
+            builder.getSparqlQuery(), this);
+    connect(query,
+            SIGNAL(finished(CDTpSparqlQuery *)),
+            SLOT(onSyncOperationEnded(CDTpSparqlQuery *)));
 }
 
 void CDTpStorage::updateAccount(CDTpAccountPtr accountWrapper,
@@ -276,6 +297,7 @@ void CDTpStorage::addSyncAccountContactsToBuilder(CDTpQueryBuilder &builder,
     subBuilder.deleteProperty(imAccount, "nco:hasIMContact", imAddress);
     builder.appendRawQuery(subBuilder);
 
+    /* Create/update current contacts */
     subBuilder.clear();
     addCreateContactsToBuilder(subBuilder, accountWrapper->contacts());
     builder.appendRawQuery(subBuilder);
@@ -760,6 +782,18 @@ void CDTpStorage::addSetContactsUnknownToBuilder(CDTpQueryBuilder &builder,
             accountWrapper->account()->capabilities());
 }
 
+void CDTpStorage::onSyncOperationEnded(CDTpSparqlQuery *query)
+{
+    CDTpAccountsSparqlQuery *accountsQuery = qobject_cast<CDTpAccountsSparqlQuery*>(query);
+    QList<CDTpAccountPtr> accounts = accountsQuery->accounts();
+
+    /* FIXME: We don't know how many contacts were imported and how many just
+     * got updated */
+    Q_FOREACH (const CDTpAccountPtr &accountWrapper, accounts) {
+        Q_EMIT syncEnded(accountWrapper, accountWrapper->contacts().count(), 0);
+    }
+}
+
 QString CDTpStorage::presenceType(Tp::ConnectionPresenceType presenceType) const
 {
     switch (presenceType) {
@@ -891,12 +925,5 @@ QString CDTpStorage::literalContactInfo(const Tp::ContactInfoField &field, int i
     }
 
     return literal(field.fieldValue[i]);
-}
-
-/* --- CDTpStorageSyncOperations --- */
-
-CDTpStorageSyncOperations::CDTpStorageSyncOperations() : active(false),
-    nPendingOperations(0), nContactsAdded(0), nContactsRemoved(0)
-{
 }
 

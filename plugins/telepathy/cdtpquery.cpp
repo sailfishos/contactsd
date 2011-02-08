@@ -210,8 +210,6 @@ CDTpSparqlQuery::CDTpSparqlQuery(QSparqlQuery sparqlQuery, QObject *parent)
     QSparqlConnection &connection = com::nokia::contactsd::SparqlConnectionManager::defaultConnection();
     QSparqlResult *result = connection.exec(sparqlQuery);
 
-    qDebug() << "\n" << sparqlQuery.query() << "\n";
-
     if (not result) {
         qWarning() << Q_FUNC_INFO << " - QSparqlConnection::exec() == 0";
         deleteLater();
