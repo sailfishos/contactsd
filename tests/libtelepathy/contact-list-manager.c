@@ -29,11 +29,15 @@ struct _TestContactListManagerPrivate
 };
 
 static void contact_groups_iface_init (TpContactGroupListInterface *iface);
+static void mutable_contact_list_iface_init (
+    TpMutableContactListInterface *iface);
 static void mutable_contact_groups_iface_init (
     TpMutableContactGroupListInterface *iface);
 
 G_DEFINE_TYPE_WITH_CODE (TestContactListManager, test_contact_list_manager,
     TP_TYPE_BASE_CONTACT_LIST,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_MUTABLE_CONTACT_LIST,
+      mutable_contact_list_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_CONTACT_GROUP_LIST,
       contact_groups_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_MUTABLE_CONTACT_GROUP_LIST,
@@ -183,6 +187,82 @@ contact_list_dup_states (TpBaseContactList *base,
       if (publish_request != NULL)
         *publish_request = g_strdup (d->publish_request);
     }
+}
+
+static void
+contact_list_request_subscription_async (TpBaseContactList *base,
+    TpHandleSet *contacts,
+    const gchar *message,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  TestContactListManager *self = TEST_CONTACT_LIST_MANAGER (base);
+  GArray *handles;
+
+  handles = tp_handle_set_to_array (contacts);
+  test_contact_list_manager_request_subscription (self, handles->len,
+      (TpHandle *) handles->data, message);
+  g_array_unref (handles);
+}
+
+static void
+contact_list_authorize_publication_async (TpBaseContactList *base,
+    TpHandleSet *contacts,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  TestContactListManager *self = TEST_CONTACT_LIST_MANAGER (base);
+  GArray *handles;
+
+  handles = tp_handle_set_to_array (contacts);
+  test_contact_list_manager_authorize_publication (self, handles->len,
+      (TpHandle *) handles->data);
+  g_array_unref (handles);
+}
+
+static void
+contact_list_remove_contacts_async (TpBaseContactList *base,
+    TpHandleSet *contacts,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  TestContactListManager *self = TEST_CONTACT_LIST_MANAGER (base);
+  GArray *handles;
+
+  handles = tp_handle_set_to_array (contacts);
+  test_contact_list_manager_remove (self, handles->len,
+      (TpHandle *) handles->data);
+  g_array_unref (handles);
+}
+
+static void
+contact_list_unsubscribe_async (TpBaseContactList *base,
+    TpHandleSet *contacts,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  TestContactListManager *self = TEST_CONTACT_LIST_MANAGER (base);
+  GArray *handles;
+
+  handles = tp_handle_set_to_array (contacts);
+  test_contact_list_manager_unsubscribe (self, handles->len,
+      (TpHandle *) handles->data);
+  g_array_unref (handles);
+}
+
+static void
+contact_list_unpublish_async (TpBaseContactList *base,
+    TpHandleSet *contacts,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  TestContactListManager *self = TEST_CONTACT_LIST_MANAGER (base);
+  GArray *handles;
+
+  handles = tp_handle_set_to_array (contacts);
+  test_contact_list_manager_unpublish (self, handles->len,
+      (TpHandle *) handles->data);
+  g_array_unref (handles);
 }
 
 static GStrv
@@ -441,6 +521,16 @@ constructed (GObject *object)
   self->priv->group_repo = tp_base_connection_get_handles (self->priv->conn,
       TP_HANDLE_TYPE_GROUP);
   self->priv->groups = tp_handle_set_new (self->priv->group_repo);
+}
+
+static void
+mutable_contact_list_iface_init (TpMutableContactListInterface *iface)
+{
+    iface->request_subscription_async = contact_list_request_subscription_async;
+    iface->authorize_publication_async = contact_list_authorize_publication_async;
+    iface->remove_contacts_async = contact_list_remove_contacts_async;
+    iface->unsubscribe_async = contact_list_unsubscribe_async;
+    iface->unpublish_async = contact_list_unpublish_async;
 }
 
 static void
