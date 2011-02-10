@@ -1,12 +1,12 @@
 check_daemon.target = check-with-daemon.sh
-check_daemon.depends = with-daemon.sh.in
+check_daemon.depends = $$PWD/with-daemon.sh.in
 check_daemon.commands = \
-    sed -e "s,@BINDIR@,$$TOP_SOURCEDIR/src,g" \
-        -e "s,@PLUGINDIR@,$$TOP_SOURCEDIR/plugins/telepathy,g" \
+    sed -e "s,@BINDIR@,$$TOP_BUILDDIR/src,g" \
+        -e "s,@PLUGINDIR@,$$TOP_BUILDDIR/plugins/telepathy,g" \
     $< > $@ && chmod +x $@ || rm -f $@
 
 check_wrapper.target = check-ut_telepathyplugin-wrapper.sh
-check_wrapper.depends = ut_telepathyplugin-wrapper.sh.in
+check_wrapper.depends = $$PWD/ut_telepathyplugin-wrapper.sh.in
 check_wrapper.commands = \
     sed -e "s,@SCRIPTDIR@,$$PWD,g" \
         -e "s,@BINDIR@,$$PWD,g" \

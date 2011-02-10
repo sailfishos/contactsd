@@ -1,5 +1,5 @@
 daemon.target = with-daemon.sh
-daemon.depends = with-daemon.sh.in
+daemon.depends = $$PWD/with-daemon.sh.in
 daemon.path = $$PREFIX/share/contactsd-tests
 daemon.commands = \
     sed -e \"s,@BINDIR@,$$BINDIR,g\" \
@@ -7,7 +7,7 @@ daemon.commands = \
     $< > $@ && chmod +x $@ || rm -f $@
 
 wrapper.target = ut_telepathyplugin-wrapper.sh
-wrapper.depends = ut_telepathyplugin-wrapper.sh.in
+wrapper.depends = $$PWD/ut_telepathyplugin-wrapper.sh.in
 wrapper.path = $$PREFIX/share/contactsd-tests
 wrapper.commands = \
     sed -e \"s,@SCRIPTDIR@,$$PREFIX/share/contactsd-tests,g\" \
