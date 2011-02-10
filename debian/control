@@ -3,14 +3,14 @@ Priority: extra
 Section: comm
 Maintainer: Xavier Claessens <xavier.claessens@collabora.co.uk>
 Build-Depends: debhelper (>= 7.2.3), doxygen, aegis-builder,
-  libqt4-dev, libtelepathy-qt4-1-dev (>= 0.5.0), libqtsparql-dev (>= 0.0.11),
+  libqt4-dev, libtelepathy-qt4-1-dev (>= 0.5.6), libqtsparql-dev (>= 0.0.11),
   libtelepathy-glib-dev (>= 0.13.7), libqtm-contacts-dev
 Standards-Version: 3.8.1
 
 Package: contactsd
 Architecture: any
 Depends: ${shlibs:Depends}, libqt4-core, libqt4-dbus,
-  libtelepathy-qt4-1 (>= 0.5.0), libqtsparql0 (>= 0.0.11)
+  libtelepathy-qt4-1 (>= 0.5.6), libqtsparql0 (>= 0.0.11)
 Recommends: telepathy-gabble (>= 0.8.8), telepathy-spirit (>= 0.5.21),
   libqtcontacts-tracker, osso-mission-control, tracker
 Suggests: account-plugin-google, account-plugin-facebook, account-plugin-skype

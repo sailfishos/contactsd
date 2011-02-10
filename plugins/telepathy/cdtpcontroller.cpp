@@ -22,6 +22,9 @@
 #include "cdtpstorage.h"
 
 #include <TelepathyQt4/Account>
+#include <TelepathyQt4/AccountPropertyFilter>
+#include <TelepathyQt4/AndFilter>
+#include <TelepathyQt4/NotFilter>
 #include <TelepathyQt4/AccountSet>
 #include <TelepathyQt4/AccountManager>
 #include <TelepathyQt4/PendingReady>
@@ -78,10 +81,17 @@ void CDTpController::onAccountManagerReady(Tp::PendingOperation *op)
 
     qDebug() << "Account manager ready";
 
-    QVariantMap filter;
-    filter.insert("valid", true);
-    filter.insert("enabled", true);
-    filter.insert("hasBeenOnline", true);
+    Tp::AccountPropertyFilterPtr filter1 = Tp::AccountPropertyFilter::create();
+    filter1->addProperty("valid", true);
+    filter1->addProperty("enabled", true);
+    filter1->addProperty("hasBeenOnline", true);
+
+    Tp::AccountPropertyFilterPtr normalizedNameFilter = Tp::AccountPropertyFilter::create();
+    normalizedNameFilter->addProperty("normalizedName", QString());
+    Tp::AccountFilterPtr filter2 = Tp::NotFilter<Tp::Account>::create(normalizedNameFilter);
+
+    Tp::AccountFilterPtr filter = Tp::AndFilter<Tp::Account>::create(
+            QList<Tp::AccountFilterConstPtr>() << filter1 << filter2);
 
     mAccountSet = mAM->filterAccounts(filter);
     connect(mAccountSet.data(),

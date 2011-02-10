@@ -21,7 +21,7 @@
 
 #include "cdtpaccount.h"
 
-#include <TelepathyQt4/Types>
+#include <TelepathyQt4/AvatarData>
 
 CDTpContact::CDTpContact(Tp::ContactPtr contact, CDTpAccount *accountWrapper)
     : QObject(),
@@ -66,6 +66,27 @@ CDTpAccountPtr CDTpContact::accountWrapper() const
     return CDTpAccountPtr(mAccountWrapper);
 }
 
+bool CDTpContact::isAvatarKnown() const
+{
+    if (!mContact->isAvatarTokenKnown()) {
+        return false;
+    }
+
+    /* If we have a token but not an avatar filename, that probably means the
+     * avatar data is being requested and we'll get an update later. */
+    if (!mContact->avatarToken().isEmpty() &&
+        mContact->avatarData().fileName.isEmpty()) {
+        return false;
+    }
+
+    return true;
+}
+
+bool CDTpContact::isInformationKnown() const
+{
+    return mContact->isContactInfoKnown();
+}
+
 void CDTpContact::onContactAliasChanged()
 {
     emitChanged(Alias);
@@ -93,7 +114,7 @@ void CDTpContact::onContactAuthorizationChanged()
 
 void CDTpContact::onContactInfoChanged()
 {
-    emitChanged(Infomation);
+    emitChanged(Information);
 }
 
 void CDTpContact::onBlockStatusChanged()

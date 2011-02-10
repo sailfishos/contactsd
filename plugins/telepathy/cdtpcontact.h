@@ -38,7 +38,7 @@ public:
         Capabilities  = (1 << 2),
         Avatar        = (1 << 3),
         Authorization = (1 << 4),
-        Infomation    = (1 << 5),
+        Information    = (1 << 5),
         Blocked       = (1 << 6),
         Visibility    = (1 << 7),
         All           = (1 << 8) -1
@@ -53,6 +53,8 @@ public:
     CDTpAccountPtr accountWrapper() const;
     bool isRemoved() const { return mRemoved; }
     bool isVisible() const { return mVisible; }
+    bool isAvatarKnown() const;
+    bool isInformationKnown() const;
 
 Q_SIGNALS:
     void changed(CDTpContactPtr contact, CDTpContact::Changes changes);

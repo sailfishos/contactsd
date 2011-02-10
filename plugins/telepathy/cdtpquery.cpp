@@ -28,7 +28,7 @@ const QString CDTpQueryBuilder::privateGraph = QLatin1String("<urn:uuid:679293d4
 const QString CDTpQueryBuilder::indent = QLatin1String("    ");
 const QString CDTpQueryBuilder::indent2 = indent + indent;
 
-CDTpQueryBuilder::CDTpQueryBuilder() : vCount(0)
+CDTpQueryBuilder::CDTpQueryBuilder(const QString &text) : vCount(0), comment(text)
 {
 }
 
@@ -150,6 +150,7 @@ QString CDTpQueryBuilder::getRawQuery() const
 
     // Build final query
     QString rawQuery;
+    rawQuery += QString("# --- START %1 ---\n").arg(comment);
     if (!deleteLines.isEmpty()) {
         rawQuery += QString(QLatin1String("DELETE {\n%1\n}\n")).arg(deleteLines);
         if (!deleteWhereLines.isEmpty()) {
@@ -167,6 +168,8 @@ QString CDTpQueryBuilder::getRawQuery() const
     Q_FOREACH (const QString &subQuery, subQueries) {
         rawQuery += subQuery;
     }
+
+    rawQuery += QString("# --- END %1 ---\n").arg(comment);
 
     return rawQuery;
 }
@@ -192,16 +195,6 @@ QSparqlQuery CDTpQueryBuilder::getSparqlQuery() const
     return QSparqlQuery(getRawQuery(), QSparqlQuery::InsertStatement);
 }
 
-void CDTpQueryBuilder::clear()
-{
-    insertPart.clear();
-    insertPartWhere.clear();
-    deletePart.clear();
-    deletePartWhere.clear();
-    subQueries.clear();
-    vCount = 0;
-}
-
 /* --- CDTpSparqlQuery --- */
 
 CDTpSparqlQuery::CDTpSparqlQuery(QSparqlQuery sparqlQuery, QObject *parent)
@@ -209,6 +202,8 @@ CDTpSparqlQuery::CDTpSparqlQuery(QSparqlQuery sparqlQuery, QObject *parent)
 {
     QSparqlConnection &connection = com::nokia::contactsd::SparqlConnectionManager::defaultConnection();
     QSparqlResult *result = connection.exec(sparqlQuery);
+
+    qDebug() << sparqlQuery.query();
 
     if (not result) {
         qWarning() << Q_FUNC_INFO << " - QSparqlConnection::exec() == 0";

@@ -30,8 +30,7 @@
 class CDTpQueryBuilder
 {
 public:
-    CDTpQueryBuilder();
-    ~CDTpQueryBuilder() { clear(); };
+    CDTpQueryBuilder(const QString &text = QString());
 
     static const QString defaultGraph;
     static const QString privateGraph;
@@ -55,7 +54,6 @@ public:
     QString uniquify(const QString &v = QString("?v"));
     QString getRawQuery() const;
     QSparqlQuery getSparqlQuery() const;
-    void clear();
 
 private:
     void append(QString &part, const QString &str);
@@ -68,6 +66,7 @@ private:
     QList<QString> subQueries;
 
     int vCount;
+    QString comment;
 };
 
 /* --- CDTpSparqlQuery --- */
