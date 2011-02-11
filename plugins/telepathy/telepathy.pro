@@ -2,6 +2,7 @@ TEMPLATE = lib
 QT += dbus
 
 CONFIG += plugin qtsparql
+system(qdbusxml2cpp -c BuddyManagementAdaptor -a buddymanagementadaptor.h:buddymanagementadaptor.cpp com.nokia.contacts.buddymanagement.xml)
 
 CONFIG(coverage):{
 QMAKE_CXXFLAGS += -c -g  --coverage -ftest-coverage -fprofile-arcs
@@ -20,7 +21,9 @@ HEADERS  = cdtpaccount.h \
     cdtpplugin.h \
     cdtpquery.h \
     cdtpstorage.h \
-    sparqlconnectionmanager.h
+    sparqlconnectionmanager.h \
+    buddymanagementadaptor.h \
+    redliststorage.h
 
 SOURCES  = cdtpaccount.cpp \
     cdtpcontact.cpp \
@@ -28,8 +31,17 @@ SOURCES  = cdtpaccount.cpp \
     cdtpplugin.cpp \
     cdtpquery.cpp \
     cdtpstorage.cpp \
-    sparqlconnectionmanager.cpp
+    sparqlconnectionmanager.cpp \
+    buddymanagementadaptor.cpp \
+    redliststorage.cpp
 
 TARGET = telepathyplugin
 target.path = $$LIBDIR/contactsd-1.0/plugins
-INSTALLS += target
+
+xml.files = com.nokia.contacts.buddymanagement.xml
+xml.path = $$INCLUDEDIR/contactsd-1.0
+
+INSTALLS += target xml
+
+OTHER_FILES += \
+    com.nokia.contacts.buddymanagement.xml

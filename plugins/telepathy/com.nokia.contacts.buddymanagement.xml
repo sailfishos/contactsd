@@ -1,0 +1,33 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+"http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node>
+  <interface name="com.nokia.contacts.buddymanagement">
+    <!--
+    <doc>
+      <arg tag="brief">Offline mode support for http://telepathy.freedesktop.org/spec/Connection_Interface_Contact_List.html#Method:RemoveContacts.</arg>
+      <arg tag="details">Uses http://telepathy.freedesktop.org/spec/Connection_Interface_Contact_List.html and complements it with offline mode support (action is deferred until account is online).
+      </arg>
+    </doc>
+    -->
+    <method name="removeBuddy">
+      <!--
+      <doc>
+        <arg tag="brief">Removes contact from tracker and telepathy contact list</arg>
+        <arg tag="details">Contact is removed from tracker immediately. If account is online, removes it from telepathy connection managers (and servers) that support contact removal and if account if offline, removes it once online.</arg>
+      </doc>
+      -->
+      <arg name="accountPath" type="s" direction="in"/>
+      <arg name="imId" type="s" direction="in"/>
+    </method>
+    <method name="inviteBuddy">
+      <!--
+      <doc>
+        <arg tag="brief">Outgoing authorization request, sent only if account is online. Noop if account is offline.</arg>
+      </doc>
+      -->
+      <arg name="accountPath" type="s" direction="in"/>
+      <arg name="imId" type="s" direction="in"/>
+    </method>
+  </interface>
+</node>
+

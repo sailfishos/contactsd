@@ -58,6 +58,9 @@ public Q_SLOTS:
             const QList<CDTpContactPtr> &contactsRemoved);
     void updateContact(CDTpContactPtr contactWrapper, CDTpContact::Changes changes);
 
+public:
+    void removeAccountContacts(const QString &accountPath, const QStringList &contactIds);
+
 private Q_SLOTS:
     void onSyncOperationEnded(CDTpSparqlQuery *query);
 
@@ -119,6 +122,9 @@ private:
     void addRemoveContactsToBuilder(CDTpQueryBuilder &builder,
             CDTpAccountPtr accountWrapper,
             const QList<CDTpContactPtr> &contacts) const;
+    void addRemoveContactsToBuilder(CDTpQueryBuilder &builder,
+            const QString &accountPath,
+            const QStringList &contactIds) const;
     void addRemoveContactToBuilder(CDTpQueryBuilder &builder,
             const QString &imAddress) const;
     void addRemoveContactInfoToBuilder(CDTpQueryBuilder &builder,
@@ -135,6 +141,7 @@ private:
     QString literalIMAddress(const QString &accountPath, const QString &contactId) const;
     QString literalIMAddress(const CDTpContactPtr &contactWrapper) const;
     QString literalIMAddress(const CDTpAccountPtr &accountWrapper) const;
+    QString literalIMAccount(const QString &accountPath) const;
     QString literalIMAccount(const CDTpAccountPtr &accountWrapper) const;
     QString literalContactInfo(const Tp::ContactInfoField &field, int i) const;
 };

@@ -28,8 +28,7 @@
 
 const QString CDTpStorage::defaultGenerator = "\"telepathy\"";
 
-CDTpStorage::CDTpStorage(QObject *parent)
-    : QObject(parent)
+CDTpStorage::CDTpStorage(QObject *parent) : QObject(parent)
 {
 }
 
@@ -372,6 +371,14 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper,
         addRemoveContactsToBuilder(builder, accountWrapper, contactsRemoved);
     }
 
+    new CDTpSparqlQuery(builder.getSparqlQuery(), this);
+}
+
+/* Use this only in offline mode - use syncAccountContacts in online mode */
+void CDTpStorage::removeAccountContacts(const QString &accountPath, const QStringList &contactIds)
+{
+    CDTpQueryBuilder builder;
+    addRemoveContactsToBuilder(builder, accountPath, contactIds);
     new CDTpSparqlQuery(builder.getSparqlQuery(), this);
 }
 
@@ -879,12 +886,25 @@ void CDTpStorage::addRemoveContactsToBuilder(CDTpQueryBuilder &builder,
         CDTpAccountPtr accountWrapper,
         const QList<CDTpContactPtr> &contacts) const
 {
-    QStringList imAddresses;
+    QStringList contactIds;
     Q_FOREACH (const CDTpContactPtr &contactWrapper, contacts) {
-        imAddresses << literalIMAddress(contactWrapper);
+        contactIds << contactWrapper->contact()->id();
     }
 
-    const QString imAccount = literalIMAccount(accountWrapper);
+    addRemoveContactsToBuilder(builder, accountWrapper->account()->objectPath(),
+            contactIds);
+}
+
+void CDTpStorage::addRemoveContactsToBuilder(CDTpQueryBuilder &builder,
+        const QString &accountPath,
+        const QStringList &contactIds) const
+{
+    QStringList imAddresses;
+    Q_FOREACH (const QString &contactId, contactIds) {
+        imAddresses << literalIMAddress(accountPath, contactId);
+    }
+
+    const QString imAccount = literalIMAccount(accountPath);
     const QString imAddress = builder.uniquify("?imAddress");
 
     /* Bind imAddress to all those contacts */
@@ -1089,9 +1109,14 @@ QString CDTpStorage::literalIMAddress(const CDTpAccountPtr &accountWrapper) cons
     return literalIMAddress(accountPath, accountId);
 }
 
+QString CDTpStorage::literalIMAccount(const QString &accountPath) const
+{
+    return QString::fromLatin1("<telepathy:%1>").arg(accountPath);
+}
+
 QString CDTpStorage::literalIMAccount(const CDTpAccountPtr &accountWrapper) const
 {
-    return QString("<telepathy:%1>").arg(accountWrapper->account()->objectPath());
+    return literalIMAccount(accountWrapper->account()->objectPath());
 }
 
 QString CDTpStorage::literalContactInfo(const Tp::ContactInfoField &field, int i) const

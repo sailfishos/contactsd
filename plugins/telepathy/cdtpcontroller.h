@@ -23,11 +23,14 @@
 #include "cdtpaccount.h"
 #include "cdtpcontact.h"
 #include "cdtpstorage.h"
+#include "redliststorage.h"
 
 #include <TelepathyQt4/Types>
 
 #include <QList>
 #include <QObject>
+
+using namespace com::nokia::contactsd;
 
 class CDTpController : public QObject
 {
@@ -41,6 +44,10 @@ Q_SIGNALS:
     void importStarted(const QString &service, const QString &account);
     void importEnded(const QString &service, const QString &account, int contactsAdded, int contactsRemoved, int contactsMerged);
 
+public Q_SLOTS:
+    void inviteBuddy(const QString &accountPath, const QString &imId);
+    void removeBuddy(const QString &accountPath, const QString &imId);
+
 private Q_SLOTS:
     void onAccountManagerReady(Tp::PendingOperation *op);
     void onAccountAdded(const Tp::AccountPtr &account);
@@ -48,6 +55,10 @@ private Q_SLOTS:
     void onAccountReady(CDTpAccountPtr accountWrapper);
     void onSyncStarted(CDTpAccountPtr accountWrapper);
     void onSyncEnded(CDTpAccountPtr accountWrapper, int contactsAdded, int contactsRemoved);
+    void onContactsRemoved(Tp::PendingOperation *op);
+    void onAccountOnlinenessChanged(bool online);
+    void onInviteContactRetrieved(Tp::PendingOperation *op);
+    void onPresenceSubscriptionRequested(Tp::PendingOperation *op);
 
 private:
     CDTpAccountPtr insertAccount(const Tp::AccountPtr &account);
@@ -56,11 +67,15 @@ private:
     void setImportStarted(const Tp::AccountPtr &account);
     void setImportEnded(const Tp::AccountPtr &account,
                         int contactsAdded, int contactsRemoved);
+    bool registerDBusObject();
+    void processRedList();
 
+private:
     CDTpStorage *mStorage;
     Tp::AccountManagerPtr mAM;
     Tp::AccountSetPtr mAccountSet;
-    QHash<Tp::AccountPtr, CDTpAccountPtr> mAccounts;
+    QHash<QString, CDTpAccountPtr> mAccounts;
+    RedListStorage mRedListStorage;
 };
 
 #endif // CDTPCONTROLLER_H

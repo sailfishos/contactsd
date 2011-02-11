@@ -258,6 +258,5 @@ bool ContactsdPluginLoader::registerNotificationService()
             connection.lastError();
         return false;
     }
-
     return true;
 }

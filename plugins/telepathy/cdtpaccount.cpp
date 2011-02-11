@@ -139,7 +139,7 @@ void CDTpAccount::onAllKnownContactsChanged(const Tp::Contacts &contactsAdded,
 
     QList<CDTpContactPtr> added;
     Q_FOREACH (const Tp::ContactPtr &contact, contactsAdded) {
-        if (mContacts.contains(contact)) {
+        if (mContacts.contains(contact->id())) {
             qWarning() << "Internal error, contact was already in roster";
             continue;
         }
@@ -151,12 +151,13 @@ void CDTpAccount::onAllKnownContactsChanged(const Tp::Contacts &contactsAdded,
 
     QList<CDTpContactPtr> removed;
     Q_FOREACH (const Tp::ContactPtr &contact, contactsRemoved) {
-        if (!mContacts.contains(contact)) {
+        const QString id(contact->id());
+        if (!mContacts.contains(id)) {
             qWarning() << "Internal error, contact is not in the internal list"
                 "but was removed from roster";
             continue;
         }
-        CDTpContactPtr contactWrapper = mContacts.take(contact);
+        CDTpContactPtr contactWrapper = mContacts.take(id);
         if (contactWrapper->isVisible()) {
             removed << contactWrapper;
         }
@@ -203,7 +204,12 @@ CDTpContactPtr CDTpAccount::insertContact(const Tp::ContactPtr &contact)
     connect(contactWrapper.data(),
             SIGNAL(changed(CDTpContactPtr, CDTpContact::Changes)),
             SLOT(onAccountContactChanged(CDTpContactPtr, CDTpContact::Changes)));
-    mContacts.insert(contact, contactWrapper);
+    mContacts.insert(contact->id(), contactWrapper);
     return contactWrapper;
+}
+
+CDTpContactPtr CDTpAccount::contact(const QString &id) const
+{
+    return mContacts.value(id);
 }
 

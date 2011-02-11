@@ -20,6 +20,7 @@
 #include "cdtpcontroller.h"
 
 #include "cdtpstorage.h"
+#include "buddymanagementadaptor.h"
 
 #include <TelepathyQt4/Account>
 #include <TelepathyQt4/AccountPropertyFilter>
@@ -28,6 +29,10 @@
 #include <TelepathyQt4/AccountSet>
 #include <TelepathyQt4/AccountManager>
 #include <TelepathyQt4/PendingReady>
+#include <TelepathyQt4/ContactManager>
+#include <TelepathyQt4/PendingContacts>
+
+const QLatin1String DBusObjectPath("/telepathy");
 
 CDTpController::CDTpController(QObject *parent) : QObject(parent)
 {
@@ -65,10 +70,14 @@ CDTpController::CDTpController(QObject *parent) : QObject(parent)
     connect(mAM->becomeReady(Tp::AccountManager::FeatureCore),
             SIGNAL(finished(Tp::PendingOperation*)),
             SLOT(onAccountManagerReady(Tp::PendingOperation*)));
+    if (registerDBusObject()) {
+        (void) new BuddyManagementAdaptor(this);
+    }
 }
 
 CDTpController::~CDTpController()
 {
+    QDBusConnection::sessionBus().unregisterObject(DBusObjectPath);
 }
 
 void CDTpController::onAccountManagerReady(Tp::PendingOperation *op)
@@ -110,7 +119,7 @@ void CDTpController::onAccountManagerReady(Tp::PendingOperation *op)
 
 void CDTpController::onAccountAdded(const Tp::AccountPtr &account)
 {
-    if (mAccounts.contains(account)) {
+    if (mAccounts.contains(account->objectPath())) {
         qWarning() << "Internal error, account was already in controller";
         return;
     }
@@ -121,19 +130,19 @@ void CDTpController::onAccountAdded(const Tp::AccountPtr &account)
 
 void CDTpController::onAccountRemoved(const Tp::AccountPtr &account)
 {
-    if (!mAccounts.contains(account)) {
+    CDTpAccountPtr accountWrapper(mAccounts.take(account->objectPath()));
+    if (not accountWrapper) {
         qWarning() << "Internal error, account was not in controller";
         return;
     }
-    mStorage->removeAccount(mAccounts[account]);
-    mAccounts.remove(account);
+    mStorage->removeAccount(accountWrapper);
 }
 
 CDTpAccountPtr CDTpController::insertAccount(const Tp::AccountPtr &account)
 {
     qDebug() << "Creating wrapper for account" << account->objectPath();
     CDTpAccountPtr accountWrapper = CDTpAccountPtr(new CDTpAccount(account, this));
-    mAccounts.insert(account, accountWrapper);
+    mAccounts.insert(account->objectPath(), accountWrapper);
 
     // Connect change notifications
     connect(accountWrapper.data(),
@@ -156,6 +165,9 @@ CDTpAccountPtr CDTpController::insertAccount(const Tp::AccountPtr &account)
             SIGNAL(rosterContactChanged(CDTpContactPtr, CDTpContact::Changes)),
             mStorage,
             SLOT(updateContact(CDTpContactPtr, CDTpContact::Changes)));
+    connect(accountWrapper.data(),
+            SIGNAL(onlinenessChanged(bool)),
+            SLOT(onAccountOnlinenessChanged(bool)));
 
     return accountWrapper;
 }
@@ -172,3 +184,154 @@ void CDTpController::onSyncEnded(CDTpAccountPtr accountWrapper, int contactsAdde
     Q_EMIT importEnded(accountWrapper->providerName(), account->objectPath(),
         contactsAdded, contactsRemoved, 0);
 }
+
+void CDTpController::inviteBuddy(const QString &accountPath, const QString &imId)
+{
+    CDTpAccountPtr accountWrapper(mAccounts.value(accountPath));
+    if (not accountWrapper) {
+        qWarning() << Q_FUNC_INFO << __LINE__ << "Cannot remove contact " << imId << " from acount " << accountPath;
+        return;
+    }
+
+    Tp::AccountPtr account = accountWrapper->account();
+    if (account  && account->connection()
+        && account->connection()->status() == Tp::ConnectionStatusConnected) {
+        Tp::ContactManagerPtr manager = account->connection()->contactManager();
+        if (!manager->canRequestPresenceSubscription()) {
+            qWarning() << Q_FUNC_INFO << __LINE__ << "subscribe action on an account " << accountPath
+                << "that does not support subscription requests";
+            return;
+        }
+        Tp::PendingContacts *call = manager->contactsForIdentifiers(QStringList() << imId);
+        connect(call,
+                SIGNAL(finished(Tp::PendingOperation *)),
+                SLOT(onInviteContactRetrieved(Tp::PendingOperation *)));
+    } else {
+        qWarning() << Q_FUNC_INFO << __LINE__ << "Cannot remove contact " << imId << " from acount " << accountPath;
+    }
+}
+
+void CDTpController::onInviteContactRetrieved(Tp::PendingOperation *op)
+{
+    if (op->isError()) {
+        qWarning() << Q_FUNC_INFO << __LINE__ << "unable to retrieve contacts for subscription:" << op->errorName() << "-" << op->errorMessage();
+        return;
+    }
+
+    Tp::PendingContacts *pcontacts = qobject_cast<Tp::PendingContacts *>(op);
+    QList<Tp::ContactPtr> contacts = pcontacts->contacts();
+    if (contacts.size() != 1 || !contacts.first()) {
+        qWarning() << Q_FUNC_INFO << __LINE__ << "unable to retrieve contacts for subscription";
+        return;
+    }
+
+    Tp::PendingOperation *call =  contacts.first()->requestPresenceSubscription();
+    connect(call,
+            SIGNAL(finished(Tp::PendingOperation *)),
+            SLOT(onPresenceSubscriptionRequested(Tp::PendingOperation *)));
+}
+
+/* Just to log an error */
+void CDTpController::onPresenceSubscriptionRequested(Tp::PendingOperation *op)
+{
+    if (op->isError()) {
+        qWarning() << Q_FUNC_INFO << __LINE__ << "Could not request presence subscription:" << op->errorName() << "-" << op->errorMessage();
+    }
+}
+
+void CDTpController::removeBuddy(const QString &accountPath, const QString &imId)
+{
+    // remove the contact from storage immediately
+    CDTpAccountPtr account = mAccounts.value(accountPath);
+    if (not account) {
+        // disabled accounts contacts are removed.
+        return;
+    }
+
+    // next block would remove it from tracker
+    CDTpContactPtr contact = account->contact(imId);
+    if (contact) {
+        mStorage->syncAccountContacts(account, QList<CDTpContactPtr>(), QList<CDTpContactPtr>() << contact);
+    } else {
+        // branch is important for offline use case - there are no contacts then in account
+        mStorage->removeAccountContacts(accountPath, QStringList() << imId);
+    }
+
+    // then put to redlist removed, and call processRedList that would remove it if account is online
+    IdsOnAccountPaths ids;
+    ids[accountPath] = QSet<QString> () << imId;
+    mRedListStorage.addIdsToBeRemoved(ids);
+    processRedList();
+}
+
+void CDTpController::processRedList()
+{
+    IdsOnAccountPaths idsForRemoval(mRedListStorage.idsToBeRemoved());
+    for (IdsOnAccountPaths::ConstIterator it = idsForRemoval.constBegin(); idsForRemoval.constEnd() != it; it++) {
+        CDTpAccountPtr accountWrapper(mAccounts.value(it.key()));
+        if (not accountWrapper) {
+            continue;
+        }
+
+        Tp::AccountPtr account = accountWrapper->account();
+        if (account  && account->connection()
+            && account->connection()->status() == Tp::ConnectionStatusConnected) {
+            const QSet<QString> &idListForAccount(it.value());
+
+            // prepare list of contacts to remove from given account
+            QList<Tp::ContactPtr> removeContactsFromTheAccount;
+            foreach (const QString &id, idListForAccount) {
+                CDTpContactPtr contactWrapper = accountWrapper->contact(id);
+                if (contactWrapper && contactWrapper->contact()) {
+                    removeContactsFromTheAccount << contactWrapper->contact();
+                }
+            }
+            if (removeContactsFromTheAccount.isEmpty()) {
+                qWarning() << Q_FUNC_INFO << "Internal error,"
+                              "contacts to be removed don't exist in contact list:" << idListForAccount;
+                continue;
+            }
+            Tp::ContactManagerPtr manager = accountWrapper->account()->connection()->contactManager();
+            Tp::PendingOperation *call = manager->removeContacts(removeContactsFromTheAccount);
+            qDebug() << Q_FUNC_INFO << ":" << __LINE__ << " Tp::ContactManager::removeContacts:"<< removeContactsFromTheAccount.size();
+            connect(call,
+                    SIGNAL(finished(Tp::PendingOperation *)),
+                    SLOT(onContactsRemoved(Tp::PendingOperation *)));
+        }
+    }
+}
+
+void CDTpController::onAccountOnlinenessChanged(bool online)
+{
+    if (online) {
+        processRedList();
+    }
+}
+
+
+void CDTpController::onContactsRemoved(Tp::PendingOperation *op)
+{
+    // contacts get removed from redlist storage when rosterUpdated signal is
+    // processed in storage - following lines serve for logging only
+    if (op->isError()) {
+        qWarning() << Q_FUNC_INFO << "Could not remove contacts:" << op << op->errorName() << "-" << op->errorMessage();
+        return;
+    }
+}
+
+bool CDTpController::registerDBusObject()
+{
+    QDBusConnection connection = QDBusConnection::sessionBus();
+    if (!connection.isConnected()) {
+        qWarning() << "Could not connect to DBus:" << connection.lastError();
+        return false;
+    }
+
+    if (!connection.registerObject(DBusObjectPath, this)) {
+        qWarning() << "Could not register DBus object '/':" <<
+            connection.lastError();
+        return false;
+    }
+    return true;
+}
+

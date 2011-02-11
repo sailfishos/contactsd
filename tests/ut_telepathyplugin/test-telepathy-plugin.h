@@ -103,6 +103,8 @@ private Q_SLOTS:
     void testAuthorization();
     void testContactInfo();
     void testRemoveContacts();
+    void testRemoveBuddyDBusAPI();
+    void testInviteBuddyDBusAPI();
     void testSetOffline();
 
     /* Specific tests */

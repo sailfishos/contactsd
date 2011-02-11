@@ -13,6 +13,9 @@ CONFIG += link_pkgconfig
 PKGCONFIG += TelepathyQt4 qttracker telepathy-glib
 DEFINES += QT_NO_KEYWORDS
 
+system(cp $$PWD/../../plugins/telepathy/com.nokia.contacts.buddymanagement.xml .)
+system(qdbusxml2cpp -c BuddyManagementInterface -p buddymanagementinterface.h:buddymanagementinterface.cpp com.nokia.contacts.buddymanagement.xml)
+
 INCLUDEPATH += ..
 QMAKE_LIBDIR += ../libtelepathy
 LIBS += -llibtelepathy
@@ -23,10 +26,12 @@ LIBS += -lgcov
 }
 
 HEADERS += test-telepathy-plugin.h \
-    test.h
+    test.h \
+    buddymanagementinterface.h
 
 SOURCES += test-telepathy-plugin.cpp \
-    test.cpp
+    test.cpp \
+    buddymanagementinterface.cpp
 
 #for gcov stuff
 CONFIG(coverage): {
@@ -35,14 +40,19 @@ HEADERS += $$TOP_SOURCEDIR/plugins/telepathy/cdtpaccount.h \
     $$TOP_SOURCEDIR/plugins/telepathy/cdtpcontact.h \
     $$TOP_SOURCEDIR/plugins/telepathy/cdtpcontroller.h \
     $$TOP_SOURCEDIR/plugins/telepathy/cdtpplugin.h \
-    $$TOP_SOURCEDIR/plugins/telepathy/cdtpstorage.h
+    $$TOP_SOURCEDIR/plugins/telepathy/cdtpstorage.h \
+    $$TOP_SOURCEDIR/plugins/telepathy/buddymanagementadaptor.h \
+    $$TOP_SOURCEDIR/plugins/telepathy/redliststorage.h
 
 
 SOURCES += $$TOP_SOURCEDIR/plugins/telepathy/cdtpaccount.cpp \
     $$TOP_SOURCEDIR/plugins/telepathy/cdtpcontact.cpp \
     $$TOP_SOURCEDIR/plugins/telepathy/cdtpcontroller.cpp \
     $$TOP_SOURCEDIR/plugins/telepathy/cdtpplugin.cpp \
-    $$TOP_SOURCEDIR/plugins/telepathy/cdtpstorage.cpp
+    $$TOP_SOURCEDIR/plugins/telepathy/cdtpstorage.cpp \
+    $$TOP_SOURCEDIR/plugins/telepathy/redliststorage.cpp \
+    $$TOP_SOURCEDIR/plugins/telepathy/buddymanagementadaptor.cpp \
+    $$TOP_SOURCEDIR/plugins/telepathy/redliststorage.cpp
 
 #to use start the daemon from code
 

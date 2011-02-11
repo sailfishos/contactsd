@@ -51,6 +51,7 @@ public:
     Tp::AccountPtr account() const { return mAccount; }
     QString providerName() const;
     QList<CDTpContactPtr> contacts() const;
+    CDTpContactPtr contact(const QString &id) const;
     bool hasRoster() const { return mHasRoster; };
 
 Q_SIGNALS:
@@ -77,7 +78,7 @@ private:
     CDTpContactPtr insertContact(const Tp::ContactPtr &contact);
 
     Tp::AccountPtr mAccount;
-    QHash<Tp::ContactPtr, CDTpContactPtr> mContacts;
+    QHash<QString, CDTpContactPtr> mContacts;
     bool mHasRoster;
 };
 
