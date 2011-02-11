@@ -51,6 +51,7 @@ public:
     void appendRawQuery(const CDTpQueryBuilder &builder);
     void mergeWithOptional(const CDTpQueryBuilder &builder);
 
+    QString name() const { return mName; };
     QString uniquify(const QString &v = QString("?v"));
     QString getRawQuery() const;
     QSparqlQuery getSparqlQuery() const;
@@ -59,14 +60,14 @@ private:
     void append(QString &part, const QString &str);
     QString setIndentation(const QString &part, const QString &indentation) const;
 
-    QHash<QString, QString> insertPart;
-    QString insertPartWhere;
-    QString deletePart;
-    QString deletePartWhere;
-    QList<QString> subQueries;
+    QHash<QString, QString> mInsertPart;
+    QString mInsertPartWhere;
+    QString mDeletePart;
+    QString mDeletePartWhere;
+    QList<QString> mSubQueries;
 
-    int vCount;
-    QString comment;
+    int mVCount;
+    QString mName;
 };
 
 /* --- CDTpSparqlQuery --- */
@@ -76,7 +77,7 @@ class CDTpSparqlQuery : public QObject
     Q_OBJECT
 
 public:
-    CDTpSparqlQuery(QSparqlQuery sparqlQuery, QObject *parent = 0);
+    CDTpSparqlQuery(const CDTpQueryBuilder &builder, QObject *parent = 0);
     ~CDTpSparqlQuery() {};
 
 Q_SIGNALS:
@@ -84,6 +85,10 @@ Q_SIGNALS:
 
 private Q_SLOTS:
     void onQueryFinished();
+
+private:
+    uint mId;
+    QTime mTime;
 };
 
 /* --- CDTpAccountsSparqlQuery --- */
@@ -94,7 +99,7 @@ class CDTpAccountsSparqlQuery : public CDTpSparqlQuery
 
 public:
     CDTpAccountsSparqlQuery(const QList<CDTpAccountPtr> &accounts,
-        QSparqlQuery sparqlQuery, QObject *parent = 0);
+        const CDTpQueryBuilder &builder, QObject *parent = 0);
     ~CDTpAccountsSparqlQuery() {};
 
     QList<CDTpAccountPtr> accounts() const { return mAccounts; };

@@ -28,36 +28,36 @@ const QString CDTpQueryBuilder::privateGraph = QLatin1String("<urn:uuid:679293d4
 const QString CDTpQueryBuilder::indent = QLatin1String("    ");
 const QString CDTpQueryBuilder::indent2 = indent + indent;
 
-CDTpQueryBuilder::CDTpQueryBuilder(const QString &text) : vCount(0), comment(text)
+CDTpQueryBuilder::CDTpQueryBuilder(const QString &text) : mVCount(0), mName(text)
 {
 }
 
 void CDTpQueryBuilder::createResource(const QString &resource, const QString &type, const QString &graph)
 {
-    append(insertPart[graph], QString(QLatin1String("%1 a %2.")).arg(resource).arg(type));
+    append(mInsertPart[graph], QString(QLatin1String("%1 a %2.")).arg(resource).arg(type));
 }
 
 void CDTpQueryBuilder::insertProperty(const QString &resource, const QString &property, const QString &value, const QString &graph)
 {
-    append(insertPart[graph], QString(QLatin1String("%1 %2 %3.")).arg(resource).arg(property).arg(value));
+    append(mInsertPart[graph], QString(QLatin1String("%1 %2 %3.")).arg(resource).arg(property).arg(value));
 }
 
 void CDTpQueryBuilder::deleteResource(const QString &resource)
 {
-    append(deletePart, QString(QLatin1String("%1 a rdfs:Resource.")).arg(resource));
+    append(mDeletePart, QString(QLatin1String("%1 a rdfs:Resource.")).arg(resource));
 }
 
 void CDTpQueryBuilder::deleteProperty(const QString &resource, const QString &property, const QString &value)
 {
-    append(deletePart, QString(QLatin1String("%1 %2 %3.")).arg(resource).arg(property).arg(value));
+    append(mDeletePart, QString(QLatin1String("%1 %2 %3.")).arg(resource).arg(property).arg(value));
 }
 
 QString CDTpQueryBuilder::deleteProperty(const QString &resource, const QString &property)
 {
     const QString value = uniquify();
 
-    append(deletePart, QString(QLatin1String("%1 %2 %3.")).arg(resource).arg(property).arg(value));
-    append(deletePartWhere, QString(QLatin1String("OPTIONAL { %1 %2 %3 }."))
+    append(mDeletePart, QString(QLatin1String("%1 %2 %3.")).arg(resource).arg(property).arg(value));
+    append(mDeletePartWhere, QString(QLatin1String("OPTIONAL { %1 %2 %3 }."))
             .arg(resource).arg(property).arg(value));
 
     return value;
@@ -67,8 +67,8 @@ QString CDTpQueryBuilder::deletePropertyWithGraph(const QString &resource, const
 {
     const QString value = uniquify();
 
-    append(deletePart, QString(QLatin1String("%1 %2 %3.")).arg(resource).arg(property).arg(value));
-    append(deletePartWhere, QString(QLatin1String("OPTIONAL { GRAPH %1 { %2 %3 %4 } }."))
+    append(mDeletePart, QString(QLatin1String("%1 %2 %3.")).arg(resource).arg(property).arg(value));
+    append(mDeletePartWhere, QString(QLatin1String("OPTIONAL { GRAPH %1 { %2 %3 %4 } }."))
             .arg(graph).arg(resource).arg(property).arg(value));
 
     return value;
@@ -91,51 +91,51 @@ QString CDTpQueryBuilder::updateProperty(const QString &resource, const QString 
 
 void CDTpQueryBuilder::appendRawSelection(const QString &str)
 {
-    append(insertPartWhere, str);
-    append(deletePartWhere, str);
+    append(mInsertPartWhere, str);
+    append(mDeletePartWhere, str);
 }
 
 void CDTpQueryBuilder::appendRawQuery(const QString &str)
 {
-    subQueries << str;
+    mSubQueries << str;
 }
 
 void CDTpQueryBuilder::appendRawQuery(const CDTpQueryBuilder &builder)
 {
-    subQueries << builder.getRawQuery();
+    mSubQueries << builder.getRawQuery();
 }
 
 QString CDTpQueryBuilder::uniquify(const QString &v)
 {
-    return QString(QLatin1String("%1_%2")).arg(v).arg(++vCount);
+    return QString(QLatin1String("%1_%2")).arg(v).arg(++mVCount);
 }
 
 void CDTpQueryBuilder::mergeWithOptional(const CDTpQueryBuilder &builder)
 {
     // Append insertPart
     QHash<QString, QString>::const_iterator i;
-    for (i = builder.insertPart.constBegin(); i != builder.insertPart.constEnd(); ++i) {
-        append(insertPart[i.key()], i.value());
+    for (i = builder.mInsertPart.constBegin(); i != builder.mInsertPart.constEnd(); ++i) {
+        append(mInsertPart[i.key()], i.value());
     }
 
     // Append deletePart
-    append(deletePart, builder.deletePart);
+    append(mDeletePart, builder.mDeletePart);
 
     // Append Where part
     static const QString optionalTemplate = QString(QLatin1String("OPTIONAL {\n%1\n}."));
-    append(insertPartWhere, optionalTemplate.arg(setIndentation(builder.insertPartWhere, indent)));
-    append(deletePartWhere, optionalTemplate.arg(setIndentation(builder.deletePartWhere, indent)));
+    append(mInsertPartWhere, optionalTemplate.arg(setIndentation(builder.mInsertPartWhere, indent)));
+    append(mDeletePartWhere, optionalTemplate.arg(setIndentation(builder.mDeletePartWhere, indent)));
 }
 
 QString CDTpQueryBuilder::getRawQuery() const
 {
     // DELETE part
-    QString deleteLines = setIndentation(deletePart, indent);
+    QString deleteLines = setIndentation(mDeletePart, indent);
 
     // INSERT part
     QString insertLines;
     QHash<QString, QString>::const_iterator i;
-    for (i = insertPart.constBegin(); i != insertPart.constEnd(); ++i) {
+    for (i = mInsertPart.constBegin(); i != mInsertPart.constEnd(); ++i) {
         QString graphLines = setIndentation(i.value(), indent2);
         if (!graphLines.isEmpty()) {
             insertLines += indent + QString(QLatin1String("GRAPH %1 {\n")).arg(i.key());
@@ -145,12 +145,12 @@ QString CDTpQueryBuilder::getRawQuery() const
     }
 
     // WHERE part
-    QString insertWhereLines = setIndentation(insertPartWhere, indent);
-    QString deleteWhereLines = setIndentation(deletePartWhere, indent);
+    QString insertWhereLines = setIndentation(mInsertPartWhere, indent);
+    QString deleteWhereLines = setIndentation(mDeletePartWhere, indent);
 
     // Build final query
     QString rawQuery;
-    rawQuery += QString("# --- START %1 ---\n").arg(comment);
+    rawQuery += QString("# --- START %1 ---\n").arg(mName);
     if (!deleteLines.isEmpty()) {
         rawQuery += QString(QLatin1String("DELETE {\n%1\n}\n")).arg(deleteLines);
         if (!deleteWhereLines.isEmpty()) {
@@ -165,11 +165,11 @@ QString CDTpQueryBuilder::getRawQuery() const
     }
 
     // Append raw queries
-    Q_FOREACH (const QString &subQuery, subQueries) {
+    Q_FOREACH (const QString &subQuery, mSubQueries) {
         rawQuery += subQuery;
     }
 
-    rawQuery += QString("# --- END %1 ---\n").arg(comment);
+    rawQuery += QString("# --- END %1 ---\n").arg(mName);
 
     return rawQuery;
 }
@@ -197,13 +197,17 @@ QSparqlQuery CDTpQueryBuilder::getSparqlQuery() const
 
 /* --- CDTpSparqlQuery --- */
 
-CDTpSparqlQuery::CDTpSparqlQuery(QSparqlQuery sparqlQuery, QObject *parent)
+CDTpSparqlQuery::CDTpSparqlQuery(const CDTpQueryBuilder &builder, QObject *parent)
         : QObject(parent)
 {
-    QSparqlConnection &connection = com::nokia::contactsd::SparqlConnectionManager::defaultConnection();
-    QSparqlResult *result = connection.exec(sparqlQuery);
+    static uint counter = 0;
+    mId = ++counter;
+    mTime.start();
 
-    qDebug() << sparqlQuery.query();
+    qDebug() << "query" << mId << "started:" << builder.name();
+
+    QSparqlConnection &connection = com::nokia::contactsd::SparqlConnectionManager::defaultConnection();
+    QSparqlResult *result = connection.exec(builder.getSparqlQuery());
 
     if (not result) {
         qWarning() << Q_FUNC_INFO << " - QSparqlConnection::exec() == 0";
@@ -234,6 +238,8 @@ void CDTpSparqlQuery::onQueryFinished()
         result->deleteLater();
     }
 
+    qDebug() << "query" << mId << "finished. Time elapsed (ms):" << mTime.elapsed();
+
     Q_EMIT finished(this);
 
     deleteLater();
@@ -242,8 +248,8 @@ void CDTpSparqlQuery::onQueryFinished()
 /* --- CDTpAccountsSparqlQuery --- */
 
 CDTpAccountsSparqlQuery::CDTpAccountsSparqlQuery(const QList<CDTpAccountPtr> &accounts,
-    QSparqlQuery sparqlQuery, QObject *parent)
-        : CDTpSparqlQuery(sparqlQuery, parent), mAccounts(accounts)
+    const CDTpQueryBuilder &builder, QObject *parent)
+        : CDTpSparqlQuery(builder, parent), mAccounts(accounts)
 {
 }
 

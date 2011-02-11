@@ -84,8 +84,7 @@ void CDTpStorage::syncAccounts(const QList<CDTpAccountPtr> &accounts)
     }
 
     /* Execute the query and get a callback when it's done */
-    CDTpAccountsSparqlQuery *query = new CDTpAccountsSparqlQuery(accounts,
-            builder.getSparqlQuery(), this);
+    CDTpAccountsSparqlQuery *query = new CDTpAccountsSparqlQuery(accounts, builder, this);
     connect(query,
             SIGNAL(finished(CDTpSparqlQuery *)),
             SLOT(onSyncOperationEnded(CDTpSparqlQuery *)));
@@ -107,8 +106,7 @@ void CDTpStorage::syncAccount(CDTpAccountPtr accountWrapper)
     }
 
     /* Execute the query and get a callback when it's done */
-    CDTpAccountsSparqlQuery *query = new CDTpAccountsSparqlQuery(accounts,
-            builder.getSparqlQuery(), this);
+    CDTpAccountsSparqlQuery *query = new CDTpAccountsSparqlQuery(accounts, builder, this);
     connect(query,
             SIGNAL(finished(CDTpSparqlQuery *)),
             SLOT(onSyncOperationEnded(CDTpSparqlQuery *)));
@@ -128,7 +126,7 @@ void CDTpStorage::updateAccount(CDTpAccountPtr accountWrapper,
         CDTpAccount::All);
     addAccountChangesToBuilder(builder, accountWrapper, changes);
 
-    new CDTpSparqlQuery(builder.getSparqlQuery(), this);
+    new CDTpSparqlQuery(builder, this);
 }
 
 void CDTpStorage::removeAccount(CDTpAccountPtr accountWrapper)
@@ -155,7 +153,7 @@ void CDTpStorage::removeAccount(CDTpAccountPtr accountWrapper)
     subBuilder.deleteResource(imAccount);
     builder.appendRawQuery(subBuilder);
 
-    new CDTpSparqlQuery(builder.getSparqlQuery(), this);
+    new CDTpSparqlQuery(builder, this);
 }
 
 void CDTpStorage::addSyncAccountsToBuilder(CDTpQueryBuilder &builder,
@@ -336,7 +334,7 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper)
                 QList<CDTpAccountPtr>() << accountWrapper);
     }
 
-    new CDTpSparqlQuery(builder.getSparqlQuery(), this);
+    new CDTpSparqlQuery(builder, this);
 }
 
 void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper,
@@ -371,7 +369,7 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper,
         addRemoveContactsToBuilder(builder, accountWrapper, contactsRemoved);
     }
 
-    new CDTpSparqlQuery(builder.getSparqlQuery(), this);
+    new CDTpSparqlQuery(builder, this);
 }
 
 /* Use this only in offline mode - use syncAccountContacts in online mode */
@@ -379,7 +377,7 @@ void CDTpStorage::removeAccountContacts(const QString &accountPath, const QStrin
 {
     CDTpQueryBuilder builder;
     addRemoveContactsToBuilder(builder, accountPath, contactIds);
-    new CDTpSparqlQuery(builder.getSparqlQuery(), this);
+    new CDTpSparqlQuery(builder, this);
 }
 
 void CDTpStorage::updateContact(CDTpContactPtr contactWrapper, CDTpContact::Changes changes)
@@ -396,7 +394,7 @@ void CDTpStorage::updateContact(CDTpContactPtr contactWrapper, CDTpContact::Chan
     addRemoveContactsChangesToBuilder(builder, imAddress, imContact, changes);
     addContactChangesToBuilder(builder, imAddress, imContact, changes, contactWrapper->contact());
 
-    new CDTpSparqlQuery(builder.getSparqlQuery(), this);
+    new CDTpSparqlQuery(builder, this);
 }
 
 void CDTpStorage::addSyncNoRosterAccountsContactsToBuilder(CDTpQueryBuilder &builder,
