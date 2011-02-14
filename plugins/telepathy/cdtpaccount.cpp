@@ -32,7 +32,8 @@
 CDTpAccount::CDTpAccount(const Tp::AccountPtr &account, QObject *parent)
     : QObject(parent),
       mAccount(account),
-      mHasRoster(false)
+      mHasRoster(false),
+      mFirstSeen(false)
 {
     // connect all signals we care about, so we can signal that the account
     // changed accordingly
@@ -81,6 +82,16 @@ QString CDTpAccount::providerName() const
     return mAccount->serviceName();
 }
 
+void CDTpAccount::firstTimeSeen()
+{
+    Q_FOREACH (const CDTpContactPtr &contactWrapper, mContacts.values()) {
+        maybeRequestExtraInfo(contactWrapper->contact());
+    }
+    if (!mAccount->connection()) {
+        mFirstSeen = true;
+    }
+}
+
 void CDTpAccount::onAccountDisplayNameChanged()
 {
     Q_EMIT changed(CDTpAccountPtr(this), DisplayName);
@@ -124,10 +135,15 @@ void CDTpAccount::setConnection(const Tp::ConnectionPtr &connection)
 
         Q_FOREACH (const Tp::ContactPtr &contact, contactManager->allKnownContacts()) {
             insertContact(contact);
+            if (mFirstSeen) {
+                maybeRequestExtraInfo(contact);
+            }
         }
     } else {
         mHasRoster = false;
     }
+
+    mFirstSeen = false;
 }
 
 void CDTpAccount::onAllKnownContactsChanged(const Tp::Contacts &contactsAdded,
@@ -143,6 +159,7 @@ void CDTpAccount::onAllKnownContactsChanged(const Tp::Contacts &contactsAdded,
             qWarning() << "Internal error, contact was already in roster";
             continue;
         }
+        maybeRequestExtraInfo(contact);
         CDTpContactPtr contactWrapper = insertContact(contact);
         if (contactWrapper->isVisible()) {
             added << contactWrapper;
@@ -206,6 +223,18 @@ CDTpContactPtr CDTpAccount::insertContact(const Tp::ContactPtr &contact)
             SLOT(onAccountContactChanged(CDTpContactPtr, CDTpContact::Changes)));
     mContacts.insert(contact->id(), contactWrapper);
     return contactWrapper;
+}
+
+void CDTpAccount::maybeRequestExtraInfo(Tp::ContactPtr contact)
+{
+    if (!contact->isAvatarTokenKnown()) {
+        qDebug() << contact->id() << "first seen: request avatar";
+        contact->requestAvatarData();
+    }
+    if (!contact->isContactInfoKnown()) {
+        qDebug() << contact->id() << "first seen: refresh ContactInfo";
+        contact->refreshInfo();
+    }
 }
 
 CDTpContactPtr CDTpAccount::contact(const QString &id) const

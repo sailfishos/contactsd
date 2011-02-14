@@ -126,6 +126,10 @@ void CDTpController::onAccountAdded(const Tp::AccountPtr &account)
 
     CDTpAccountPtr accountWrapper = insertAccount(account);
     mStorage->syncAccount(accountWrapper);
+
+    // This is the first time we see this account, we can request additional
+    // info, like avatar for offline gtalk contacts.
+    accountWrapper->firstTimeSeen();
 }
 
 void CDTpController::onAccountRemoved(const Tp::AccountPtr &account)

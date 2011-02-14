@@ -53,6 +53,7 @@ public:
     QList<CDTpContactPtr> contacts() const;
     CDTpContactPtr contact(const QString &id) const;
     bool hasRoster() const { return mHasRoster; };
+    void firstTimeSeen();
 
 Q_SIGNALS:
     void changed(CDTpAccountPtr accountWrapper, CDTpAccount::Changes changes);
@@ -76,10 +77,12 @@ private Q_SLOTS:
 private:
     void setConnection(const Tp::ConnectionPtr &connection);
     CDTpContactPtr insertContact(const Tp::ContactPtr &contact);
+    void maybeRequestExtraInfo(Tp::ContactPtr contact);
 
     Tp::AccountPtr mAccount;
     QHash<QString, CDTpContactPtr> mContacts;
     bool mHasRoster;
+    bool mFirstSeen;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(CDTpAccount::Changes)
