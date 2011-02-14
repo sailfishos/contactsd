@@ -150,6 +150,9 @@ void CDTpStorage::removeAccount(CDTpAccountPtr accountWrapper)
     CDTpQueryBuilder subBuilder("RemoveAccount2");
     subBuilder.appendRawSelection(selection);
     subBuilder.deleteResource(imAddress);
+    builder.appendRawQuery(subBuilder);
+
+    subBuilder = CDTpQueryBuilder("RemoveAccount3");
     subBuilder.deleteResource(imAccount);
     builder.appendRawQuery(subBuilder);
 
@@ -529,24 +532,44 @@ void CDTpStorage::addCreateContactsToBuilder(CDTpQueryBuilder &builder,
         "}\n"
         "WHERE {\n"
         "    ?imAddress a nco:IMAddress.\n"
-        "    FILTER (?imAddress IN (%4) &&\n"
-        "            NOT EXISTS { ?imContact nco:hasAffiliation [ nco:hasIMAddress ?imAddress ] })\n"
+        "    FILTER (NOT EXISTS { ?imContact nco:hasAffiliation [ nco:hasIMAddress ?imAddress ] })\n"
         "}\n"))
-        .arg(CDTpQueryBuilder::defaultGraph).arg(literalTimeStamp()).arg(defaultGenerator).arg(imAddresses.join(",")));
+        .arg(CDTpQueryBuilder::defaultGraph).arg(literalTimeStamp()).arg(defaultGenerator));
+
+    // Insert timestamp on all imContact bound to those imAddresses
+    CDTpQueryBuilder subBuilder("CreateContacts - timestamp");
+    subBuilder.appendRawSelection(QString(QLatin1String(
+            "?imContact nco:hasAffiliation [ nco:hasIMAddress ?imAddress ].\n"
+            "FILTER(?imAddress IN (%1))."))
+            .arg(imAddresses.join(",")));
+    subBuilder.insertProperty("?imContact", "nie:contentLastModified", literalTimeStamp());
+    builder.appendRawQuery(subBuilder);
 
     // Add mutable properties
-    CDTpQueryBuilder subBuilder("CreateContacts - add mutable properties");
+    subBuilder = CDTpQueryBuilder("CreateContacts - add mutable properties");
+    uint imContactCount = 0;
     Q_FOREACH (const CDTpContactPtr contactWrapper, contacts) {
-        const QString imContact = subBuilder.uniquify("?imContact");
         const QString imAddress = literalIMAddress(contactWrapper);
 
-        /* FIXME: Split in batches! */
-        subBuilder.appendRawSelection(QString(QLatin1String(
-                "%1 nco:hasAffiliation [ nco:hasIMAddress %2 ]."))
-                .arg(imContact).arg(imAddress));
+        addContactChangesToBuilder(subBuilder, imAddress, CDTpContact::All,
+                contactWrapper->contact());
 
-        addContactChangesToBuilder(subBuilder, imAddress, imContact,
-                CDTpContact::All, contactWrapper->contact());
+        if (contactWrapper->isInformationKnown()) {
+            // Tracker supports at most 32 selection of the ?imContact_X
+            if (imContactCount == 32) {
+                builder.appendRawQuery(subBuilder);
+                subBuilder = CDTpQueryBuilder("CreateContacts - add mutable properties - next part");
+                imContactCount = 0;
+            }
+
+            imContactCount++;
+            const QString imContact = subBuilder.uniquify("?imContact");
+            subBuilder.appendRawSelection(QString(QLatin1String(
+                    "%1 nco:hasAffiliation [ nco:hasIMAddress %2 ]."))
+                    .arg(imContact).arg(imAddress));
+            addContactInfoToBuilder(subBuilder, imAddress, imContact,
+                    contactWrapper->contact());
+        }
     }
     builder.appendRawQuery(subBuilder);
 }
@@ -658,6 +681,21 @@ void CDTpStorage::addContactChangesToBuilder(CDTpQueryBuilder &builder,
         CDTpContact::Changes changes,
         Tp::ContactPtr contact) const
 {
+    // Apply changes
+    addContactChangesToBuilder(builder, imAddress, changes, contact);
+    if (changes & CDTpContact::Information) {
+        qDebug() << "  vcard information changed";
+        addContactInfoToBuilder(builder, imAddress, imContact, contact);
+    }
+
+    builder.insertProperty(imContact, "nie:contentLastModified", literalTimeStamp());
+}
+
+void CDTpStorage::addContactChangesToBuilder(CDTpQueryBuilder &builder,
+        const QString &imAddress,
+        CDTpContact::Changes changes,
+        Tp::ContactPtr contact) const
+{
     qDebug() << "Update contact" << imAddress;
 
     // Apply changes
@@ -682,12 +720,6 @@ void CDTpStorage::addContactChangesToBuilder(CDTpQueryBuilder &builder,
         builder.insertProperty(imAddress, "nco:imAddressAuthStatusFrom", presenceState(contact->subscriptionState()));
         builder.insertProperty(imAddress, "nco:imAddressAuthStatusTo", presenceState(contact->publishState()));
     }
-    if (changes & CDTpContact::Information) {
-        qDebug() << "  vcard information changed";
-        addContactInfoToBuilder(builder, imAddress, imContact, contact);
-    }
-
-    builder.insertProperty(imContact, "nie:contentLastModified", literalTimeStamp());
 }
 
 void CDTpStorage::addRemovePresenceToBuilder(CDTpQueryBuilder &builder,

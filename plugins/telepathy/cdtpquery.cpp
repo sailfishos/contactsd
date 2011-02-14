@@ -205,6 +205,7 @@ CDTpSparqlQuery::CDTpSparqlQuery(const CDTpQueryBuilder &builder, QObject *paren
     mTime.start();
 
     qDebug() << "query" << mId << "started:" << builder.name();
+    qDebug() << builder.getRawQuery();
 
     QSparqlConnection &connection = com::nokia::contactsd::SparqlConnectionManager::defaultConnection();
     QSparqlResult *result = connection.exec(builder.getSparqlQuery());

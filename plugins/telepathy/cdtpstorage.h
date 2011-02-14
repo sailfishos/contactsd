@@ -95,6 +95,10 @@ private:
             const QString &imContact,
             CDTpContact::Changes changes,
             Tp::ContactPtr contact) const;
+    void addContactChangesToBuilder(CDTpQueryBuilder &builder,
+            const QString &imAddress,
+            CDTpContact::Changes changes,
+            Tp::ContactPtr contact) const;
     void addRemovePresenceToBuilder(CDTpQueryBuilder &builder,
             const QString &imAddress) const;
     void addPresenceToBuilder(CDTpQueryBuilder &builder,
