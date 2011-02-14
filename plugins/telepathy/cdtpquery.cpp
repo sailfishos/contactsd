@@ -34,12 +34,12 @@ CDTpQueryBuilder::CDTpQueryBuilder(const QString &text) : mVCount(0), mName(text
 
 void CDTpQueryBuilder::createResource(const QString &resource, const QString &type, const QString &graph)
 {
-    append(mInsertPart[graph], QString(QLatin1String("%1 a %2.")).arg(resource).arg(type));
+    mInsertPart[graph][resource] << QString(QLatin1String("a %1")).arg(type);
 }
 
 void CDTpQueryBuilder::insertProperty(const QString &resource, const QString &property, const QString &value, const QString &graph)
 {
-    append(mInsertPart[graph], QString(QLatin1String("%1 %2 %3.")).arg(resource).arg(property).arg(value));
+    mInsertPart[graph][resource] << QString(QLatin1String("%1 %2")).arg(property).arg(value);
 }
 
 void CDTpQueryBuilder::deleteResource(const QString &resource)
@@ -113,9 +113,12 @@ QString CDTpQueryBuilder::uniquify(const QString &v)
 void CDTpQueryBuilder::mergeWithOptional(const CDTpQueryBuilder &builder)
 {
     // Append insertPart
-    QHash<QString, QString>::const_iterator i;
+    InsertPart::const_iterator i;
     for (i = builder.mInsertPart.constBegin(); i != builder.mInsertPart.constEnd(); ++i) {
-        append(mInsertPart[i.key()], i.value());
+        QHash<QString, QStringList>::const_iterator j;
+        for (j = i.value().constBegin(); j != i.value().constEnd(); ++j) {
+            mInsertPart[i.key()][j.key()] << j.value();
+        }
     }
 
     // Append deletePart
@@ -134,9 +137,9 @@ QString CDTpQueryBuilder::getRawQuery() const
 
     // INSERT part
     QString insertLines;
-    QHash<QString, QString>::const_iterator i;
+    InsertPart::const_iterator i;
     for (i = mInsertPart.constBegin(); i != mInsertPart.constEnd(); ++i) {
-        QString graphLines = setIndentation(i.value(), indent2);
+        QString graphLines = setIndentation(buildInsertPart(i.value()), indent2);
         if (!graphLines.isEmpty()) {
             insertLines += indent + QString(QLatin1String("GRAPH %1 {\n")).arg(i.key());
             insertLines += graphLines + QLatin1String("\n");
@@ -188,6 +191,21 @@ QString CDTpQueryBuilder::setIndentation(const QString &part, const QString &ind
         return QString();
     }
     return indentation + QString(part).replace('\n', QLatin1String("\n") + indentation);
+}
+
+QString CDTpQueryBuilder::buildInsertPart(const QHash<QString, QStringList> &part) const
+{
+    QString ret;
+
+    QHash<QString, QStringList>::const_iterator i;
+    for (i = part.constBegin(); i != part.constEnd(); ++i) {
+        if (!ret.isEmpty()) {
+            ret += "\n";
+        }
+        ret += i.key() + " " + i.value().join(";\n    ") + ".";
+    }
+
+    return ret;
 }
 
 QSparqlQuery CDTpQueryBuilder::getSparqlQuery() const

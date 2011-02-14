@@ -59,8 +59,11 @@ public:
 private:
     void append(QString &part, const QString &str);
     QString setIndentation(const QString &part, const QString &indentation) const;
+    QString buildInsertPart(const QHash<QString, QStringList> &part) const;
 
-    QHash<QString, QString> mInsertPart;
+    // graph <> (resource <> (list of "property value"))
+    typedef QHash<QString, QHash<QString, QStringList> >InsertPart;
+    InsertPart mInsertPart;
     QString mInsertPartWhere;
     QString mDeletePart;
     QString mDeletePartWhere;
