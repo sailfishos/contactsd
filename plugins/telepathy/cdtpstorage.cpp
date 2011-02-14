@@ -1143,8 +1143,7 @@ QString CDTpStorage::literalIMAddress(const CDTpContactPtr &contactWrapper) cons
 QString CDTpStorage::literalIMAddress(const CDTpAccountPtr &accountWrapper) const
 {
     const QString accountPath = accountWrapper->account()->objectPath();
-    const QString accountId = accountWrapper->account()->normalizedName();
-    return literalIMAddress(accountPath, accountId);
+    return literalIMAddress(accountPath, "self");
 }
 
 QString CDTpStorage::literalIMAccount(const QString &accountPath) const
