@@ -514,6 +514,10 @@ void CDTpStorage::addCreateContactsToBuilder(CDTpQueryBuilder &builder,
         const QString imAccount = literalIMAccount(accountWrapper);
         builder.insertProperty(imAccount, "nco:hasIMContact", imAddress, CDTpQueryBuilder::privateGraph);
 
+        // Add mutable properties except for ContactInfo
+        addContactChangesToBuilder(builder, imAddress, CDTpContact::All,
+                contactWrapper->contact());
+
         imAddresses << imAddress;
     }
 
@@ -545,31 +549,31 @@ void CDTpStorage::addCreateContactsToBuilder(CDTpQueryBuilder &builder,
     subBuilder.insertProperty("?imContact", "nie:contentLastModified", literalTimeStamp());
     builder.appendRawQuery(subBuilder);
 
-    // Add mutable properties
-    subBuilder = CDTpQueryBuilder("CreateContacts - add mutable properties");
+    // Add ContactInfo seperately because we need to bind to the PersonContact
+    // and that makes things much slower
+    subBuilder = CDTpQueryBuilder("CreateContacts - add ContactInfo");
     uint imContactCount = 0;
     Q_FOREACH (const CDTpContactPtr contactWrapper, contacts) {
+        if (!contactWrapper->isInformationKnown()) {
+            continue;
+        }
+
         const QString imAddress = literalIMAddress(contactWrapper);
 
-        addContactChangesToBuilder(subBuilder, imAddress, CDTpContact::All,
-                contactWrapper->contact());
-
-        if (contactWrapper->isInformationKnown()) {
-            // Tracker supports at most 32 selection of the ?imContact_X
-            if (imContactCount == 32) {
-                builder.appendRawQuery(subBuilder);
-                subBuilder = CDTpQueryBuilder("CreateContacts - add mutable properties - next part");
-                imContactCount = 0;
-            }
-
-            imContactCount++;
-            const QString imContact = subBuilder.uniquify("?imContact");
-            subBuilder.appendRawSelection(QString(QLatin1String(
-                    "%1 nco:hasAffiliation [ nco:hasIMAddress %2 ]."))
-                    .arg(imContact).arg(imAddress));
-            addContactInfoToBuilder(subBuilder, imAddress, imContact,
-                    contactWrapper->contact());
+        // Tracker supports at most 32 selection of the ?imContact_X
+        if (imContactCount == 32) {
+            builder.appendRawQuery(subBuilder);
+            subBuilder = CDTpQueryBuilder("CreateContacts - add ContactInfo - next part");
+            imContactCount = 0;
         }
+
+        imContactCount++;
+        const QString imContact = subBuilder.uniquify("?imContact");
+        subBuilder.appendRawSelection(QString(QLatin1String(
+                "%1 nco:hasAffiliation [ nco:hasIMAddress %2 ]."))
+                .arg(imContact).arg(imAddress));
+        addContactInfoToBuilder(subBuilder, imAddress, imContact,
+                contactWrapper->contact());
     }
     builder.appendRawQuery(subBuilder);
 }
@@ -735,8 +739,10 @@ void CDTpStorage::addPresenceToBuilder(CDTpQueryBuilder &builder,
         const Tp::Presence &presence) const
 {
     builder.insertProperty(imAddress, "nco:imPresence", presenceType(presence.type()));
-    builder.insertProperty(imAddress, "nco:imStatusMessage", literal(presence.statusMessage()));
     builder.insertProperty(imAddress, "nco:presenceLastModified", literalTimeStamp());
+    if (!presence.statusMessage().isEmpty()) {
+        builder.insertProperty(imAddress, "nco:imStatusMessage", literal(presence.statusMessage()));
+    }
 }
 
 void CDTpStorage::addRemoveCapabilitiesToBuilder(CDTpQueryBuilder &builder,
