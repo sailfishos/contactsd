@@ -481,6 +481,19 @@ void TestTelepathyPlugin::testSetOffline()
     QCOMPARE(mLoop->exec(), 0);
 }
 
+void TestTelepathyPlugin::testIRIEncode()
+{
+    /* Create a contact with a special id that could confuse tracker */
+    TpHandle handle = ensureContact("<specialid>");
+    test_contact_list_manager_request_subscription(mListManager, 1, &handle,
+        "wait");
+
+    mExpectation.event = TestExpectation::Added;
+    mExpectation.flags = TestExpectation::OnlineAccounts;
+    mExpectation.accountUri = QString("<specialid>");
+    QCOMPARE(mLoop->exec(), 0);
+}
+
 TpHandle TestTelepathyPlugin::ensureContact(const gchar *id)
 {
     TpHandleRepoIface *serviceRepo =

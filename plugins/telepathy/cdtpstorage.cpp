@@ -1122,7 +1122,9 @@ QString CDTpStorage::literalTimeStamp() const
 
 QString CDTpStorage::literalIMAddress(const QString &accountPath, const QString &contactId) const
 {
-    return QString("<telepathy:%1!%2>").arg(accountPath).arg(contactId);
+    // FIXME: we can't use QUrl::toPercentEncoding() here because the string
+    // will be used in some QString::arg().
+    return QString("<telepathy:%1!%2>").arg(accountPath).arg(QString(contactId).remove('<').remove('>'));
 }
 
 QString CDTpStorage::literalIMAddress(const CDTpContactPtr &contactWrapper) const

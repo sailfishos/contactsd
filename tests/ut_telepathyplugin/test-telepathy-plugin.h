@@ -109,6 +109,7 @@ private Q_SLOTS:
 
     /* Specific tests */
     void testBug220851();
+    void testIRIEncode();
 
     void cleanup();
     void cleanupTestCase();
