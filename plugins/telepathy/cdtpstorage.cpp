@@ -123,7 +123,7 @@ void CDTpStorage::updateAccount(CDTpAccountPtr accountWrapper,
 
     addRemoveAccountsChangesToBuilder(builder,
         literalIMAddress(accountWrapper), literalIMAccount(accountWrapper),
-        CDTpAccount::All);
+        changes);
     addAccountChangesToBuilder(builder, accountWrapper, changes);
 
     new CDTpSparqlQuery(builder, this);
@@ -582,9 +582,11 @@ void CDTpStorage::addRemoveContactsChangesToBuilder(CDTpQueryBuilder &builder,
     const QList<CDTpAccountPtr> &accounts) const
 {
     QStringList imAccounts;
+    QStringList imAddresses;
     QList<CDTpContactPtr> allContacts;
     Q_FOREACH (const CDTpAccountPtr &accountWrapper, accounts) {
         imAccounts << literalIMAccount(accountWrapper);
+        imAddresses << literalIMAddress(accountWrapper);
         allContacts << accountWrapper->contacts();
     }
 
@@ -604,8 +606,8 @@ void CDTpStorage::addRemoveContactsChangesToBuilder(CDTpQueryBuilder &builder,
     builder.appendRawSelection(QString(QLatin1String(
             "?imAccount nco:hasIMContact ?imAddress.\n"
             "?imContact nco:hasAffiliation [ nco:hasIMAddress ?imAddress ].\n"
-            "FILTER(?imAccount IN (%1))."))
-            .arg(imAccounts.join(",")));
+            "FILTER(?imAddress NOT IN (%1) && ?imAccount IN (%2))."))
+            .arg(imAddresses.join(",")).arg(imAccounts.join(",")));
     addRemoveContactsChangesToBuilder(builder, "?imAddress", "?imContact", CDTpContact::Changes(mandatoryFlags));
 
     QStringList avatarIMAddresses;
