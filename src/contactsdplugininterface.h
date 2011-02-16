@@ -27,9 +27,9 @@ class QVariant;
 template<class Key, class Value> class QMap;
 class QStringList;
 
-const QString CONTACTSD_PLUGIN_VERSION = "version";
-const QString CONTACTSD_PLUGIN_NAME    = "name";
-const QString CONTACTSD_PLUGIN_COMMENT = "comment";
+const QString CONTACTSD_PLUGIN_VERSION = QString::fromLatin1("version");
+const QString CONTACTSD_PLUGIN_NAME    = QString::fromLatin1("name");
+const QString CONTACTSD_PLUGIN_COMMENT = QString::fromLatin1("comment");
 
 class ContactsdPluginInterface
 {

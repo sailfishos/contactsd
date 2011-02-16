@@ -91,12 +91,12 @@ void CDTpController::onAccountManagerReady(Tp::PendingOperation *op)
     qDebug() << "Account manager ready";
 
     Tp::AccountPropertyFilterPtr filter1 = Tp::AccountPropertyFilter::create();
-    filter1->addProperty("valid", true);
-    filter1->addProperty("enabled", true);
-    filter1->addProperty("hasBeenOnline", true);
+    filter1->addProperty(QString::fromLatin1("valid"), true);
+    filter1->addProperty(QString::fromLatin1("enabled"), true);
+    filter1->addProperty(QString::fromLatin1("hasBeenOnline"), true);
 
     Tp::AccountPropertyFilterPtr normalizedNameFilter = Tp::AccountPropertyFilter::create();
-    normalizedNameFilter->addProperty("normalizedName", QString());
+    normalizedNameFilter->addProperty(QString::fromLatin1("normalizedName"), QString());
     Tp::AccountFilterPtr filter2 = Tp::NotFilter<Tp::Account>::create(normalizedNameFilter);
 
     Tp::AccountFilterPtr filter = Tp::AndFilter<Tp::Account>::create(

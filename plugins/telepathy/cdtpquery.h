@@ -30,29 +30,26 @@
 class CDTpQueryBuilder
 {
 public:
-    CDTpQueryBuilder(const QString &text = QString());
+    CDTpQueryBuilder(const char *text = "");
 
     static const QString defaultGraph;
-    static const QString privateGraph;
-    static const QString indent;
-    static const QString indent2;
 
-    void createResource(const QString &resource, const QString &type, const QString &graph = defaultGraph);
-    void insertProperty(const QString &resource, const QString &property, const QString &value, const QString &graph = defaultGraph);
+    void createResource(const QString &resource, const char *type, const QString &graph = defaultGraph);
+    void insertProperty(const QString &resource, const char *property, const QString &value, const QString &graph = defaultGraph);
     void deleteResource(const QString &resource);
-    void deleteProperty(const QString &resource, const QString &property, const QString &value);
-    QString deleteProperty(const QString &resource, const QString &property);
-    QString deletePropertyWithGraph(const QString &resource, const QString &property, const QString &graph);
-    QString deletePropertyAndLinkedResource(const QString &resource, const QString &property);
-    QString updateProperty(const QString &resource, const QString &property, const QString &value, const QString &graph = defaultGraph);
+    void deleteProperty(const QString &resource, const char *property, const QString &value);
+    QString deleteProperty(const QString &resource, const char *property);
+    QString deletePropertyWithGraph(const QString &resource, const char *property, const QString &graph);
+    QString deletePropertyAndLinkedResource(const QString &resource, const char *property);
+    QString updateProperty(const QString &resource, const char *property, const QString &value, const QString &graph = defaultGraph);
 
     void appendRawSelection(const QString &str);
     void appendRawQuery(const QString &str);
     void appendRawQuery(const CDTpQueryBuilder &builder);
     void mergeWithOptional(const CDTpQueryBuilder &builder);
 
-    QString name() const { return mName; };
-    QString uniquify(const QString &v = QString("?v"));
+    QLatin1String name() const { return mName; };
+    QString uniquify(const char *v = "?v");
     QString getRawQuery() const;
     QSparqlQuery getSparqlQuery() const;
 
@@ -70,7 +67,7 @@ private:
     QList<QString> mSubQueries;
 
     int mVCount;
-    QString mName;
+    QLatin1String mName;
 };
 
 /* --- CDTpSparqlQuery --- */

@@ -54,9 +54,9 @@ void CDTpPlugin::init()
 QMap<QString, QVariant> CDTpPlugin::metaData()
 {
     QMap<QString, QVariant> data;
-    data["name"] = QVariant(QString("telepathy"));
-    data["version"] = QVariant(QString("0.1"));
-    data["comment"] = QVariant(QString("contactsd telepathy plugin"));
+    data[CONTACTSD_PLUGIN_NAME]    = QVariant(QString::fromLatin1("telepathy"));
+    data[CONTACTSD_PLUGIN_VERSION] = QVariant(QString::fromLatin1("0.1"));
+    data[CONTACTSD_PLUGIN_COMMENT] = QVariant(QString::fromLatin1("contactsd telepathy plugin"));
     return data;
 }
 

@@ -39,10 +39,6 @@ public:
     CDTpStorage(QObject *parent = 0);
     ~CDTpStorage();
 
-    static const QString defaultGraph;
-    static const QString privateGraph;
-    static const QString defaultGenerator;
-
 Q_SIGNALS:
     void syncStarted(CDTpAccountPtr accountWrapper);
     void syncEnded(CDTpAccountPtr accountWrapper, int contactsAdded, int contactsRemoved);

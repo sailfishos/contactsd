@@ -23,10 +23,13 @@
 
 #include "cdtpstorage.h"
 
-#define MAX_UPDATE_SIZE 999
-#define MAX_REMOVE_SIZE 999
-
-const QString CDTpStorage::defaultGenerator = "\"telepathy\"";
+static const QString privateGraph = QString::fromLatin1("<urn:uuid:679293d4-60f0-49c7-8d63-f1528fe31f66>");
+static const QString defaultGenerator = QString::fromLatin1("\"telepathy\"");
+static const QString filterInSeparator = QString::fromLatin1(",");
+static const QString defaultContactMe = QString::fromLatin1("nco:default-contact-me");
+static const QString imAddressVar = QString::fromLatin1("?imAddress");
+static const QString imContactVar = QString::fromLatin1("?imContact");
+static const QString imAccountVar = QString::fromLatin1("?imAccount");
 
 CDTpStorage::CDTpStorage(QObject *parent) : QObject(parent)
 {
@@ -46,7 +49,7 @@ void CDTpStorage::syncAccounts(const QList<CDTpAccountPtr> &accounts)
     CDTpQueryBuilder builder("SyncAccounts");
 
     /* Ensure the default-contact-me exists. NB#215973 */
-    builder.createResource("nco:default-contact-me", "nco:PersonContact");
+    builder.createResource(defaultContactMe, "nco:PersonContact");
 
     /* Purge accounts and their contacts that does not exist anymore */
     CDTpQueryBuilder subBuilder("SyncAccounts - purge");
@@ -54,26 +57,25 @@ void CDTpStorage::syncAccounts(const QList<CDTpAccountPtr> &accounts)
     Q_FOREACH (const CDTpAccountPtr &accountWrapper, accounts) {
         imAccounts << literalIMAccount(accountWrapper);
     }
-    const QString imAccount = subBuilder.uniquify("?imAccount");
-    const QString imAddress = subBuilder.uniquify("?imAddress");
-    QString selection = QString(QLatin1String(
-            "%1 nco:hasIMContact %2."))
-            .arg(imAccount).arg(imAddress);
+
+    static const QString tmpl = QString::fromLatin1("?imAccount nco:hasIMContact ?imAddress.");
+    QString selection = tmpl;
+
     if (!accounts.isEmpty()) {
-        selection += QString(QLatin1String("\nFILTER (%1 NOT IN (%2))."))
-                .arg(imAccount).arg(imAccounts.join(","));
+        static const QString tmpl = QString::fromLatin1("\nFILTER (?imAccount NOT IN (%1)).");
+        selection += tmpl.arg(imAccounts.join(filterInSeparator));
     }
 
     subBuilder.appendRawSelection(selection);
-    addRemoveContactToBuilder(subBuilder, imAddress);
+    addRemoveContactToBuilder(subBuilder, imAddressVar);
     builder.appendRawQuery(subBuilder);
 
     /* Delete imAddress and imAccount in a sub builder because they are needed
      * for the selection of builder. */
     subBuilder = CDTpQueryBuilder("SyncAccounts - purge2");
     subBuilder.appendRawSelection(selection);
-    subBuilder.deleteResource(imAddress);
-    subBuilder.deleteResource(imAccount);
+    subBuilder.deleteResource(imAddressVar);
+    subBuilder.deleteResource(imAccountVar);
     builder.appendRawQuery(subBuilder);
 
     /* Sync accounts and their contacts */
@@ -99,7 +101,7 @@ void CDTpStorage::syncAccount(CDTpAccountPtr accountWrapper)
 
     /* Create account and its contacts */
     QList<CDTpAccountPtr> accounts = QList<CDTpAccountPtr>() << accountWrapper;
-    builder.updateProperty("nco:default-contact-me", "nie:contentLastModified", literalTimeStamp());
+    builder.updateProperty(defaultContactMe, "nie:contentLastModified", literalTimeStamp());
     addCreateAccountsToBuilder(builder, accounts);
     if (!accountWrapper->contacts().isEmpty()) {
         addCreateContactsToBuilder(builder, accountWrapper->contacts());
@@ -119,7 +121,7 @@ void CDTpStorage::updateAccount(CDTpAccountPtr accountWrapper,
 
     CDTpQueryBuilder builder("UpdateAccount");
 
-    builder.updateProperty("nco:default-contact-me", "nie:contentLastModified", literalTimeStamp());
+    builder.updateProperty(defaultContactMe, "nie:contentLastModified", literalTimeStamp());
 
     addRemoveAccountsChangesToBuilder(builder,
         literalIMAddress(accountWrapper), literalIMAccount(accountWrapper),
@@ -137,19 +139,18 @@ void CDTpStorage::removeAccount(CDTpAccountPtr accountWrapper)
     CDTpQueryBuilder builder("RemoveAccount");
 
     /* Bind imAddress to all contacts of this imAccount */
-    const QString imAddress = builder.uniquify("?imAddress");
-    const QString selection = (QString(QLatin1String(
-            "%2 nco:hasIMContact %1.")).arg(imAddress).arg(imAccount));
+    static const QString tmpl = QString::fromLatin1("%1 nco:hasIMContact ?imAddress.");
+    const QString selection = tmpl.arg(imAccount);
 
     /* Delete/update local contact */
     builder.appendRawSelection(selection);
-    addRemoveContactToBuilder(builder, imAddress);
+    addRemoveContactToBuilder(builder, imAddressVar);
 
     /* Delete imAddress and imAccount in a sub builder because they are needed
      * for the selection of builder. */
     CDTpQueryBuilder subBuilder("RemoveAccount2");
     subBuilder.appendRawSelection(selection);
-    subBuilder.deleteResource(imAddress);
+    subBuilder.deleteResource(imAddressVar);
     builder.appendRawQuery(subBuilder);
 
     subBuilder = CDTpQueryBuilder("RemoveAccount3");
@@ -168,18 +169,16 @@ void CDTpStorage::addSyncAccountsToBuilder(CDTpQueryBuilder &builder,
     }
 
     // Drop all mutable properties in all accounts at once, then (re-)create them
-    const QString imAddress = builder.uniquify("?imAddress");
-    const QString imAccount = builder.uniquify("?imAccount");
-    builder.appendRawSelection(QString(QLatin1String(
-            "%1 nco:imAccountAddress %2.\n"
-            "FILTER(%1 IN (%3))."))
-            .arg(imAccount).arg(imAddress).arg(imAccounts.join(",")));
+    static const QString tmpl = QString::fromLatin1(
+            "?imAccount nco:imAccountAddress ?imAddress.\n"
+            "FILTER(?imAccount IN (%1)).");
+    builder.appendRawSelection(tmpl.arg(imAccounts.join(filterInSeparator)));
 
-    addRemoveAccountsChangesToBuilder(builder, imAddress, imAccount, CDTpAccount::All);
+    addRemoveAccountsChangesToBuilder(builder, imAddressVar, imAccountVar, CDTpAccount::All);
 
     CDTpQueryBuilder subBuilder("CreateAccounts");
 
-    subBuilder.updateProperty("nco:default-contact-me", "nie:contentLastModified", literalTimeStamp());
+    subBuilder.updateProperty(defaultContactMe, "nie:contentLastModified", literalTimeStamp());
     addCreateAccountsToBuilder(subBuilder, accounts);
     builder.appendRawQuery(subBuilder);
 
@@ -220,10 +219,10 @@ void CDTpStorage::addCreateAccountsToBuilder(CDTpQueryBuilder &builder,
         qDebug() << "Create account" << imAddress;
 
         // Ensure the IMAccount exists
-        builder.createResource(imAccount, "nco:IMAccount", CDTpQueryBuilder::privateGraph);
-        builder.insertProperty(imAccount, "nco:imAccountType", literal(account->protocolName()), CDTpQueryBuilder::privateGraph);
-        builder.insertProperty(imAccount, "nco:imAccountAddress", imAddress, CDTpQueryBuilder::privateGraph);
-        builder.insertProperty(imAccount, "nco:hasIMContact", imAddress, CDTpQueryBuilder::privateGraph);
+        builder.createResource(imAccount, "nco:IMAccount", privateGraph);
+        builder.insertProperty(imAccount, "nco:imAccountType", literal(account->protocolName()), privateGraph);
+        builder.insertProperty(imAccount, "nco:imAccountAddress", imAddress, privateGraph);
+        builder.insertProperty(imAccount, "nco:hasIMContact", imAddress, privateGraph);
 
         // Ensure the self contact has an IMAddress
         builder.createResource(imAddress, "nco:IMAddress");
@@ -237,7 +236,7 @@ void CDTpStorage::addCreateAccountsToBuilder(CDTpQueryBuilder &builder,
     }
 
     // Ensure the IMAddresses are bound to the default-contact-me via an affiliation
-    builder.appendRawQuery(QString(QLatin1String(
+    static const QString tmpl = QString::fromLatin1(
         "INSERT {\n"
         "    GRAPH %1 {\n"
         "        nco:default-contact-me nco:hasAffiliation _:affiliation.\n"
@@ -250,8 +249,8 @@ void CDTpStorage::addCreateAccountsToBuilder(CDTpQueryBuilder &builder,
         "    ?imAddress a nco:IMAddress.\n"
         "    FILTER (?imAddress IN (%2) &&\n"
         "            NOT EXISTS { nco:default-contact-me nco:hasAffiliation [ nco:hasIMAddress ?imAddress ] })\n"
-        "}\n"))
-        .arg(CDTpQueryBuilder::defaultGraph).arg(imAddresses.join(",")));
+        "}\n");
+    builder.appendRawQuery(tmpl.arg(CDTpQueryBuilder::defaultGraph).arg(imAddresses.join(filterInSeparator)));
 }
 
 void CDTpStorage::addRemoveAccountsChangesToBuilder(CDTpQueryBuilder &builder,
@@ -296,7 +295,7 @@ void CDTpStorage::addAccountChangesToBuilder(CDTpQueryBuilder &builder,
     if (changes & CDTpAccount::DisplayName) {
         qDebug() << "  display name changed";
         builder.insertProperty(imAccount, "nco:imDisplayName", literal(account->displayName()),
-                CDTpQueryBuilder::privateGraph);
+                privateGraph);
     }
 }
 
@@ -308,9 +307,9 @@ QString CDTpStorage::saveAccountAvatar(CDTpAccountPtr accountWrapper) const
         return QString();
     }
 
-    QString fileName = QString("%1/.contacts/avatars/%2")
-        .arg(QDir::homePath())
-        .arg(QString(QCryptographicHash::hash(avatar.avatarData, QCryptographicHash::Sha1).toHex()));
+    static const QString tmpl = QString::fromLatin1("%1/.contacts/avatars/%2");
+    QString fileName = tmpl.arg(QDir::homePath())
+        .arg(QLatin1String(QCryptographicHash::hash(avatar.avatarData, QCryptographicHash::Sha1).toHex()));
     qDebug() << "Saving account avatar to" << fileName;
 
     QFile avatarFile(fileName);
@@ -347,8 +346,6 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper,
     CDTpQueryBuilder builder("Contacts Added/Removed");
 
     if (!contactsAdded.isEmpty()) {
-        // FIXME: make batches?
-
         // delete the timestamp from PersonContact linked to imAddresses
         // (unlikely to exist). addCreateContactsToBuilder() will insert a new
         // value.
@@ -356,10 +353,11 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper,
         Q_FOREACH (const CDTpContactPtr &contactWrapper, contactsAdded) {
             imAddresses << literalIMAddress(contactWrapper);
         }
-        builder.appendRawSelection(QString(QLatin1String(
+        static const QString tmpl = QString::fromLatin1(
                 "?imContact nco:hasAffiliation [ nco:hasIMAddress ?imAddress ].\n"
-                "FILTER(?imAddress IN (%1)).")).arg(imAddresses.join(",")));
-        builder.deleteProperty("?imContact", "nie:contentLastModified");
+                "FILTER(?imAddress IN (%1)).");
+        builder.appendRawSelection(tmpl.arg(imAddresses.join(filterInSeparator)));
+        builder.deleteProperty(imContactVar, "nie:contentLastModified");
 
         // Create contacts
         CDTpQueryBuilder subBuilder("Contacts Added/Removed - Create contacts");
@@ -368,7 +366,6 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper,
     }
 
     if (!contactsRemoved.isEmpty()) {
-        // FIXME: make batches?
         addRemoveContactsToBuilder(builder, accountWrapper, contactsRemoved);
     }
 
@@ -389,13 +386,11 @@ void CDTpStorage::updateContact(CDTpContactPtr contactWrapper, CDTpContact::Chan
 
     // bind imContact to imAddress
     const QString imAddress = literalIMAddress(contactWrapper);
-    const QString imContact = builder.uniquify("?imContact");
-    builder.appendRawSelection(QString(QLatin1String(
-            "%1 nco:hasAffiliation [ nco:hasIMAddress %2 ]."))
-            .arg(imContact).arg(imAddress));
+    static const QString tmpl = QString::fromLatin1("?imContact nco:hasAffiliation [ nco:hasIMAddress %1 ].");
+    builder.appendRawSelection(tmpl.arg(imAddress));
 
-    addRemoveContactsChangesToBuilder(builder, imAddress, imContact, changes);
-    addContactChangesToBuilder(builder, imAddress, imContact, changes, contactWrapper->contact());
+    addRemoveContactsChangesToBuilder(builder, imAddress, imContactVar, changes);
+    addContactChangesToBuilder(builder, imAddress, imContactVar, changes, contactWrapper->contact());
 
     new CDTpSparqlQuery(builder, this);
 }
@@ -421,20 +416,20 @@ void CDTpStorage::addSyncNoRosterAccountsContactsToBuilder(CDTpQueryBuilder &bui
      * account.
      * Bind ?imContact to all contacts' local contact.
      */
-    builder.appendRawSelection(QString(QLatin1String(
+    static const QString tmpl = QString::fromLatin1(
             "?imAccount nco:hasIMContact ?imAddress.\n"
             "?imContact nco:hasAffiliation [ nco:hasIMAddress ?imAddress ].\n"
-            "FILTER(?imAddress NOT IN (%1) && ?imAccount IN (%2))."))
-            .arg(imAddresses.join(",")).arg(imAccounts.join(",")));
+            "FILTER(?imAddress NOT IN (%1) && ?imAccount IN (%2)).");
+    builder.appendRawSelection(tmpl.arg(imAddresses.join(filterInSeparator)).arg(imAccounts.join(filterInSeparator)));
 
     // FIXME: we could use addPresenceToBuilder() somehow
-    builder.updateProperty("?imAddress", "nco:imPresence", "nco:presence-status-unknown");
-    builder.updateProperty("?imAddress", "nco:presenceLastModified", literalTimeStamp());
-    builder.updateProperty("?imContact", "nie:contentLastModified", literalTimeStamp());
+    builder.updateProperty(imAddressVar, "nco:imPresence", presenceType(Tp::ConnectionPresenceTypeUnknown));
+    builder.updateProperty(imAddressVar, "nco:presenceLastModified", literalTimeStamp());
+    builder.updateProperty(imContactVar, "nie:contentLastModified", literalTimeStamp());
 
     // Update capabilities of all contacts, since we don't know them anymore,
     // reset them to the account's caps.
-    addRemoveCapabilitiesToBuilder(builder, "?imAddress");
+    addRemoveCapabilitiesToBuilder(builder, imAddressVar);
 
     Q_FOREACH (const CDTpAccountPtr &accountWrapper, accounts) {
         addCapabilitiesToBuilder(builder, literalIMAddress(accountWrapper),
@@ -465,11 +460,11 @@ void CDTpStorage::addSyncRosterAccountsContactsToBuilder(CDTpQueryBuilder &build
         allContacts << accountWrapper->contacts();
     }
     CDTpQueryBuilder subBuilder = CDTpQueryBuilder("SyncRosterAccounts - drop hasIMContact");
-    subBuilder.appendRawSelection(QString(QLatin1String(
+    static const QString tmpl = QString::fromLatin1(
             "?imAccount nco:hasIMContact ?imAddress.\n"
-            "FILTER(?imAddress NOT IN (%1) && ?imAccount IN (%2))."))
-            .arg(imAddresses.join(",")).arg(imAccounts.join(",")));
-    subBuilder.deleteProperty("?imAccount", "nco:hasIMContact", "?imAddress");
+            "FILTER(?imAddress NOT IN (%1) && ?imAccount IN (%2)).");
+    subBuilder.appendRawSelection(tmpl.arg(imAddresses.join(filterInSeparator)).arg(imAccounts.join(filterInSeparator)));
+    subBuilder.deleteProperty(imAccountVar, "nco:hasIMContact", imAddressVar);
     builder.appendRawQuery(subBuilder);
 
     /* Now create all contacts */
@@ -480,21 +475,21 @@ void CDTpStorage::addSyncRosterAccountsContactsToBuilder(CDTpQueryBuilder &build
     }
 
     /* Bind imAddress to all contacts that does not exist anymore, to purge them */
-    const QString selection = QString(QLatin1String(
+    static const QString selection = QString::fromLatin1(
             "?imAddress a nco:IMAddress.\n"
             "OPTIONAL { ?imAccount nco:hasIMContact ?imAddress }.\n"
-            "FILTER (!bound(?imAccount))."));
+            "FILTER (!bound(?imAccount)).");
 
     subBuilder = CDTpQueryBuilder("SyncRosterAccounts - purge contacts");
     subBuilder.appendRawSelection(selection);
-    addRemoveContactToBuilder(subBuilder, "?imAddress");
+    addRemoveContactToBuilder(subBuilder, imAddressVar);
     builder.appendRawQuery(subBuilder);
 
     /* Delete imAddress and imAccount in a sub builder because they are needed
      * for the selection of builder. */
     subBuilder = CDTpQueryBuilder("SyncRosterAccounts - purge contacts 2");
     subBuilder.appendRawSelection(selection);
-    subBuilder.deleteResource("?imAddress");
+    subBuilder.deleteResource(imAddressVar);
     builder.appendRawQuery(subBuilder);
 }
 
@@ -512,7 +507,7 @@ void CDTpStorage::addCreateContactsToBuilder(CDTpQueryBuilder &builder,
         builder.insertProperty(imAddress, "nco:imProtocol", literal(accountWrapper->account()->protocolName()));
 
         const QString imAccount = literalIMAccount(accountWrapper);
-        builder.insertProperty(imAccount, "nco:hasIMContact", imAddress, CDTpQueryBuilder::privateGraph);
+        builder.insertProperty(imAccount, "nco:hasIMContact", imAddress, privateGraph);
 
         // Add mutable properties except for ContactInfo
         addContactChangesToBuilder(builder, imAddress, CDTpContact::All,
@@ -522,7 +517,7 @@ void CDTpStorage::addCreateContactsToBuilder(CDTpQueryBuilder &builder,
     }
 
     // Ensure all imAddresses are bound to a PersonContact
-    builder.appendRawQuery(QString(QLatin1String(
+    static const QString tmpl = QString::fromLatin1(
         "INSERT {\n"
         "    GRAPH %1 {\n"
         "        _:contact a nco:PersonContact;\n"
@@ -537,16 +532,16 @@ void CDTpStorage::addCreateContactsToBuilder(CDTpQueryBuilder &builder,
         "WHERE {\n"
         "    ?imAddress a nco:IMAddress.\n"
         "    FILTER (NOT EXISTS { ?imContact nco:hasAffiliation [ nco:hasIMAddress ?imAddress ] })\n"
-        "}\n"))
-        .arg(CDTpQueryBuilder::defaultGraph).arg(literalTimeStamp()).arg(defaultGenerator));
+        "}\n");
+    builder.appendRawQuery(tmpl.arg(CDTpQueryBuilder::defaultGraph).arg(literalTimeStamp()).arg(defaultGenerator));
 
     // Insert timestamp on all imContact bound to those imAddresses
     CDTpQueryBuilder subBuilder("CreateContacts - timestamp");
-    subBuilder.appendRawSelection(QString(QLatin1String(
+    static const QString tmpl2 = QString::fromLatin1(
             "?imContact nco:hasAffiliation [ nco:hasIMAddress ?imAddress ].\n"
-            "FILTER(?imAddress IN (%1))."))
-            .arg(imAddresses.join(",")));
-    subBuilder.insertProperty("?imContact", "nie:contentLastModified", literalTimeStamp());
+            "FILTER(?imAddress IN (%1)).");
+    subBuilder.appendRawSelection(tmpl2.arg(imAddresses.join(filterInSeparator)));
+    subBuilder.insertProperty(imContactVar, "nie:contentLastModified", literalTimeStamp());
     builder.appendRawQuery(subBuilder);
 
     // Add ContactInfo seperately because we need to bind to the PersonContact
@@ -569,9 +564,8 @@ void CDTpStorage::addCreateContactsToBuilder(CDTpQueryBuilder &builder,
 
         imContactCount++;
         const QString imContact = subBuilder.uniquify("?imContact");
-        subBuilder.appendRawSelection(QString(QLatin1String(
-                "%1 nco:hasAffiliation [ nco:hasIMAddress %2 ]."))
-                .arg(imContact).arg(imAddress));
+        static const QString tmpl = QString::fromLatin1("%1 nco:hasAffiliation [ nco:hasIMAddress %2 ].");
+        subBuilder.appendRawSelection(tmpl.arg(imContact).arg(imAddress));
         addContactInfoToBuilder(subBuilder, imAddress, imContact,
                 contactWrapper->contact());
     }
@@ -603,12 +597,12 @@ void CDTpStorage::addRemoveContactsChangesToBuilder(CDTpQueryBuilder &builder,
     uint mandatoryFlags = CDTpContact::All;
     mandatoryFlags &= ~CDTpContact::Information;
     mandatoryFlags &= ~CDTpContact::Avatar;
-    builder.appendRawSelection(QString(QLatin1String(
+    static const QString tmpl = QString::fromLatin1(
             "?imAccount nco:hasIMContact ?imAddress.\n"
             "?imContact nco:hasAffiliation [ nco:hasIMAddress ?imAddress ].\n"
-            "FILTER(?imAddress NOT IN (%1) && ?imAccount IN (%2))."))
-            .arg(imAddresses.join(",")).arg(imAccounts.join(",")));
-    addRemoveContactsChangesToBuilder(builder, "?imAddress", "?imContact", CDTpContact::Changes(mandatoryFlags));
+            "FILTER(?imAddress NOT IN (%1) && ?imAccount IN (%2)).");
+    builder.appendRawSelection(tmpl.arg(imAddresses.join(filterInSeparator)).arg(imAccounts.join(filterInSeparator)));
+    addRemoveContactsChangesToBuilder(builder, imAddressVar, imContactVar, CDTpContact::Changes(mandatoryFlags));
 
     QStringList avatarIMAddresses;
     QStringList infoIMAddresses;
@@ -621,28 +615,27 @@ void CDTpStorage::addRemoveContactsChangesToBuilder(CDTpQueryBuilder &builder,
         }
     }
 
-    /* FIXME: Split in batches! */
     CDTpQueryBuilder subBuilder;
 
     /* Delete Avatar for those who know it */
     if (!avatarIMAddresses.isEmpty()) {
         subBuilder = CDTpQueryBuilder("SyncContacts - remove known Avatar");
-        subBuilder.appendRawSelection(QString(QLatin1String(
+        static const QString tmpl = QString::fromLatin1(
                 "?imAddress a nco:IMAddress.\n"
-                "FILTER(?imAddress IN (%1))"))
-                .arg(avatarIMAddresses.join(",")));
-        addRemoveAvatarToBuilder(subBuilder, "?imAddress");
+                "FILTER(?imAddress IN (%1))");
+        subBuilder.appendRawSelection(tmpl.arg(avatarIMAddresses.join(filterInSeparator)));
+        addRemoveAvatarToBuilder(subBuilder, imAddressVar);
         builder.appendRawQuery(subBuilder);
     }
 
     /* Delete ContactInfo for those who know it */
     if (!infoIMAddresses.isEmpty()) {
         subBuilder = CDTpQueryBuilder("SyncContacts - remove known ContactInfo");
-        subBuilder.appendRawSelection(QString(QLatin1String(
+        static const QString tmpl = QString::fromLatin1(
                 "?imContact nco:hasAffiliation [ nco:hasIMAddress ?imAddress ].\n"
-                "FILTER(?imAddress IN (%1))"))
-                .arg(infoIMAddresses.join(",")));
-        addRemoveContactInfoToBuilder(builder, "?imAddress", "?imContact");
+                "FILTER(?imAddress IN (%1))");
+        subBuilder.appendRawSelection(tmpl.arg(infoIMAddresses.join(filterInSeparator)));
+        addRemoveContactInfoToBuilder(builder, imAddressVar, imContactVar);
         builder.appendRawQuery(subBuilder);
     }
 }
@@ -758,13 +751,16 @@ void CDTpStorage::addCapabilitiesToBuilder(CDTpQueryBuilder &builder,
         Tp::CapabilitiesBase capabilities) const
 {
     if (capabilities.textChats()) {
-        builder.insertProperty(imAddress, "nco:imCapability", "nco:im-capability-text-chat");
+        static const QString value = QString::fromLatin1("nco:im-capability-text-chat");
+        builder.insertProperty(imAddress, "nco:imCapability", value);
     }
     if (capabilities.streamedMediaAudioCalls()) {
-        builder.insertProperty(imAddress, "nco:imCapability", "nco:im-capability-audio-calls");
+        static const QString value = QString::fromLatin1("nco:im-capability-audio-calls");
+        builder.insertProperty(imAddress, "nco:imCapability", value);
     }
     if (capabilities.streamedMediaVideoCalls()) {
-        builder.insertProperty(imAddress, "nco:imCapability", "nco:im-capability-video-calls");
+        static const QString value = QString::fromLatin1("nco:im-capability-video-calls");
+        builder.insertProperty(imAddress, "nco:imCapability", value);
     }
 }
 
@@ -812,7 +808,7 @@ void CDTpStorage::addContactInfoToBuilder(CDTpQueryBuilder &builder,
          *  - How do we write affiliation for "org" ?
          */
 
-        if (!field.fieldName.compare("tel")) {
+        if (!field.fieldName.compare(QLatin1String("tel"))) {
             const QString affiliation = ensureContactAffiliationToBuilder(builder, imContact, graph, field, affiliations);
             const QString voicePhoneNumber = builder.uniquify("_:tel");
             builder.createResource(voicePhoneNumber, "nco:VoicePhoneNumber", graph);
@@ -821,7 +817,7 @@ void CDTpStorage::addContactInfoToBuilder(CDTpQueryBuilder &builder,
             builder.insertProperty(affiliation, "nco:hasPhoneNumber", voicePhoneNumber, graph);
         }
 
-        else if (!field.fieldName.compare("adr")) {
+        else if (!field.fieldName.compare(QLatin1String("adr"))) {
             const QString affiliation = ensureContactAffiliationToBuilder(builder, imContact, graph, field, affiliations);
             const QString postalAddress = builder.uniquify("_:address");
             builder.createResource(postalAddress, "nco:PostalAddress", graph);
@@ -835,40 +831,40 @@ void CDTpStorage::addContactInfoToBuilder(CDTpQueryBuilder &builder,
             builder.insertProperty(affiliation, "nco:hasPostalAddress", postalAddress, graph);
         }
 
-        else if (!field.fieldName.compare("email")) {
+        else if (!field.fieldName.compare(QLatin1String("email"))) {
             const QString affiliation = ensureContactAffiliationToBuilder(builder, imContact, graph, field, affiliations);
             const QString emailAddress = builder.uniquify("_:email");
             builder.createResource(emailAddress, "nco:EmailAddress", graph);
             builder.insertProperty(emailAddress, "nco:emailAddress", literalContactInfo(field, 0), graph);
         }
 
-        else if (!field.fieldName.compare("url")) {
+        else if (!field.fieldName.compare(QLatin1String("url"))) {
             const QString affiliation = ensureContactAffiliationToBuilder(builder, imContact, graph, field, affiliations);
             builder.insertProperty(affiliation, "nco:url", literalContactInfo(field, 0), graph);
         }
 
-        else if (!field.fieldName.compare("title")) {
+        else if (!field.fieldName.compare(QLatin1String("title"))) {
             const QString affiliation = ensureContactAffiliationToBuilder(builder, imContact, graph, field, affiliations);
             builder.insertProperty(affiliation, "nco:title", literalContactInfo(field, 0), graph);
         }
 
-        else if (!field.fieldName.compare("role")) {
+        else if (!field.fieldName.compare(QLatin1String("role"))) {
             const QString affiliation = ensureContactAffiliationToBuilder(builder, imContact, graph, field, affiliations);
             builder.insertProperty(affiliation, "nco:role", literalContactInfo(field, 0), graph);
         }
 
-        else if (!field.fieldName.compare("note") || !field.fieldName.compare("desc")) {
+        else if (!field.fieldName.compare(QLatin1String("note")) || !field.fieldName.compare(QLatin1String("desc"))) {
             builder.insertProperty(imContact, "nco:note", literalContactInfo(field, 0), graph);
         }
 
-        else if (!field.fieldName.compare("bday")) {
+        else if (!field.fieldName.compare(QLatin1String("bday"))) {
             /* Tracker will reject anything not [-]CCYY-MM-DDThh:mm:ss[Z|(+|-)hh:mm]
              * VCard spec allows only ISO 8601, but most IM clients allows
              * any string. */
             /* FIXME: support more date format for compatibility */
-            QDate date = QDate::fromString(field.fieldValue[0], "yyyy-MM-dd");
+            QDate date = QDate::fromString(field.fieldValue[0], QLatin1String("yyyy-MM-dd"));
             if (!date.isValid()) {
-                date = QDate::fromString(field.fieldValue[0], "yyyyMMdd");
+                date = QDate::fromString(field.fieldValue[0], QLatin1String("yyyyMMdd"));
             }
 
             if (date.isValid()) {
@@ -892,13 +888,13 @@ QString CDTpStorage::ensureContactAffiliationToBuilder(CDTpQueryBuilder &builder
 {
     static QHash<QString, QString> knownTypes;
     if (knownTypes.isEmpty()) {
-        knownTypes.insert ("work", "Work");
-        knownTypes.insert ("home", "Home");
+        knownTypes.insert (QLatin1String("work"), QLatin1String("Work"));
+        knownTypes.insert (QLatin1String("home"), QLatin1String("Home"));
     }
 
-    QString type = "Other";
+    QString type = QLatin1String("Other");
     Q_FOREACH (const QString &parameter, field.parameters) {
-        if (!parameter.startsWith("type=")) {
+        if (!parameter.startsWith(QLatin1String("type="))) {
             continue;
         }
 
@@ -943,16 +939,16 @@ void CDTpStorage::addRemoveContactsToBuilder(CDTpQueryBuilder &builder,
     }
 
     const QString imAccount = literalIMAccount(accountPath);
-    const QString imAddress = builder.uniquify("?imAddress");
 
     /* Bind imAddress to all those contacts */
-    builder.appendRawSelection(QString(QLatin1String(
-            "%1 a nco:IMAddress.\n"
-            "FILTER (%1 IN (%2)).")).arg(imAddress).arg(imAddresses.join(",")));
+    static const QString tmpl = QString::fromLatin1(
+            "?imAddress a nco:IMAddress.\n"
+            "FILTER (?imAddress IN (%1)).");
+    builder.appendRawSelection(tmpl.arg(imAddresses.join(filterInSeparator)));
 
-    addRemoveContactToBuilder(builder, imAddress);
-    builder.deleteResource(imAddress);
-    builder.deleteProperty(imAccount, "nco:hasIMContact", imAddress);
+    addRemoveContactToBuilder(builder, imAddressVar);
+    builder.deleteResource(imAddressVar);
+    builder.deleteProperty(imAccount, "nco:hasIMContact", imAddressVar);
 }
 
 void CDTpStorage::addRemoveContactToBuilder(CDTpQueryBuilder &builder,
@@ -968,32 +964,36 @@ void CDTpStorage::addRemoveContactToBuilder(CDTpQueryBuilder &builder,
     /* Update the nco:PersonContact linked to imAddress if it doesn't have our
      * generator */
     CDTpQueryBuilder tmpBuilder;
-    tmpBuilder.appendRawSelection(QString(QLatin1String(
+    static const QString imContact_update = QString::fromLatin1("?imContact_update");
+    static const QString affiliation_update = QString::fromLatin1("?affiliation_update");
+    static const QString tmpl_update = QString::fromLatin1(
             "?imContact_update a nco:PersonContact.\n"
             "?imContact_update nco:hasAffiliation ?affiliation_update.\n"
             "?affiliation_update nco:hasIMAddress %1.\n"
             "OPTIONAL { ?imContact_update nie:generator ?generator }.\n"
-            "FILTER(!bound(?generator) || ?generator != %2)."))
-            .arg(imAddress).arg(defaultGenerator));
+            "FILTER(!bound(?generator) || ?generator != %2).");
+    tmpBuilder.appendRawSelection(tmpl_update.arg(imAddress).arg(defaultGenerator));
 
-    addRemoveContactInfoToBuilder(tmpBuilder, imAddress, "?imContact_update");
-    tmpBuilder.deleteResource("?affiliation_update");
-    tmpBuilder.updateProperty("?imContact_update", "nie:contentLastModified", literalTimeStamp());
+    addRemoveContactInfoToBuilder(tmpBuilder, imAddress, imContact_update);
+    tmpBuilder.deleteResource(affiliation_update);
+    tmpBuilder.updateProperty(imContact_update, "nie:contentLastModified", literalTimeStamp());
 
     builder.mergeWithOptional(tmpBuilder);
 
     /* Remove the nco:PersonContact linked to imAddress if it has our generator */
     tmpBuilder = CDTpQueryBuilder();
-    tmpBuilder.appendRawSelection(QString(QLatin1String(
+    static const QString imContact_delete = QString::fromLatin1("?imContact_delete");
+    static const QString affiliation_delete = QString::fromLatin1("?affiliation_delete");
+    static const QString tmpl_delete = QString::fromLatin1(
             "?imContact_delete a nco:PersonContact.\n"
             "?imContact_delete nco:hasAffiliation ?affiliation_delete.\n"
             "?affiliation_delete nco:hasIMAddress %1.\n"
-            "?imContact_delete nie:generator %2."))
-            .arg(imAddress).arg(defaultGenerator));
+            "?imContact_delete nie:generator %2.");
+    tmpBuilder.appendRawSelection(tmpl_delete.arg(imAddress).arg(defaultGenerator));
 
-    addRemoveContactInfoToBuilder(tmpBuilder, imAddress, "?imContact_delete");
-    tmpBuilder.deleteResource("?affiliation_delete");
-    tmpBuilder.deleteResource("?imContact_delete");
+    addRemoveContactInfoToBuilder(tmpBuilder, imAddress, imContact_delete);
+    tmpBuilder.deleteResource(affiliation_delete);
+    tmpBuilder.deleteResource(imContact_delete);
 
     builder.mergeWithOptional(tmpBuilder);
 }
@@ -1030,48 +1030,61 @@ void CDTpStorage::onSyncOperationEnded(CDTpSparqlQuery *query)
 
 QString CDTpStorage::presenceType(Tp::ConnectionPresenceType presenceType) const
 {
+    static const QString statusUnknown = QString::fromLatin1("nco:presence-status-unknown");
+    static const QString statusOffline = QString::fromLatin1("nco:presence-status-offline");
+    static const QString statusAvailable = QString::fromLatin1("nco:presence-status-available");
+    static const QString statusAway = QString::fromLatin1("nco:presence-status-away");
+    static const QString statusExtendedAway = QString::fromLatin1("nco:presence-status-extended-away");
+    static const QString statusHidden = QString::fromLatin1("nco:presence-status-hidden");
+    static const QString statusBusy = QString::fromLatin1("nco:presence-status-busy");
+    static const QString statusError = QString::fromLatin1("nco:presence-status-error");
+
     switch (presenceType) {
     case Tp::ConnectionPresenceTypeUnset:
-        return QString("nco:presence-status-unknown");
+        return statusUnknown;
     case Tp::ConnectionPresenceTypeOffline:
-        return QString("nco:presence-status-offline");
+        return statusOffline;
     case Tp::ConnectionPresenceTypeAvailable:
-        return QString("nco:presence-status-available");
+        return statusAvailable;
     case Tp::ConnectionPresenceTypeAway:
-        return QString("nco:presence-status-away");
+        return statusAway;
     case Tp::ConnectionPresenceTypeExtendedAway:
-        return QString("nco:presence-status-extended-away");
+        return statusExtendedAway;
     case Tp::ConnectionPresenceTypeHidden:
-        return QString("nco:presence-status-hidden");
+        return statusHidden;
     case Tp::ConnectionPresenceTypeBusy:
-        return QString("nco:presence-status-busy");
+        return statusBusy;
     case Tp::ConnectionPresenceTypeUnknown:
-        return QString("nco:presence-status-unknown");
+        return statusUnknown;
     case Tp::ConnectionPresenceTypeError:
-        return QString("nco:presence-status-error");
+        return statusError;
     default:
         break;
     }
 
     qWarning() << "Unknown telepathy presence status" << presenceType;
 
-    return QString("nco:presence-status-error");
+    return statusError;
 }
 
 QString CDTpStorage::presenceState(Tp::Contact::PresenceState presenceState) const
 {
+    static const QString statusNo = QString::fromLatin1("nco:predefined-auth-status-no");
+    static const QString statusRequested = QString::fromLatin1("nco:predefined-auth-status-requested");
+    static const QString statusYes = QString::fromLatin1("nco:predefined-auth-status-yes");
+
     switch (presenceState) {
     case Tp::Contact::PresenceStateNo:
-        return QString("nco:predefined-auth-status-no");
+        return statusNo;
     case Tp::Contact::PresenceStateAsk:
-        return QString("nco:predefined-auth-status-requested");
+        return statusRequested;
     case Tp::Contact::PresenceStateYes:
-        return QString("nco:predefined-auth-status-yes");
+        return statusYes;
     }
 
     qWarning() << "Unknown telepathy presence state:" << presenceState;
 
-    return QString("nco:predefined-auth-status-no");
+    return statusNo;
 }
 
 // Copied from cubi/src/literalvalue.cpp
@@ -1082,21 +1095,21 @@ sparqlEscape(const QString &original)
 	escaped.reserve(original.size());
 
 	for(int i = 0; i < original.size(); ++i) {
-		switch(original.at(i).toAscii()) {
+		switch(original.at(i).toLatin1()) {
 			case '\t':
-				escaped.append("\\t");
+				escaped.append(QLatin1String("\\t"));
 				break;
 			case '\n':
-				escaped.append("\\n");
+				escaped.append(QLatin1String("\\n"));
 				break;
 			case '\r':
-				escaped.append("\\r");
+				escaped.append(QLatin1String("\\r"));
 				break;
 			case '"':
-				escaped.append("\\\"");
+				escaped.append(QLatin1String("\\\""));
 				break;
 			case '\\':
-				escaped.append("\\\\");
+				escaped.append(QLatin1String("\\\\"));
 				break;
 			default:
 				escaped.append(original.at(i));
@@ -1108,18 +1121,18 @@ sparqlEscape(const QString &original)
 
 QString CDTpStorage::literal(const QString &str) const
 {
-    static const QString stringTemplate = QString::fromLatin1("\"%1\"");
-    return stringTemplate.arg(sparqlEscape(str));
+    static const QString tmpl = QString::fromLatin1("\"%1\"");
+    return tmpl.arg(sparqlEscape(str));
 }
 
 // Copied from cubi/src/literalvalue.cpp
 QString CDTpStorage::literal(const QDateTime &dateTimeValue) const
 {
-    static const QString utcTimeTemplate = QString::fromLatin1("%1Z");
+    static const QString tmpl = QString::fromLatin1("%1Z");
 
     // This is a workaround for http://bugreports.qt.nokia.com/browse/QTBUG-9698
     return literal(dateTimeValue.timeSpec() == Qt::UTC ?
-            utcTimeTemplate.arg(dateTimeValue.toString(Qt::ISODate))
+            tmpl.arg(dateTimeValue.toString(Qt::ISODate))
             : dateTimeValue.toString(Qt::ISODate));
 }
 
@@ -1132,7 +1145,8 @@ QString CDTpStorage::literalIMAddress(const QString &accountPath, const QString 
 {
     // FIXME: we can't use QUrl::toPercentEncoding() here because the string
     // will be used in some QString::arg().
-    return QString("<telepathy:%1!%2>").arg(accountPath).arg(QString(contactId).remove('<').remove('>'));
+    static const QString tmpl = QString::fromLatin1("<telepathy:%1!%2>");
+    return tmpl.arg(accountPath).arg(QString(contactId).remove(QLatin1Char('<')).remove(QLatin1Char('>')));
 }
 
 QString CDTpStorage::literalIMAddress(const CDTpContactPtr &contactWrapper) const
@@ -1144,13 +1158,14 @@ QString CDTpStorage::literalIMAddress(const CDTpContactPtr &contactWrapper) cons
 
 QString CDTpStorage::literalIMAddress(const CDTpAccountPtr &accountWrapper) const
 {
-    const QString accountPath = accountWrapper->account()->objectPath();
-    return literalIMAddress(accountPath, "self");
+    static const QString tmpl = QString::fromLatin1("<telepathy:%1!self>");
+    return tmpl.arg(accountWrapper->account()->objectPath());
 }
 
 QString CDTpStorage::literalIMAccount(const QString &accountPath) const
 {
-    return QString::fromLatin1("<telepathy:%1>").arg(accountPath);
+    static const QString tmpl = QString::fromLatin1("<telepathy:%1>");
+    return tmpl.arg(accountPath);
 }
 
 QString CDTpStorage::literalIMAccount(const CDTpAccountPtr &accountWrapper) const

@@ -23,66 +23,64 @@
 
 /* --- CDTpQueryBuilder --- */
 
-const QString CDTpQueryBuilder::defaultGraph = QLatin1String("<urn:uuid:08070f5c-a334-4d19-a8b0-12a3071bfab9>");
-const QString CDTpQueryBuilder::privateGraph = QLatin1String("<urn:uuid:679293d4-60f0-49c7-8d63-f1528fe31f66>");
-const QString CDTpQueryBuilder::indent = QLatin1String("    ");
-const QString CDTpQueryBuilder::indent2 = indent + indent;
+const QString CDTpQueryBuilder::defaultGraph = QString::fromLatin1("<urn:uuid:08070f5c-a334-4d19-a8b0-12a3071bfab9>");
+static const QString indent = QString::fromLatin1("    ");
+static const QString indent2 = indent + indent;
 
-CDTpQueryBuilder::CDTpQueryBuilder(const QString &text) : mVCount(0), mName(text)
+CDTpQueryBuilder::CDTpQueryBuilder(const char *text) : mVCount(0), mName(text)
 {
 }
 
-void CDTpQueryBuilder::createResource(const QString &resource, const QString &type, const QString &graph)
+void CDTpQueryBuilder::createResource(const QString &resource, const char *type, const QString &graph)
 {
-    mInsertPart[graph][resource] << QString(QLatin1String("a %1")).arg(type);
+    mInsertPart[graph][resource] << QString::fromLatin1("a %1").arg(QLatin1String(type));
 }
 
-void CDTpQueryBuilder::insertProperty(const QString &resource, const QString &property, const QString &value, const QString &graph)
+void CDTpQueryBuilder::insertProperty(const QString &resource, const char *property, const QString &value, const QString &graph)
 {
-    mInsertPart[graph][resource] << QString(QLatin1String("%1 %2")).arg(property).arg(value);
+    mInsertPart[graph][resource] << QString::fromLatin1("%1 %2").arg(QLatin1String(property)).arg(value);
 }
 
 void CDTpQueryBuilder::deleteResource(const QString &resource)
 {
-    append(mDeletePart, QString(QLatin1String("%1 a rdfs:Resource.")).arg(resource));
+    append(mDeletePart, QString::fromLatin1("%1 a rdfs:Resource.").arg(resource));
 }
 
-void CDTpQueryBuilder::deleteProperty(const QString &resource, const QString &property, const QString &value)
+void CDTpQueryBuilder::deleteProperty(const QString &resource, const char *property, const QString &value)
 {
-    append(mDeletePart, QString(QLatin1String("%1 %2 %3.")).arg(resource).arg(property).arg(value));
+    append(mDeletePart, QString::fromLatin1("%1 %2 %3.").arg(resource).arg(QLatin1String(property)).arg(value));
 }
 
-QString CDTpQueryBuilder::deleteProperty(const QString &resource, const QString &property)
+QString CDTpQueryBuilder::deleteProperty(const QString &resource, const char *property)
 {
     const QString value = uniquify();
 
-    append(mDeletePart, QString(QLatin1String("%1 %2 %3.")).arg(resource).arg(property).arg(value));
-    append(mDeletePartWhere, QString(QLatin1String("OPTIONAL { %1 %2 %3 }."))
-            .arg(resource).arg(property).arg(value));
+    append(mDeletePart, QString::fromLatin1("%1 %2 %3.").arg(resource).arg(QLatin1String(property)).arg(value));
+    append(mDeletePartWhere, QString::fromLatin1("OPTIONAL { %1 %2 %3 }.")
+            .arg(resource).arg(QLatin1String(property)).arg(value));
 
     return value;
 }
 
-QString CDTpQueryBuilder::deletePropertyWithGraph(const QString &resource, const QString &property, const QString &graph)
+QString CDTpQueryBuilder::deletePropertyWithGraph(const QString &resource, const char *property, const QString &graph)
 {
     const QString value = uniquify();
 
-    append(mDeletePart, QString(QLatin1String("%1 %2 %3.")).arg(resource).arg(property).arg(value));
-    append(mDeletePartWhere, QString(QLatin1String("OPTIONAL { GRAPH %1 { %2 %3 %4 } }."))
-            .arg(graph).arg(resource).arg(property).arg(value));
+    append(mDeletePart, QString::fromLatin1("%1 %2 %3.").arg(resource).arg(QLatin1String(property)).arg(value));
+    append(mDeletePartWhere, QString::fromLatin1("OPTIONAL { GRAPH %1 { %2 %3 %4 } }.")
+            .arg(graph).arg(resource).arg(QLatin1String(property)).arg(value));
 
     return value;
 }
 
-
-QString CDTpQueryBuilder::deletePropertyAndLinkedResource(const QString &resource, const QString &property)
+QString CDTpQueryBuilder::deletePropertyAndLinkedResource(const QString &resource, const char *property)
 {
     const QString oldValue = deleteProperty(resource, property);
     deleteResource(oldValue);
     return oldValue;
 }
 
-QString CDTpQueryBuilder::updateProperty(const QString &resource, const QString &property, const QString &value, const QString &graph)
+QString CDTpQueryBuilder::updateProperty(const QString &resource, const char *property, const QString &value, const QString &graph)
 {
     const QString oldValue = deleteProperty(resource, property);
     insertProperty(resource, property, value, graph);
@@ -105,9 +103,9 @@ void CDTpQueryBuilder::appendRawQuery(const CDTpQueryBuilder &builder)
     mSubQueries << builder.getRawQuery();
 }
 
-QString CDTpQueryBuilder::uniquify(const QString &v)
+QString CDTpQueryBuilder::uniquify(const char *v)
 {
-    return QString(QLatin1String("%1_%2")).arg(v).arg(++mVCount);
+    return QString::fromLatin1("%1_%2").arg(QLatin1String(v)).arg(++mVCount);
 }
 
 void CDTpQueryBuilder::mergeWithOptional(const CDTpQueryBuilder &builder)
@@ -125,7 +123,7 @@ void CDTpQueryBuilder::mergeWithOptional(const CDTpQueryBuilder &builder)
     append(mDeletePart, builder.mDeletePart);
 
     // Append Where part
-    static const QString optionalTemplate = QString(QLatin1String("OPTIONAL {\n%1\n}."));
+    static const QString optionalTemplate = QString::fromLatin1("OPTIONAL {\n%1\n}.");
     append(mInsertPartWhere, optionalTemplate.arg(setIndentation(builder.mInsertPartWhere, indent)));
     append(mDeletePartWhere, optionalTemplate.arg(setIndentation(builder.mDeletePartWhere, indent)));
 }
@@ -141,9 +139,9 @@ QString CDTpQueryBuilder::getRawQuery() const
     for (i = mInsertPart.constBegin(); i != mInsertPart.constEnd(); ++i) {
         QString graphLines = setIndentation(buildInsertPart(i.value()), indent2);
         if (!graphLines.isEmpty()) {
-            insertLines += indent + QString(QLatin1String("GRAPH %1 {\n")).arg(i.key());
-            insertLines += graphLines + QLatin1String("\n");
-            insertLines += indent + QLatin1String("}\n");
+            insertLines += indent + QString::fromLatin1("GRAPH %1 {\n").arg(i.key());
+            insertLines += graphLines + QString::fromLatin1("\n");
+            insertLines += indent + QString::fromLatin1("}\n");
         }
     }
 
@@ -153,17 +151,17 @@ QString CDTpQueryBuilder::getRawQuery() const
 
     // Build final query
     QString rawQuery;
-    rawQuery += QString("# --- START %1 ---\n").arg(mName);
+    rawQuery += QString::fromLatin1("# --- START %1 ---\n").arg(mName);
     if (!deleteLines.isEmpty()) {
-        rawQuery += QString(QLatin1String("DELETE {\n%1\n}\n")).arg(deleteLines);
+        rawQuery += QString::fromLatin1("DELETE {\n%1\n}\n").arg(deleteLines);
         if (!deleteWhereLines.isEmpty()) {
-            rawQuery += QString(QLatin1String("WHERE {\n%1\n}\n")).arg(deleteWhereLines);
+            rawQuery += QString::fromLatin1("WHERE {\n%1\n}\n").arg(deleteWhereLines);
         }
     }
     if (!insertLines.isEmpty()) {
-        rawQuery += QString(QLatin1String("INSERT {\n%1\n}\n")).arg(insertLines);
+        rawQuery += QString::fromLatin1("INSERT {\n%1\n}\n").arg(insertLines);
         if (!insertWhereLines.isEmpty()) {
-            rawQuery += QString(QLatin1String("WHERE {\n%1\n}\n")).arg(insertWhereLines);
+            rawQuery += QString::fromLatin1("WHERE {\n%1\n}\n").arg(insertWhereLines);
         }
     }
 
@@ -172,7 +170,7 @@ QString CDTpQueryBuilder::getRawQuery() const
         rawQuery += subQuery;
     }
 
-    rawQuery += QString("# --- END %1 ---\n").arg(mName);
+    rawQuery += QString::fromLatin1("# --- END %1 ---\n").arg(mName);
 
     return rawQuery;
 }
@@ -180,7 +178,7 @@ QString CDTpQueryBuilder::getRawQuery() const
 void CDTpQueryBuilder::append(QString &part, const QString &str)
 {
     if (!part.isEmpty()) {
-        part += QLatin1String("\n");
+        part += QString::fromLatin1("\n");
     }
     part += str;
 }
@@ -190,7 +188,8 @@ QString CDTpQueryBuilder::setIndentation(const QString &part, const QString &ind
     if (part.isEmpty()) {
         return QString();
     }
-    return indentation + QString(part).replace('\n', QLatin1String("\n") + indentation);
+    return indentation + QString(part).replace(QChar::fromLatin1('\n'),
+            QString::fromLatin1("\n") + indentation);
 }
 
 QString CDTpQueryBuilder::buildInsertPart(const QHash<QString, QStringList> &part) const
@@ -200,9 +199,10 @@ QString CDTpQueryBuilder::buildInsertPart(const QHash<QString, QStringList> &par
     QHash<QString, QStringList>::const_iterator i;
     for (i = part.constBegin(); i != part.constEnd(); ++i) {
         if (!ret.isEmpty()) {
-            ret += "\n";
+            ret += QString::fromLatin1("\n");
         }
-        ret += i.key() + " " + i.value().join(";\n    ") + ".";
+        ret += QString::fromLatin1("%1 %2.").arg(i.key())
+                .arg(i.value().join(QString::fromLatin1(";\n    ")));
     }
 
     return ret;
