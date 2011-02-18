@@ -17,17 +17,19 @@
 **
 ****************************************************************************/
 
-#include "contactsd.h"
-
-#include "contactsdpluginloader.h"
 
 #include <QSettings>
 #include <QDBusConnection>
 #include <QDBusError>
-#include <QDebug>
+
+#include "contactsd.h"
+#include "contactsdpluginloader.h"
+#include "debug.h"
+
+using namespace Contactsd;
 
 /*!
-  \class Contactsd
+  \class ContactsDaemon
 
   \brief Main daemon class which manages remote contact plug-ins.
 
@@ -42,7 +44,7 @@
 */
 
 /*!
-  \fn void Contactsd::loadPlugins(const QStringList &plugins)
+  \fn void ContactsDaemon::loadPlugins(const QStringList &plugins)
 
   Load plugins specified at \a plugins.
 
@@ -50,30 +52,30 @@
 */
 
 /*!
-  \fn QStringList Contactsd::loadedPlugins() const
+  \fn QStringList ContactsDaemon::loadedPlugins() const
 
   Return a list containing the name of all loaded plugins.
 
   \return A list of plugin names.
 */
 
-Contactsd::Contactsd(QObject *parent)
+ContactsDaemon::ContactsDaemon(QObject *parent)
     : QObject(parent),
       mLoader(new ContactsdPluginLoader())
 {
 }
 
-Contactsd::~Contactsd()
+ContactsDaemon::~ContactsDaemon()
 {
     delete mLoader;
 }
 
-void Contactsd::loadPlugins(const QStringList &plugins)
+void ContactsDaemon::loadPlugins(const QStringList &plugins)
 {
     mLoader->loadPlugins(plugins);
 }
 
-QStringList Contactsd::loadedPlugins() const
+QStringList ContactsDaemon::loadedPlugins() const
 {
     return mLoader->loadedPlugins();
 }

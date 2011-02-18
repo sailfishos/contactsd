@@ -17,11 +17,14 @@
 **
 ****************************************************************************/
 
-#include "cdtpplugin.h"
-
-#include "cdtpcontroller.h"
 
 #include <TelepathyQt4/Debug>
+#include <Debug>
+
+#include "cdtpcontroller.h"
+#include "cdtpplugin.h"
+
+using namespace Contactsd;
 
 CDTpPlugin::CDTpPlugin()
     : mController(0)
@@ -30,17 +33,20 @@ CDTpPlugin::CDTpPlugin()
 
 CDTpPlugin::~CDTpPlugin()
 {
+    if (mController) {
+        delete mController;
+    }
 }
 
 void CDTpPlugin::init()
 {
-    qDebug() << "Initializing contactsd telepathy plugin";
+    debug() << "Initializing contactsd telepathy plugin";
 
     Tp::registerTypes();
-    Tp::enableDebug(true);
-    Tp::enableWarnings(true);
+    Tp::enableDebug(isDebugEnabled());
+    Tp::enableWarnings(isWarningsEnabled());
 
-    qDebug() << "Creating controller";
+    debug() << "Creating controller";
     mController = new CDTpController(this);
     // relay signals
     connect(mController,
@@ -51,13 +57,13 @@ void CDTpPlugin::init()
             SIGNAL(importEnded(const QString &, const QString &, int, int, int)));
 }
 
-QMap<QString, QVariant> CDTpPlugin::metaData()
+CDTpPlugin::MetaData CDTpPlugin::metaData()
 {
-    QMap<QString, QVariant> data;
-    data[CONTACTSD_PLUGIN_NAME]    = QVariant(QString::fromLatin1("telepathy"));
-    data[CONTACTSD_PLUGIN_VERSION] = QVariant(QString::fromLatin1("0.1"));
-    data[CONTACTSD_PLUGIN_COMMENT] = QVariant(QString::fromLatin1("contactsd telepathy plugin"));
+    MetaData data;
+    data[metaDataKeyName]    = QVariant(QString::fromLatin1("telepathy"));
+    data[metaDataKeyVersion] = QVariant(QString::fromLatin1("0.2"));
+    data[metaDataKeyComment] = QVariant(QString::fromLatin1("contactsd telepathy plugin"));
     return data;
 }
 
-Q_EXPORT_PLUGIN2(CDTpPlugin, CDTpPlugin)
+Q_EXPORT_PLUGIN2(telepathyplugin, CDTpPlugin)

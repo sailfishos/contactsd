@@ -17,7 +17,6 @@
 **
 ****************************************************************************/
 
-#include <QDebug>
 #include <QDir>
 #include <QPluginLoader>
 #include <QString>
@@ -28,6 +27,9 @@
 #include "contactsdpluginloader.h"
 #include "contactsdplugininterface.h"
 #include "contactsimportprogressadaptor.h"
+#include "debug.h"
+
+using namespace Contactsd;
 
 // import timeout is 5 minutes
 const int IMPORT_TIMEOUT = 5 * 60 * 1000;
@@ -75,10 +77,10 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir, const QString
     dir.setFilter(QDir::Files | QDir::NoSymLinks);
     Q_FOREACH (const QString &fileName, dir.entryList()) {
         QString absFileName(dir.absoluteFilePath(fileName));
-        qDebug() << "Trying to load plugin" << absFileName;
+        debug() << "Trying to load plugin" << absFileName;
         loader = new QPluginLoader(absFileName);
         if (!loader->load()) {
-            qDebug() << "Error loading plugin" << absFileName <<
+            debug() << "Error loading plugin" << absFileName <<
                 "-" << loader->errorString();
             delete loader;
             continue;
@@ -86,9 +88,9 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir, const QString
 
         QObject *basePlugin = loader->instance();
         ContactsdPluginInterface *plugin =
-            qobject_cast<ContactsdPluginInterface *>(basePlugin);
+            dynamic_cast<ContactsdPluginInterface *>(basePlugin);
         if (!plugin) {
-            qDebug() << "Error loading plugin" << absFileName << "- does not "
+            debug() << "Error loading plugin" << absFileName << "- does not "
                 "implement ContactsdPluginInterface";
             loader->unload();
             delete loader;
@@ -97,7 +99,7 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir, const QString
 
         ContactsdPluginInterface::PluginMetaData metaData = plugin->metaData();
         if (!metaData.contains(CONTACTSD_PLUGIN_NAME)) {
-            qWarning() << "Error loading plugin" << absFileName << "- invalid plugin metadata";
+            warning() << "Error loading plugin" << absFileName << "- invalid plugin metadata";
             loader->unload();
             delete loader;
             continue;
@@ -105,21 +107,21 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir, const QString
 
         QString pluginName = metaData[CONTACTSD_PLUGIN_NAME].toString();
         if (!plugins.isEmpty() && !plugins.contains(pluginName)) {
-            qWarning() << "Ignoring plugin" << absFileName;
+            warning() << "Ignoring plugin" << absFileName;
             loader->unload();
             delete loader;
             continue;
         }
 
         if (mPluginStore.contains(pluginName)) {
-            qWarning() << "Ignoring plugin" << absFileName <<
+            warning() << "Ignoring plugin" << absFileName <<
                 "- plugin with name" << pluginName << "already registered";
             loader->unload();
             delete loader;
             continue;
         }
 
-        qDebug() << "Plugin" << pluginName << "loaded";
+        debug() << "Plugin" << pluginName << "loaded";
         mPluginStore.insert(pluginName, loader);
         connect(basePlugin, SIGNAL(importStarted(const QString &, const QString &)),
                 this, SLOT(onPluginImportStarted(const QString &, const QString &)));
@@ -141,14 +143,14 @@ QStringList ContactsdPluginLoader::hasActiveImports()
 
 void ContactsdPluginLoader::onPluginImportStarted(const QString &service, const QString &account)
 {
-    ContactsdPluginInterface *plugin = qobject_cast<ContactsdPluginInterface *>(sender());
+    ContactsdPluginInterface *plugin = dynamic_cast<ContactsdPluginInterface *>(sender());
     if (not plugin) {
-        qWarning() << Q_FUNC_INFO << "invalid ContactsdPluginInterface object";
+        warning() << Q_FUNC_INFO << "invalid ContactsdPluginInterface object";
         return ;
     }
 
     QString name = pluginName(plugin);
-    qDebug() << Q_FUNC_INFO << "by plugin" << name
+    debug() << Q_FUNC_INFO << "by plugin" << name
              << "with service" << service << "account" << account;
 
     if (mImportState.hasActiveImports()) {
@@ -170,14 +172,14 @@ void ContactsdPluginLoader::onPluginImportStarted(const QString &service, const 
 void ContactsdPluginLoader::onPluginImportEnded(const QString &service, const QString &account,
                                                 int contactsAdded, int contactsRemoved, int contactsMerged)
 {
-    ContactsdPluginInterface *plugin = qobject_cast<ContactsdPluginInterface *>(sender());
+    ContactsdPluginInterface *plugin = dynamic_cast<ContactsdPluginInterface *>(sender());
     if (not plugin) {
-        qWarning() << Q_FUNC_INFO << "invalid ContactsdPluginInterface object";
+        warning() << Q_FUNC_INFO << "invalid ContactsdPluginInterface object";
         return ;
     }
 
     QString name = pluginName(plugin);
-    qDebug() << Q_FUNC_INFO << "by plugin" << name
+    debug() << Q_FUNC_INFO << "by plugin" << name
              << "service" << service << "account" << account
              << "added" << contactsAdded << "removed" << contactsRemoved
              << "merged" << contactsMerged;
@@ -185,7 +187,7 @@ void ContactsdPluginLoader::onPluginImportEnded(const QString &service, const QS
     bool removed = mImportState.removeImportingAccount(service, account, contactsAdded,
                                                        contactsRemoved, contactsMerged);
     if (not removed) {
-        qDebug() << Q_FUNC_INFO << "account does not exist";
+        debug() << Q_FUNC_INFO << "account does not exist";
         return ;
     }
 
@@ -203,7 +205,7 @@ void ContactsdPluginLoader::onPluginImportEnded(const QString &service, const QS
 
 void ContactsdPluginLoader::onImportTimeout()
 {
-    qDebug() << Q_FUNC_INFO;
+    debug() << Q_FUNC_INFO;
 
     stopImportTimer();
     Q_EMIT importEnded(mImportState.contactsAdded(), mImportState.contactsRemoved(),
@@ -243,18 +245,18 @@ bool ContactsdPluginLoader::registerNotificationService()
 {
     QDBusConnection connection = QDBusConnection::sessionBus();
     if (!connection.isConnected()) {
-        qWarning() << "Could not connect to DBus:" << connection.lastError();
+        warning() << "Could not connect to DBus:" << connection.lastError();
         return false;
     }
 
     if (!connection.registerService("com.nokia.contactsd")) {
-        qWarning() << "Could not register DBus service "
+        warning() << "Could not register DBus service "
             "'com.nokia.contactsd':" << connection.lastError();
         return false;
     }
 
     if (!connection.registerObject("/", this)) {
-        qWarning() << "Could not register DBus object '/':" <<
+        warning() << "Could not register DBus object '/':" <<
             connection.lastError();
         return false;
     }

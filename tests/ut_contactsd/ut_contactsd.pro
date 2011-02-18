@@ -17,12 +17,16 @@ INCLUDEPATH += $$TOP_SOURCEDIR/src
 HEADERS += test-contactsd.h \
     $$TOP_SOURCEDIR/src/contactsimportprogressadaptor.h \
     $$TOP_SOURCEDIR/src/contactsdpluginloader.h \
-    $$TOP_SOURCEDIR/src/importstate.h
+    $$TOP_SOURCEDIR/src/importstate.h \
+    $$TOP_SOURCEDIR/src/debug.h \
+    $$TOP_SOURCEDIR/src/base-plugin.h
 
 SOURCES += test-contactsd.cpp \
     $$TOP_SOURCEDIR/src/contactsimportprogressadaptor.cpp  \
     $$TOP_SOURCEDIR/src/contactsdpluginloader.cpp \
-    $$TOP_SOURCEDIR/src/importstate.cpp
+    $$TOP_SOURCEDIR/src/importstate.cpp \
+    $$TOP_SOURCEDIR/src/debug.cpp \
+    $$TOP_SOURCEDIR/src/base-plugin.cpp
 
 DEFINES += CONTACTSD_PLUGINS_DIR=\\\"$$LIBDIR/contactsd-1.0/plugins\\\"
 

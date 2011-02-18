@@ -20,31 +20,26 @@
 #ifndef CDTPPLUGIN_H
 #define CDTPPLUGIN_H
 
-#include <ContactsdPluginInterface>
-
 #include <QMap>
 #include <QObject>
 #include <QString>
 #include <QVariant>
 
+#include <BasePlugin>
+#include <ContactsdPluginInterface>
+
 class CDTpController;
 
-class CDTpPlugin : public QObject, public ContactsdPluginInterface
+class CDTpPlugin : public Contactsd::BasePlugin
 {
     Q_OBJECT
-    Q_INTERFACES(ContactsdPluginInterface)
 
 public:
     CDTpPlugin();
     ~CDTpPlugin();
 
     void init();
-    QMap<QString, QVariant> metaData();
-
-Q_SIGNALS:
-    void importStarted(const QString &service, const QString &account);
-    void importEnded(const QString &service, const QString &account,
-                     int contactsAdded, int contactsRemoved, int contactsMerged);
+    MetaData metaData();
 
 private:
     CDTpController *mController;

@@ -17,17 +17,18 @@
 **
 ****************************************************************************/
 
-#include "cdtpaccount.h"
-
-#include "cdtpcontact.h"
-
 #include <TelepathyQt4/ContactManager>
 #include <TelepathyQt4/PendingContacts>
 #include <TelepathyQt4/PendingOperation>
 #include <TelepathyQt4/PendingReady>
 #include <TelepathyQt4/Profile>
 
-#include <QDebug>
+#include <Debug>
+
+#include "cdtpaccount.h"
+#include "cdtpcontact.h"
+
+using namespace Contactsd;
 
 CDTpAccount::CDTpAccount(const Tp::AccountPtr &account, QObject *parent)
     : QObject(parent),
@@ -114,7 +115,7 @@ void CDTpAccount::onAccountAvatarChanged()
 
 void CDTpAccount::onAccountConnectionChanged(const Tp::ConnectionPtr &connection)
 {
-    qDebug() << "Account" << mAccount->objectPath() << "connection changed";
+    debug() << "Account" << mAccount->objectPath() << "connection changed";
 
     setConnection(connection);
 
@@ -149,14 +150,14 @@ void CDTpAccount::setConnection(const Tp::ConnectionPtr &connection)
 void CDTpAccount::onAllKnownContactsChanged(const Tp::Contacts &contactsAdded,
         const Tp::Contacts &contactsRemoved)
 {
-    qDebug() << "Account" << mAccount->objectPath() << "roster contacts changed:";
-    qDebug() << " " << contactsAdded.size() << "contacts added";
-    qDebug() << " " << contactsRemoved.size() << "contacts removed";
+    debug() << "Account" << mAccount->objectPath() << "roster contacts changed:";
+    debug() << " " << contactsAdded.size() << "contacts added";
+    debug() << " " << contactsRemoved.size() << "contacts removed";
 
     QList<CDTpContactPtr> added;
     Q_FOREACH (const Tp::ContactPtr &contact, contactsAdded) {
         if (mContacts.contains(contact->id())) {
-            qWarning() << "Internal error, contact was already in roster";
+            warning() << "Internal error, contact was already in roster";
             continue;
         }
         maybeRequestExtraInfo(contact);
@@ -170,7 +171,7 @@ void CDTpAccount::onAllKnownContactsChanged(const Tp::Contacts &contactsAdded,
     Q_FOREACH (const Tp::ContactPtr &contact, contactsRemoved) {
         const QString id(contact->id());
         if (!mContacts.contains(id)) {
-            qWarning() << "Internal error, contact is not in the internal list"
+            warning() << "Internal error, contact is not in the internal list"
                 "but was removed from roster";
             continue;
         }
@@ -192,7 +193,7 @@ void CDTpAccount::onAccountContactChanged(CDTpContactPtr contactWrapper,
     if ((changes & CDTpContact::Visibility) != 0) {
         // Visibility of this contact changed. Transform this update operation
         // to an add/remove operation
-        qDebug() << "Visibility changed for contact" << contactWrapper->contact()->id();
+        debug() << "Visibility changed for contact" << contactWrapper->contact()->id();
         if (contactWrapper->isVisible()) {
             Q_EMIT rosterUpdated(CDTpAccountPtr(this),
                 QList<CDTpContactPtr>() << contactWrapper,
@@ -215,7 +216,7 @@ void CDTpAccount::onAccountContactChanged(CDTpContactPtr contactWrapper,
 
 CDTpContactPtr CDTpAccount::insertContact(const Tp::ContactPtr &contact)
 {
-    qDebug() << "  creating wrapper for contact" << contact->id();
+    debug() << "  creating wrapper for contact" << contact->id();
 
     CDTpContactPtr contactWrapper = CDTpContactPtr(new CDTpContact(contact, this));
     connect(contactWrapper.data(),
@@ -228,11 +229,11 @@ CDTpContactPtr CDTpAccount::insertContact(const Tp::ContactPtr &contact)
 void CDTpAccount::maybeRequestExtraInfo(Tp::ContactPtr contact)
 {
     if (!contact->isAvatarTokenKnown()) {
-        qDebug() << contact->id() << "first seen: request avatar";
+        debug() << contact->id() << "first seen: request avatar";
         contact->requestAvatarData();
     }
     if (!contact->isContactInfoKnown()) {
-        qDebug() << contact->id() << "first seen: refresh ContactInfo";
+        debug() << contact->id() << "first seen: refresh ContactInfo";
         contact->refreshInfo();
     }
 }

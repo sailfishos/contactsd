@@ -17,27 +17,13 @@
 **
 ****************************************************************************/
 
-#ifndef CONTACTSD_H
-#define CONTACTSD_H
+#include "base-plugin.h"
 
-#include <QObject>
-#include <QStringList>
-
-class ContactsdPluginLoader;
-
-class ContactsDaemon : public QObject
+namespace Contactsd
 {
-    Q_OBJECT
 
-public:
-    ContactsDaemon(QObject *parent);
-    virtual ~ContactsDaemon();
+const QString BasePlugin::metaDataKeyVersion = CONTACTSD_PLUGIN_VERSION;
+const QString BasePlugin::metaDataKeyName    = CONTACTSD_PLUGIN_NAME;
+const QString BasePlugin::metaDataKeyComment = CONTACTSD_PLUGIN_COMMENT;
 
-    void loadPlugins(const QStringList &plugins = QStringList());
-    QStringList loadedPlugins() const;
-
-private:
-    ContactsdPluginLoader *mLoader;
-};
-
-#endif // CONTACTSDAEMON_H
+} // Contactsd

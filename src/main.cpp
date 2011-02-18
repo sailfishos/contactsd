@@ -17,13 +17,14 @@
 **
 ****************************************************************************/
 
-#include <QDebug>
 #include <QCoreApplication>
 #include <QDBusConnection>
 #include <QTimer>
 
 #include "contactsd.h"
-#include "logger.h"
+#include "Debug"
+
+using namespace Contactsd;
 
 static void usage()
 {
@@ -40,12 +41,11 @@ int main(int argc, char **argv)
 
     QStringList plugins;
     const QStringList args = app.arguments();
-    Logger *logger = Logger::installLogger(CONTACTSD_LOG_DIR "/contactsd.log", 50, 3);
     QString arg;
     int i = 1; // ignore argv[0]
 
-    logger->setParent(&app);
-    logger->setConsoleLoggingEnabled(!qgetenv("CONTACTSD_DEBUG").isEmpty());
+    bool logConsole = !qgetenv("CONTACTSD_DEBUG").isEmpty();
+
     while (i < args.count()) {
         arg = args.at(i);
         if (arg == "--plugins") {
@@ -57,27 +57,27 @@ int main(int argc, char **argv)
             QString value = args.at(i);
             value.replace(" ", ",");
             plugins << value.split(",", QString::SkipEmptyParts);
+        }
+        if (arg == "--version") {
+            qDebug() << "contactsd version" << VERSION;
+            return 0;
+        } else if (arg == "--help") {
+            usage();
+            return 0;
+        } else if (arg == "--log-console") {
+            logConsole = true;
         } else {
-            logger->setConsoleLoggingEnabled(true);
-            if (arg == "--version") {
-                qDebug() << "contactsd version" << VERSION;
-                return 0;
-            } else if (arg == "--help") {
-                usage();
-                return 0;
-            } else if (arg == "--log-console") {
-            } else{
-                qWarning() << "Invalid argument" << arg;
-                usage();
-                return -1;
-            }
+            qWarning() << "Invalid argument" << arg;
+            usage();
+            return -1;
         }
         ++i;
     }
 
-    qDebug() << "contactsd version" << VERSION << "started";
+    enableDebug(logConsole);
+    debug() << "contactsd version" << VERSION << "started";
 
-    Contactsd *daemon = new Contactsd(&app);
+    ContactsDaemon *daemon = new ContactsDaemon(&app);
     daemon->loadPlugins(plugins);
 
     return app.exec();

@@ -17,9 +17,13 @@
 **
 ****************************************************************************/
 
+#include <Debug>
+
 #include "cdtpquery.h"
 #include "cdtpstorage.h"
 #include "sparqlconnectionmanager.h"
+
+using namespace Contactsd;
 
 /* --- CDTpQueryBuilder --- */
 
@@ -222,19 +226,19 @@ CDTpSparqlQuery::CDTpSparqlQuery(const CDTpQueryBuilder &builder, QObject *paren
     mId = ++counter;
     mTime.start();
 
-    qDebug() << "query" << mId << "started:" << builder.name();
-    qDebug() << builder.getRawQuery();
+    debug() << "query" << mId << "started:" << builder.name();
+    debug() << builder.getRawQuery();
 
     QSparqlConnection &connection = com::nokia::contactsd::SparqlConnectionManager::defaultConnection();
     QSparqlResult *result = connection.exec(builder.getSparqlQuery());
 
     if (not result) {
-        qWarning() << Q_FUNC_INFO << " - QSparqlConnection::exec() == 0";
+        warning() << Q_FUNC_INFO << " - QSparqlConnection::exec() == 0";
         deleteLater();
         return;
     }
     if (result->hasError()) {
-        qWarning() << Q_FUNC_INFO << result->lastError().message();
+        warning() << Q_FUNC_INFO << result->lastError().message();
         delete result;
         deleteLater();
         return;
@@ -249,15 +253,15 @@ void CDTpSparqlQuery::onQueryFinished()
     QSparqlResult *const result = qobject_cast<QSparqlResult *>(sender());
 
     if (not result) {
-        qWarning() << "QSparqlQuery finished with error:" << "Invalid signal sender";
+        warning() << "QSparqlQuery finished with error:" << "Invalid signal sender";
     } else {
         if (result->hasError()) {
-            qDebug() << "QSparqlQuery finished with error:" << result->lastError().message();
+            debug() << "QSparqlQuery finished with error:" << result->lastError().message();
         }
         result->deleteLater();
     }
 
-    qDebug() << "query" << mId << "finished. Time elapsed (ms):" << mTime.elapsed();
+    debug() << "query" << mId << "finished. Time elapsed (ms):" << mTime.elapsed();
 
     Q_EMIT finished(this);
 

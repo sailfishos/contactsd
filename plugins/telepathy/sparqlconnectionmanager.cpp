@@ -43,9 +43,12 @@
 
 #include <QtCore/QStringList>
 #include <QtCore/QSettings>
-#include <QtCore/QDebug>
 
 #include <QtSparql/QSparqlConnection>
+
+#include <Debug>
+
+using namespace Contactsd;
 
 namespace com {
 namespace nokia {
@@ -105,7 +108,7 @@ SparqlConnectionManager::connection()
                 availableDrivers = QLatin1String("none");
             }
 
-            qWarning() << Q_FUNC_INFO << QString::fromLatin1("Could not find any usable QtSparql backend driver. "
+            warning() << Q_FUNC_INFO << QString::fromLatin1("Could not find any usable QtSparql backend driver. "
                                         "Please install one of the configured drivers, or "
                                         "correct the setting. Configured backends: %1. "
                                         "Available backends: %2.").

@@ -9,3 +9,4 @@ Name: contactsd
 Description: Contact synchronization daemon for meego
 Version: @VERSION@
 Cflags: -I${includedir}/contactsd-1.0
+Libs: -L${libdir} -module -avoid-version

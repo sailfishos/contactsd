@@ -17,11 +17,14 @@
 **
 ****************************************************************************/
 
-#include "cdtpcontact.h"
+#include <TelepathyQt4/AvatarData>
+
+#include <Debug>
 
 #include "cdtpaccount.h"
+#include "cdtpcontact.h"
 
-#include <TelepathyQt4/AvatarData>
+using namespace Contactsd;
 
 CDTpContact::CDTpContact(Tp::ContactPtr contact, CDTpAccount *accountWrapper)
     : QObject(),

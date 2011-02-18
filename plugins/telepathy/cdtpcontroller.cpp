@@ -17,11 +17,6 @@
 **
 ****************************************************************************/
 
-#include "cdtpcontroller.h"
-
-#include "cdtpstorage.h"
-#include "buddymanagementadaptor.h"
-
 #include <TelepathyQt4/Account>
 #include <TelepathyQt4/AccountPropertyFilter>
 #include <TelepathyQt4/AndFilter>
@@ -32,11 +27,19 @@
 #include <TelepathyQt4/ContactManager>
 #include <TelepathyQt4/PendingContacts>
 
+#include <Debug>
+
+#include "buddymanagementadaptor.h"
+#include "cdtpcontroller.h"
+#include "cdtpstorage.h"
+
+using namespace Contactsd;
+
 const QLatin1String DBusObjectPath("/telepathy");
 
 CDTpController::CDTpController(QObject *parent) : QObject(parent)
 {
-    qDebug() << "Creating storage";
+    debug() << "Creating storage";
     mStorage = new CDTpStorage(this);
     connect(mStorage,
             SIGNAL(syncStarted(CDTpAccountPtr)),
@@ -45,7 +48,7 @@ CDTpController::CDTpController(QObject *parent) : QObject(parent)
             SIGNAL(syncEnded(CDTpAccountPtr, int, int)),
             SLOT(onSyncEnded(CDTpAccountPtr, int, int)));
 
-    qDebug() << "Creating account manager";
+    debug() << "Creating account manager";
     const QDBusConnection &bus = QDBusConnection::sessionBus();
     Tp::AccountFactoryPtr accountFactory = Tp::AccountFactory::create(bus,
             Tp::Features() << Tp::Account::FeatureCore
@@ -83,12 +86,12 @@ CDTpController::~CDTpController()
 void CDTpController::onAccountManagerReady(Tp::PendingOperation *op)
 {
     if (op->isError()) {
-        qDebug() << "Could not make account manager ready:" <<
+        debug() << "Could not make account manager ready:" <<
             op->errorName() << "-" << op->errorMessage();
         return;
     }
 
-    qDebug() << "Account manager ready";
+    debug() << "Account manager ready";
 
     Tp::AccountPropertyFilterPtr filter1 = Tp::AccountPropertyFilter::create();
     filter1->addProperty(QString::fromLatin1("valid"), true);
@@ -120,7 +123,7 @@ void CDTpController::onAccountManagerReady(Tp::PendingOperation *op)
 void CDTpController::onAccountAdded(const Tp::AccountPtr &account)
 {
     if (mAccounts.contains(account->objectPath())) {
-        qWarning() << "Internal error, account was already in controller";
+        warning() << "Internal error, account was already in controller";
         return;
     }
 
@@ -136,7 +139,7 @@ void CDTpController::onAccountRemoved(const Tp::AccountPtr &account)
 {
     CDTpAccountPtr accountWrapper(mAccounts.take(account->objectPath()));
     if (not accountWrapper) {
-        qWarning() << "Internal error, account was not in controller";
+        warning() << "Internal error, account was not in controller";
         return;
     }
     mStorage->removeAccount(accountWrapper);
@@ -144,7 +147,7 @@ void CDTpController::onAccountRemoved(const Tp::AccountPtr &account)
 
 CDTpAccountPtr CDTpController::insertAccount(const Tp::AccountPtr &account)
 {
-    qDebug() << "Creating wrapper for account" << account->objectPath();
+    debug() << "Creating wrapper for account" << account->objectPath();
     CDTpAccountPtr accountWrapper = CDTpAccountPtr(new CDTpAccount(account, this));
     mAccounts.insert(account->objectPath(), accountWrapper);
 
@@ -193,7 +196,7 @@ void CDTpController::inviteBuddy(const QString &accountPath, const QString &imId
 {
     CDTpAccountPtr accountWrapper(mAccounts.value(accountPath));
     if (not accountWrapper) {
-        qWarning() << Q_FUNC_INFO << __LINE__ << "Cannot remove contact " << imId << " from acount " << accountPath;
+        warning() << Q_FUNC_INFO << __LINE__ << "Cannot remove contact " << imId << " from acount " << accountPath;
         return;
     }
 
@@ -202,7 +205,7 @@ void CDTpController::inviteBuddy(const QString &accountPath, const QString &imId
         && account->connection()->status() == Tp::ConnectionStatusConnected) {
         Tp::ContactManagerPtr manager = account->connection()->contactManager();
         if (!manager->canRequestPresenceSubscription()) {
-            qWarning() << Q_FUNC_INFO << __LINE__ << "subscribe action on an account " << accountPath
+            warning() << Q_FUNC_INFO << __LINE__ << "subscribe action on an account " << accountPath
                 << "that does not support subscription requests";
             return;
         }
@@ -211,21 +214,21 @@ void CDTpController::inviteBuddy(const QString &accountPath, const QString &imId
                 SIGNAL(finished(Tp::PendingOperation *)),
                 SLOT(onInviteContactRetrieved(Tp::PendingOperation *)));
     } else {
-        qWarning() << Q_FUNC_INFO << __LINE__ << "Cannot remove contact " << imId << " from acount " << accountPath;
+        warning() << Q_FUNC_INFO << __LINE__ << "Cannot remove contact " << imId << " from acount " << accountPath;
     }
 }
 
 void CDTpController::onInviteContactRetrieved(Tp::PendingOperation *op)
 {
     if (op->isError()) {
-        qWarning() << Q_FUNC_INFO << __LINE__ << "unable to retrieve contacts for subscription:" << op->errorName() << "-" << op->errorMessage();
+        warning() << Q_FUNC_INFO << __LINE__ << "unable to retrieve contacts for subscription:" << op->errorName() << "-" << op->errorMessage();
         return;
     }
 
     Tp::PendingContacts *pcontacts = qobject_cast<Tp::PendingContacts *>(op);
     QList<Tp::ContactPtr> contacts = pcontacts->contacts();
     if (contacts.size() != 1 || !contacts.first()) {
-        qWarning() << Q_FUNC_INFO << __LINE__ << "unable to retrieve contacts for subscription";
+        warning() << Q_FUNC_INFO << __LINE__ << "unable to retrieve contacts for subscription";
         return;
     }
 
@@ -239,7 +242,7 @@ void CDTpController::onInviteContactRetrieved(Tp::PendingOperation *op)
 void CDTpController::onPresenceSubscriptionRequested(Tp::PendingOperation *op)
 {
     if (op->isError()) {
-        qWarning() << Q_FUNC_INFO << __LINE__ << "Could not request presence subscription:" << op->errorName() << "-" << op->errorMessage();
+        warning() << Q_FUNC_INFO << __LINE__ << "Could not request presence subscription:" << op->errorName() << "-" << op->errorMessage();
     }
 }
 
@@ -291,13 +294,13 @@ void CDTpController::processRedList()
                 }
             }
             if (removeContactsFromTheAccount.isEmpty()) {
-                qWarning() << Q_FUNC_INFO << "Internal error,"
+                warning() << Q_FUNC_INFO << "Internal error,"
                               "contacts to be removed don't exist in contact list:" << idListForAccount;
                 continue;
             }
             Tp::ContactManagerPtr manager = accountWrapper->account()->connection()->contactManager();
             Tp::PendingOperation *call = manager->removeContacts(removeContactsFromTheAccount);
-            qDebug() << Q_FUNC_INFO << ":" << __LINE__ << " Tp::ContactManager::removeContacts:"<< removeContactsFromTheAccount.size();
+            debug() << Q_FUNC_INFO << ":" << __LINE__ << " Tp::ContactManager::removeContacts:"<< removeContactsFromTheAccount.size();
             connect(call,
                     SIGNAL(finished(Tp::PendingOperation *)),
                     SLOT(onContactsRemoved(Tp::PendingOperation *)));
@@ -318,7 +321,7 @@ void CDTpController::onContactsRemoved(Tp::PendingOperation *op)
     // contacts get removed from redlist storage when rosterUpdated signal is
     // processed in storage - following lines serve for logging only
     if (op->isError()) {
-        qWarning() << Q_FUNC_INFO << "Could not remove contacts:" << op << op->errorName() << "-" << op->errorMessage();
+        warning() << Q_FUNC_INFO << "Could not remove contacts:" << op << op->errorName() << "-" << op->errorMessage();
         return;
     }
 }
@@ -327,12 +330,12 @@ bool CDTpController::registerDBusObject()
 {
     QDBusConnection connection = QDBusConnection::sessionBus();
     if (!connection.isConnected()) {
-        qWarning() << "Could not connect to DBus:" << connection.lastError();
+        warning() << "Could not connect to DBus:" << connection.lastError();
         return false;
     }
 
     if (!connection.registerObject(DBusObjectPath, this)) {
-        qWarning() << "Could not register DBus object '/':" <<
+        warning() << "Could not register DBus object '/':" <<
             connection.lastError();
         return false;
     }

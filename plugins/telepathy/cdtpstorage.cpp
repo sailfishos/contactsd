@@ -21,7 +21,11 @@
 #include <TelepathyQt4/ContactCapabilities>
 #include <TelepathyQt4/ConnectionCapabilities>
 
+#include <Debug>
+
 #include "cdtpstorage.h"
+
+using namespace Contactsd;
 
 static const QString privateGraph = QString::fromLatin1("<urn:uuid:679293d4-60f0-49c7-8d63-f1528fe31f66>");
 static const QString defaultGenerator = QString::fromLatin1("\"telepathy\"");
@@ -117,7 +121,7 @@ void CDTpStorage::syncAccount(CDTpAccountPtr accountWrapper)
 void CDTpStorage::updateAccount(CDTpAccountPtr accountWrapper,
         CDTpAccount::Changes changes)
 {
-    qDebug() << "Update account" << literalIMAddress(accountWrapper);
+    debug() << "Update account" << literalIMAddress(accountWrapper);
 
     CDTpQueryBuilder builder("UpdateAccount");
 
@@ -134,7 +138,7 @@ void CDTpStorage::updateAccount(CDTpAccountPtr accountWrapper,
 void CDTpStorage::removeAccount(CDTpAccountPtr accountWrapper)
 {
     const QString imAccount = literalIMAccount(accountWrapper);
-    qDebug() << "Remove account" << imAccount;
+    debug() << "Remove account" << imAccount;
 
     CDTpQueryBuilder builder("RemoveAccount");
 
@@ -216,7 +220,7 @@ void CDTpStorage::addCreateAccountsToBuilder(CDTpQueryBuilder &builder,
         const QString imAccount = literalIMAccount(accountWrapper);
         const QString imAddress = literalIMAddress(accountWrapper);
 
-        qDebug() << "Create account" << imAddress;
+        debug() << "Create account" << imAddress;
 
         // Ensure the IMAccount exists
         builder.createResource(imAccount, "nco:IMAccount", privateGraph);
@@ -281,19 +285,19 @@ void CDTpStorage::addAccountChangesToBuilder(CDTpQueryBuilder &builder,
     const QString imAddress = literalIMAddress(accountWrapper);
 
     if (changes & CDTpAccount::Presence) {
-        qDebug() << "  presence changed";
+        debug() << "  presence changed";
         addPresenceToBuilder(builder, imAddress, account->currentPresence());
     }
     if (changes & CDTpAccount::Avatar) {
-        qDebug() << "  avatar changed";
+        debug() << "  avatar changed";
         addAvatarToBuilder(builder, imAddress, saveAccountAvatar(accountWrapper));
     }
     if (changes & CDTpAccount::Nickname) {
-        qDebug() << "  nickname changed";
+        debug() << "  nickname changed";
         builder.insertProperty(imAddress, "nco:imNickname", literal(account->nickname()));
     }
     if (changes & CDTpAccount::DisplayName) {
-        qDebug() << "  display name changed";
+        debug() << "  display name changed";
         builder.insertProperty(imAccount, "nco:imDisplayName", literal(account->displayName()),
                 privateGraph);
     }
@@ -310,11 +314,11 @@ QString CDTpStorage::saveAccountAvatar(CDTpAccountPtr accountWrapper) const
     static const QString tmpl = QString::fromLatin1("%1/.contacts/avatars/%2");
     QString fileName = tmpl.arg(QDir::homePath())
         .arg(QLatin1String(QCryptographicHash::hash(avatar.avatarData, QCryptographicHash::Sha1).toHex()));
-    qDebug() << "Saving account avatar to" << fileName;
+    debug() << "Saving account avatar to" << fileName;
 
     QFile avatarFile(fileName);
     if (!avatarFile.open(QIODevice::WriteOnly)) {
-        qWarning() << "Unable to save account avatar: error opening avatar "
+        warning() << "Unable to save account avatar: error opening avatar "
             "file" << fileName << "for writing";
         return QString();
     }
@@ -404,7 +408,7 @@ void CDTpStorage::addSyncNoRosterAccountsContactsToBuilder(CDTpQueryBuilder &bui
         const QString imAddress = literalIMAddress(accountWrapper);
         const QString imAccount = literalIMAccount(accountWrapper);
 
-        qDebug() << "Sync no roster account" << imAddress;
+        debug() << "Sync no roster account" << imAddress;
 
         imAddresses << imAddress;
         imAccounts << imAccount;
@@ -453,7 +457,7 @@ void CDTpStorage::addSyncRosterAccountsContactsToBuilder(CDTpQueryBuilder &build
         const QString imAddress = literalIMAddress(accountWrapper);
         const QString imAccount = literalIMAccount(accountWrapper);
 
-        qDebug() << "Sync roster account" << imAddress;
+        debug() << "Sync roster account" << imAddress;
 
         imAccounts << imAccount;
         imAddresses << imAddress;
@@ -646,28 +650,28 @@ void CDTpStorage::addRemoveContactsChangesToBuilder(CDTpQueryBuilder &builder,
         CDTpContact::Changes changes) const
 {
     if (changes & CDTpContact::Alias) {
-        qDebug() << "  alias changed";
+        debug() << "  alias changed";
         builder.deleteProperty(imAddress, "nco:imNickname");
     }
     if (changes & CDTpContact::Presence) {
-        qDebug() << "  presence changed";
+        debug() << "  presence changed";
         addRemovePresenceToBuilder(builder, imAddress);
     }
     if (changes & CDTpContact::Capabilities) {
-        qDebug() << "  capabilities changed";
+        debug() << "  capabilities changed";
         addRemoveCapabilitiesToBuilder(builder, imAddress);
     }
     if (changes & CDTpContact::Avatar) {
-        qDebug() << "  avatar changed";
+        debug() << "  avatar changed";
         addRemoveAvatarToBuilder(builder, imAddress);
     }
     if (changes & CDTpContact::Authorization) {
-        qDebug() << "  authorization changed";
+        debug() << "  authorization changed";
         builder.deleteProperty(imAddress, "nco:imAddressAuthStatusFrom");
         builder.deleteProperty(imAddress, "nco:imAddressAuthStatusTo");
     }
     if (changes & CDTpContact::Information) {
-        qDebug() << "  vcard information changed";
+        debug() << "  vcard information changed";
         addRemoveContactInfoToBuilder(builder, imAddress, imContact);
     }
 
@@ -683,7 +687,7 @@ void CDTpStorage::addContactChangesToBuilder(CDTpQueryBuilder &builder,
     // Apply changes
     addContactChangesToBuilder(builder, imAddress, changes, contact);
     if (changes & CDTpContact::Information) {
-        qDebug() << "  vcard information changed";
+        debug() << "  vcard information changed";
         addContactInfoToBuilder(builder, imAddress, imContact, contact);
     }
 
@@ -695,27 +699,27 @@ void CDTpStorage::addContactChangesToBuilder(CDTpQueryBuilder &builder,
         CDTpContact::Changes changes,
         Tp::ContactPtr contact) const
 {
-    qDebug() << "Update contact" << imAddress;
+    debug() << "Update contact" << imAddress;
 
     // Apply changes
     if (changes & CDTpContact::Alias) {
-        qDebug() << "  alias changed";
+        debug() << "  alias changed";
         builder.insertProperty(imAddress, "nco:imNickname", literal(contact->alias()));
     }
     if (changes & CDTpContact::Presence) {
-        qDebug() << "  presence changed";
+        debug() << "  presence changed";
         addPresenceToBuilder(builder, imAddress, contact->presence());
     }
     if (changes & CDTpContact::Capabilities) {
-        qDebug() << "  capabilities changed";
+        debug() << "  capabilities changed";
         addCapabilitiesToBuilder(builder, imAddress, contact->capabilities());
     }
     if (changes & CDTpContact::Avatar) {
-        qDebug() << "  avatar changed";
+        debug() << "  avatar changed";
         addAvatarToBuilder(builder, imAddress, contact->avatarData().fileName);
     }
     if (changes & CDTpContact::Authorization) {
-        qDebug() << "  authorization changed";
+        debug() << "  authorization changed";
         builder.insertProperty(imAddress, "nco:imAddressAuthStatusFrom", presenceState(contact->subscriptionState()));
         builder.insertProperty(imAddress, "nco:imAddressAuthStatusTo", presenceState(contact->publishState()));
     }
@@ -793,7 +797,7 @@ void CDTpStorage::addContactInfoToBuilder(CDTpQueryBuilder &builder,
 
     Tp::ContactInfoFieldList listContactInfo = contact->infoFields().allFields();
     if (listContactInfo.count() == 0) {
-        qDebug() << "No contact info present";
+        debug() << "No contact info present";
         return;
     }
 
@@ -870,12 +874,12 @@ void CDTpStorage::addContactInfoToBuilder(CDTpQueryBuilder &builder,
             if (date.isValid()) {
                 builder.insertProperty(imContact, "nco:birthDate", literal(QDateTime(date)), graph);
             } else {
-                qDebug() << "Unsupported bday format:" << field.fieldValue[0];
+                debug() << "Unsupported bday format:" << field.fieldValue[0];
             }
         }
 
         else {
-            qDebug() << "Unsupported VCard field" << field.fieldName;
+            debug() << "Unsupported VCard field" << field.fieldName;
         }
     }
 }
@@ -1062,7 +1066,7 @@ QString CDTpStorage::presenceType(Tp::ConnectionPresenceType presenceType) const
         break;
     }
 
-    qWarning() << "Unknown telepathy presence status" << presenceType;
+    warning() << "Unknown telepathy presence status" << presenceType;
 
     return statusError;
 }
@@ -1082,7 +1086,7 @@ QString CDTpStorage::presenceState(Tp::Contact::PresenceState presenceState) con
         return statusYes;
     }
 
-    qWarning() << "Unknown telepathy presence state:" << presenceState;
+    warning() << "Unknown telepathy presence state:" << presenceState;
 
     return statusNo;
 }
