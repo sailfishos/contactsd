@@ -22,8 +22,8 @@
 namespace Contactsd
 {
 
-const QString BasePlugin::metaDataKeyVersion = CONTACTSD_PLUGIN_VERSION;
-const QString BasePlugin::metaDataKeyName    = CONTACTSD_PLUGIN_NAME;
-const QString BasePlugin::metaDataKeyComment = CONTACTSD_PLUGIN_COMMENT;
+const QString BasePlugin::metaDataKeyVersion = QString::fromLatin1("version");
+const QString BasePlugin::metaDataKeyName    = QString::fromLatin1("name");
+const QString BasePlugin::metaDataKeyComment = QString::fromLatin1("comment");
 
 } // Contactsd

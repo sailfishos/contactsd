@@ -25,8 +25,7 @@
 #include <QString>
 #include <QVariant>
 
-#include <BasePlugin>
-#include <ContactsdPluginInterface>
+#include "base-plugin.h"
 
 class CDTpController;
 

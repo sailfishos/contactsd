@@ -46,7 +46,7 @@
 
 #include <QtSparql/QSparqlConnection>
 
-#include <Debug>
+#include "debug.h"
 
 using namespace Contactsd;
 

@@ -19,10 +19,9 @@
 
 #include <TelepathyQt4/AvatarData>
 
-#include <Debug>
-
 #include "cdtpaccount.h"
 #include "cdtpcontact.h"
+#include "debug.h"
 
 using namespace Contactsd;
 

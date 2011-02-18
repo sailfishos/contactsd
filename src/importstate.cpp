@@ -17,9 +17,9 @@
 **
 ****************************************************************************/
 
-#include "Debug"
-#include "importstate.h"
+#include "debug.h"
 #include "importstateconst.h"
+#include "importstate.h"
 
 using namespace Contactsd;
 

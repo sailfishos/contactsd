@@ -17,10 +17,9 @@
 **
 ****************************************************************************/
 
-#include <Debug>
-
 #include "cdtpquery.h"
 #include "cdtpstorage.h"
+#include "debug.h"
 #include "sparqlconnectionmanager.h"
 
 using namespace Contactsd;

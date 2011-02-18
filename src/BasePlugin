@@ -20,6 +20,6 @@
 #ifndef CONTACTSD_BASE_PLUGIN
 #define CONTACTSD_BASE_PLUGIN
 
-#include <base-plugin.h>
+#include <Contactsd/base-plugin.h>
 
 #endif

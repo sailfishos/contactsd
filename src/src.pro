@@ -12,10 +12,9 @@ DEFINES += ENABLE_DEBUG
 
 HEADERS += contactsd.h \
     contactsdpluginloader.h \
-    contactsdplugininterface.h \
     importstate.h \
-    contactsimportprogressadaptor.h \
     importstateconst.h \
+    contactsimportprogressadaptor.h \
     debug.h \
     base-plugin.h
 
@@ -35,12 +34,10 @@ DEFINES += VERSION=\\\"$${VERSION}\\\"
 DEFINES += CONTACTSD_LOG_DIR=\\\"$$LOCALSTATEDIR/log\\\"
 DEFINES += CONTACTSD_PLUGINS_DIR=\\\"$$LIBDIR/contactsd-1.0/plugins\\\"
 
-headers.files = ContactsdPluginInterface \
-    contactsdplugininterface.h \
-    importstateconst.h \
-    BasePlugin base-plugin.h \
-    Debug debug.h
-headers.path = $$INCLUDEDIR/contactsd-1.0
+headers.files = BasePlugin base-plugin.h \
+    Debug debug.h \
+    ImportStateConst importstateconst.h
+headers.path = $$INCLUDEDIR/contactsd-1.0/Contactsd
 
 xml.files = com.nokia.contacts.importprogress.xml
 xml.path = $$INCLUDEDIR/contactsd-1.0

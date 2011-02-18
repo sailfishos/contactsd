@@ -26,13 +26,11 @@
 #include <QStringList>
 #include <QMap>
 
-#include "contactsdplugininterface.h"
 
 namespace Contactsd
 {
 
-// FIXME: This inherit from ContactsdPluginInterface for compatibility
-class BasePlugin : public QObject, public ContactsdPluginInterface
+class BasePlugin : public QObject
 {
     Q_OBJECT
 
@@ -40,7 +38,7 @@ public:
     static const QString metaDataKeyVersion;
     static const QString metaDataKeyName;
     static const QString metaDataKeyComment;
-    typedef PluginMetaData MetaData;
+    typedef QMap<QString, QVariant> MetaData;
 
     virtual ~BasePlugin () { };
     virtual void init() = 0;

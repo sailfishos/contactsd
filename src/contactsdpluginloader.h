@@ -23,13 +23,13 @@
 #include <QObject>
 #include <QMap>
 
+#include "base-plugin.h"
 #include "importstate.h"
 
 class QTimer;
 class QPluginLoader;
 class QString;
 class QStringList;
-class ContactsdPluginInterface;
 
 class ContactsdPluginLoader : public QObject
 {
@@ -64,7 +64,7 @@ private Q_SLOTS:
 private:
     void startImportTimer();
     void stopImportTimer();
-    QString pluginName(ContactsdPluginInterface *plugin);
+    QString pluginName(Contactsd::BasePlugin *plugin);
 
     typedef QMap<QString, QPluginLoader *> PluginStore;
     PluginStore mPluginStore;

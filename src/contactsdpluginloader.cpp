@@ -25,7 +25,6 @@
 #include <QTimer>
 
 #include "contactsdpluginloader.h"
-#include "contactsdplugininterface.h"
 #include "contactsimportprogressadaptor.h"
 #include "debug.h"
 
@@ -47,8 +46,10 @@ ContactsdPluginLoader::~ContactsdPluginLoader()
     PluginStore::const_iterator it = mPluginStore.constBegin();
     PluginStore::const_iterator end = mPluginStore.constEnd();
     while (it != end) {
-        it.value()->deleteLater();
-      ++it;
+        QPluginLoader *loader = it.value();
+        loader->unload();
+        delete loader;
+        ++it;
     }
 
     mPluginStore.clear();
@@ -86,26 +87,24 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir, const QString
             continue;
         }
 
-        QObject *basePlugin = loader->instance();
-        ContactsdPluginInterface *plugin =
-            dynamic_cast<ContactsdPluginInterface *>(basePlugin);
-        if (!plugin) {
-            debug() << "Error loading plugin" << absFileName << "- does not "
-                "implement ContactsdPluginInterface";
+        QObject *pluginObject = loader->instance();
+        BasePlugin *basePlugin = qobject_cast<BasePlugin *>(pluginObject);
+        if (!basePlugin) {
+            debug() << "Error loading plugin" << absFileName << "- not a Contactd::BasePlugin";
             loader->unload();
             delete loader;
             continue;
         }
 
-        ContactsdPluginInterface::PluginMetaData metaData = plugin->metaData();
-        if (!metaData.contains(CONTACTSD_PLUGIN_NAME)) {
+        BasePlugin::MetaData metaData = basePlugin->metaData();
+        if (!metaData.contains(BasePlugin::metaDataKeyName)) {
             warning() << "Error loading plugin" << absFileName << "- invalid plugin metadata";
             loader->unload();
             delete loader;
             continue;
         }
 
-        QString pluginName = metaData[CONTACTSD_PLUGIN_NAME].toString();
+        QString pluginName = metaData[BasePlugin::metaDataKeyName].toString();
         if (!plugins.isEmpty() && !plugins.contains(pluginName)) {
             warning() << "Ignoring plugin" << absFileName;
             loader->unload();
@@ -127,7 +126,7 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir, const QString
                 this, SLOT(onPluginImportStarted(const QString &, const QString &)));
         connect(basePlugin, SIGNAL(importEnded(const QString &, const QString &, int, int, int)),
                 this, SLOT(onPluginImportEnded(const QString &, const QString &, int,int,int)));
-        plugin->init();
+        basePlugin->init();
     }
 }
 
@@ -143,9 +142,9 @@ QStringList ContactsdPluginLoader::hasActiveImports()
 
 void ContactsdPluginLoader::onPluginImportStarted(const QString &service, const QString &account)
 {
-    ContactsdPluginInterface *plugin = dynamic_cast<ContactsdPluginInterface *>(sender());
+    BasePlugin *plugin = qobject_cast<BasePlugin *>(sender());
     if (not plugin) {
-        warning() << Q_FUNC_INFO << "invalid ContactsdPluginInterface object";
+        warning() << Q_FUNC_INFO << "invalid Contactsd::BasePlugin object";
         return ;
     }
 
@@ -172,9 +171,9 @@ void ContactsdPluginLoader::onPluginImportStarted(const QString &service, const 
 void ContactsdPluginLoader::onPluginImportEnded(const QString &service, const QString &account,
                                                 int contactsAdded, int contactsRemoved, int contactsMerged)
 {
-    ContactsdPluginInterface *plugin = dynamic_cast<ContactsdPluginInterface *>(sender());
+    BasePlugin *plugin = qobject_cast<BasePlugin *>(sender());
     if (not plugin) {
-        warning() << Q_FUNC_INFO << "invalid ContactsdPluginInterface object";
+        warning() << Q_FUNC_INFO << "invalid Contactsd::BasePlugin object";
         return ;
     }
 
@@ -235,10 +234,10 @@ void ContactsdPluginLoader::stopImportTimer()
     }
 }
 
-QString ContactsdPluginLoader::pluginName(ContactsdPluginInterface *plugin)
+QString ContactsdPluginLoader::pluginName(BasePlugin *plugin)
 {
-    ContactsdPluginInterface::PluginMetaData metaData = plugin->metaData();
-    return metaData.value(CONTACTSD_PLUGIN_NAME).toString();
+    BasePlugin::MetaData metaData = plugin->metaData();
+    return metaData[BasePlugin::metaDataKeyName].toString();
 }
 
 bool ContactsdPluginLoader::registerNotificationService()

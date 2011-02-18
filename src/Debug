@@ -22,6 +22,6 @@
 #ifndef CONTACTSD_DEBUG
 #define CONTACTSD_DEBUG
 
-#include <debug.h>
+#include <Contactsd/debug.h>
 
 #endif

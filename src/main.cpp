@@ -22,7 +22,7 @@
 #include <QTimer>
 
 #include "contactsd.h"
-#include "Debug"
+#include "debug.h"
 
 using namespace Contactsd;
 

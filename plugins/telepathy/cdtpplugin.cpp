@@ -19,10 +19,10 @@
 
 
 #include <TelepathyQt4/Debug>
-#include <Debug>
 
 #include "cdtpcontroller.h"
 #include "cdtpplugin.h"
+#include "debug.h"
 
 using namespace Contactsd;
 

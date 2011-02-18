@@ -27,11 +27,10 @@
 #include <TelepathyQt4/ContactManager>
 #include <TelepathyQt4/PendingContacts>
 
-#include <Debug>
-
 #include "buddymanagementadaptor.h"
 #include "cdtpcontroller.h"
 #include "cdtpstorage.h"
+#include "debug.h"
 
 using namespace Contactsd;
 

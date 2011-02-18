@@ -23,10 +23,9 @@
 #include <TelepathyQt4/PendingReady>
 #include <TelepathyQt4/Profile>
 
-#include <Debug>
-
 #include "cdtpaccount.h"
 #include "cdtpcontact.h"
+#include "debug.h"
 
 using namespace Contactsd;
 

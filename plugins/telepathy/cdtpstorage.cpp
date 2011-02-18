@@ -21,9 +21,8 @@
 #include <TelepathyQt4/ContactCapabilities>
 #include <TelepathyQt4/ConnectionCapabilities>
 
-#include <Debug>
-
 #include "cdtpstorage.h"
+#include "debug.h"
 
 using namespace Contactsd;
 
