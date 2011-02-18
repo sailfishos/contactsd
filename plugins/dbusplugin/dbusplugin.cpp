@@ -2,7 +2,7 @@
 #include <QtPlugin>
 #include <QTimer>
 
-DbusPlugin::DbusPlugin() : mHasActiveImports(0)
+DbusPlugin::DbusPlugin()
 {
     fakeSignals();
 }
@@ -15,10 +15,10 @@ void DbusPlugin::init()
 {
 }
 
-QMap<QString, QVariant> DbusPlugin::metaData()
+DbusPlugin::MetaData DbusPlugin::metaData()
 {
-    QMap<QString, QVariant> data;
-    data["name"] = QVariant(QString("dbusplugin"));
+    MetaData data;
+    data[metaDataKeyName] = QVariant(QString("dbusplugin"));
     return data;
 }
 

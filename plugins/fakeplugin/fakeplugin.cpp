@@ -1,7 +1,7 @@
 #include "fakeplugin.h"
 #include <QtPlugin>
 
-FakePlugin::FakePlugin() : mHasActiveImports(0)
+FakePlugin::FakePlugin()
 {
 }
 
@@ -13,9 +13,9 @@ void FakePlugin::init()
 {
 }
 
-QMap<QString, QVariant> FakePlugin::metaData()
+FakePlugin::MetaData FakePlugin::metaData()
 {
-    QMap<QString, QVariant> data;
+    MetaData data;
     return data;
 }
 

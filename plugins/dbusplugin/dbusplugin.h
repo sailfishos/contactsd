@@ -20,33 +20,26 @@
 #ifndef DBUSPLUGIN_H
 #define DBUSPLUGIN_H
 
-#include <ContactsdPluginInterface>
-
 #include <QMap>
 #include <QObject>
 #include <QString>
 #include <QVariant>
 
-class DbusPlugin : public QObject, public ContactsdPluginInterface
+#include "base-plugin.h"
+
+class DbusPlugin : public Contactsd::BasePlugin
 {
     Q_OBJECT
-    Q_INTERFACES(ContactsdPluginInterface)
 
 public:
     DbusPlugin();
     ~DbusPlugin();
 
     void init();
-    QMap<QString, QVariant> metaData();
-private Q_SLOTS:
-    void fakeSignals();
+    MetaData metaData();
 
-Q_SIGNALS:
-    void importStarted(const QString &service, const QString &account);
-    void importEnded(const QString &service, const QString &account,
-                     int contactsAdded, int contactsRemoved, int contactsMerged);
 private:
-    bool mHasActiveImports;
+    void fakeSignals();
 };
 
 #endif // DBUSPLUGIN_H

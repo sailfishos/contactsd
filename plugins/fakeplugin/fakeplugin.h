@@ -20,33 +20,25 @@
 #ifndef FAKEPLUGIN_H
 #define FAKEPLUGIN_H
 
-#include <ContactsdPluginInterface>
-
 #include <QMap>
 #include <QObject>
 #include <QString>
 #include <QVariant>
 
-class FakePlugin : public QObject, public ContactsdPluginInterface
+#include "base-plugin.h"
+
+class FakePlugin : public Contactsd::BasePlugin
 {
     Q_OBJECT
-    Q_INTERFACES(ContactsdPluginInterface)
 
 public:
     FakePlugin();
     ~FakePlugin();
 
     void init();
-    QMap<QString, QVariant> metaData();
+    MetaData metaData();
 private Q_SLOTS:
     void timeout();
-
-Q_SIGNALS:
-    void importStarted(const QString &service, const QString &account);
-    void importEnded(const QString &service, const QString &account,
-                     int contactsAdded, int contactsRemoved, int contactsMerged);
-private:
-    bool mHasActiveImports;
 };
 
 #endif // FAKEPLUGIN_H
