@@ -14,7 +14,7 @@ Depends: ${shlibs:Depends}, libqt4-core, libqt4-dbus,
 Recommends: telepathy-gabble (>= 0.8.8), telepathy-spirit (>= 0.5.21),
   libqtcontacts-tracker, osso-mission-control, tracker
 Suggests: account-plugin-google, account-plugin-facebook, account-plugin-skype
-Conflicts: libqtcontacts-tracker (<< 4.12.4), contacts (<= 0.6.25)
+Conflicts: libqtcontacts-tracker (<< 4.12.4), contacts (<= 0.6.26)
 Description: Contacts daemon - Observing telepathy and storing to tracker
 
 Package: contactsd-dbg
