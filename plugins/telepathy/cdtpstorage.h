@@ -59,6 +59,7 @@ public:
 
 private Q_SLOTS:
     void onSyncOperationEnded(CDTpSparqlQuery *query);
+    void onUpdateQueueTimeout();
 
 private:
     QString saveAccountAvatar(CDTpAccountPtr accountWrapper) const;
@@ -144,6 +145,10 @@ private:
     QString literalIMAccount(const QString &accountPath) const;
     QString literalIMAccount(const CDTpAccountPtr &accountWrapper) const;
     QString literalContactInfo(const Tp::ContactInfoField &field, int i) const;
+
+private:
+    QHash<CDTpContactPtr, CDTpContact::Changes> mUpdateQueue;
+    QTimer mUpdateTimer;
 };
 
 #endif // CDTPSTORAGE_H

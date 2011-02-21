@@ -36,6 +36,9 @@ static const QString imAccountVar = QString::fromLatin1("?imAccount");
 
 CDTpStorage::CDTpStorage(QObject *parent) : QObject(parent)
 {
+    mUpdateTimer.setInterval(1000);
+    mUpdateTimer.setSingleShot(true);
+    connect(&mUpdateTimer, SIGNAL(timeout()), SLOT(onUpdateQueueTimeout()));
 }
 
 CDTpStorage::~CDTpStorage()
@@ -385,17 +388,48 @@ void CDTpStorage::removeAccountContacts(const QString &accountPath, const QStrin
 
 void CDTpStorage::updateContact(CDTpContactPtr contactWrapper, CDTpContact::Changes changes)
 {
-    CDTpQueryBuilder builder("UpdateContact");
+    if (!mUpdateQueue.contains(contactWrapper)) {
+        mUpdateQueue.insert(contactWrapper, changes);
+    } else {
+        mUpdateQueue[contactWrapper] |= changes;
+    }
 
-    // bind imContact to imAddress
-    const QString imAddress = literalIMAddress(contactWrapper);
-    static const QString tmpl = QString::fromLatin1("?imContact nco:hasAffiliation [ nco:hasIMAddress %1 ].");
-    builder.appendRawSelection(tmpl.arg(imAddress));
+    if (!mUpdateTimer.isActive()) {
+        mUpdateTimer.start();
+    }
+}
 
-    addRemoveContactsChangesToBuilder(builder, imAddress, imContactVar, changes);
-    addContactChangesToBuilder(builder, imAddress, imContactVar, changes, contactWrapper->contact());
+void CDTpStorage::onUpdateQueueTimeout()
+{
+    if (mUpdateQueue.isEmpty()) {
+        return;
+    }
+
+    debug() << "Update" << mUpdateQueue.count() << "contacts";
+
+    CDTpQueryBuilder builder("UpdateContacts");
+    QHash<CDTpContactPtr, CDTpContact::Changes>::const_iterator i;
+    for (i = mUpdateQueue.constBegin(); i != mUpdateQueue.constEnd(); i++) {
+        CDTpContactPtr contactWrapper = i.key();
+        CDTpContact::Changes changes = i.value();
+        const QString imAddress = literalIMAddress(contactWrapper);
+
+        CDTpQueryBuilder subBuilder("UpdateContact");
+
+        // bind imContact to imAddresses
+        static const QString tmpl = QString::fromLatin1(
+                "?imContact nco:hasAffiliation [ nco:hasIMAddress %1 ].");
+
+        subBuilder.appendRawSelection(tmpl.arg(imAddress));
+
+        addRemoveContactsChangesToBuilder(subBuilder, imAddress, imContactVar, changes);
+        addContactChangesToBuilder(subBuilder, imAddress, imContactVar, changes, contactWrapper->contact());
+        builder.appendRawQuery(subBuilder);
+    }
 
     new CDTpSparqlQuery(builder, this);
+
+    mUpdateQueue.clear();
 }
 
 void CDTpStorage::addSyncNoRosterAccountsContactsToBuilder(CDTpQueryBuilder &builder,
