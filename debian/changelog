@@ -1,3 +1,12 @@
+contactsd (0.5.53-1) unstable; urgency=low
+
+  * Changes: Queue contact updates to group them
+  * Changes: Affiliation label is "Other" and not "Others"
+  * Fixes: NB#229389 - contactsd provide dev packages with missing dependencies
+  * Fixes: NB#228543 - Gtalk contacts are not visible in contacts list though they are present in tracker
+
+ -- Xavier Claessens <xavier.claessens@collabora.co.uk>  Tue, 22 Feb 2011 18:57:47 +0100
+
 contactsd (0.5.52-2) unstable; urgency=low
 
   * Add missing header
