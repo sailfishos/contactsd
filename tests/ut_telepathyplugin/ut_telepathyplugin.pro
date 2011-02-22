@@ -7,10 +7,11 @@ include(tests.pri)
 TEMPLATE = app
 
 CONFIG += test qt mobility
-QT += testlib dbus
+QT += testlib
+QT -= gui
 MOBILITY += contacts
 CONFIG += link_pkgconfig
-PKGCONFIG += TelepathyQt4 qttracker telepathy-glib
+PKGCONFIG += TelepathyQt4 telepathy-glib
 DEFINES += QT_NO_KEYWORDS
 
 system(cp $$PWD/../../plugins/telepathy/com.nokia.contacts.buddymanagement.xml .)

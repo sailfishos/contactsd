@@ -2,39 +2,56 @@ Source: contactsd
 Priority: extra
 Section: comm
 Maintainer: Xavier Claessens <xavier.claessens@collabora.co.uk>
-Build-Depends: debhelper (>= 7.2.3), doxygen, aegis-builder,
-  libqt4-dev, libtelepathy-qt4-1-dev (>= 0.5.6), libqtsparql-dev (>= 0.0.11),
-  libtelepathy-glib-dev (>= 0.13.7), libqtm-contacts-dev
+Build-Depends: debhelper (>= 7.2.3),
+               doxygen,
+               aegis-builder,
+               libqt4-dev,
+               libtelepathy-qt4-1-dev (>= 0.5.6),
+               libqtsparql-dev (>= 0.0.11),
+               libtelepathy-glib-dev (>= 0.13.7),
+               libqtm-contacts-dev
 Standards-Version: 3.8.1
 
 Package: contactsd
 Architecture: any
-Depends: ${shlibs:Depends}, libqt4-core, libqt4-dbus,
-  libtelepathy-qt4-1 (>= 0.5.6), libqtsparql0 (>= 0.0.11)
-Recommends: telepathy-gabble (>= 0.8.8), telepathy-spirit (>= 0.5.21),
-  libqtcontacts-tracker, osso-mission-control, tracker
-Suggests: account-plugin-google, account-plugin-facebook, account-plugin-skype
-Conflicts: libqtcontacts-tracker (<< 4.12.4), contacts (<= 0.6.26)
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Recommends: telepathy-gabble (>= 0.8.8),
+            libqtcontacts-tracker,
+            osso-mission-control,
+            tracker
+Suggests: account-plugin-google,
+          account-plugin-facebook,
+          account-plugin-skype
+Conflicts: libqtcontacts-tracker (<< 4.12.4),
+           contacts (<= 0.6.26)
 Description: Contacts daemon - Observing telepathy and storing to tracker
 
 Package: contactsd-dbg
 Architecture: any
 Section: libdevel
 Depends: contactsd (=${binary:Version})
+         ${misc:Depends}
 Description: Debug symbols for Contacts daemon.
 
 Package: contactsd-dev
 Architecture: any
 Section: libdevel
-Recommends: contactsd (=${binary:Version})
+Depends: contactsd (= ${binary:Version}),
+         libqt4-dev,
+         pkg-config (>= 0.21),
+         ${shlibs:Depends},
+         ${misc:Depends}
 Description: Development headers for Contacts daemon plugins.
 
 Package: contactsd-tests
 Section: libdevel
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, testrunner-lite, ci-testing,
-  libtelepathy-glib0 (>= 0.13.7), libqtm-contacts, libqtcontacts-tracker,
-  contactsd, tracker, libmcclient6
+Depends: ci-testing,
+         contactsd (=${binary:Version}),
+         tracker,
+         libmcclient6,
+         ${shlibs:Depends},
+         ${misc:Depends}
 XB-Maemo-CI-Packages: libqtcontacts-tracker, contactsd, tracker
 XB-Maemo-CI-Stage: fast, staging, acceptance
 Description: Contactsd plugin (unit tests)

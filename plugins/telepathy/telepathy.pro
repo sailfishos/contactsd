@@ -1,4 +1,5 @@
 TEMPLATE = lib
+QT -= gui
 QT += dbus
 
 CONFIG += plugin qtsparql
