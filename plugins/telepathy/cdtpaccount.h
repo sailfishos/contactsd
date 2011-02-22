@@ -71,6 +71,7 @@ private Q_SLOTS:
     void onAccountConnectionChanged(const Tp::ConnectionPtr &connection);
     void onAccountContactChanged(CDTpContactPtr contactWrapper,
             CDTpContact::Changes changes);
+    void onStateChanged(Tp::ContactListState);
     void onAllKnownContactsChanged(const Tp::Contacts &contactsAdded,
             const Tp::Contacts &contactsRemoved);
 

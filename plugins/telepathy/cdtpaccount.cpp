@@ -114,35 +114,52 @@ void CDTpAccount::onAccountAvatarChanged()
 
 void CDTpAccount::onAccountConnectionChanged(const Tp::ConnectionPtr &connection)
 {
-    debug() << "Account" << mAccount->objectPath() << "connection changed";
-
     setConnection(connection);
-
-    Q_EMIT rosterChanged(CDTpAccountPtr(this));
 }
 
 void CDTpAccount::setConnection(const Tp::ConnectionPtr &connection)
 {
     mContacts.clear();
 
+    debug() << "Account" << mAccount->objectPath() << "- has connection:" << (connection != 0);
+
+    bool oldHasRoster = mHasRoster;
+
+    mHasRoster = false;
     if (connection && connection->actualFeatures().contains(Tp::Connection::FeatureRoster)) {
-        mHasRoster = true;
+        connect(connection->contactManager().data(),
+                SIGNAL(stateChanged(Tp::ContactListState)),
+                SLOT(onStateChanged(Tp::ContactListState)));
+        onStateChanged(connection->contactManager()->state());
+    }
 
-        debug() << "Got new roster for account" << mAccount->objectPath();
-        Tp::ContactManagerPtr contactManager = connection->contactManager();
-        connect(contactManager.data(),
-                SIGNAL(allKnownContactsChanged(const Tp::Contacts &, const Tp::Contacts &, const Tp::Channel::GroupMemberChangeDetails &)),
-                SLOT(onAllKnownContactsChanged(const Tp::Contacts &, const Tp::Contacts &)));
+    if (oldHasRoster != mHasRoster) {
+        Q_EMIT rosterChanged(CDTpAccountPtr(this));
+    }
+}
 
-        Q_FOREACH (const Tp::ContactPtr &contact, contactManager->allKnownContacts()) {
-            insertContact(contact);
-            if (mFirstSeen) {
-                maybeRequestExtraInfo(contact);
-            }
+void CDTpAccount::onStateChanged(Tp::ContactListState state)
+{
+    if (state != Tp::ContactListStateSuccess) {
+        return;
+    }
+
+    if (mHasRoster) {
+        warning() << "Already got the roster";
+        return;
+    }
+
+    mHasRoster = true;
+    Tp::ContactManagerPtr contactManager = mAccount->connection()->contactManager();
+    connect(contactManager.data(),
+            SIGNAL(allKnownContactsChanged(const Tp::Contacts &, const Tp::Contacts &, const Tp::Channel::GroupMemberChangeDetails &)),
+            SLOT(onAllKnownContactsChanged(const Tp::Contacts &, const Tp::Contacts &)));
+
+    Q_FOREACH (const Tp::ContactPtr &contact, contactManager->allKnownContacts()) {
+        insertContact(contact);
+        if (mFirstSeen) {
+            maybeRequestExtraInfo(contact);
         }
-    } else {
-        debug() << "Drop roster for account" << mAccount->objectPath() << " - has connection:" << (connection != 0);
-        mHasRoster = false;
     }
 
     mFirstSeen = false;
