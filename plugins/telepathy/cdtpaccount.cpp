@@ -128,6 +128,7 @@ void CDTpAccount::setConnection(const Tp::ConnectionPtr &connection)
     if (connection && connection->actualFeatures().contains(Tp::Connection::FeatureRoster)) {
         mHasRoster = true;
 
+        debug() << "Got new roster for account" << mAccount->objectPath();
         Tp::ContactManagerPtr contactManager = connection->contactManager();
         connect(contactManager.data(),
                 SIGNAL(allKnownContactsChanged(const Tp::Contacts &, const Tp::Contacts &, const Tp::Channel::GroupMemberChangeDetails &)),
@@ -140,6 +141,7 @@ void CDTpAccount::setConnection(const Tp::ConnectionPtr &connection)
             }
         }
     } else {
+        debug() << "Drop roster for account" << mAccount->objectPath() << " - has connection:" << (connection != 0);
         mHasRoster = false;
     }
 
