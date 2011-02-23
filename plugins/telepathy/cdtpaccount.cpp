@@ -114,27 +114,25 @@ void CDTpAccount::onAccountAvatarChanged()
 
 void CDTpAccount::onAccountConnectionChanged(const Tp::ConnectionPtr &connection)
 {
+    bool oldHasRoster = mHasRoster;
     setConnection(connection);
+    if (oldHasRoster != mHasRoster) {
+        Q_EMIT rosterChanged(CDTpAccountPtr(this));
+    }
 }
 
 void CDTpAccount::setConnection(const Tp::ConnectionPtr &connection)
 {
-    mContacts.clear();
-
     debug() << "Account" << mAccount->objectPath() << "- has connection:" << (connection != 0);
 
-    bool oldHasRoster = mHasRoster;
-
+    mContacts.clear();
     mHasRoster = false;
+
     if (connection && connection->actualFeatures().contains(Tp::Connection::FeatureRoster)) {
         connect(connection->contactManager().data(),
                 SIGNAL(stateChanged(Tp::ContactListState)),
                 SLOT(onStateChanged(Tp::ContactListState)));
         onStateChanged(connection->contactManager()->state());
-    }
-
-    if (oldHasRoster != mHasRoster) {
-        Q_EMIT rosterChanged(CDTpAccountPtr(this));
     }
 }
 
