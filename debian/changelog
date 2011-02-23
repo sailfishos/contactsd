@@ -1,3 +1,10 @@
+contactsd (0.5.54-1) unstable; urgency=low
+
+  * Changes: Fix a crash when emitting rosterChanged from within constructor
+  * Fixes: NB#214534 - Unable ot remove gtalk/facebook contact.
+
+ -- Xavier Claessens <xavier.claessens@collabora.co.uk>  Wed, 23 Feb 2011 16:31:50 +0100
+
 contactsd (0.5.53-1) unstable; urgency=low
 
   * Changes: Queue contact updates to group them
