@@ -25,8 +25,7 @@ HEADERS  = cdtpaccount.h \
     cdtpquery.h \
     cdtpstorage.h \
     sparqlconnectionmanager.h \
-    buddymanagementadaptor.h \
-    redliststorage.h
+    buddymanagementadaptor.h
 
 SOURCES  = cdtpaccount.cpp \
     cdtpcontact.cpp \
@@ -35,8 +34,7 @@ SOURCES  = cdtpaccount.cpp \
     cdtpquery.cpp \
     cdtpstorage.cpp \
     sparqlconnectionmanager.cpp \
-    buddymanagementadaptor.cpp \
-    redliststorage.cpp
+    buddymanagementadaptor.cpp
 
 TARGET = telepathyplugin
 target.path = $$LIBDIR/contactsd-1.0/plugins

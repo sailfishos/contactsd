@@ -386,6 +386,11 @@ void CDTpStorage::removeAccountContacts(const QString &accountPath, const QStrin
     new CDTpSparqlQuery(builder, this);
 }
 
+void  CDTpStorage::contactsToAvoid(const QString &accountPath, const QStringList &contactIds)
+{
+   mContactsToAvoid[accountPath] = contactIds;
+}
+
 void CDTpStorage::updateContact(CDTpContactPtr contactWrapper, CDTpContact::Changes changes)
 {
     if (!mUpdateQueue.contains(contactWrapper)) {
@@ -489,12 +494,18 @@ void CDTpStorage::addSyncRosterAccountsContactsToBuilder(CDTpQueryBuilder &build
     Q_FOREACH (const CDTpAccountPtr &accountWrapper, accounts) {
         const QString imAddress = literalIMAddress(accountWrapper);
         const QString imAccount = literalIMAccount(accountWrapper);
+        const QString accountPath = accountWrapper->account()->objectPath();
 
         debug() << "Sync roster account" << imAddress;
 
         imAccounts << imAccount;
         imAddresses << imAddress;
-        allContacts << accountWrapper->contacts();
+        Q_FOREACH(CDTpContactPtr contactPtr, accountWrapper->contacts()) {
+            QStringList offlineRemoved = mContactsToAvoid[accountPath];
+            if (!offlineRemoved.contains(contactPtr->contact()->id())) {
+                allContacts << contactPtr;
+            }
+        }
     }
     CDTpQueryBuilder subBuilder = CDTpQueryBuilder("SyncRosterAccounts - drop hasIMContact");
     static const QString tmpl = QString::fromLatin1(

@@ -23,14 +23,14 @@
 #include "cdtpaccount.h"
 #include "cdtpcontact.h"
 #include "cdtpstorage.h"
-#include "redliststorage.h"
 
 #include <TelepathyQt4/Types>
 
 #include <QList>
 #include <QObject>
+#include <QSettings>
 
-using namespace com::nokia::contactsd;
+class PendingOfflineRemoval;
 
 class CDTpController : public QObject
 {
@@ -53,12 +53,13 @@ private Q_SLOTS:
     void onAccountAdded(const Tp::AccountPtr &account);
     void onAccountRemoved(const Tp::AccountPtr &account);
     void onAccountReady(CDTpAccountPtr accountWrapper);
+    void onAccountOnlinenessChanged(bool online);
     void onSyncStarted(CDTpAccountPtr accountWrapper);
     void onSyncEnded(CDTpAccountPtr accountWrapper, int contactsAdded, int contactsRemoved);
     void onContactsRemoved(Tp::PendingOperation *op);
-    void onAccountOnlinenessChanged(bool online);
     void onInviteContactRetrieved(Tp::PendingOperation *op);
     void onPresenceSubscriptionRequested(Tp::PendingOperation *op);
+    void clearOfflineBuffer(PendingOfflineRemoval *pr);
 
 private:
     CDTpAccountPtr insertAccount(const Tp::AccountPtr &account);
@@ -68,14 +69,42 @@ private:
     void setImportEnded(const Tp::AccountPtr &account,
                         int contactsAdded, int contactsRemoved);
     bool registerDBusObject();
-    void processRedList();
+    void checkOfflineOperations();
 
 private:
     CDTpStorage *mStorage;
     Tp::AccountManagerPtr mAM;
     Tp::AccountSetPtr mAccountSet;
     QHash<QString, CDTpAccountPtr> mAccounts;
-    RedListStorage mRedListStorage;
+    QSettings *mOfflineRosterBuffer;
 };
 
+class PendingOfflineRemoval : public QObject
+{
+    Q_OBJECT
+
+public:
+    PendingOfflineRemoval(const QString &accountPath, const QStringList &contactids,
+            QObject *parent = 0);
+    virtual ~PendingOfflineRemoval();
+    QString accountPath() const { return mAccountPath;}
+    bool isError() const {return mIsError;}
+    QString errorName() const { return mErrorName;}
+    QString errorMessage() const { return mErrorMessage;}
+Q_SIGNALS:
+    void finished(PendingOfflineRemoval *op);
+
+private Q_SLOTS:
+    void onOfflineAccountReady(Tp::PendingOperation *po);
+    void onConnectionReady(Tp::PendingOperation * op);
+    void onContactsRemoved(Tp::PendingOperation *op);
+    void onConnectionChanged(Tp::ConnectionPtr connection);
+private:
+    QStringList mContactIds;
+    QString mAccountPath;
+    Tp::AccountPtr mAccount;
+    bool mIsError;
+    QString mErrorName;
+    QString mErrorMessage;
+};
 #endif // CDTPCONTROLLER_H
