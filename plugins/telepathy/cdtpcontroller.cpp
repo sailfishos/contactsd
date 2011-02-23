@@ -97,7 +97,7 @@ void CDTpController::onAccountManagerReady(Tp::PendingOperation *op)
     }
 
     checkOfflineOperations();
-    qDebug() << "Account manager ready";
+    debug() << "Account manager ready";
 
     Tp::AccountPropertyFilterPtr filter1 = Tp::AccountPropertyFilter::create();
     filter1->addProperty(QString::fromLatin1("valid"), true);
@@ -366,7 +366,7 @@ PendingOfflineRemoval::~PendingOfflineRemoval()
 void PendingOfflineRemoval::onOfflineAccountReady(Tp::PendingOperation *po)
 {
    if (po->isError()) {
-       qDebug() << "Error Creating Account" << po->errorName() << po->errorMessage();
+       debug() << "Error Creating Account" << po->errorName() << po->errorMessage();
        mIsError = true;
        mErrorMessage = po->errorMessage();
        mErrorName = po->errorName();
@@ -400,7 +400,7 @@ void PendingOfflineRemoval::onOfflineAccountReady(Tp::PendingOperation *po)
 void PendingOfflineRemoval::onConnectionReady(Tp::PendingOperation * op)
 {
     if (op->isError()) {
-        qDebug() << "Error with Connection" << op->errorName() << op->errorMessage();
+        debug() << "Error with Connection" << op->errorName() << op->errorMessage();
         mIsError = true;
         mErrorMessage = op->errorMessage();
         mErrorName = op->errorName();
