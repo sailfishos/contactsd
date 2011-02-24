@@ -47,11 +47,6 @@ CDTpStorage::~CDTpStorage()
 
 void CDTpStorage::syncAccounts(const QList<CDTpAccountPtr> &accounts)
 {
-    /* We started sync operation */
-    Q_FOREACH (const CDTpAccountPtr &accountWrapper, accounts) {
-        Q_EMIT syncStarted(accountWrapper);
-    }
-
     CDTpQueryBuilder builder("SyncAccounts");
 
     /* Ensure the default-contact-me exists. NB#215973 */
@@ -91,8 +86,15 @@ void CDTpStorage::syncAccounts(const QList<CDTpAccountPtr> &accounts)
         builder.appendRawQuery(subBuilder);
     }
 
-    /* Execute the query and get a callback when it's done */
-    CDTpAccountsSparqlQuery *query = new CDTpAccountsSparqlQuery(accounts, builder, this);
+    /* Notify import progress for accounts that have contacts */
+    QList<CDTpAccountPtr> rosterAccounts;
+    Q_FOREACH (const CDTpAccountPtr &accountWrapper, accounts) {
+        if (!accountWrapper->contacts().isEmpty()) {
+            rosterAccounts << accountWrapper;
+            Q_EMIT syncStarted(accountWrapper);
+        }
+    }
+    CDTpAccountsSparqlQuery *query = new CDTpAccountsSparqlQuery(rosterAccounts, builder, this);
     connect(query,
             SIGNAL(finished(CDTpSparqlQuery *)),
             SLOT(onSyncOperationEnded(CDTpSparqlQuery *)));
@@ -100,21 +102,25 @@ void CDTpStorage::syncAccounts(const QList<CDTpAccountPtr> &accounts)
 
 void CDTpStorage::syncAccount(CDTpAccountPtr accountWrapper)
 {
-    /* We started sync operation */
-    Q_EMIT syncStarted(accountWrapper);
-
     CDTpQueryBuilder builder("SyncAccount");
 
-    /* Create account and its contacts */
+    /* Create account */
     QList<CDTpAccountPtr> accounts = QList<CDTpAccountPtr>() << accountWrapper;
     builder.updateProperty(defaultContactMe, "nie:contentLastModified", literalTimeStamp());
     addCreateAccountsToBuilder(builder, accounts);
-    if (!accountWrapper->contacts().isEmpty()) {
-        addCreateContactsToBuilder(builder, accountWrapper->contacts());
+
+    /* if account has no contacts, we are done */
+    if (accountWrapper->contacts().isEmpty()) {
+        new CDTpSparqlQuery(builder, this);
+        return;
     }
 
-    /* Execute the query and get a callback when it's done */
-    CDTpAccountsSparqlQuery *query = new CDTpAccountsSparqlQuery(accounts, builder, this);
+    /* Create account's contacts */
+    addCreateContactsToBuilder(builder, accountWrapper->contacts());
+
+    /* Notify import progress */
+    Q_EMIT syncStarted(accountWrapper);
+    CDTpAccountsSparqlQuery *query = new CDTpAccountsSparqlQuery(accountWrapper, builder, this);
     connect(query,
             SIGNAL(finished(CDTpSparqlQuery *)),
             SLOT(onSyncOperationEnded(CDTpSparqlQuery *)));
@@ -342,7 +348,18 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper)
                 QList<CDTpAccountPtr>() << accountWrapper);
     }
 
-    new CDTpSparqlQuery(builder, this);
+    /* if account has no contacts, we are done */
+    if (accountWrapper->contacts().isEmpty()) {
+        new CDTpSparqlQuery(builder, this);
+        return;
+    }
+
+    /* Notify import progress */
+    Q_EMIT syncStarted(accountWrapper);
+    CDTpAccountsSparqlQuery *query = new CDTpAccountsSparqlQuery(accountWrapper, builder, this);
+    connect(query,
+            SIGNAL(finished(CDTpSparqlQuery *)),
+            SLOT(onSyncOperationEnded(CDTpSparqlQuery *)));
 }
 
 void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper,

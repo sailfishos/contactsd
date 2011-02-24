@@ -100,6 +100,8 @@ class CDTpAccountsSparqlQuery : public CDTpSparqlQuery
 public:
     CDTpAccountsSparqlQuery(const QList<CDTpAccountPtr> &accounts,
         const CDTpQueryBuilder &builder, QObject *parent = 0);
+    CDTpAccountsSparqlQuery(const CDTpAccountPtr &accountWrapper,
+        const CDTpQueryBuilder &builder, QObject *parent = 0);
     ~CDTpAccountsSparqlQuery() {};
 
     QList<CDTpAccountPtr> accounts() const { return mAccounts; };

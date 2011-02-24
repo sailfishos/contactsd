@@ -75,7 +75,7 @@ QList<CDTpContactPtr> CDTpAccount::contacts() const
 QString CDTpAccount::providerName() const
 {
     Tp::ProfilePtr profile = mAccount->profile();
-    if (profile != 0) {
+    if (profile != 0 && !profile->provider().isEmpty()) {
         return profile->provider();
     }
 
