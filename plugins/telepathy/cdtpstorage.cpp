@@ -423,18 +423,17 @@ void CDTpStorage::updateContact(CDTpContactPtr contactWrapper, CDTpContact::Chan
 
 void CDTpStorage::onUpdateQueueTimeout()
 {
-    if (mUpdateQueue.isEmpty()) {
-        return;
-    }
-
     debug() << "Update" << mUpdateQueue.count() << "contacts";
 
+    bool found = false;
     CDTpQueryBuilder builder("UpdateContacts");
     QHash<CDTpContactPtr, CDTpContact::Changes>::const_iterator i;
     for (i = mUpdateQueue.constBegin(); i != mUpdateQueue.constEnd(); i++) {
         CDTpContactPtr contactWrapper = i.key();
         CDTpContact::Changes changes = i.value();
-        const QString imAddress = literalIMAddress(contactWrapper);
+        if (!contactWrapper->isVisible()) {
+            continue;
+        }
 
         CDTpQueryBuilder subBuilder("UpdateContact");
 
@@ -442,16 +441,22 @@ void CDTpStorage::onUpdateQueueTimeout()
         static const QString tmpl = QString::fromLatin1(
                 "?imContact nco:hasAffiliation [ nco:hasIMAddress %1 ].");
 
+        const QString imAddress = literalIMAddress(contactWrapper);
         subBuilder.appendRawSelection(tmpl.arg(imAddress));
-
         addRemoveContactsChangesToBuilder(subBuilder, imAddress, imContactVar, changes);
         addContactChangesToBuilder(subBuilder, imAddress, imContactVar, changes, contactWrapper->contact());
         builder.appendRawQuery(subBuilder);
+
+        found = true;
+    }
+    mUpdateQueue.clear();
+
+    if (!found) {
+        debug() << "  None needs update";
+        return;
     }
 
     new CDTpSparqlQuery(builder, this);
-
-    mUpdateQueue.clear();
 }
 
 void CDTpStorage::addSyncNoRosterAccountsContactsToBuilder(CDTpQueryBuilder &builder,
