@@ -46,7 +46,6 @@ public:
     void appendRawSelection(const QString &str);
     void appendRawQuery(const QString &str);
     void appendRawQuery(const CDTpQueryBuilder &builder);
-    void mergeWithOptional(const CDTpQueryBuilder &builder);
 
     QLatin1String name() const { return mName; };
     QString uniquify(const char *v = "?v");

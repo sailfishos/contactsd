@@ -111,26 +111,6 @@ QString CDTpQueryBuilder::uniquify(const char *v)
     return QString::fromLatin1("%1_%2").arg(QLatin1String(v)).arg(++mVCount);
 }
 
-void CDTpQueryBuilder::mergeWithOptional(const CDTpQueryBuilder &builder)
-{
-    // Append insertPart
-    InsertPart::const_iterator i;
-    for (i = builder.mInsertPart.constBegin(); i != builder.mInsertPart.constEnd(); ++i) {
-        QHash<QString, QStringList>::const_iterator j;
-        for (j = i.value().constBegin(); j != i.value().constEnd(); ++j) {
-            mInsertPart[i.key()][j.key()] << j.value();
-        }
-    }
-
-    // Append deletePart
-    append(mDeletePart, builder.mDeletePart);
-
-    // Append Where part
-    static const QString optionalTemplate = QString::fromLatin1("OPTIONAL {\n%1\n}.");
-    append(mInsertPartWhere, optionalTemplate.arg(setIndentation(builder.mInsertPartWhere, indent)));
-    append(mDeletePartWhere, optionalTemplate.arg(setIndentation(builder.mDeletePartWhere, indent)));
-}
-
 QString CDTpQueryBuilder::getRawQuery() const
 {
     // DELETE part

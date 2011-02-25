@@ -393,6 +393,7 @@ void TestTelepathyPlugin::testRemoveContacts()
     QCOMPARE(mLoop->exec(), 0);
 }
 
+#if 0
 void TestTelepathyPlugin::testRemoveBuddyDBusAPI()
 {
     // add again and remove using RemoveBuddy
@@ -452,6 +453,7 @@ void TestTelepathyPlugin::testRemoveBuddyDBusAPI()
     mExpectation.accountUri = "buddyyes";
     QCOMPARE(mLoop->exec(), 0);
 }
+#endif
 
 void TestTelepathyPlugin::testInviteBuddyDBusAPI()
 {
