@@ -101,7 +101,6 @@ void CDTpController::onAccountManagerReady(Tp::PendingOperation *op)
 
     Tp::AccountPropertyFilterPtr filter1 = Tp::AccountPropertyFilter::create();
     filter1->addProperty(QString::fromLatin1("valid"), true);
-    filter1->addProperty(QString::fromLatin1("enabled"), true);
     filter1->addProperty(QString::fromLatin1("hasBeenOnline"), true);
 
     Tp::AccountPropertyFilterPtr normalizedNameFilter = Tp::AccountPropertyFilter::create();

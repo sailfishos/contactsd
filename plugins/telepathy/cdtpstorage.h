@@ -61,6 +61,7 @@ public:
 private Q_SLOTS:
     void onSyncOperationEnded(CDTpSparqlQuery *query);
     void onUpdateQueueTimeout();
+    void onUpdateFinished(CDTpSparqlQuery *query);
 
 private:
     QString saveAccountAvatar(CDTpAccountPtr accountWrapper) const;
@@ -77,6 +78,8 @@ private:
             CDTpAccountPtr accountWrapper,
             CDTpAccount::Changes changes) const;
     void addSyncNoRosterAccountsContactsToBuilder(CDTpQueryBuilder &builder,
+            const QList<CDTpAccountPtr> accounts) const;
+    void addSyncDisabledAccountsContactsToBuilder(CDTpQueryBuilder &builder,
             const QList<CDTpAccountPtr> accounts) const;
     void addSyncRosterAccountsContactsToBuilder(CDTpQueryBuilder &builder,
             const QList<CDTpAccountPtr> &accounts) const;
@@ -150,6 +153,7 @@ private:
 private:
     QHash<CDTpContactPtr, CDTpContact::Changes> mUpdateQueue;
     QTimer mUpdateTimer;
+    bool mUpdateRunning;
     QMap<QString, QStringList> mContactsToAvoid;
 };
 

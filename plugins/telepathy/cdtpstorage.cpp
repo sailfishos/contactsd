@@ -34,9 +34,9 @@ static const QString imAddressVar = QString::fromLatin1("?imAddress");
 static const QString imContactVar = QString::fromLatin1("?imContact");
 static const QString imAccountVar = QString::fromLatin1("?imAccount");
 
-CDTpStorage::CDTpStorage(QObject *parent) : QObject(parent)
+CDTpStorage::CDTpStorage(QObject *parent) : QObject(parent), mUpdateRunning(false)
 {
-    mUpdateTimer.setInterval(1000);
+    mUpdateTimer.setInterval(0);
     mUpdateTimer.setSingleShot(true);
     connect(&mUpdateTimer, SIGNAL(timeout()), SLOT(onUpdateQueueTimeout()));
 }
@@ -194,27 +194,36 @@ void CDTpStorage::addSyncAccountsToBuilder(CDTpQueryBuilder &builder,
     addCreateAccountsToBuilder(subBuilder, accounts);
     builder.appendRawQuery(subBuilder);
 
-    // Sync all contacts of all accounts. If the account has no roster (offline)
-    // we set presence of all its contacts to UNKNOWN, otherwise we update them.
+    // Sync all contacts of all accounts. Special case for no-roster/offline
+    // or disabled accounts.
     QList<CDTpAccountPtr> rosterAccounts;
+    QList<CDTpAccountPtr> disabledAccounts;
     QList<CDTpAccountPtr> noRosterAccounts;
     Q_FOREACH (const CDTpAccountPtr &accountWrapper, accounts) {
-        if (!accountWrapper->hasRoster()) {
-            noRosterAccounts << accountWrapper;
-        } else {
+        if (accountWrapper->hasRoster()) {
             rosterAccounts << accountWrapper;
+        } else if (!accountWrapper->account()->isEnabled()) {
+            disabledAccounts << accountWrapper;
+        } else {
+            noRosterAccounts << accountWrapper;
         }
-    }
-
-    if (!noRosterAccounts.isEmpty()) {
-        subBuilder = CDTpQueryBuilder("SyncNoRosterAccounts");
-        addSyncNoRosterAccountsContactsToBuilder(subBuilder, noRosterAccounts);
-        builder.appendRawQuery(subBuilder);
     }
 
     if (!rosterAccounts.isEmpty()) {
         subBuilder = CDTpQueryBuilder("SyncRosterAccounts");
         addSyncRosterAccountsContactsToBuilder(subBuilder, rosterAccounts);
+        builder.appendRawQuery(subBuilder);
+    }
+
+    if (!disabledAccounts.isEmpty()) {
+        subBuilder = CDTpQueryBuilder("SyncDisabledAccounts");
+        addSyncDisabledAccountsContactsToBuilder(subBuilder, disabledAccounts);
+        builder.appendRawQuery(subBuilder);
+    }
+
+    if (!noRosterAccounts.isEmpty()) {
+        subBuilder = CDTpQueryBuilder("SyncNoRosterAccounts");
+        addSyncNoRosterAccountsContactsToBuilder(subBuilder, noRosterAccounts);
         builder.appendRawQuery(subBuilder);
     }
 }
@@ -340,12 +349,13 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper)
 {
     CDTpQueryBuilder builder("SyncAccountContacts");
 
+    QList<CDTpAccountPtr> accounts = QList<CDTpAccountPtr>() << accountWrapper;
     if (accountWrapper->hasRoster()) {
-        addSyncRosterAccountsContactsToBuilder(builder,
-                QList<CDTpAccountPtr>() << accountWrapper);
+        addSyncRosterAccountsContactsToBuilder(builder, accounts);
+    } else if (!accountWrapper->account()->isEnabled()) {
+        addSyncDisabledAccountsContactsToBuilder(builder, accounts);
     } else {
-        addSyncNoRosterAccountsContactsToBuilder(builder,
-                QList<CDTpAccountPtr>() << accountWrapper);
+        addSyncNoRosterAccountsContactsToBuilder(builder, accounts);
     }
 
     /* if account has no contacts, we are done */
@@ -416,7 +426,7 @@ void CDTpStorage::updateContact(CDTpContactPtr contactWrapper, CDTpContact::Chan
         mUpdateQueue[contactWrapper] |= changes;
     }
 
-    if (!mUpdateTimer.isActive()) {
+    if (!mUpdateRunning) {
         mUpdateTimer.start();
     }
 }
@@ -456,7 +466,21 @@ void CDTpStorage::onUpdateQueueTimeout()
         return;
     }
 
-    new CDTpSparqlQuery(builder, this);
+    mUpdateRunning = true;
+    CDTpSparqlQuery *query = new CDTpSparqlQuery(builder, this);
+    connect(query,
+            SIGNAL(finished(CDTpSparqlQuery *)),
+            SLOT(onUpdateFinished(CDTpSparqlQuery *)));
+}
+
+void CDTpStorage::onUpdateFinished(CDTpSparqlQuery *query)
+{
+    Q_UNUSED(query);
+
+    mUpdateRunning = false;
+    if (!mUpdateQueue.isEmpty()) {
+        mUpdateTimer.start();
+    }
 }
 
 void CDTpStorage::addSyncNoRosterAccountsContactsToBuilder(CDTpQueryBuilder &builder,
@@ -499,6 +523,13 @@ void CDTpStorage::addSyncNoRosterAccountsContactsToBuilder(CDTpQueryBuilder &bui
         addCapabilitiesToBuilder(builder, literalIMAddress(accountWrapper),
                 accountWrapper->account()->capabilities());
     }
+}
+
+void CDTpStorage::addSyncDisabledAccountsContactsToBuilder(CDTpQueryBuilder &builder,
+        const QList<CDTpAccountPtr> accounts) const
+{
+    // FIXME: We should remove unmerged contacts, and set merged contacts with no caps
+    addSyncNoRosterAccountsContactsToBuilder(builder, accounts);
 }
 
 void CDTpStorage::addSyncRosterAccountsContactsToBuilder(CDTpQueryBuilder &builder,

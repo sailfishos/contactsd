@@ -71,19 +71,26 @@ private Q_SLOTS:
     void onAccountConnectionChanged(const Tp::ConnectionPtr &connection);
     void onAccountContactChanged(CDTpContactPtr contactWrapper,
             CDTpContact::Changes changes);
-    void onStateChanged(Tp::ContactListState);
+    void onAccountStateChanged(bool enabled);
+    void onContactListStateChanged(Tp::ContactListState);
+    void onRosterChangedTimeout();
     void onAllKnownContactsChanged(const Tp::Contacts &contactsAdded,
             const Tp::Contacts &contactsRemoved);
 
 private:
     void setConnection(const Tp::ConnectionPtr &connection);
+    void setContactManager(const Tp::ContactManagerPtr &contactManager);
     CDTpContactPtr insertContact(const Tp::ContactPtr &contact);
     void maybeRequestExtraInfo(Tp::ContactPtr contact);
+    void emitRosterChanged();
 
+private:
     Tp::AccountPtr mAccount;
     QHash<QString, CDTpContactPtr> mContacts;
+    QTimer mRosterChangedTimer;
     bool mHasRoster;
     bool mFirstSeen;
+    bool mBlockSignals;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(CDTpAccount::Changes)

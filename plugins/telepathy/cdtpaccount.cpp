@@ -33,8 +33,15 @@ CDTpAccount::CDTpAccount(const Tp::AccountPtr &account, QObject *parent)
     : QObject(parent),
       mAccount(account),
       mHasRoster(false),
-      mFirstSeen(false)
+      mFirstSeen(false),
+      mBlockSignals(false)
 {
+    mRosterChangedTimer.setInterval(1000);
+    mRosterChangedTimer.setSingleShot(true);
+    connect(&mRosterChangedTimer,
+            SIGNAL(timeout()),
+            SLOT(onRosterChangedTimeout()));
+
     // connect all signals we care about, so we can signal that the account
     // changed accordingly
     connect(mAccount.data(),
@@ -52,6 +59,9 @@ CDTpAccount::CDTpAccount(const Tp::AccountPtr &account, QObject *parent)
     connect(mAccount.data(),
             SIGNAL(connectionChanged(const Tp::ConnectionPtr &)),
             SLOT(onAccountConnectionChanged(const Tp::ConnectionPtr &)));
+    connect(mAccount.data(),
+            SIGNAL(stateChanged(bool)),
+            SLOT(onAccountStateChanged(bool)));
 
     setConnection(mAccount->connection());
 }
@@ -117,8 +127,21 @@ void CDTpAccount::onAccountConnectionChanged(const Tp::ConnectionPtr &connection
     bool oldHasRoster = mHasRoster;
     setConnection(connection);
     if (oldHasRoster != mHasRoster) {
-        Q_EMIT rosterChanged(CDTpAccountPtr(this));
+        emitRosterChanged();
     }
+}
+
+void CDTpAccount::onAccountStateChanged(bool enabled)
+{
+    debug() << "Account" << mAccount->objectPath() << "- enabled:" << enabled;
+
+    // When account gets enabled, we can't do anything until it gets online
+    if (enabled) {
+        return;
+    }
+
+    mHasRoster = false;
+    emitRosterChanged();
 }
 
 void CDTpAccount::setConnection(const Tp::ConnectionPtr &connection)
@@ -131,24 +154,36 @@ void CDTpAccount::setConnection(const Tp::ConnectionPtr &connection)
     if (connection && connection->actualFeatures().contains(Tp::Connection::FeatureRoster)) {
         connect(connection->contactManager().data(),
                 SIGNAL(stateChanged(Tp::ContactListState)),
-                SLOT(onStateChanged(Tp::ContactListState)));
-        onStateChanged(connection->contactManager()->state());
+                SLOT(onContactListStateChanged(Tp::ContactListState)));
+        setContactManager(connection->contactManager());
     }
 }
 
-void CDTpAccount::onStateChanged(Tp::ContactListState state)
+void CDTpAccount::onContactListStateChanged(Tp::ContactListState state)
 {
-    if (state != Tp::ContactListStateSuccess) {
+    Q_UNUSED(state);
+
+    bool oldHasRoster = mHasRoster;
+    setContactManager(mAccount->connection()->contactManager());
+    if (oldHasRoster != mHasRoster) {
+        emitRosterChanged();
+    }
+}
+
+void CDTpAccount::setContactManager(const Tp::ContactManagerPtr &contactManager)
+{
+    if (contactManager->state() != Tp::ContactListStateSuccess) {
         return;
     }
 
     if (mHasRoster) {
-        warning() << "Already got the roster";
+        warning() << "Account" << mAccount->objectPath() << "- already received the roster";
         return;
     }
 
+    debug() << "Account" << mAccount->objectPath() << "- received the roster";
+
     mHasRoster = true;
-    Tp::ContactManagerPtr contactManager = mAccount->connection()->contactManager();
     connect(contactManager.data(),
             SIGNAL(allKnownContactsChanged(const Tp::Contacts &, const Tp::Contacts &, const Tp::Channel::GroupMemberChangeDetails &)),
             SLOT(onAllKnownContactsChanged(const Tp::Contacts &, const Tp::Contacts &)));
@@ -161,6 +196,21 @@ void CDTpAccount::onStateChanged(Tp::ContactListState state)
     }
 
     mFirstSeen = false;
+}
+
+void CDTpAccount::emitRosterChanged()
+{
+    // When we receive/loose the roster, it is often followed by torrent of
+    // other updates. Wait a bit that dust settle before signaling this change.
+    // Block all signal emitions until then.
+    mBlockSignals = true;
+    mRosterChangedTimer.start();
+}
+
+void CDTpAccount::onRosterChangedTimeout()
+{
+    mBlockSignals = false;
+    Q_EMIT rosterChanged(CDTpAccountPtr(this));
 }
 
 void CDTpAccount::onAllKnownContactsChanged(const Tp::Contacts &contactsAdded,
@@ -198,7 +248,7 @@ void CDTpAccount::onAllKnownContactsChanged(const Tp::Contacts &contactsAdded,
         contactWrapper->setRemoved(true);
     }
 
-    if (!added.isEmpty() || !removed.isEmpty()) {
+    if ((!added.isEmpty() || !removed.isEmpty()) && !mBlockSignals) {
         Q_EMIT rosterUpdated(CDTpAccountPtr(this), added, removed);
     }
 }
@@ -210,22 +260,25 @@ void CDTpAccount::onAccountContactChanged(CDTpContactPtr contactWrapper,
         // Visibility of this contact changed. Transform this update operation
         // to an add/remove operation
         debug() << "Visibility changed for contact" << contactWrapper->contact()->id();
+
+        QList<CDTpContactPtr> added;
+        QList<CDTpContactPtr> removed;
         if (contactWrapper->isVisible()) {
-            Q_EMIT rosterUpdated(CDTpAccountPtr(this),
-                QList<CDTpContactPtr>() << contactWrapper,
-                QList<CDTpContactPtr>());
+            added << contactWrapper;
         } else {
             contactWrapper->setRemoved(true);
-            Q_EMIT rosterUpdated(CDTpAccountPtr(this),
-                QList<CDTpContactPtr>(),
-                QList<CDTpContactPtr>() << contactWrapper);
+            removed << contactWrapper;
+        }
+
+        if (!mBlockSignals) {
+            Q_EMIT rosterUpdated(CDTpAccountPtr(this), added, removed);
         }
 
         return;
     }
 
     // Forward changes only if contact is visible
-    if (contactWrapper->isVisible()) {
+    if (contactWrapper->isVisible() && !mBlockSignals) {
         Q_EMIT rosterContactChanged(contactWrapper, changes);
     }
 }
