@@ -24,6 +24,7 @@
 #include <QContactPhoneNumber>
 #include <QContactAddress>
 #include <QContactPresence>
+#include <QContactEmailAddress>
 
 #include <TelepathyQt4/Debug>
 
@@ -321,6 +322,12 @@ void TestTelepathyPlugin::testContactInfo()
 
     /* Set some ContactInfo on the contact */
     GPtrArray *infoPtrArray = createContactInfoTel("123");
+    const gchar *fieldValues[] = { "email@foo.com", NULL };
+    g_ptr_array_add (infoPtrArray, tp_value_array_build(3,
+        G_TYPE_STRING, "email",
+        G_TYPE_STRV, NULL,
+        G_TYPE_STRV, fieldValues,
+        G_TYPE_INVALID));
     tp_tests_contacts_connection_change_contact_info(
         TP_TESTS_CONTACTS_CONNECTION(mConnService), handle, infoPtrArray);
 
@@ -701,6 +708,11 @@ void TestExpectation::verify(QContact &contact) const
                                       << address.region()
                                       << address.postcode()
                                       << address.country());
+                nMatchedField++;
+            }
+            else if (detail.definitionName() == "EmailAddress") {
+                QContactEmailAddress emailAddress = static_cast<QContactEmailAddress >(detail);
+                verifyContactInfo(contactInfo, "email", QStringList() << emailAddress.emailAddress());
                 nMatchedField++;
             }
         }
