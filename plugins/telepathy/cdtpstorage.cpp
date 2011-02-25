@@ -877,7 +877,7 @@ void CDTpStorage::addAvatarToBuilder(CDTpQueryBuilder &builder,
 {
     if (!fileName.isEmpty()) {
         const QString dataObject = builder.uniquify("_:dataObject");
-        builder.createResource(dataObject, "nie:DataObject");
+        builder.createResource(dataObject, "nfo:FileDataObject");
         builder.insertProperty(dataObject, "nie:url", literal(QUrl::fromLocalFile(fileName).toString()));
         builder.insertProperty(imAddress, "nco:imAvatar", dataObject);
     }
