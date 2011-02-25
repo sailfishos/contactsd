@@ -906,6 +906,7 @@ void CDTpStorage::addContactInfoToBuilder(CDTpQueryBuilder &builder,
             const QString emailAddress = builder.uniquify("_:email");
             builder.createResource(emailAddress, "nco:EmailAddress", graph);
             builder.insertProperty(emailAddress, "nco:emailAddress", literalContactInfo(field, 0), graph);
+            builder.insertProperty(affiliation, "nco:hasEmailAddress", emailAddress, graph);
         }
 
         else if (!field.fieldName.compare(QLatin1String("url"))) {
