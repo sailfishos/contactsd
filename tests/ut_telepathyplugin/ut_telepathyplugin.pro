@@ -27,10 +27,12 @@ LIBS += -lgcov
 }
 
 HEADERS += test-telepathy-plugin.h \
+    test-expectation.h \
     test.h \
     buddymanagementinterface.h
 
 SOURCES += test-telepathy-plugin.cpp \
+    test-expectation.cpp \
     test.cpp \
     buddymanagementinterface.cpp
 

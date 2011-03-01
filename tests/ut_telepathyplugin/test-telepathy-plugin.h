@@ -21,7 +21,7 @@
 #define TEST_TELEPATHY_PLUGIN_H
 
 #include <QObject>
-#include <QtTest/QtTest>
+#include <QTest>
 #include <QString>
 #include <QContactManager>
 
@@ -34,64 +34,27 @@
 #include "libtelepathy/simple-account.h"
 
 #include "test.h"
+#include "test-expectation.h"
 
 QTM_USE_NAMESPACE
 
-class TestExpectation
-{
-public:
-    enum Event {
-        Added,
-        Changed,
-        Removed
-    };
-
-    enum VerifyFlags {
-        None           = 0,
-        Alias          = (1 << 0),
-        Presence       = (1 << 1),
-        Avatar         = (1 << 2),
-        Authorization  = (1 << 3),
-        Info           = (1 << 4),
-        OnlineAccounts = (1 << 5),
-        All            = (1 << 6) - 1
-    };
-
-    TestExpectation();
-    void verify(QContact &contact) const;
-    void verifyContactInfo(GPtrArray *infoPtrArray, QString expectedName,
-            const QStringList expectedValues) const;
-    int flags;
-    Event event;
-
-    int nOnlineAccounts;
-    QString accountUri;
-
-    QString alias;
-    TpTestsContactsConnectionPresenceStatusIndex presence;
-    QByteArray avatarData;
-    QString subscriptionState;
-    QString publishState;
-    GPtrArray *contactInfo;
-
-    bool fetching;
-    QContactManager::Error fetchError;
-};
+class TestFetchContacts;
 
 /**
  * Telepathy plugin's unit test
  */
 class TestTelepathyPlugin : public Test
 {
-Q_OBJECT
+    Q_OBJECT
+
 public:
+
     TestTelepathyPlugin(QObject *parent = 0);
 
 protected Q_SLOTS:
     void contactsAdded(const QList<QContactLocalId>& contactIds);
     void contactsChanged(const QList<QContactLocalId>& contactIds);
     void contactsRemoved(const QList<QContactLocalId>& contactIds);
-    void onContactsFetched();
 
 private Q_SLOTS:
     void initTestCase();
@@ -117,18 +80,11 @@ private Q_SLOTS:
 private:
     TpHandle ensureContact(const gchar *id);
     GPtrArray *createContactInfoTel(const gchar *number);
-    void verify(TestExpectation::Event, const QList<QContactLocalId>&);
-    void fetchAndVerifyContacts(const QList<QContactLocalId> &contactIds);
+    void verify(Event event, const QList<QContactLocalId> &contactIds);
+    void runExpectation(TestExpectation *expectation);
 
 private:
-    enum TestState {
-        TestStateNone,
-        TestStateInit,
-        TestStateReady,
-        TestStateDisconnecting,
-        TestStateCleanup
-    } mState;
-
+    friend class TestFetchContacts;
     QContactManager *mContactManager;
     TpTestsSimpleAccountManager *mAccountManager;
     TpTestsSimpleAccount *mAccount;
@@ -139,7 +95,23 @@ private:
 
     int mContactCount;
 
-    TestExpectation mExpectation;
+    TestExpectation *mExpectation;
+};
+
+class TestFetchContacts : public QObject
+{
+    Q_OBJECT
+
+public:
+    TestFetchContacts(TestTelepathyPlugin *test, Event event, const QList<QContactLocalId> &contactIds);
+
+private Q_SLOTS:
+    void onContactsFetched();
+
+private:
+    TestTelepathyPlugin *mTest;
+    Event mEvent;
+    QList<QContactLocalId> mContactIds;
 };
 
 #endif
