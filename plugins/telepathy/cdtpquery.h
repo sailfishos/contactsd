@@ -40,7 +40,7 @@ public:
     void deleteProperty(const QString &resource, const char *property, const QString &value);
     QString deleteProperty(const QString &resource, const char *property);
     QString deletePropertyWithGraph(const QString &resource, const char *property, const QString &graph);
-    QString deletePropertyAndLinkedResource(const QString &resource, const char *property);
+    QString deletePropertyAndLinkedResource(const QString &resource, const char *property, const QString &graph = QString());
     QString updateProperty(const QString &resource, const char *property, const QString &value, const QString &graph = defaultGraph);
 
     void appendRawSelection(const QString &str);

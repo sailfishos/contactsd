@@ -1171,9 +1171,9 @@ void CDTpStorage::addRemoveContactInfoToBuilder(CDTpQueryBuilder &builder,
 
     /* Remove affiliation and its sub resources */
     const QString affiliation = builder.deletePropertyWithGraph(imContact, "nco:hasAffiliation", graph);
-    builder.deletePropertyAndLinkedResource(affiliation, "nco:hasPhoneNumber");
-    builder.deletePropertyAndLinkedResource(affiliation, "nco:hasPostalAddress");
-    builder.deletePropertyAndLinkedResource(affiliation, "nco:emailAddress");
+    builder.deletePropertyAndLinkedResource(affiliation, "nco:hasPhoneNumber", graph);
+    builder.deletePropertyAndLinkedResource(affiliation, "nco:hasPostalAddress", graph);
+    builder.deletePropertyAndLinkedResource(affiliation, "nco:emailAddress", graph);
     builder.deleteResource(affiliation);
 }
 

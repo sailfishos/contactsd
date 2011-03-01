@@ -76,10 +76,18 @@ QString CDTpQueryBuilder::deletePropertyWithGraph(const QString &resource, const
     return value;
 }
 
-QString CDTpQueryBuilder::deletePropertyAndLinkedResource(const QString &resource, const char *property)
+QString CDTpQueryBuilder::deletePropertyAndLinkedResource(const QString &resource, const char *property, const QString &graph)
 {
-    const QString oldValue = deleteProperty(resource, property);
+    QString oldValue;
+
+    if (graph.isEmpty()) {
+        oldValue = deleteProperty(resource, property);
+    } else {
+        oldValue = deletePropertyWithGraph(resource, property, graph);
+    }
+
     deleteResource(oldValue);
+
     return oldValue;
 }
 
