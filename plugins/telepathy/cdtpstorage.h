@@ -131,10 +131,6 @@ private:
             const QString &accountPath,
             const QStringList &contactIds) const;
     void addRemoveContactToBuilder(CDTpQueryBuilder &builder,
-            const QString &imAddressSelection) const;
-    void addRemoveUnmergedContactToBuilder(CDTpQueryBuilder &builder,
-            const QString &imAddress) const;
-    void addRemoveMergedContactToBuilder(CDTpQueryBuilder &builder,
             const QString &imAddress) const;
     void addRemoveContactInfoToBuilder(CDTpQueryBuilder &builder,
             const QString &imContact,
