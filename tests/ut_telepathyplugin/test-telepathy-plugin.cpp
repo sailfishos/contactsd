@@ -498,8 +498,6 @@ void TestTelepathyPlugin::testAvatar()
     exp2.verifyAvatar(QByteArray(avatarData2));
     runExpectation(&exp2);
 
-#if 0
-    /* FIXME: Disabled because it fails */
     /* Change the alias of first contact, this is to force fetching again
      * the contact, so verify the shared nfo:FileObjectData for the avatar is
      * still there */
@@ -510,7 +508,6 @@ void TestTelepathyPlugin::testAvatar()
 
     exp.verifyAlias(alias);
     runExpectation(&exp);
-#endif
 }
 
 void TestTelepathyPlugin::testIRIEncode()

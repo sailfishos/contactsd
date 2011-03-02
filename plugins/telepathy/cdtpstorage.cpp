@@ -72,7 +72,6 @@ void CDTpStorage::syncAccounts(const QList<CDTpAccountPtr> &accounts)
     builder.appendRawQuery(subBuilder);
 
     /* Purge accounts/imAddresses that does not exist anymore */
-    /* FIXME: We leak avatar object */
     subBuilder = CDTpQueryBuilder("SyncAccounts - purge accounts/imAddresses");
     subBuilder.appendRawSelection(selection);
     subBuilder.deleteResource(imAccountVar);
@@ -158,7 +157,6 @@ void CDTpStorage::removeAccount(CDTpAccountPtr accountWrapper)
     addRemoveContactToBuilder(builder, imAddressVar);
 
     /* Remove imAddress */
-    /* FIXME: We leak avatar object */
     CDTpQueryBuilder subBuilder("RemoveAccount - imAddress");
     subBuilder.appendRawSelection(selection);
     subBuilder.deleteResource(imAddressVar);
@@ -585,7 +583,6 @@ void CDTpStorage::addSyncRosterAccountsContactsToBuilder(CDTpQueryBuilder &build
     addRemoveContactToBuilder(subBuilder, imAddressVar);
     builder.appendRawQuery(subBuilder);
 
-    /* FIXME: We leak avatar object */
     subBuilder = CDTpQueryBuilder("SyncRosterAccounts - purge imAddresses");
     subBuilder.appendRawSelection(selection);
     subBuilder.deleteResource(imAddressVar);
@@ -866,7 +863,7 @@ void CDTpStorage::addCapabilitiesToBuilder(CDTpQueryBuilder &builder,
 void CDTpStorage::addRemoveAvatarToBuilder(CDTpQueryBuilder &builder,
         const QString &imAddress) const
 {
-    builder.deletePropertyAndLinkedResource(imAddress, "nco:imAvatar");
+    builder.deleteProperty(imAddress, "nco:imAvatar");
 }
 
 void CDTpStorage::addAvatarToBuilder(CDTpQueryBuilder &builder,
