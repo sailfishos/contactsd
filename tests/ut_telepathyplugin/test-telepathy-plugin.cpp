@@ -17,8 +17,6 @@
 **
 ****************************************************************************/
 
-#include <QDebug>
-
 #include <QContact>
 #include <QContactFetchByIdRequest>
 
@@ -29,6 +27,7 @@
 
 #include "test-telepathy-plugin.h"
 #include "buddymanagementinterface.h"
+#include "debug.h"
 
 TestTelepathyPlugin::TestTelepathyPlugin(QObject *parent) : Test(parent),
         mContactCount(0), mExpectation(0)
@@ -47,6 +46,7 @@ void TestTelepathyPlugin::initTestCase()
     if (!qgetenv("CONTACTSD_DEBUG").isEmpty()) {
         tp_debug_set_flags("all");
         test_debug_enable(TRUE);
+        enableDebug(true);
     }
 
     dbus_g_bus_get(DBUS_BUS_STARTER, 0);
@@ -550,20 +550,20 @@ void TestTelepathyPlugin::runExpectation(TestExpectation *exp)
 
 void TestTelepathyPlugin::contactsAdded(const QList<QContactLocalId>& contactIds)
 {
-    qDebug() << "Got contactsAdded";
+    debug() << "Got contactsAdded";
     mContactCount += contactIds.count();
     verify(EventAdded, contactIds);
 }
 
 void TestTelepathyPlugin::contactsChanged(const QList<QContactLocalId>& contactIds)
 {
-    qDebug() << "Got contactsChanged";
+    debug() << "Got contactsChanged";
     verify(EventChanged, contactIds);
 }
 
 void TestTelepathyPlugin::contactsRemoved(const QList<QContactLocalId>& contactIds)
 {
-    qDebug() << "Got contactsRemoved";
+    debug() << "Got contactsRemoved";
     mContactCount -= contactIds.count();
     QVERIFY(mContactCount >= 0);
     verify(EventRemoved, contactIds);

@@ -18,7 +18,6 @@
 ****************************************************************************/
 
 #include <QTest>
-#include <QDebug>
 #include <QFile>
 
 #include <QContactAvatar>
@@ -29,6 +28,7 @@
 #include <QContactEmailAddress>
 
 #include "test-expectation.h"
+#include "debug.h"
 
 void TestExpectation::verify(Event event, const QList<QContact> &contacts)
 {
@@ -114,7 +114,7 @@ void TestExpectationContact::verify(Event event, const QList<QContactLocalId> &c
 
 void TestExpectationContact::verify(QContact contact)
 {
-    qDebug() << contact;
+    debug() << contact;
 
     if (mFlags & VerifyOnlineAccounts) {
         QCOMPARE(contact.details<QContactOnlineAccount>().count(), mNOnlineAccounts);

@@ -13,6 +13,7 @@ MOBILITY += contacts
 CONFIG += link_pkgconfig
 PKGCONFIG += TelepathyQt4 telepathy-glib
 DEFINES += QT_NO_KEYWORDS
+DEFINES += ENABLE_DEBUG
 
 system(cp $$PWD/../../plugins/telepathy/com.nokia.contacts.buddymanagement.xml .)
 system(qdbusxml2cpp -c BuddyManagementInterface -p buddymanagementinterface.h:buddymanagementinterface.cpp com.nokia.contacts.buddymanagement.xml)
@@ -26,12 +27,14 @@ QMAKE_CXXFLAGS += -c -g --coverage -ftest-coverage -fprofile-arcs
 LIBS += -lgcov
 }
 
-HEADERS += test-telepathy-plugin.h \
+HEADERS += debug.h \
+    test-telepathy-plugin.h \
     test-expectation.h \
     test.h \
     buddymanagementinterface.h
 
-SOURCES += test-telepathy-plugin.cpp \
+SOURCES += debug.cpp \
+    test-telepathy-plugin.cpp \
     test-expectation.cpp \
     test.cpp \
     buddymanagementinterface.cpp

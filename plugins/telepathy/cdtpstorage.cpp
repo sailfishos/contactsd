@@ -578,8 +578,7 @@ void CDTpStorage::addSyncRosterAccountsContactsToBuilder(CDTpQueryBuilder &build
     /* Bind imAddress to all contacts that does not exist anymore, to purge them */
     static const QString selection = QString::fromLatin1(
             "?imAddress a nco:IMAddress.\n"
-            "OPTIONAL { ?imAccount nco:hasIMContact ?imAddress }.\n"
-            "FILTER (!bound(?imAccount)).");
+            "FILTER(NOT EXISTS { ?imAccount nco:hasIMContact ?imAddress }).");
 
     subBuilder = CDTpQueryBuilder("SyncRosterAccounts - purge contacts");
     subBuilder.appendRawSelection(selection);
