@@ -1,3 +1,11 @@
+contactsd (0.5.56-1) unstable; urgency=low
+
+  * Changes: Correctly set the graph when removing ContactInfo
+  * Changes: Rework how removing contacts is done
+  * Changes: Use the avatar URI as IRI for the nfo:FileObjectData resource
+
+ -- Xavier Claessens <xavier.claessens@collabora.co.uk>  Wed, 02 Mar 2011 11:44:50 +0100
+
 contactsd (0.5.55-1) unstable; urgency=low
 
   * Changes: Correctly report import progress
