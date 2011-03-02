@@ -69,6 +69,7 @@ private Q_SLOTS:
     //void testRemoveBuddyDBusAPI();
     void testInviteBuddyDBusAPI();
     void testSetOffline();
+    void testAvatar();
 
     /* Specific tests */
     void testBug220851();

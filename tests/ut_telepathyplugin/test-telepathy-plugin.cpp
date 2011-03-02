@@ -139,8 +139,8 @@ void TestTelepathyPlugin::cleanup()
 
 void TestTelepathyPlugin::testBasicUpdates()
 {
-    /* Create a new contact "alice" */
-    TpHandle handle = ensureContact("alice");
+    /* Create a new contact */
+    TpHandle handle = ensureContact("testbasicupdates");
 
     /* Set alias to "Alice" */
     const char *alias = "Alice";
@@ -148,18 +148,18 @@ void TestTelepathyPlugin::testBasicUpdates()
         TP_TESTS_CONTACTS_CONNECTION (mConnService),
         1, &handle, &alias);
 
-    /* Add Alice in the ContactList */
+    /* Add it in the ContactList */
     test_contact_list_manager_request_subscription(mListManager, 1, &handle,
         "wait");
 
     TestExpectationContact exp(EventAdded);
-    exp.verifyOnlineAccount("alice");
+    exp.verifyOnlineAccount("testbasicupdates");
     exp.verifyAlias("Alice");
     exp.verifyPresence(TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN);
     exp.verifyAuthorization("Requested", "No");
     runExpectation(&exp);
 
-    /* Change the presence of Alice to busy */
+    /* Change the presence to busy */
     TpTestsContactsConnectionPresenceStatusIndex presence =
             TP_TESTS_CONTACTS_CONNECTION_STATUS_BUSY;
     const gchar *message = "Making coffee";
@@ -169,19 +169,6 @@ void TestTelepathyPlugin::testBasicUpdates()
 
     exp.setEvent(EventChanged);
     exp.verifyPresence(presence);
-    runExpectation(&exp);
-
-    /* Change the avatar of Alice */
-    const gchar avatarData[] = "fake-avatar-data";
-    const gchar avatarToken[] = "fake-avatar-token";
-    const gchar avatarMimeType[] = "fake-avatar-mime-type";
-    GArray *array = g_array_new(FALSE, FALSE, sizeof(gchar));
-    g_array_append_vals (array, avatarData, strlen(avatarData));
-    tp_tests_contacts_connection_change_avatar_data(
-        TP_TESTS_CONTACTS_CONNECTION (mConnService),
-        handle, array, avatarMimeType, avatarToken);
-
-    exp.verifyAvatar(QByteArray(avatarData));
     runExpectation(&exp);
 }
 
@@ -203,7 +190,7 @@ void TestTelepathyPlugin::testAuthorization()
     /* Create a new contact "romeo" */
     TpHandle handle = ensureContact("romeo");
 
-    /* Add Bob in the ContactList, the request will be ignored */
+    /* Add him in the ContactList, the request will be ignored */
     test_contact_list_manager_request_subscription(mListManager, 1, &handle,
         "wait");
 
@@ -222,7 +209,7 @@ void TestTelepathyPlugin::testAuthorization()
 
     handle = ensureContact("juliette");
 
-    /* Add Bob in the ContactList, the request will be ignored */
+    /* Add her in the ContactList, the request will be ignored */
     test_contact_list_manager_request_subscription(mListManager, 1, &handle,
         "wait");
 
@@ -258,12 +245,12 @@ GPtrArray *TestTelepathyPlugin::createContactInfoTel(const gchar *number)
 void TestTelepathyPlugin::testContactInfo()
 {
     /* Create a contact with no ContactInfo */
-    TpHandle handle = ensureContact("skype");
+    TpHandle handle = ensureContact("testcontactinfo");
     test_contact_list_manager_request_subscription(mListManager, 1, &handle,
         "wait");
 
     TestExpectationContact exp(EventAdded);
-    exp.verifyOnlineAccount("skype");
+    exp.verifyOnlineAccount("testcontactinfo");
     runExpectation(&exp);
 
     /* Set some ContactInfo on the contact */
@@ -295,12 +282,12 @@ void TestTelepathyPlugin::testContactInfo()
 void TestTelepathyPlugin::testBug220851()
 {
     /* Create a contact with no ContactInfo */
-    TpHandle handle = ensureContact("bug220851");
+    TpHandle handle = ensureContact("testbug220851");
     test_contact_list_manager_request_subscription(mListManager, 1, &handle,
         "wait");
 
     TestExpectationContact exp(EventAdded);
-    exp.verifyOnlineAccount("bug220851");
+    exp.verifyOnlineAccount("testbug220851");
     runExpectation(&exp);
 
     /* An address has 7 fields normally. Verify it's fine to give less */
@@ -323,12 +310,12 @@ void TestTelepathyPlugin::testBug220851()
 
 void TestTelepathyPlugin::testRemoveContacts()
 {
-    TpHandle handle = ensureContact("plop");
+    TpHandle handle = ensureContact("testremovecontacts");
     test_contact_list_manager_request_subscription(mListManager, 1, &handle,
         "please");
 
     TestExpectationContact exp(EventAdded);
-    exp.verifyOnlineAccount("plop");
+    exp.verifyOnlineAccount("testremovecontacts");
     runExpectation(&exp);
 
     test_contact_list_manager_remove(mListManager, 1, &handle);
@@ -418,18 +405,109 @@ void TestTelepathyPlugin::testInviteBuddyDBusAPI()
 
 void TestTelepathyPlugin::testSetOffline()
 {
-    TpHandle handle = ensureContact("kesh");
+    TpHandle handle = ensureContact("testsetoffline");
     test_contact_list_manager_request_subscription(mListManager, 1, &handle,
         "please");
 
     TestExpectationContact exp(EventAdded);
-    exp.verifyOnlineAccount("kesh");
+    exp.verifyOnlineAccount("testsetoffline");
     runExpectation(&exp);
 
     tp_cli_connection_call_disconnect(mConnection, -1, NULL, NULL, NULL, NULL);
 
     TestExpectationDisconnect exp2(mContactCount);
     runExpectation(&exp2);
+}
+
+void TestTelepathyPlugin::testAvatar()
+{
+    const gchar avatarData[] = "fake-avatar-data";
+    const gchar avatarToken[] = "fake-avatar-token";
+    const gchar avatarMimeType[] = "fake-avatar-mime-type";
+
+    /* Create a contact with an avatar  */
+    TpHandle handle = ensureContact("testavatar");
+    GArray *array = g_array_new(FALSE, FALSE, sizeof(gchar));
+    g_array_append_vals(array, avatarData, strlen(avatarData));
+    tp_tests_contacts_connection_change_avatar_data(
+        TP_TESTS_CONTACTS_CONNECTION (mConnService),
+        handle, array, avatarMimeType, avatarToken);
+    g_array_unref(array);
+
+    test_contact_list_manager_request_subscription(mListManager, 1, &handle,
+        "please");
+
+    TestExpectationContact exp(EventAdded);
+    exp.verifyOnlineAccount("testavatar");
+    exp.verifyAvatar(QByteArray(avatarData));
+    runExpectation(&exp);
+
+    /* Change avatar */
+    const gchar avatarData2[] = "fake-avatar-data-2";
+    const gchar avatarToken2[] = "fake-avatar-token-2";
+    const gchar avatarMimeType2[] = "fake-avatar-mime-type-2";
+    array = g_array_new(FALSE, FALSE, sizeof(gchar));
+    g_array_append_vals(array, avatarData2, strlen(avatarData2));
+    tp_tests_contacts_connection_change_avatar_data(
+        TP_TESTS_CONTACTS_CONNECTION (mConnService),
+        handle, array, avatarMimeType2, avatarToken2);
+    g_array_unref(array);
+
+    exp.setEvent(EventChanged);
+    exp.verifyAvatar(QByteArray(avatarData2));
+    runExpectation(&exp);
+
+    /* Set back initial avatar */
+    array = g_array_new(FALSE, FALSE, sizeof(gchar));
+    g_array_append_vals(array, avatarData, strlen(avatarData));
+    tp_tests_contacts_connection_change_avatar_data(
+        TP_TESTS_CONTACTS_CONNECTION (mConnService),
+        handle, array, avatarMimeType, avatarToken);
+    g_array_unref(array);
+
+    exp.verifyAvatar(QByteArray(avatarData));
+    runExpectation(&exp);
+
+    /* Create another contact with the same avatar, they will share the same
+     * nfo:FileObjectData in tracker */
+    TpHandle handle2 = ensureContact("testavatar2");
+    array = g_array_new(FALSE, FALSE, sizeof(gchar));
+    g_array_append_vals(array, avatarData, strlen(avatarData));
+    tp_tests_contacts_connection_change_avatar_data(
+        TP_TESTS_CONTACTS_CONNECTION (mConnService),
+        handle2, array, avatarMimeType, avatarToken);
+    g_array_unref(array);
+
+    test_contact_list_manager_request_subscription(mListManager, 1, &handle2,
+        "please");
+
+    TestExpectationContact exp2(EventAdded);
+    exp2.verifyOnlineAccount("testavatar2");
+    exp2.verifyAvatar(QByteArray(avatarData));
+    runExpectation(&exp2);
+
+    /* Change avatar of the new contact */
+    array = g_array_new(FALSE, FALSE, sizeof(gchar));
+    g_array_append_vals(array, avatarData2, strlen(avatarData2));
+    tp_tests_contacts_connection_change_avatar_data(
+        TP_TESTS_CONTACTS_CONNECTION (mConnService),
+        handle2, array, avatarMimeType2, avatarToken2);
+    g_array_unref(array);
+
+    exp2.setEvent(EventChanged);
+    exp2.verifyAvatar(QByteArray(avatarData2));
+    runExpectation(&exp2);
+
+    /* Change the alias of first contact, this is to force fetching again
+     * the contact, so verify the shared nfo:FileObjectData for the avatar is
+     * still there */
+    const char *alias = "Where is my Avatar ?";
+    tp_tests_contacts_connection_change_aliases(
+        TP_TESTS_CONTACTS_CONNECTION (mConnService),
+        1, &handle, &alias);
+
+    exp.verifyAlias(alias);
+    runExpectation(&exp);
 }
 
 void TestTelepathyPlugin::testIRIEncode()
