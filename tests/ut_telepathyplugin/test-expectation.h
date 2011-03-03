@@ -39,30 +39,61 @@ typedef enum {
     EventRemoved
 } Event;
 
+// --- TestExpectation ---
+
 class TestExpectation : public QObject
 {
     Q_OBJECT
 
 public:
-    virtual void verify(Event event, const QList<QContact> &contacts);
-    virtual void verify(Event event, const QList<QContactLocalId> &contactIds, QContactManager::Error error);
+    void verify(Event event, const QList<QContactLocalId> &contactIds);
+
     void setContactManager(QContactManager *contactManager) { mContactManager = contactManager; };
+    QContactManager *contactManager() { return mContactManager; };
 
 Q_SIGNALS:
     void finished();
 
 protected:
+    virtual void verify(Event event, const QList<QContact> &contacts);
+    virtual void verify(Event event, const QList<QContactLocalId> &contactIds, QContactManager::Error error);
     void emitFinished();
+
+private:
+    friend class TestFetchContacts;
+
     QContactManager *mContactManager;
 };
+
+// --- TestFetchContacts ---
+
+class TestFetchContacts : public QObject
+{
+    Q_OBJECT
+
+public:
+    TestFetchContacts(const QList<QContactLocalId> &contactIds, Event event, TestExpectation *exp);
+
+private Q_SLOTS:
+    void onContactsFetched();
+
+private:
+    QList<QContactLocalId> mContactIds;
+    Event mEvent;
+    TestExpectation *mExp;
+};
+
+// --- TestExpectationInit ---
 
 class TestExpectationInit : public TestExpectation
 {
     Q_OBJECT
 
-public:
-    virtual void verify(Event event, const QList<QContact> &contacts);
+protected:
+    void verify(Event event, const QList<QContact> &contacts);
 };
+
+// --- TestExpectationCleanup ---
 
 class TestExpectationCleanup : public TestExpectation
 {
@@ -70,12 +101,20 @@ class TestExpectationCleanup : public TestExpectation
 
 public:
     TestExpectationCleanup(int nContacts);
-    virtual void verify(Event event, const QList<QContact> &contacts);
-    virtual void verify(Event event, const QList<QContactLocalId> &contactIds, QContactManager::Error error);
+
+protected:
+    void verify(Event event, const QList<QContact> &contacts);
+    void verify(Event event, const QList<QContactLocalId> &contactIds, QContactManager::Error error);
+
+private:
+    void maybeEmitFinished();
 
 private:
     int mNContacts;
+    bool mSelfChanged;
 };
+
+// --- TestExpectationContact ---
 
 class TestExpectationContact : public TestExpectation
 {
@@ -94,10 +133,10 @@ public:
     void verifyOnlineAccount(QString accountUri) { mNOnlineAccounts = 1; mAccountUri = accountUri; mFlags |= VerifyOnlineAccounts; };
     void verifyOnlineAccounts(int n) { mNOnlineAccounts = n; mFlags |= VerifyOnlineAccounts; };
 
-    virtual void verify(Event event, const QList<QContact> &contacts);
-    virtual void verify(Event event, const QList<QContactLocalId> &contactIds, QContactManager::Error error);
 
 protected:
+    void verify(Event event, const QList<QContact> &contacts);
+    void verify(Event event, const QList<QContactLocalId> &contactIds, QContactManager::Error error);
     void verify(QContact contact);
 
 private:
@@ -127,16 +166,21 @@ private:
     QString mAccountUri;
 };
 
+// --- TestExpectationDisconnect ---
+
 class TestExpectationDisconnect : public TestExpectationContact
 {
     Q_OBJECT
 
 public:
     TestExpectationDisconnect(int nContacts);
-    virtual void verify(Event event, const QList<QContact> &contacts);
+
+protected:
+    void verify(Event event, const QList<QContact> &contacts);
 
 private:
     int mNContacts;
+    bool mSelfChanged;
 };
 
 #endif

@@ -38,8 +38,6 @@
 
 QTM_USE_NAMESPACE
 
-class TestFetchContacts;
-
 /**
  * Telepathy plugin's unit test
  */
@@ -85,7 +83,6 @@ private:
     void runExpectation(TestExpectation *expectation);
 
 private:
-    friend class TestFetchContacts;
     QContactManager *mContactManager;
     TpTestsSimpleAccountManager *mAccountManager;
     TpTestsSimpleAccount *mAccount;
@@ -97,22 +94,6 @@ private:
     int mContactCount;
 
     TestExpectation *mExpectation;
-};
-
-class TestFetchContacts : public QObject
-{
-    Q_OBJECT
-
-public:
-    TestFetchContacts(TestTelepathyPlugin *test, Event event, const QList<QContactLocalId> &contactIds);
-
-private Q_SLOTS:
-    void onContactsFetched();
-
-private:
-    TestTelepathyPlugin *mTest;
-    Event mEvent;
-    QList<QContactLocalId> mContactIds;
 };
 
 #endif

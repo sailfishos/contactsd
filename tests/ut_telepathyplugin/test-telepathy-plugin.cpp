@@ -100,10 +100,10 @@ void TestTelepathyPlugin::init()
     tp_tests_contacts_connection_change_presences(
         TP_TESTS_CONTACTS_CONNECTION (mConnService),
         1, &mConnService->self_handle, &presence, &message);
-    const gchar *aliases = "badger";
+    const gchar *alias = "badger";
     tp_tests_contacts_connection_change_aliases(
         TP_TESTS_CONTACTS_CONNECTION (mConnService),
-        1, &mConnService->self_handle, &aliases);
+        1, &mConnService->self_handle, &alias);
 
     /* Create a fake Account */
     TpDBusDaemon *dbus = tp_dbus_daemon_dup(NULL);
@@ -154,7 +154,7 @@ void TestTelepathyPlugin::testBasicUpdates()
 
     TestExpectationContact exp(EventAdded);
     exp.verifyOnlineAccount("testbasicupdates");
-    exp.verifyAlias("Alice");
+    exp.verifyAlias(alias);
     exp.verifyPresence(TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN);
     exp.verifyAuthorization("Requested", "No");
     runExpectation(&exp);
@@ -174,14 +174,16 @@ void TestTelepathyPlugin::testBasicUpdates()
 
 void TestTelepathyPlugin::testSelfContact()
 {
+    const gchar *alias = "Unit Test";
+    tp_tests_contacts_connection_change_aliases(
+        TP_TESTS_CONTACTS_CONNECTION (mConnService),
+        1, &mConnService->self_handle, &alias);
+
     TestExpectationContact exp(EventChanged);
+    exp.verifyOnlineAccount("fakeaccount");
+    exp.verifyAlias(alias);
     exp.verifyPresence(TP_TESTS_CONTACTS_CONNECTION_STATUS_AVAILABLE);
     exp.verifyAvatar(QByteArray());
-    exp.verifyOnlineAccount("fakeaccount");
-
-    // Simulate a change in self contact
-    verify(EventChanged, QList<QContactLocalId>() << mContactManager->selfContactId());
-
     runExpectation(&exp);
 }
 
@@ -569,36 +571,8 @@ void TestTelepathyPlugin::contactsRemoved(const QList<QContactLocalId>& contactI
 void TestTelepathyPlugin::verify(Event event,
     const QList<QContactLocalId> &contactIds)
 {
-    new TestFetchContacts(this, event, contactIds);
-}
-
-TestFetchContacts::TestFetchContacts(TestTelepathyPlugin *parent, Event event,
-        const QList<QContactLocalId> &contactIds)
-    : QObject(parent), mTest(parent), mEvent(event), mContactIds(contactIds)
-{
-    QContactFetchByIdRequest *request = new QContactFetchByIdRequest();
-    connect(request, SIGNAL(resultsAvailable()),
-        SLOT(onContactsFetched()));
-    request->setManager(mTest->mContactManager);
-    request->setLocalIds(contactIds);
-    QVERIFY(request->start());
-}
-
-void TestFetchContacts::onContactsFetched()
-{
-    QContactFetchByIdRequest *req = qobject_cast<QContactFetchByIdRequest *>(sender());
-    if (req == 0 || !req->isFinished()) {
-        return;
-    }
-
-    QVERIFY(mTest->mExpectation != 0);
-    if (req->error() == QContactManager::NoError) {
-        mTest->mExpectation->verify(mEvent, req->contacts());
-    } else {
-        mTest->mExpectation->verify(mEvent, mContactIds, req->error());
-    }
-
-    deleteLater();
+    QVERIFY(mExpectation != 0);
+    mExpectation->verify(event, contactIds);
 }
 
 QTEST_MAIN(TestTelepathyPlugin)

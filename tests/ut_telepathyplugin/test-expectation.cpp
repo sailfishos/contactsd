@@ -20,6 +20,7 @@
 #include <QTest>
 #include <QFile>
 
+#include <QContactFetchByIdRequest>
 #include <QContactAvatar>
 #include <QContactOnlineAccount>
 #include <QContactPhoneNumber>
@@ -29,6 +30,13 @@
 
 #include "test-expectation.h"
 #include "debug.h"
+
+// --- TestExpectation ---
+
+void TestExpectation::verify(Event event, const QList<QContactLocalId> &contactIds)
+{
+     new TestFetchContacts(contactIds, event, this);
+}
 
 void TestExpectation::verify(Event event, const QList<QContact> &contacts)
 {
@@ -53,15 +61,50 @@ void TestExpectation::emitFinished()
     Q_EMIT finished();
 }
 
+// --- TestFetchContacts ---
+
+TestFetchContacts::TestFetchContacts(const QList<QContactLocalId> &contactIds,
+        Event event, TestExpectation *exp) : QObject(exp),
+        mContactIds(contactIds), mEvent(event), mExp(exp)
+{
+    QContactFetchByIdRequest *request = new QContactFetchByIdRequest();
+    connect(request, SIGNAL(resultsAvailable()),
+        SLOT(onContactsFetched()));
+    request->setManager(mExp->contactManager());
+    request->setLocalIds(contactIds);
+    QVERIFY(request->start());
+}
+
+void TestFetchContacts::onContactsFetched()
+{
+    QContactFetchByIdRequest *req = qobject_cast<QContactFetchByIdRequest *>(sender());
+    if (req == 0 || !req->isFinished()) {
+        return;
+    }
+
+    if (req->error() == QContactManager::NoError) {
+        mExp->verify(mEvent, req->contacts());
+    } else {
+        mExp->verify(mEvent, mContactIds, req->error());
+    }
+
+    deleteLater();
+}
+
+// --- TestExpectationInit ---
+
 void TestExpectationInit::verify(Event event, const QList<QContact> &contacts)
 {
     QCOMPARE(event, EventChanged);
     QCOMPARE(contacts.count(), 1);
-    QCOMPARE(contacts[0].localId(), mContactManager->selfContactId());
+    QCOMPARE(contacts[0].localId(), contactManager()->selfContactId());
     emitFinished();
 }
 
-TestExpectationCleanup::TestExpectationCleanup(int nContacts) : mNContacts(nContacts)
+// --- TestExpectationCleanup ---
+
+TestExpectationCleanup::TestExpectationCleanup(int nContacts) :
+        mNContacts(nContacts), mSelfChanged(false)
 {
 }
 
@@ -69,26 +112,31 @@ void TestExpectationCleanup::verify(Event event, const QList<QContact> &contacts
 {
     QCOMPARE(event, EventChanged);
     QCOMPARE(contacts.count(), 1);
-    QCOMPARE(contacts[0].localId(), mContactManager->selfContactId());
-
+    QCOMPARE(contacts[0].localId(), contactManager()->selfContactId());
     mNContacts--;
-    QVERIFY(mNContacts >= 0);
-    if (mNContacts == 0) {
-        emitFinished();
-    }
+    mSelfChanged = true;
+
+    maybeEmitFinished();
 }
 
 void TestExpectationCleanup::verify(Event event, const QList<QContactLocalId> &contactIds, QContactManager::Error error)
 {
     QCOMPARE(event, EventRemoved);
     QCOMPARE(error, QContactManager::DoesNotExistError);
-
     mNContacts -= contactIds.count();
+
+    maybeEmitFinished();
+}
+
+void TestExpectationCleanup::maybeEmitFinished()
+{
     QVERIFY(mNContacts >= 0);
-    if (mNContacts == 0) {
+    if (mNContacts == 0 && mSelfChanged) {
         emitFinished();
     }
 }
+
+// --- TestExpectationContact ---
 
 TestExpectationContact::TestExpectationContact(Event event):
         mEvent(event), mFlags(0), mPresence(TP_TESTS_CONTACTS_CONNECTION_STATUS_UNSET),
@@ -245,8 +293,10 @@ void TestExpectationContact::verifyContactInfo(QString name, const QStringList v
     QVERIFY2(found, "Unexpected ContactInfo field");
 }
 
+// --- TestExpectationDisconnect ---
+
 TestExpectationDisconnect::TestExpectationDisconnect(int nContacts) :
-        TestExpectationContact(EventChanged), mNContacts(nContacts)
+        TestExpectationContact(EventChanged), mNContacts(nContacts), mSelfChanged(false)
 {
 }
 
@@ -255,8 +305,9 @@ void TestExpectationDisconnect::verify(Event event, const QList<QContact> &conta
     QCOMPARE(event, EventChanged);
 
     Q_FOREACH (const QContact contact, contacts) {
-        if (contact.localId() == mContactManager->selfContactId()) {
+        if (contact.localId() == contactManager()->selfContactId()) {
             verifyPresence(TP_TESTS_CONTACTS_CONNECTION_STATUS_OFFLINE);
+            mSelfChanged = true;
         } else {
             verifyPresence(TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN);
         }
@@ -265,7 +316,7 @@ void TestExpectationDisconnect::verify(Event event, const QList<QContact> &conta
 
     mNContacts -= contacts.count();
     QVERIFY(mNContacts >= 0);
-    if (mNContacts == 0) {
+    if (mNContacts == 0 && mSelfChanged) {
         emitFinished();
     }
 }

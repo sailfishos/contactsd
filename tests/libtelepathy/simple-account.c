@@ -68,6 +68,7 @@ struct _TpTestsSimpleAccountPrivate
   TpContact *self_contact;
   gchar *nickname;
   gchar *normalized_name;
+  GValueArray *current_presence;
 };
 
 static void connection_invalidated_cb (TpProxy *proxy, guint domain, gint code,
@@ -98,6 +99,11 @@ tp_tests_simple_account_init (TpTestsSimpleAccount *self)
 
   self->priv->nickname = g_strdup ("");
   self->priv->normalized_name = g_strdup ("");
+  self->priv->current_presence = tp_value_array_build (3,
+      G_TYPE_UINT, TP_CONNECTION_PRESENCE_TYPE_OFFLINE,
+      G_TYPE_STRING, "offline",
+      G_TYPE_STRING, "",
+      G_TYPE_INVALID);
 }
 
 static void
@@ -156,22 +162,7 @@ tp_tests_simple_account_get_property (GObject *object,
       g_value_set_uint (value, self->priv->connection_status_reason);
       break;
     case PROP_CURRENT_PRESENCE:
-      if (self->priv->self_contact != NULL)
-        {
-          GValueArray *presence;
-
-          presence = tp_value_array_build (3,
-              G_TYPE_UINT, tp_contact_get_presence_type (self->priv->self_contact),
-              G_TYPE_STRING, tp_contact_get_presence_status (self->priv->self_contact),
-              G_TYPE_STRING, tp_contact_get_presence_message (self->priv->self_contact),
-              G_TYPE_INVALID);
-          g_value_set_boxed (value, presence);
-          g_boxed_free (TP_STRUCT_TYPE_SIMPLE_PRESENCE, presence);
-        }
-      else
-        {
-          g_value_set_boxed (value, offline_presence);
-        }
+      g_value_set_boxed (value, self->priv->current_presence);
       break;
     case PROP_REQUESTED_PRESENCE:
       g_value_set_boxed (value, offline_presence);
@@ -237,6 +228,7 @@ tp_tests_simple_account_finalize (GObject *object)
 
   g_free (self->priv->nickname);
   g_free (self->priv->normalized_name);
+  g_value_array_free (self->priv->current_presence);
 
   G_OBJECT_CLASS (tp_tests_simple_account_parent_class)->finalize(object);
 }
@@ -398,7 +390,6 @@ tp_tests_simple_account_class_init (TpTestsSimpleAccountClass *klass)
 static void
 remove_connection (TpTestsSimpleAccount *self)
 {
-  GValueArray *offline_presence;
   GHashTable *change;
 
   self->priv->connection_status = tp_connection_get_status (self->priv->connection,
@@ -415,7 +406,8 @@ remove_connection (TpTestsSimpleAccount *self)
       self->priv->self_contact = NULL;
     }
 
-  offline_presence = tp_value_array_build (3,
+  g_value_array_free (self->priv->current_presence);
+  self->priv->current_presence = tp_value_array_build (3,
       G_TYPE_UINT, TP_CONNECTION_PRESENCE_TYPE_OFFLINE,
       G_TYPE_STRING, "offline",
       G_TYPE_STRING, "",
@@ -425,11 +417,9 @@ remove_connection (TpTestsSimpleAccount *self)
   tp_asv_set_object_path (change, "Connection", "/");
   tp_asv_set_uint32 (change, "ConnectionStatus", self->priv->connection_status);
   tp_asv_set_uint32 (change, "ConnectionStatusReason", self->priv->connection_status_reason);
-  tp_asv_set_boxed (change, "CurrentPresence", TP_STRUCT_TYPE_SIMPLE_PRESENCE, offline_presence);
+  tp_asv_set_boxed (change, "CurrentPresence", TP_STRUCT_TYPE_SIMPLE_PRESENCE, self->priv->current_presence);
   tp_svc_account_emit_account_property_changed (self, change);
- 
   g_hash_table_unref (change);
-  g_boxed_free (TP_STRUCT_TYPE_SIMPLE_PRESENCE, offline_presence);
 }
 
 static void
@@ -443,6 +433,44 @@ connection_invalidated_cb (TpProxy *proxy,
 }
 
 static void
+on_alias_notify_cb (TpContact *self_contact,
+    GParamSpec *pspec,
+    TpTestsSimpleAccount *self)
+{
+  GHashTable *change;
+
+  g_free (self->priv->nickname);
+  self->priv->nickname = g_strdup (tp_contact_get_alias (self->priv->self_contact));
+
+  change = tp_asv_new (NULL, NULL);
+  tp_asv_set_string (change, "Nickname", self->priv->nickname);
+  tp_svc_account_emit_account_property_changed (self, change);
+  g_hash_table_unref (change);
+}
+
+static void
+on_presence_changed_cb (TpContact *self_contact,
+    guint type,
+    gchar *status,
+    gchar *message,
+    TpTestsSimpleAccount *self)
+{
+  GHashTable *change;
+
+  g_value_array_free (self->priv->current_presence);
+  self->priv->current_presence = tp_value_array_build (3,
+      G_TYPE_UINT, tp_contact_get_presence_type (self->priv->self_contact),
+      G_TYPE_STRING, tp_contact_get_presence_status (self->priv->self_contact),
+      G_TYPE_STRING, tp_contact_get_presence_message (self->priv->self_contact),
+      G_TYPE_INVALID);
+
+  change = tp_asv_new (NULL, NULL);
+  tp_asv_set_boxed (change, "CurrentPresence", TP_STRUCT_TYPE_SIMPLE_PRESENCE, self->priv->current_presence);
+  tp_svc_account_emit_account_property_changed (self, change);
+  g_hash_table_unref (change);
+}
+
+static void
 got_self_contact_cb (TpConnection *connection,
     guint n_contacts,
     TpContact * const *contacts,
@@ -453,7 +481,6 @@ got_self_contact_cb (TpConnection *connection,
     GObject *weak_object)
 {
   TpTestsSimpleAccount *self = user_data;
-  GValueArray *presence;
   GHashTable *change;
 
   if (n_failed != 0)
@@ -464,30 +491,33 @@ got_self_contact_cb (TpConnection *connection,
       &self->priv->connection_status_reason);
   self->priv->has_been_online = TRUE;
 
-  g_free (self->priv->nickname);
-  self->priv->nickname = g_strdup (tp_contact_get_alias (self->priv->self_contact));
-
   g_free (self->priv->normalized_name);
   self->priv->normalized_name = g_strdup (tp_contact_get_identifier (self->priv->self_contact));
 
-  presence = tp_value_array_build (3,
+  g_free (self->priv->nickname);
+  self->priv->nickname = g_strdup (tp_contact_get_alias (self->priv->self_contact));
+  g_signal_connect (self->priv->self_contact, "notify::alias",
+      G_CALLBACK (on_alias_notify_cb), self);
+
+  g_value_array_free (self->priv->current_presence);
+  self->priv->current_presence = tp_value_array_build (3,
       G_TYPE_UINT, tp_contact_get_presence_type (self->priv->self_contact),
       G_TYPE_STRING, tp_contact_get_presence_status (self->priv->self_contact),
       G_TYPE_STRING, tp_contact_get_presence_message (self->priv->self_contact),
       G_TYPE_INVALID);
+  g_signal_connect (self->priv->self_contact, "presence-changed",
+      G_CALLBACK (on_presence_changed_cb), self);
 
   change = tp_asv_new (NULL, NULL);
   tp_asv_set_object_path (change, "Connection", tp_proxy_get_object_path (self->priv->connection));
   tp_asv_set_uint32 (change, "ConnectionStatus", self->priv->connection_status);
   tp_asv_set_uint32 (change, "ConnectionStatusReason", self->priv->connection_status_reason);
   tp_asv_set_boolean (change, "HasBeenOnline", self->priv->has_been_online);
-  tp_asv_set_boxed (change, "CurrentPresence", TP_STRUCT_TYPE_SIMPLE_PRESENCE, presence);
+  tp_asv_set_boxed (change, "CurrentPresence", TP_STRUCT_TYPE_SIMPLE_PRESENCE, self->priv->current_presence);
   tp_asv_set_string (change, "Nickname", self->priv->nickname);
   tp_asv_set_string (change, "NormalizedName", self->priv->normalized_name);
   tp_svc_account_emit_account_property_changed (self, change);
-
   g_hash_table_unref (change);
-  g_boxed_free (TP_STRUCT_TYPE_SIMPLE_PRESENCE, presence);
 }
 
 static void
