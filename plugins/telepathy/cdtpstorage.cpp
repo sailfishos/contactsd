@@ -907,49 +907,53 @@ void CDTpStorage::addContactInfoToBuilder(CDTpQueryBuilder &builder,
          */
 
         if (!field.fieldName.compare(QLatin1String("tel"))) {
+            // FIXME: Should normalize phone number?
+            static const QString tmpl = QString::fromLatin1("<tel:%1>");
+            const QString voicePhoneNumber = tmpl.arg(field.fieldValue[0]);
             const QString affiliation = ensureContactAffiliationToBuilder(builder, imContact, graph, field, affiliations);
-            const QString voicePhoneNumber = builder.uniquify("_:tel");
-            builder.createResource(voicePhoneNumber, "nco:VoicePhoneNumber", graph);
-            builder.insertProperty(voicePhoneNumber, "maemo:localPhoneNumber", literalContactInfo(field, 0), graph);
-            builder.insertProperty(voicePhoneNumber, "nco:phoneNumber", literalContactInfo(field, 0), graph);
-            builder.insertProperty(affiliation, "nco:hasPhoneNumber", voicePhoneNumber, graph);
+            builder.createResource(voicePhoneNumber, "nco:VoicePhoneNumber");
+            builder.insertProperty(voicePhoneNumber, "maemo:localPhoneNumber", literalContactInfo(field, 0));
+            builder.insertProperty(voicePhoneNumber, "nco:phoneNumber", literalContactInfo(field, 0));
+            builder.insertProperty(affiliation, "nco:hasPhoneNumber", voicePhoneNumber);
+        }
+
+        else if (!field.fieldName.compare(QLatin1String("email"))) {
+            // FIXME: Should normalize email address?
+            static const QString tmpl = QString::fromLatin1("<mailto:%1>");
+            const QString emailAddress = tmpl.arg(field.fieldValue[0]);
+            const QString affiliation = ensureContactAffiliationToBuilder(builder, imContact, graph, field, affiliations);
+            builder.createResource(emailAddress, "nco:EmailAddress");
+            builder.insertProperty(emailAddress, "nco:emailAddress", literalContactInfo(field, 0));
+            builder.insertProperty(affiliation, "nco:hasEmailAddress", emailAddress);
         }
 
         else if (!field.fieldName.compare(QLatin1String("adr"))) {
             const QString affiliation = ensureContactAffiliationToBuilder(builder, imContact, graph, field, affiliations);
             const QString postalAddress = builder.uniquify("_:address");
-            builder.createResource(postalAddress, "nco:PostalAddress", graph);
-            builder.insertProperty(postalAddress, "nco:pobox",           literalContactInfo(field, 0), graph);
-            builder.insertProperty(postalAddress, "nco:extendedAddress", literalContactInfo(field, 1), graph);
-            builder.insertProperty(postalAddress, "nco:streetAddress",   literalContactInfo(field, 2), graph);
-            builder.insertProperty(postalAddress, "nco:locality",        literalContactInfo(field, 3), graph);
-            builder.insertProperty(postalAddress, "nco:region",          literalContactInfo(field, 4), graph);
-            builder.insertProperty(postalAddress, "nco:postalcode",      literalContactInfo(field, 5), graph);
-            builder.insertProperty(postalAddress, "nco:country",         literalContactInfo(field, 6), graph);
-            builder.insertProperty(affiliation, "nco:hasPostalAddress", postalAddress, graph);
-        }
-
-        else if (!field.fieldName.compare(QLatin1String("email"))) {
-            const QString affiliation = ensureContactAffiliationToBuilder(builder, imContact, graph, field, affiliations);
-            const QString emailAddress = builder.uniquify("_:email");
-            builder.createResource(emailAddress, "nco:EmailAddress", graph);
-            builder.insertProperty(emailAddress, "nco:emailAddress", literalContactInfo(field, 0), graph);
-            builder.insertProperty(affiliation, "nco:hasEmailAddress", emailAddress, graph);
+            builder.createResource(postalAddress, "nco:PostalAddress");
+            builder.insertProperty(postalAddress, "nco:pobox",           literalContactInfo(field, 0));
+            builder.insertProperty(postalAddress, "nco:extendedAddress", literalContactInfo(field, 1));
+            builder.insertProperty(postalAddress, "nco:streetAddress",   literalContactInfo(field, 2));
+            builder.insertProperty(postalAddress, "nco:locality",        literalContactInfo(field, 3));
+            builder.insertProperty(postalAddress, "nco:region",          literalContactInfo(field, 4));
+            builder.insertProperty(postalAddress, "nco:postalcode",      literalContactInfo(field, 5));
+            builder.insertProperty(postalAddress, "nco:country",         literalContactInfo(field, 6));
+            builder.insertProperty(affiliation, "nco:hasPostalAddress", postalAddress);
         }
 
         else if (!field.fieldName.compare(QLatin1String("url"))) {
             const QString affiliation = ensureContactAffiliationToBuilder(builder, imContact, graph, field, affiliations);
-            builder.insertProperty(affiliation, "nco:url", literalContactInfo(field, 0), graph);
+            builder.insertProperty(affiliation, "nco:url", literalContactInfo(field, 0));
         }
 
         else if (!field.fieldName.compare(QLatin1String("title"))) {
             const QString affiliation = ensureContactAffiliationToBuilder(builder, imContact, graph, field, affiliations);
-            builder.insertProperty(affiliation, "nco:title", literalContactInfo(field, 0), graph);
+            builder.insertProperty(affiliation, "nco:title", literalContactInfo(field, 0));
         }
 
         else if (!field.fieldName.compare(QLatin1String("role"))) {
             const QString affiliation = ensureContactAffiliationToBuilder(builder, imContact, graph, field, affiliations);
-            builder.insertProperty(affiliation, "nco:role", literalContactInfo(field, 0), graph);
+            builder.insertProperty(affiliation, "nco:role", literalContactInfo(field, 0));
         }
 
         else if (!field.fieldName.compare(QLatin1String("note")) || !field.fieldName.compare(QLatin1String("desc"))) {
@@ -1006,8 +1010,8 @@ QString CDTpStorage::ensureContactAffiliationToBuilder(CDTpQueryBuilder &builder
 
     if (!affiliations.contains(type)) {
         const QString affiliation = builder.uniquify("_:affiliation");
-        builder.createResource(affiliation, "nco:Affiliation", graph);
-        builder.insertProperty(affiliation, "rdfs:label", literal(type), graph);
+        builder.createResource(affiliation, "nco:Affiliation");
+        builder.insertProperty(affiliation, "rdfs:label", literal(type));
         builder.insertProperty(imContact, "nco:hasAffiliation", affiliation, graph);
         affiliations.insert(type, affiliation);
     }
@@ -1099,15 +1103,11 @@ void CDTpStorage::addRemoveContactInfoToBuilder(CDTpQueryBuilder &builder,
     /* imAddress is used as graph for properties on the imContact */
     const QString graph = imAddress;
 
+    /* Remove all triples on imContact and in graph. All sub-resources will be
+     * GCed by qct sometimes */
     builder.deletePropertyWithGraph(imContact, "nco:birthDate", graph);
     builder.deletePropertyWithGraph(imContact, "nco:note", graph);
-
-    /* Remove affiliation and its sub resources */
-    const QString affiliation = builder.deletePropertyWithGraph(imContact, "nco:hasAffiliation", graph);
-    builder.deletePropertyAndLinkedResource(affiliation, "nco:hasPhoneNumber", graph);
-    builder.deletePropertyAndLinkedResource(affiliation, "nco:hasPostalAddress", graph);
-    builder.deletePropertyAndLinkedResource(affiliation, "nco:hasEmailAddress", graph);
-    builder.deleteResource(affiliation);
+    builder.deletePropertyWithGraph(imContact, "nco:hasAffiliation", graph);
 }
 
 void CDTpStorage::onSyncOperationEnded(CDTpSparqlQuery *query)
