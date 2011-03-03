@@ -871,10 +871,12 @@ void CDTpStorage::addAvatarToBuilder(CDTpQueryBuilder &builder,
         const QString &fileName) const
 {
     if (!fileName.isEmpty()) {
-        const QString url = literal(QUrl::fromLocalFile(fileName).toString());
-        builder.createResource(url, "nfo:FileDataObject");
-        builder.insertProperty(url, "nie:url", url);
-        builder.insertProperty(imAddress, "nco:imAvatar", url);
+        static const QString tmpl = QString::fromLatin1("<%1>");
+        const QString url = QUrl::fromLocalFile(fileName).toString();
+        const QString dataObject = tmpl.arg(url);
+        builder.createResource(dataObject, "nfo:FileDataObject");
+        builder.insertProperty(dataObject, "nie:url", literal(url));
+        builder.insertProperty(imAddress, "nco:imAvatar", dataObject);
     }
 }
 
