@@ -1,3 +1,9 @@
+constatsd (0.5.57-2) unstable; urgency=low
+
+  * Fixes: Add work-around for losing nco:IMAddress not originating from contactsd
+
+ -- Jens Georg <jensg@openismus.com>  Fri, 04 Mar 2011 17:19:08 +0200
+
 contactsd (0.5.57-1) unstable; urgency=low
 
   * Fixes: NB#232820 - Mfe contacts looses phone number after rebooting.
