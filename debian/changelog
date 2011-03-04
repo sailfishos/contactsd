@@ -1,4 +1,10 @@
-constatsd (0.5.57-2) unstable; urgency=low
+contactsd (0.5.57-3) unstable; urgency=low
+
+  * Correct changelog
+
+ -- Jens Georg <jensg@openismus.com>  Fri, 04 Mar 2011 17:26:08 +0200
+
+contactsd (0.5.57-2) unstable; urgency=low
 
   * Fixes: Add work-around for losing nco:IMAddress not originating from contactsd
 
