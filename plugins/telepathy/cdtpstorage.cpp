@@ -576,6 +576,7 @@ void CDTpStorage::addSyncRosterAccountsContactsToBuilder(CDTpQueryBuilder &build
     /* Bind imAddress to all contacts that does not exist anymore, to purge them */
     static const QString selection = QString::fromLatin1(
             "?imAddress a nco:IMAddress.\n"
+            "?imContact nie:generator \"telepathy\".\n"
             "FILTER(NOT EXISTS { ?imAccount nco:hasIMContact ?imAddress }).");
 
     subBuilder = CDTpQueryBuilder("SyncRosterAccounts - purge contacts");
@@ -583,8 +584,13 @@ void CDTpStorage::addSyncRosterAccountsContactsToBuilder(CDTpQueryBuilder &build
     addRemoveContactToBuilder(subBuilder, imAddressVar);
     builder.appendRawQuery(subBuilder);
 
+    static const QString imAddressSelection = QString::fromLatin1(
+            "FILTER(NOT EXISTS { ?c a nco:PersonContact; \n"
+            "       nco:hasAffiliation [ nco:hasIMAddress ?imAddress ] . \n"
+            "       ?imAccount nco:hasIMContact ?imAddress }).");
+
     subBuilder = CDTpQueryBuilder("SyncRosterAccounts - purge imAddresses");
-    subBuilder.appendRawSelection(selection);
+    subBuilder.appendRawSelection(imAddressSelection);
     subBuilder.deleteResource(imAddressVar);
     builder.appendRawQuery(subBuilder);
 }
