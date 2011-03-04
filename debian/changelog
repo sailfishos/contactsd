@@ -1,3 +1,10 @@
+contactsd (0.5.57-1) unstable; urgency=low
+
+  * Fixes: NB#232820 - Mfe contacts looses phone number after rebooting.
+  * Fixes: NB#231018 - "No Contacts" shown for Google Talk even though the account is online
+
+ -- Xavier Claessens <xavier.claessens@collabora.co.uk>  Fri, 04 Mar 2011 09:42:08 +0100
+
 contactsd (0.5.56-2) unstable; urgency=low
 
   * Fixes: NB#205721 - Fetching Avatars does not work for remote contacts
