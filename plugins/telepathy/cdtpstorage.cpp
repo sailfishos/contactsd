@@ -741,7 +741,7 @@ void CDTpStorage::addRemoveContactsChangesToBuilder(CDTpQueryBuilder &builder,
                 "?imContact nco:hasAffiliation [ nco:hasIMAddress ?imAddress ].\n"
                 "FILTER(?imAddress IN (%1))");
         subBuilder.appendRawSelection(tmpl.arg(infoIMAddresses.join(filterInSeparator)));
-        addRemoveContactInfoToBuilder(builder, imAddressVar, imContactVar);
+        addRemoveContactInfoToBuilder(subBuilder, imAddressVar, imContactVar);
         builder.appendRawQuery(subBuilder);
     }
 }
