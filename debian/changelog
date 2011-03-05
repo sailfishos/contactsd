@@ -1,3 +1,12 @@
+contactsd (0.5.58-1) unstable; urgency=low
+
+  * Changes: Do not set contact as removed when it gets blocked
+  * Changes: Fix removal of IMAddress when purging an account
+  * Fixes: Do not drop ContactInfo when reconnecting an account
+  * Changes: Set contactsd's graph on IMAddress
+
+ -- Xavier Claessens <xavier.claessens@collabora.co.uk>  Sat, 05 Mar 2011 20:40:54 +0100
+
 contactsd (0.5.57-1) unstable; urgency=low
 
   * Fixes: NB#232820 - Mfe contacts looses phone number after rebooting.
