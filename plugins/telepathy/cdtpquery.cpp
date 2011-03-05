@@ -243,7 +243,7 @@ void CDTpSparqlQuery::onQueryFinished()
         warning() << "QSparqlQuery finished with error:" << "Invalid signal sender";
     } else {
         if (result->hasError()) {
-            debug() << "QSparqlQuery finished with error:" << result->lastError().message();
+            warning() << "QSparqlQuery finished with error:" << result->lastError().message();
         }
         result->deleteLater();
     }
