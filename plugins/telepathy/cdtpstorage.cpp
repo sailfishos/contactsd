@@ -244,9 +244,9 @@ void CDTpStorage::addCreateAccountsToBuilder(CDTpQueryBuilder &builder,
         builder.insertProperty(imAccount, "nco:hasIMContact", imAddress, privateGraph);
 
         // Ensure the self contact has an IMAddress
-        builder.createResource(imAddress, "nco:IMAddress");
-        builder.insertProperty(imAddress, "nco:imID", literal(account->normalizedName()));
-        builder.insertProperty(imAddress, "nco:imProtocol", literal(account->protocolName()));
+        builder.createResource(imAddress, "nco:IMAddress", privateGraph);
+        builder.insertProperty(imAddress, "nco:imID", literal(account->normalizedName()), privateGraph);
+        builder.insertProperty(imAddress, "nco:imProtocol", literal(account->protocolName()), privateGraph);
 
         // Add all mutable properties
         addAccountChangesToBuilder(builder, accountWrapper, CDTpAccount::All);
@@ -269,7 +269,7 @@ void CDTpStorage::addCreateAccountsToBuilder(CDTpQueryBuilder &builder,
         "    FILTER (?imAddress IN (%2) &&\n"
         "            NOT EXISTS { nco:default-contact-me nco:hasAffiliation [ nco:hasIMAddress ?imAddress ] })\n"
         "}\n");
-    builder.appendRawQuery(tmpl.arg(CDTpQueryBuilder::defaultGraph).arg(imAddresses.join(filterInSeparator)));
+    builder.appendRawQuery(tmpl.arg(privateGraph).arg(imAddresses.join(filterInSeparator)));
 }
 
 void CDTpStorage::addRemoveAccountsChangesToBuilder(CDTpQueryBuilder &builder,
@@ -309,7 +309,8 @@ void CDTpStorage::addAccountChangesToBuilder(CDTpQueryBuilder &builder,
     }
     if (changes & CDTpAccount::Nickname) {
         debug() << "  nickname changed";
-        builder.insertProperty(imAddress, "nco:imNickname", literal(account->nickname()));
+        builder.insertProperty(imAddress, "nco:imNickname", literal(account->nickname()),
+                privateGraph);
     }
     if (changes & CDTpAccount::DisplayName) {
         debug() << "  display name changed";
@@ -509,9 +510,12 @@ void CDTpStorage::addSyncNoRosterAccountsContactsToBuilder(CDTpQueryBuilder &bui
     builder.appendRawSelection(tmpl.arg(imAddresses.join(filterInSeparator)).arg(imAccounts.join(filterInSeparator)));
 
     // FIXME: we could use addPresenceToBuilder() somehow
-    builder.updateProperty(imAddressVar, "nco:imPresence", presenceType(Tp::ConnectionPresenceTypeUnknown));
-    builder.updateProperty(imAddressVar, "nco:presenceLastModified", literalTimeStamp());
-    builder.updateProperty(imContactVar, "nie:contentLastModified", literalTimeStamp());
+    builder.updateProperty(imAddressVar, "nco:imPresence", presenceType(Tp::ConnectionPresenceTypeUnknown),
+            privateGraph);
+    builder.updateProperty(imAddressVar, "nco:presenceLastModified", literalTimeStamp(),
+            privateGraph);
+    builder.updateProperty(imContactVar, "nie:contentLastModified", literalTimeStamp(),
+            privateGraph);
 
     // Update capabilities of all contacts, since we don't know them anymore,
     // reset them to the account's caps.
@@ -575,8 +579,9 @@ void CDTpStorage::addSyncRosterAccountsContactsToBuilder(CDTpQueryBuilder &build
 
     /* Bind imAddress to all contacts that does not exist anymore, to purge them */
     static const QString selection = QString::fromLatin1(
-            "?imAddress a nco:IMAddress.\n"
-            "FILTER(NOT EXISTS { ?imAccount nco:hasIMContact ?imAddress }).");
+            "GRAPH %1 { ?imAddress a nco:IMAddress }.\n"
+            "FILTER(NOT EXISTS { ?imAccount nco:hasIMContact ?imAddress }).")
+            .arg(privateGraph);
 
     subBuilder = CDTpQueryBuilder("SyncRosterAccounts - purge contacts");
     subBuilder.appendRawSelection(selection);
@@ -598,9 +603,11 @@ void CDTpStorage::addCreateContactsToBuilder(CDTpQueryBuilder &builder,
         CDTpAccountPtr accountWrapper = contactWrapper->accountWrapper();
 
         const QString imAddress = literalIMAddress(contactWrapper);
-        builder.createResource(imAddress, "nco:IMAddress");
-        builder.insertProperty(imAddress, "nco:imID", literal(contactWrapper->contact()->id()));
-        builder.insertProperty(imAddress, "nco:imProtocol", literal(accountWrapper->account()->protocolName()));
+        builder.createResource(imAddress, "nco:IMAddress", privateGraph);
+        builder.insertProperty(imAddress, "nco:imID", literal(contactWrapper->contact()->id()),
+                privateGraph);
+        builder.insertProperty(imAddress, "nco:imProtocol", literal(accountWrapper->account()->protocolName()),
+                privateGraph);
 
         const QString imAccount = literalIMAccount(accountWrapper);
         builder.insertProperty(imAccount, "nco:hasIMContact", imAddress, privateGraph);
@@ -617,19 +624,22 @@ void CDTpStorage::addCreateContactsToBuilder(CDTpQueryBuilder &builder,
         "INSERT {\n"
         "    GRAPH %1 {\n"
         "        _:contact a nco:PersonContact;\n"
-        "                  nco:hasAffiliation _:affiliation;\n"
-        "                  nie:contentCreated %2;\n"
-        "                  nie:generator %3 .\n"
+        "                  nie:contentCreated %3;\n"
+        "                  nie:generator %4.\n"
+        "    }\n"
+        "    GRAPH %2 {\n"
+        "        _:contact nco:hasAffiliation _:affiliation.\n"
         "        _:affiliation a nco:Affiliation;\n"
         "                      nco:hasIMAddress ?imAddress;\n"
         "                      rdfs:label \"Other\".\n"
         "    }\n"
         "}\n"
         "WHERE {\n"
-        "    ?imAddress a nco:IMAddress.\n"
+        "    GRAPH %2 { ?imAddress a nco:IMAddress }.\n"
         "    FILTER (NOT EXISTS { ?imContact nco:hasAffiliation [ nco:hasIMAddress ?imAddress ] })\n"
         "}\n");
-    builder.appendRawQuery(tmpl.arg(CDTpQueryBuilder::defaultGraph).arg(literalTimeStamp()).arg(defaultGenerator));
+    builder.appendRawQuery(tmpl.arg(CDTpQueryBuilder::defaultGraph).arg(privateGraph)
+            .arg(literalTimeStamp()).arg(defaultGenerator));
 
     // Insert timestamp on all imContact bound to those imAddresses
     CDTpQueryBuilder subBuilder("CreateContacts - timestamp");
@@ -796,7 +806,8 @@ void CDTpStorage::addContactChangesToBuilder(CDTpQueryBuilder &builder,
     // Apply changes
     if (changes & CDTpContact::Alias) {
         debug() << "  alias changed";
-        builder.insertProperty(imAddress, "nco:imNickname", literal(contact->alias()));
+        builder.insertProperty(imAddress, "nco:imNickname", literal(contact->alias()),
+                privateGraph);
     }
     if (changes & CDTpContact::Presence) {
         debug() << "  presence changed";
@@ -812,8 +823,10 @@ void CDTpStorage::addContactChangesToBuilder(CDTpQueryBuilder &builder,
     }
     if (changes & CDTpContact::Authorization) {
         debug() << "  authorization changed";
-        builder.insertProperty(imAddress, "nco:imAddressAuthStatusFrom", presenceState(contact->subscriptionState()));
-        builder.insertProperty(imAddress, "nco:imAddressAuthStatusTo", presenceState(contact->publishState()));
+        builder.insertProperty(imAddress, "nco:imAddressAuthStatusFrom",
+                presenceState(contact->subscriptionState()), privateGraph);
+        builder.insertProperty(imAddress, "nco:imAddressAuthStatusTo",
+                presenceState(contact->publishState()), privateGraph);
     }
 }
 
@@ -829,10 +842,13 @@ void CDTpStorage::addPresenceToBuilder(CDTpQueryBuilder &builder,
         const QString &imAddress,
         const Tp::Presence &presence) const
 {
-    builder.insertProperty(imAddress, "nco:imPresence", presenceType(presence.type()));
-    builder.insertProperty(imAddress, "nco:presenceLastModified", literalTimeStamp());
+    builder.insertProperty(imAddress, "nco:imPresence", presenceType(presence.type()),
+            privateGraph);
+    builder.insertProperty(imAddress, "nco:presenceLastModified", literalTimeStamp(),
+            privateGraph);
     if (!presence.statusMessage().isEmpty()) {
-        builder.insertProperty(imAddress, "nco:imStatusMessage", literal(presence.statusMessage()));
+        builder.insertProperty(imAddress, "nco:imStatusMessage",
+                literal(presence.statusMessage()), privateGraph);
     }
 }
 
@@ -848,15 +864,15 @@ void CDTpStorage::addCapabilitiesToBuilder(CDTpQueryBuilder &builder,
 {
     if (capabilities.textChats()) {
         static const QString value = QString::fromLatin1("nco:im-capability-text-chat");
-        builder.insertProperty(imAddress, "nco:imCapability", value);
+        builder.insertProperty(imAddress, "nco:imCapability", value, privateGraph);
     }
     if (capabilities.streamedMediaAudioCalls()) {
         static const QString value = QString::fromLatin1("nco:im-capability-audio-calls");
-        builder.insertProperty(imAddress, "nco:imCapability", value);
+        builder.insertProperty(imAddress, "nco:imCapability", value, privateGraph);
     }
     if (capabilities.streamedMediaVideoCalls()) {
         static const QString value = QString::fromLatin1("nco:im-capability-video-calls");
-        builder.insertProperty(imAddress, "nco:imCapability", value);
+        builder.insertProperty(imAddress, "nco:imCapability", value, privateGraph);
     }
 }
 
@@ -874,9 +890,9 @@ void CDTpStorage::addAvatarToBuilder(CDTpQueryBuilder &builder,
         static const QString tmpl = QString::fromLatin1("<%1>");
         const QString url = QUrl::fromLocalFile(fileName).toString();
         const QString dataObject = tmpl.arg(url);
-        builder.createResource(dataObject, "nfo:FileDataObject");
-        builder.insertProperty(dataObject, "nie:url", literal(url));
-        builder.insertProperty(imAddress, "nco:imAvatar", dataObject);
+        builder.createResource(dataObject, "nfo:FileDataObject", privateGraph);
+        builder.insertProperty(dataObject, "nie:url", literal(url), privateGraph);
+        builder.insertProperty(imAddress, "nco:imAvatar", dataObject, privateGraph);
     }
 }
 
