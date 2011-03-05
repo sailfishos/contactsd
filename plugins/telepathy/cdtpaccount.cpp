@@ -266,7 +266,6 @@ void CDTpAccount::onAccountContactChanged(CDTpContactPtr contactWrapper,
         if (contactWrapper->isVisible()) {
             added << contactWrapper;
         } else {
-            contactWrapper->setRemoved(true);
             removed << contactWrapper;
         }
 
