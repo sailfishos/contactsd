@@ -72,10 +72,14 @@ void CDTpStorage::syncAccounts(const QList<CDTpAccountPtr> &accounts)
     builder.appendRawQuery(subBuilder);
 
     /* Purge accounts/imAddresses that does not exist anymore */
-    subBuilder = CDTpQueryBuilder("SyncAccounts - purge accounts/imAddresses");
+    subBuilder = CDTpQueryBuilder("SyncAccounts - purge imAddresses");
+    subBuilder.appendRawSelection(selection);
+    subBuilder.deleteResource(imAddressVar);
+    builder.appendRawQuery(subBuilder);
+
+    subBuilder = CDTpQueryBuilder("SyncAccounts - purge imAccount");
     subBuilder.appendRawSelection(selection);
     subBuilder.deleteResource(imAccountVar);
-    subBuilder.deleteResource(imAddressVar);
     builder.appendRawQuery(subBuilder);
 
     /* Sync accounts and their contacts */
