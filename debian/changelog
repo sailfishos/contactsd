@@ -1,3 +1,9 @@
+contactsd (0.5.57-4) unstable; urgency=low
+
+  * Correct changelog
+
+ -- Aleksandar Stojiljkovic <aleksandar.stojiljkovic@nokia.com>  Sun, 06 Mar 2011 13:24:08 +0200
+
 contactsd (0.5.57-3) unstable; urgency=low
 
   * Correct changelog
@@ -45,7 +51,6 @@ contactsd (0.5.55-1) unstable; urgency=low
 contactsd (0.5.54-1) unstable; urgency=low
 
   * Changes: Fix a crash when emitting rosterChanged from within constructor
-  * Fixes: NB#214534 - Unable ot remove gtalk/facebook contact.
 
  -- Xavier Claessens <xavier.claessens@collabora.co.uk>  Wed, 23 Feb 2011 16:31:50 +0100
 
