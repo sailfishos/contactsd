@@ -16,9 +16,9 @@ do
     test -f "$suite/$suite.skip" && continue
 
     if [ -f $suite/$suite-wrapper.sh ]; then
-        command="$suite-wrapper.sh"
+        command="@PREFIX@/share/contactsd-tests/$suite-wrapper.sh"
     else
-        command="$suite"
+        command="@BINDIR@/$suite"
     fi
 
 cat <<EOF
@@ -40,7 +40,7 @@ EOF
 cat <<EOF
       <case $attributes>
         <description>$description</description>
-        <step>/usr/bin/$command $test</step>
+        <step>$command $test</step>
       </case>
 EOF
     done

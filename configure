@@ -119,7 +119,8 @@ TOP_BUILDDIR = \$\$quote($TOP_BUILDDIR)
 CONFIG += \$\$quote($ENABLE_COVERAGE)
 EOF
 
-infiles="contactsd-1.0.pc"
+infiles="contactsd-1.0.pc
+         tests/mktests.sh"
 for infile in $infiles; do
     echo "Generating $infile"
     # pre-process .in files

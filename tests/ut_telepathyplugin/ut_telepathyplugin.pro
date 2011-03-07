@@ -1,3 +1,5 @@
+PRE_TARGETDEPS += ../libtelepathy/liblibtelepathy.a
+
 TARGET = ut_telepathyplugin
 target.path = $$BINDIR
 

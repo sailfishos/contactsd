@@ -15,18 +15,15 @@ wrapper.commands = \
         -e \"s,@WITH_DAEMON@,$$daemon.target,g\" \
     $< > $@ && chmod +x $@ || rm -f $@
 
-install_extrascripts.files = $$daemon.target with-session-bus.sh session.conf
+install_extrascripts.files = $$wrapper.target $$daemon.target with-session-bus.sh session.conf
 install_extrascripts.path = $$PREFIX/share/contactsd-tests
-install_extrascripts.depends = daemon
+install_extrascripts.depends = daemon wrapper
 install_extrascripts.CONFIG = no_check_exist
 
-install_wrapper.files = $$wrapper.target
-install_wrapper.path = $$BINDIR
-install_wrapper.depends = wrapper
-install_wrapper.CONFIG = no_check_exist
-
+QMAKE_INSTALL_FILE = cp -p
 QMAKE_EXTRA_TARGETS += daemon wrapper
 QMAKE_CLEAN += $$daemon.target $$wrapper.target
 
-INSTALLS += install_extrascripts install_wrapper
+PRE_TARGETDEPS += $$daemon.target $$wrapper.target
+INSTALLS += install_extrascripts
 

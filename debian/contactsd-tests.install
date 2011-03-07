@@ -1,7 +1,7 @@
 usr/bin/ut_contactsd
 usr/bin/ut_telepathyplugin
-usr/bin/ut_telepathyplugin-wrapper.sh
+usr/share/contactsd-tests/session.conf
 usr/share/contactsd-tests/tests.xml
+usr/share/contactsd-tests/ut_telepathyplugin-wrapper.sh
 usr/share/contactsd-tests/with-daemon.sh
 usr/share/contactsd-tests/with-session-bus.sh
-usr/share/contactsd-tests/session.conf
