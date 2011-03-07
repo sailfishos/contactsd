@@ -518,8 +518,7 @@ void CDTpStorage::addSyncNoRosterAccountsContactsToBuilder(CDTpQueryBuilder &bui
             privateGraph);
     builder.updateProperty(imAddressVar, "nco:presenceLastModified", literalTimeStamp(),
             privateGraph);
-    builder.updateProperty(imContactVar, "nie:contentLastModified", literalTimeStamp(),
-            privateGraph);
+    builder.updateProperty(imContactVar, "nie:contentLastModified", literalTimeStamp());
 
     // Update capabilities of all contacts, since we don't know them anymore,
     // reset them to the account's caps.
