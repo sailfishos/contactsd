@@ -29,8 +29,13 @@ CDTpContact::CDTpContact(Tp::ContactPtr contact, CDTpAccount *accountWrapper)
     : QObject(),
       mContact(contact),
       mAccountWrapper(accountWrapper),
-      mRemoved(false)
+      mRemoved(false),
+      mQueuedChanges(0)
 {
+    mQueuedChangesTimer.setInterval(0);
+    mQueuedChangesTimer.setSingleShot(true);
+    connect(&mQueuedChangesTimer, SIGNAL(timeout()), SLOT(onQueuedChangedTimeout()));
+
     updateVisibility();
 
     connect(contact.data(),
@@ -126,14 +131,22 @@ void CDTpContact::onBlockStatusChanged()
 
 void CDTpContact::emitChanged(CDTpContact::Changes changes)
 {
+    mQueuedChanges |= changes;
+    mQueuedChangesTimer.start();
+}
+
+void CDTpContact::onQueuedChangesTimeout()
+{
     // Check if this change also modified the visibility
     bool wasVisible = mVisible;
     updateVisibility();
     if (mVisible != wasVisible) {
-        changes |= Visibility;
+        mQueuedChanges |= Visibility;
     }
 
-    Q_EMIT changed(CDTpContactPtr(this), changes);
+    Q_EMIT changed(CDTpContactPtr(this), mQueuedChanges);
+
+    mQueuedChanges = 0;
 }
 
 void CDTpContact::updateVisibility()

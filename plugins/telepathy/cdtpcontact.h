@@ -67,6 +67,7 @@ private Q_SLOTS:
     void onContactAuthorizationChanged();
     void onContactInfoChanged();
     void onBlockStatusChanged();
+    void onQueuedChangesTimeout();
 
 private:
     void emitChanged(CDTpContact::Changes changes);
@@ -78,6 +79,8 @@ private:
     CDTpAccount *mAccountWrapper;
     bool mRemoved;
     bool mVisible;
+    Changes mQueuedChanges;
+    QTimer mQueuedChangesTimer;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(CDTpContact::Changes)
