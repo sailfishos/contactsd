@@ -124,6 +124,7 @@ public:
     TestExpectationContact(Event event, QString accountUri = QString());
 
     void setEvent(Event event) { mEvent = event; };
+    void resetVerifyFlags() { mFlags = 0; };
 
     void verifyAlias(QString alias) { mAlias = alias; mFlags |= VerifyAlias; };
     void verifyPresence(TpTestsContactsConnectionPresenceStatusIndex presence) { mPresence = presence; mFlags |= VerifyPresence; };
