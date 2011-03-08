@@ -1,3 +1,9 @@
+contactsd (0.5.58-4) unstable; urgency=low
+
+  * Fix typo in signal name
+
+ -- Xavier Claessens <xavier.claessens@collabora.co.uk>  Tue, 08 Mar 2011 09:12:18 +0100
+
 contactsd (0.5.58-3) unstable; urgency=low
 
   * Changes: Fix running unit tests
