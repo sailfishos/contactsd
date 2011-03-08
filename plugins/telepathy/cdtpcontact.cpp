@@ -34,7 +34,7 @@ CDTpContact::CDTpContact(Tp::ContactPtr contact, CDTpAccount *accountWrapper)
 {
     mQueuedChangesTimer.setInterval(0);
     mQueuedChangesTimer.setSingleShot(true);
-    connect(&mQueuedChangesTimer, SIGNAL(timeout()), SLOT(onQueuedChangedTimeout()));
+    connect(&mQueuedChangesTimer, SIGNAL(timeout()), SLOT(onQueuedChangesTimeout()));
 
     updateVisibility();
 
