@@ -152,8 +152,7 @@ void TestTelepathyPlugin::testBasicUpdates()
     test_contact_list_manager_request_subscription(mListManager, 1, &handle,
         "wait");
 
-    TestExpectationContact exp(EventAdded);
-    exp.verifyOnlineAccount("testbasicupdates");
+    TestExpectationContact exp(EventAdded, "testbasicupdates");
     exp.verifyAlias(alias);
     exp.verifyPresence(TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN);
     exp.verifyAuthorization("Requested", "No");
@@ -180,7 +179,6 @@ void TestTelepathyPlugin::testSelfContact()
         1, &mConnService->self_handle, &alias);
 
     TestExpectationContact exp(EventChanged);
-    exp.verifyOnlineAccount("fakeaccount");
     exp.verifyAlias(alias);
     exp.verifyPresence(TP_TESTS_CONTACTS_CONNECTION_STATUS_AVAILABLE);
     exp.verifyAvatar(QByteArray());
@@ -196,8 +194,7 @@ void TestTelepathyPlugin::testAuthorization()
     test_contact_list_manager_request_subscription(mListManager, 1, &handle,
         "wait");
 
-    TestExpectationContact exp(EventAdded);
-    exp.verifyOnlineAccount("romeo");
+    TestExpectationContact exp(EventAdded, "romeo");
     exp.verifyAuthorization("Requested", "No");
     runExpectation(&exp);
 
@@ -215,18 +212,17 @@ void TestTelepathyPlugin::testAuthorization()
     test_contact_list_manager_request_subscription(mListManager, 1, &handle,
         "wait");
 
-    exp.setEvent(EventAdded);
-    exp.verifyOnlineAccount("juliette");
-    exp.verifyAuthorization("Requested", "No");
-    runExpectation(&exp);
+    TestExpectationContact exp2(EventAdded, "juliette");
+    exp2.verifyAuthorization("Requested", "No");
+    runExpectation(&exp2);
 
     /* Ask again for subscription, but this time it will be rejected */
     test_contact_list_manager_request_subscription(mListManager, 1, &handle,
         "no");
 
-    exp.setEvent(EventChanged);
-    exp.verifyAuthorization("No", "No");
-    runExpectation(&exp);
+    exp2.setEvent(EventChanged);
+    exp2.verifyAuthorization("No", "No");
+    runExpectation(&exp2);
 }
 
 GPtrArray *TestTelepathyPlugin::createContactInfoTel(const gchar *number)
@@ -251,8 +247,7 @@ void TestTelepathyPlugin::testContactInfo()
     test_contact_list_manager_request_subscription(mListManager, 1, &handle,
         "wait");
 
-    TestExpectationContact exp(EventAdded);
-    exp.verifyOnlineAccount("testcontactinfo");
+    TestExpectationContact exp(EventAdded, "testcontactinfo");
     runExpectation(&exp);
 
     /* Set some ContactInfo on the contact */
@@ -288,8 +283,7 @@ void TestTelepathyPlugin::testBug220851()
     test_contact_list_manager_request_subscription(mListManager, 1, &handle,
         "wait");
 
-    TestExpectationContact exp(EventAdded);
-    exp.verifyOnlineAccount("testbug220851");
+    TestExpectationContact exp(EventAdded, "testbug220851");
     runExpectation(&exp);
 
     /* An address has 7 fields normally. Verify it's fine to give less */
@@ -316,8 +310,7 @@ void TestTelepathyPlugin::testRemoveContacts()
     test_contact_list_manager_request_subscription(mListManager, 1, &handle,
         "please");
 
-    TestExpectationContact exp(EventAdded);
-    exp.verifyOnlineAccount("testremovecontacts");
+    TestExpectationContact exp(EventAdded, "testremovecontacts");
     runExpectation(&exp);
 
     test_contact_list_manager_remove(mListManager, 1, &handle);
@@ -400,8 +393,7 @@ void TestTelepathyPlugin::testInviteBuddyDBusAPI()
         QVERIFY(watcher.isValid());
     }
 
-    TestExpectationContact exp(EventAdded);
-    exp.verifyOnlineAccount(buddy);
+    TestExpectationContact exp(EventAdded, buddy);
     runExpectation(&exp);
 }
 
@@ -411,8 +403,7 @@ void TestTelepathyPlugin::testSetOffline()
     test_contact_list_manager_request_subscription(mListManager, 1, &handle,
         "please");
 
-    TestExpectationContact exp(EventAdded);
-    exp.verifyOnlineAccount("testsetoffline");
+    TestExpectationContact exp(EventAdded, "testsetoffline");
     runExpectation(&exp);
 
     tp_cli_connection_call_disconnect(mConnection, -1, NULL, NULL, NULL, NULL);
@@ -439,8 +430,7 @@ void TestTelepathyPlugin::testAvatar()
     test_contact_list_manager_request_subscription(mListManager, 1, &handle,
         "please");
 
-    TestExpectationContact exp(EventAdded);
-    exp.verifyOnlineAccount("testavatar");
+    TestExpectationContact exp(EventAdded, "testavatar");
     exp.verifyAvatar(QByteArray(avatarData));
     runExpectation(&exp);
 
@@ -483,8 +473,7 @@ void TestTelepathyPlugin::testAvatar()
     test_contact_list_manager_request_subscription(mListManager, 1, &handle2,
         "please");
 
-    TestExpectationContact exp2(EventAdded);
-    exp2.verifyOnlineAccount("testavatar2");
+    TestExpectationContact exp2(EventAdded, "testavatar2");
     exp2.verifyAvatar(QByteArray(avatarData));
     runExpectation(&exp2);
 
@@ -520,7 +509,6 @@ void TestTelepathyPlugin::testIRIEncode()
         "wait");
 
     TestExpectationContact exp(EventAdded);
-    exp.verifyOnlineAccount("<specialid>");
     runExpectation(&exp);
 }
 

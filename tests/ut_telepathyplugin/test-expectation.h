@@ -121,7 +121,7 @@ class TestExpectationContact : public TestExpectation
     Q_OBJECT
 
 public:
-    TestExpectationContact(Event event);
+    TestExpectationContact(Event event, QString accountUri = QString());
 
     void setEvent(Event event) { mEvent = event; };
 
@@ -130,8 +130,6 @@ public:
     void verifyAvatar(QByteArray avatarData) { mAvatarData = avatarData; mFlags |= VerifyAvatar; };
     void verifyAuthorization(QString subscriptionState, QString publishState) { mSubscriptionState = subscriptionState; mPublishState = publishState; mFlags |= VerifyAuthorization; };
     void verifyInfo(GPtrArray *contactInfo) { mContactInfo = contactInfo; mFlags |= VerifyInfo; };
-    void verifyOnlineAccount(QString accountUri) { mNOnlineAccounts = 1; mAccountUri = accountUri; mFlags |= VerifyOnlineAccounts; };
-    void verifyOnlineAccounts(int n) { mNOnlineAccounts = n; mFlags |= VerifyOnlineAccounts; };
 
 
 protected:
@@ -147,12 +145,12 @@ private:
         VerifyAvatar         = (1 << 2),
         VerifyAuthorization  = (1 << 3),
         VerifyInfo           = (1 << 4),
-        VerifyOnlineAccounts = (1 << 5),
         VerifyAll            = (1 << 6) - 1
     };
 
     void verifyContactInfo(QString expectedName, const QStringList expectedValues) const;
 
+    QString mAccountUri;
     Event mEvent;
     int mFlags;
 
@@ -162,8 +160,6 @@ private:
     QString mSubscriptionState;
     QString mPublishState;
     GPtrArray *mContactInfo;
-    int mNOnlineAccounts;
-    QString mAccountUri;
 };
 
 // --- TestExpectationDisconnect ---
