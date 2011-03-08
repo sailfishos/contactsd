@@ -149,7 +149,7 @@ void TestExpectationContact::verify(Event event, const QList<QContact> &contacts
 {
     QCOMPARE(event, mEvent);
     QCOMPARE(contacts.count(), 1);
-    verify(contacts[0]);
+    verify(contacts[0], mAccountUri);
     emitFinished();
 }
 
@@ -161,12 +161,12 @@ void TestExpectationContact::verify(Event event, const QList<QContactLocalId> &c
     emitFinished();
 }
 
-void TestExpectationContact::verify(QContact contact)
+void TestExpectationContact::verify(QContact contact, QString accountUri)
 {
     debug() << contact;
 
-    if (!mAccountUri.isEmpty()) {
-        const QString uri = QString("telepathy:%1!%2").arg(ACCOUNT_PATH).arg(mAccountUri);
+    if (!accountUri.isEmpty()) {
+        const QString uri = QString("telepathy:%1!%2").arg(ACCOUNT_PATH).arg(accountUri);
         QList<QContactOnlineAccount> details = contact.details<QContactOnlineAccount>("DetailUri", uri);
         QCOMPARE(details.count(), 1);
         QCOMPARE(details[0].value("AccountPath"), QString(ACCOUNT_PATH));
@@ -179,11 +179,11 @@ void TestExpectationContact::verify(QContact contact)
 
     if (mFlags & VerifyPresence) {
         QContactPresence::PresenceState presence;
-        if (mAccountUri.isEmpty()) {
+        if (accountUri.isEmpty()) {
             QContactGlobalPresence presenceDetail = contact.detail<QContactGlobalPresence>();
             presence = presenceDetail.presenceState();
         } else {
-            const QString uri = QString("presence:%1!%2").arg(ACCOUNT_PATH).arg(mAccountUri);
+            const QString uri = QString("presence:%1!%2").arg(ACCOUNT_PATH).arg(accountUri);
             QList<QContactPresence> details = contact.details<QContactPresence>("DetailUri", uri);
             QCOMPARE(details.count(), 1);
             presence = details[0].presenceState();
@@ -223,7 +223,7 @@ void TestExpectationContact::verify(QContact contact)
     }
 
     if (mFlags & VerifyAuthorization) {
-        const QString uri = QString("presence:%1!%2").arg(ACCOUNT_PATH).arg(mAccountUri);
+        const QString uri = QString("presence:%1!%2").arg(ACCOUNT_PATH).arg(accountUri);
         QList<QContactPresence> details = contact.details<QContactPresence>("DetailUri", uri);
         QCOMPARE(details.count(), 1);
         QCOMPARE(details[0].value("AuthStatusFrom"), mSubscriptionState);

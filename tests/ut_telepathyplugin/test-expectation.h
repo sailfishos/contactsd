@@ -135,7 +135,7 @@ public:
 protected:
     void verify(Event event, const QList<QContact> &contacts);
     void verify(Event event, const QList<QContactLocalId> &contactIds, QContactManager::Error error);
-    void verify(QContact contact);
+    void verify(QContact contact, QString accountUri = QString());
 
 private:
     enum VerifyFlags {
