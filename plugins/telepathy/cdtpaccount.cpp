@@ -94,11 +94,13 @@ QString CDTpAccount::providerName() const
 
 void CDTpAccount::firstTimeSeen()
 {
+    if (!hasRoster()) {
+        mFirstSeen = true;
+        return;
+    }
+
     Q_FOREACH (const CDTpContactPtr &contactWrapper, mContacts.values()) {
         maybeRequestExtraInfo(contactWrapper->contact());
-    }
-    if (!mAccount->connection()) {
-        mFirstSeen = true;
     }
 }
 
@@ -151,7 +153,7 @@ void CDTpAccount::setConnection(const Tp::ConnectionPtr &connection)
     mContacts.clear();
     mHasRoster = false;
 
-    if (connection && connection->actualFeatures().contains(Tp::Connection::FeatureRoster)) {
+    if (connection) {
         connect(connection->contactManager().data(),
                 SIGNAL(stateChanged(Tp::ContactListState)),
                 SLOT(onContactListStateChanged(Tp::ContactListState)));
