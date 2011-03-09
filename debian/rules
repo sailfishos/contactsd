@@ -27,6 +27,7 @@ override_dh_strip:
 override_dh_builddeb:
 	dh_builddeb
 	aegis-deb-add -control debian/contactsd/DEBIAN/control .. debian/contactsd.aegis=_aegis
+	aegis-deb-add -control debian/contactsd-tests/DEBIAN/control .. debian/contactsd-tests.aegis=_aegis
 
 override_dh_auto_test:
 

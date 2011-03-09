@@ -1,14 +1,9 @@
-include(coverage.pri)
-
 TEMPLATE = subdirs
 CONFIG += ordered
 
 SUBDIRS += libtelepathy ut_telepathyplugin
-ut_telepathyplugin.depends += libtelepathy
 
 UNIT_TESTS += ut_telepathyplugin
-
-OTHER_FILES += mktests.sh
 
 testxml.target = tests.xml
 testxml.commands = $$PWD/mktests.sh $$UNIT_TESTS >$@ || rm -f $@
