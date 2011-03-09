@@ -30,6 +30,7 @@ plugins/telepathy/buddymanagementadaptor.cpp
 plugins/telepathy/buddymanagementadaptor.h
 
 tests/tests.xml
+tests/mktests.sh
 tests/ut_contactsd/ut_contactsd
 tests/ut_telepathyplugin/buddymanagementinterface.cpp
 tests/ut_telepathyplugin/buddymanagementinterface.h

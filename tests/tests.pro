@@ -3,10 +3,10 @@ include(coverage.pri)
 TEMPLATE = subdirs
 CONFIG += ordered
 
-SUBDIRS += libtelepathy ut_contactsd ut_telepathyplugin
+SUBDIRS += libtelepathy ut_telepathyplugin
 ut_telepathyplugin.depends += libtelepathy
 
-UNIT_TESTS += ut_contactsd ut_telepathyplugin
+UNIT_TESTS += ut_telepathyplugin
 
 OTHER_FILES += mktests.sh
 
