@@ -26,6 +26,12 @@ tests/dbus-1/session.conf
 .*.sw?
 *~
 
+debian/contactsd-dbg
+debian/contactsd-dev
+debian/contactsd-tests
+debian/contactsd
+
+
 plugins/telepathy/buddymanagementadaptor.cpp
 plugins/telepathy/buddymanagementadaptor.h
 
