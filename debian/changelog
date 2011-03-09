@@ -1,3 +1,10 @@
+contactsd (0.5.59-1) unstable; urgency=low
+
+  * Fixes: NB#234674 - Gmail contacts are not imported to contacts application after creating the gmail account
+  * Fixes: NB#233871 - contactsd-tests : CITA cases FAILS.
+
+ -- Xavier Claessens <xavier.claessens@collabora.co.uk>  Wed, 09 Mar 2011 16:20:15 +0100
+
 contactsd (0.5.58-4) unstable; urgency=low
 
   * Fix typo in signal name
