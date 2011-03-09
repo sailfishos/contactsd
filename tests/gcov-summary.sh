@@ -1,6 +1,6 @@
 #!/bin/sh
 COVERAGE_TEST_DIRS="
-    ut_contactsd
+    ut_telepathyplugin
     "
 
 rm gcov.analysis.summary &> /dev/null

@@ -1,4 +1,3 @@
-usr/bin/ut_contactsd
 usr/bin/ut_telepathyplugin
 usr/share/contactsd-tests/session.conf
 usr/share/contactsd-tests/tests.xml
