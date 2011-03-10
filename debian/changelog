@@ -1,3 +1,9 @@
+contactsd (0.5.58-6) unstable; urgency=low
+
+  * Fix unit tests to make them pass CITA
+
+ -- Xavier Claessens <xavier.claessens@collabora.co.uk>  Thu, 10 Mar 2011 10:32:31 +0100
+
 contactsd (0.5.58-5) unstable; urgency=low
 
   * Fix unit tests to make them pass CITA
