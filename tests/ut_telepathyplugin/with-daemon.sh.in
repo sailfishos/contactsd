@@ -1,6 +1,6 @@
 #! /bin/sh
 
-set -m
+set -e
 
 tracker-control -rs > /dev/null
 
@@ -24,10 +24,8 @@ export CONTACTSD_PLUGINS_DIRS=@PLUGINDIR@
 @BINDIR@/contactsd &
 contactsd_pid=$!
 
-# Move unit test to front
-e=0
-fg %1
-e=$?
+# wait for unit test to finish
+wait $ut_pid
 
 trap - INT HUP TERM
 cleanup
