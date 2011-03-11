@@ -53,7 +53,7 @@ Depends: ci-testing,
          ${shlibs:Depends},
          ${misc:Depends}
 XB-Maemo-CI-Packages: libqtcontacts-tracker, contactsd, tracker
-XB-Maemo-CI-Stage: fast, staging, acceptance
+XB-Maemo-CI-Stage: fast
 Description: Contactsd plugin (unit tests)
  Contacts daemon - Observing telepathy and storing to tracker.
  .
