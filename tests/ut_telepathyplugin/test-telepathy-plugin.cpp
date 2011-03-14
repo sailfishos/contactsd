@@ -19,6 +19,11 @@
 
 #include <QContact>
 #include <QContactFetchByIdRequest>
+#include <QContactLocalIdFetchRequest>
+#include <QContactFetchRequest>
+#include <QContactLocalIdFilter>
+
+#include <qtcontacts-tracker/contactmergerequest.h>
 
 #include <TelepathyQt4/Debug>
 
@@ -561,6 +566,104 @@ void TestTelepathyPlugin::verify(Event event,
 {
     QVERIFY(mExpectation != 0);
     mExpectation->verify(event, contactIds);
+}
+
+void TestTelepathyPlugin::testMergedContact()
+{
+    /* create new contact */
+    TpHandle handle1 = ensureContact("contact1");
+    test_contact_list_manager_request_subscription(mListManager, 1, &handle1,
+        "wait");
+    TestExpectationContact exp1(EventAdded, "contact1");
+    runExpectation(&exp1);
+
+    /* create another contact */
+    TpHandle handle2 = ensureContact("contact2");
+    test_contact_list_manager_request_subscription(mListManager, 1, &handle2,
+        "wait");
+    TestExpectationContact exp2(EventAdded, "contact2");
+    runExpectation(&exp2);
+
+    /* Merge contact2 into contact1 */
+    QContact contact1 = exp1.contact();
+    QContact contact2 = exp2.contact();
+    const QList<QContactLocalId> mergeIds = QList<QContactLocalId>() << contact2.localId();
+    mergeContacts(contact1, mergeIds);
+    exp1.verifyLocalId(contact1.localId());
+    exp2.verifyLocalId(contact1.localId());
+    const QList<TestExpectationContact *> expectations = QList<TestExpectationContact *>() << &exp1 << &exp2;
+    TestExpectationMerge exp3(contact1.localId(), mergeIds, expectations);
+    runExpectation(&exp3);
+
+    /* Change presence of contact1, verify it modify the global presence */
+    TpTestsContactsConnectionPresenceStatusIndex presence =
+            TP_TESTS_CONTACTS_CONNECTION_STATUS_BUSY;
+    const gchar *message = "Testing merged contact";
+    tp_tests_contacts_connection_change_presences(
+        TP_TESTS_CONTACTS_CONNECTION (mConnService),
+        1, &handle1, &presence, &message);
+    TestExpectationContact exp4(EventChanged);
+    exp4.verifyLocalId(contact1.localId());
+    exp4.verifyPresence(presence);
+    runExpectation(&exp4);
+
+#if 0
+    /* Change alias of contact2, verify it modify the global nickname */
+    const char *alias = "Merged contact 2";
+    tp_tests_contacts_connection_change_aliases(
+        TP_TESTS_CONTACTS_CONNECTION (mConnService),
+        1, &handle2, &alias);
+    exp4.verifyAlias(alias);
+    runExpectation(&exp4);
+
+    /* NB#223264 - Contactsd incorrectly handle the removal of merged IM contacts */
+    tp_tests_simple_account_disabled (mAccount, FALSE);
+
+    QContactFetchRequest *request = new QContactFetchRequest();
+    request->setManager(mContactManager);
+    QContactLocalIdFilter filter;
+    filter.setIds(QList<QContactLocalId>() << contact1.localId());
+    request->setFilter(filter);
+    connect(request, SIGNAL(resultsAvailable()),
+        SLOT(onContactsFetched()));
+    QVERIFY(request->start());
+#endif
+}
+
+void TestTelepathyPlugin::mergeContacts(const QContact &contactTarget,
+        const QList<QContactLocalId> &sourceContactIds)
+{
+    QMultiMap<QContactLocalId, QContactLocalId> mergeIds;
+
+    Q_FOREACH (QContactLocalId id, sourceContactIds) {
+        mergeIds.insert (contactTarget.localId(), id);
+    }
+
+    QctContactMergeRequest *mergeRequest = new QctContactMergeRequest();
+    connect(mergeRequest,
+            SIGNAL(resultsAvailable()),
+            SLOT(onMergeContactsFinished()));
+    mergeRequest->setMergeIds(mergeIds);
+    mergeRequest->setManager(mContactManager);
+    QVERIFY(mergeRequest->start());
+}
+
+void TestTelepathyPlugin::onMergeContactsFinished()
+{
+    QctContactMergeRequest *req = qobject_cast<QctContactMergeRequest *>(sender());
+    QVERIFY(req != 0);
+    QVERIFY(req->isFinished());
+    QCOMPARE(req->error(), QContactManager::NoError);
+    req->deleteLater();
+}
+
+void TestTelepathyPlugin::onContactsFetched()
+{
+    QContactFetchRequest *req = qobject_cast<QContactFetchRequest *>(sender());
+    QVERIFY(req);
+    QVERIFY(req->isFinished());
+    QCOMPARE (req->error(), QContactManager::NoError);
+    QVERIFY(req->contacts().count() >= 1);
 }
 
 QTEST_MAIN(TestTelepathyPlugin)

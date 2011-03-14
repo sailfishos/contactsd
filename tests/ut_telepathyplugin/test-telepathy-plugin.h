@@ -53,6 +53,8 @@ protected Q_SLOTS:
     void contactsAdded(const QList<QContactLocalId>& contactIds);
     void contactsChanged(const QList<QContactLocalId>& contactIds);
     void contactsRemoved(const QList<QContactLocalId>& contactIds);
+    void onContactsFetched();
+    void onMergeContactsFinished();
 
 private Q_SLOTS:
     void initTestCase();
@@ -70,6 +72,7 @@ private Q_SLOTS:
     void testAvatar();
 
     /* Specific tests */
+    void testMergedContact();
     void testBug220851();
     void testIRIEncode();
 
@@ -81,6 +84,8 @@ private:
     GPtrArray *createContactInfoTel(const gchar *number);
     void verify(Event event, const QList<QContactLocalId> &contactIds);
     void runExpectation(TestExpectation *expectation);
+    void mergeContacts(const QContact &contactTarget,
+            const QList<QContactLocalId> &sourceContactIds);
 
 private:
     QContactManager *mContactManager;

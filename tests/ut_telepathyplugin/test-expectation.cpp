@@ -338,3 +338,48 @@ void TestExpectationDisconnect::verify(Event event, const QList<QContact> &conta
         emitFinished();
     }
 }
+
+// --- TestExpectationMerge ---
+
+TestExpectationMerge::TestExpectationMerge(const QContactLocalId masterId,
+        const QList<QContactLocalId> mergeIds, const QList<TestExpectationContact *> expectations)
+        : mMasterId(masterId), mMergeIds(mergeIds), mGotMergedContact(false),
+        mContactExpectations(expectations)
+{
+}
+
+void TestExpectationMerge::verify(Event event, const QList<QContact> &contacts)
+{
+    QCOMPARE(event, EventChanged);
+    QCOMPARE(contacts.count(), 1);
+    QCOMPARE(contacts[0].localId(), mMasterId);
+    mGotMergedContact = true;
+
+    Q_FOREACH (TestExpectationContact *exp, mContactExpectations) {
+        exp->verify(contacts[0]);
+    }
+
+    maybeEmitFinished();
+}
+
+
+void TestExpectationMerge::verify(Event event, const QList<QContactLocalId> &contactIds,
+        QContactManager::Error error)
+{
+    QCOMPARE(event, EventRemoved);
+    QCOMPARE(error, QContactManager::DoesNotExistError);
+
+    Q_FOREACH (QContactLocalId localId, contactIds) {
+        QVERIFY(mMergeIds.contains(localId));
+        mMergeIds.removeOne(localId);
+    }
+
+    maybeEmitFinished();
+}
+
+void TestExpectationMerge::maybeEmitFinished()
+{
+    if (mMergeIds.isEmpty() && mGotMergedContact) {
+        emitFinished();
+    }
+}

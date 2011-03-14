@@ -186,4 +186,26 @@ private:
     bool mSelfChanged;
 };
 
+// --- TestExpectationMerge ---
+
+class TestExpectationMerge : public TestExpectation
+{
+    Q_OBJECT
+
+public:
+    TestExpectationMerge(const QContactLocalId masterId, const QList<QContactLocalId> mergeIds,
+            const QList<TestExpectationContact *> expectations = QList<TestExpectationContact *>());
+
+protected:
+    void verify(Event event, const QList<QContact> &contacts);
+    void verify(Event event, const QList<QContactLocalId> &contactIds, QContactManager::Error error);
+
+private:
+    void maybeEmitFinished();
+
+    QContactLocalId mMasterId;
+    QList<QContactLocalId> mMergeIds;
+    bool mGotMergedContact;
+    QList<TestExpectationContact *> mContactExpectations;
+};
 #endif
