@@ -2,30 +2,31 @@
 
 set -e
 
-tracker-control -rs > /dev/null
-
 cleanup ()
 {
   kill -INT $contactsd_pid
-  kill -INT $ut_pid
   tracker-control -r > /dev/null
 }
 trap cleanup INT HUP TERM
+
+tracker-control -rs > /dev/null
 
 # Start the unit test in background so it register the AM
 "$@" &
 ut_pid=$!
 
+# Wait for AM to appear on the bus
 # FIXME: It is ugly to hardcode such path
 /usr/lib/mission-control/mcclient6-wait-for-name "org.freedesktop.Telepathy.AccountManager"
 
 # Start Contacts Daemon in background
 export CONTACTSD_PLUGINS_DIRS=@PLUGINDIR@
-@BINDIR@/contactsd &
+@BINDIR@/contactsd --plugins telepathy &
 contactsd_pid=$!
 
 # wait for unit test to finish
-wait $ut_pid
+e=0
+wait $ut_pid || e=$?
 
 trap - INT HUP TERM
 cleanup
