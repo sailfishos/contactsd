@@ -57,8 +57,7 @@ int main(int argc, char **argv)
             QString value = args.at(i);
             value.replace(" ", ",");
             plugins << value.split(",", QString::SkipEmptyParts);
-        }
-        if (arg == "--version") {
+        } else if (arg == "--version") {
             qDebug() << "contactsd version" << VERSION;
             return 0;
         } else if (arg == "--help") {
