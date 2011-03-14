@@ -176,7 +176,16 @@ void TestExpectationContact::verify(QContact contact)
     }
 
     if (mFlags & VerifyAlias) {
-        QString label = contact.detail<QContactDisplayLabel>().label();
+        QString label;
+        if (mAccountUri.isEmpty()) {
+            label = contact.detail<QContactDisplayLabel>().label();
+        } else {
+            const QString uri = QString("presence:%1!%2").arg(ACCOUNT_PATH).arg(mAccountUri);
+            QList<QContactPresence> details = contact.details<QContactPresence>("DetailUri", uri);
+            QCOMPARE(details.count(), 1);
+            label = details[0].nickname();
+        }
+
         QCOMPARE(label, mAlias);
     }
 
@@ -361,7 +370,6 @@ void TestExpectationMerge::verify(Event event, const QList<QContact> &contacts)
 
     maybeEmitFinished();
 }
-
 
 void TestExpectationMerge::verify(Event event, const QList<QContactLocalId> &contactIds,
         QContactManager::Error error)

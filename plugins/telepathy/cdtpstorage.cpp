@@ -755,28 +755,22 @@ void CDTpStorage::addRemoveContactsChangesToBuilder(CDTpQueryBuilder &builder,
         CDTpContact::Changes changes) const
 {
     if (changes & CDTpContact::Alias) {
-        debug() << "  alias changed";
         builder.deleteProperty(imAddress, "nco:imNickname");
     }
     if (changes & CDTpContact::Presence) {
-        debug() << "  presence changed";
         addRemovePresenceToBuilder(builder, imAddress);
     }
     if (changes & CDTpContact::Capabilities) {
-        debug() << "  capabilities changed";
         addRemoveCapabilitiesToBuilder(builder, imAddress);
     }
     if (changes & CDTpContact::Avatar) {
-        debug() << "  avatar changed";
         addRemoveAvatarToBuilder(builder, imAddress);
     }
     if (changes & CDTpContact::Authorization) {
-        debug() << "  authorization changed";
         builder.deleteProperty(imAddress, "nco:imAddressAuthStatusFrom");
         builder.deleteProperty(imAddress, "nco:imAddressAuthStatusTo");
     }
     if (changes & CDTpContact::Information) {
-        debug() << "  vcard information changed";
         addRemoveContactInfoToBuilder(builder, imAddress, imContact);
     }
 
@@ -809,8 +803,10 @@ void CDTpStorage::addContactChangesToBuilder(CDTpQueryBuilder &builder,
     // Apply changes
     if (changes & CDTpContact::Alias) {
         debug() << "  alias changed";
-        builder.insertProperty(imAddress, "nco:imNickname", literal(contact->alias()),
-                privateGraph);
+        if (contact->alias() != contact->id()) {
+            builder.insertProperty(imAddress, "nco:imNickname", literal(contact->alias()),
+                    privateGraph);
+        }
     }
     if (changes & CDTpContact::Presence) {
         debug() << "  presence changed";
