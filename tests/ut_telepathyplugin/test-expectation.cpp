@@ -69,8 +69,9 @@ TestFetchContacts::TestFetchContacts(const QList<QContactLocalId> &contactIds,
         mContactIds(contactIds), mEvent(event), mExp(exp)
 {
     QContactFetchByIdRequest *request = new QContactFetchByIdRequest();
-    connect(request, SIGNAL(resultsAvailable()),
-        SLOT(onContactsFetched()));
+    connect(request,
+            SIGNAL(resultsAvailable()),
+            SLOT(onContactsFetched()));
     request->setManager(mExp->contactManager());
     request->setLocalIds(contactIds);
     QVERIFY(request->start());
@@ -90,6 +91,7 @@ void TestFetchContacts::onContactsFetched()
     }
 
     deleteLater();
+    req->deleteLater();
 }
 
 // --- TestExpectationInit ---
@@ -149,7 +151,8 @@ void TestExpectationContact::verify(Event event, const QList<QContact> &contacts
 {
     QCOMPARE(event, mEvent);
     QCOMPARE(contacts.count(), 1);
-    verify(contacts[0], mAccountUri);
+    mContact = contacts[0];
+    verify(contacts[0]);
     emitFinished();
 }
 
@@ -161,12 +164,12 @@ void TestExpectationContact::verify(Event event, const QList<QContactLocalId> &c
     emitFinished();
 }
 
-void TestExpectationContact::verify(QContact contact, QString accountUri)
+void TestExpectationContact::verify(QContact contact)
 {
     debug() << contact;
 
-    if (!accountUri.isEmpty()) {
-        const QString uri = QString("telepathy:%1!%2").arg(ACCOUNT_PATH).arg(accountUri);
+    if (!mAccountUri.isEmpty()) {
+        const QString uri = QString("telepathy:%1!%2").arg(ACCOUNT_PATH).arg(mAccountUri);
         QList<QContactOnlineAccount> details = contact.details<QContactOnlineAccount>("DetailUri", uri);
         QCOMPARE(details.count(), 1);
         QCOMPARE(details[0].value("AccountPath"), QString(ACCOUNT_PATH));
@@ -179,11 +182,11 @@ void TestExpectationContact::verify(QContact contact, QString accountUri)
 
     if (mFlags & VerifyPresence) {
         QContactPresence::PresenceState presence;
-        if (accountUri.isEmpty()) {
+        if (mAccountUri.isEmpty()) {
             QContactGlobalPresence presenceDetail = contact.detail<QContactGlobalPresence>();
             presence = presenceDetail.presenceState();
         } else {
-            const QString uri = QString("presence:%1!%2").arg(ACCOUNT_PATH).arg(accountUri);
+            const QString uri = QString("presence:%1!%2").arg(ACCOUNT_PATH).arg(mAccountUri);
             QList<QContactPresence> details = contact.details<QContactPresence>("DetailUri", uri);
             QCOMPARE(details.count(), 1);
             presence = details[0].presenceState();
@@ -223,7 +226,7 @@ void TestExpectationContact::verify(QContact contact, QString accountUri)
     }
 
     if (mFlags & VerifyAuthorization) {
-        const QString uri = QString("presence:%1!%2").arg(ACCOUNT_PATH).arg(accountUri);
+        const QString uri = QString("presence:%1!%2").arg(ACCOUNT_PATH).arg(mAccountUri);
         QList<QContactPresence> details = contact.details<QContactPresence>("DetailUri", uri);
         QCOMPARE(details.count(), 1);
         QCOMPARE(details[0].value("AuthStatusFrom"), mSubscriptionState);
@@ -260,6 +263,10 @@ void TestExpectationContact::verify(QContact contact, QString accountUri)
         if (mContactInfo != NULL) {
             QCOMPARE(nMatchedField, mContactInfo->len);
         }
+    }
+
+    if (mFlags & VerifyLocalId) {
+        QCOMPARE(contact.localId(), mLocalId);
     }
 }
 

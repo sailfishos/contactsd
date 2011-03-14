@@ -123,6 +123,7 @@ class TestExpectationContact : public TestExpectation
 public:
     TestExpectationContact(Event event, QString accountUri = QString());
 
+    QContact contact() { return mContact; };
     void setEvent(Event event) { mEvent = event; };
     void resetVerifyFlags() { mFlags = 0; };
 
@@ -131,12 +132,13 @@ public:
     void verifyAvatar(QByteArray avatarData) { mAvatarData = avatarData; mFlags |= VerifyAvatar; };
     void verifyAuthorization(QString subscriptionState, QString publishState) { mSubscriptionState = subscriptionState; mPublishState = publishState; mFlags |= VerifyAuthorization; };
     void verifyInfo(GPtrArray *contactInfo) { mContactInfo = contactInfo; mFlags |= VerifyInfo; };
+    void verifyLocalId(QContactLocalId localId) { mLocalId = localId; mFlags |= VerifyLocalId; };
 
+    void verify(QContact contact);
 
 protected:
     void verify(Event event, const QList<QContact> &contacts);
     void verify(Event event, const QList<QContactLocalId> &contactIds, QContactManager::Error error);
-    void verify(QContact contact, QString accountUri = QString());
 
 private:
     enum VerifyFlags {
@@ -146,6 +148,7 @@ private:
         VerifyAvatar         = (1 << 2),
         VerifyAuthorization  = (1 << 3),
         VerifyInfo           = (1 << 4),
+        VerifyLocalId        = (1 << 5),
         VerifyAll            = (1 << 6) - 1
     };
 
@@ -161,6 +164,9 @@ private:
     QString mSubscriptionState;
     QString mPublishState;
     GPtrArray *mContactInfo;
+    QContactLocalId mLocalId;
+
+    QContact mContact;
 };
 
 // --- TestExpectationDisconnect ---
