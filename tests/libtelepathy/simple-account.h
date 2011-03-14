@@ -55,6 +55,7 @@ void tp_tests_simple_account_set_connection (TpTestsSimpleAccount *self,
     const gchar *object_path);
 
 void tp_tests_simple_account_removed (TpTestsSimpleAccount *self);
+void tp_tests_simple_account_disabled (TpTestsSimpleAccount *self, gboolean state);
 
 G_END_DECLS
 

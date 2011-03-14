@@ -62,6 +62,7 @@ struct _TpTestsSimpleAccountPrivate
   TpConnectionStatus connection_status;
   TpConnectionStatusReason connection_status_reason;
   gboolean has_been_online;
+  gboolean enabled;
 
   GHashTable *parameters;
 
@@ -94,6 +95,7 @@ tp_tests_simple_account_init (TpTestsSimpleAccount *self)
   self->priv->connection_status = TP_CONNECTION_STATUS_DISCONNECTED;
   self->priv->connection_status_reason = TP_CONNECTION_STATUS_REASON_NONE_SPECIFIED;
   self->priv->has_been_online = FALSE;
+  self->priv->enabled = TRUE;
 
   self->priv->parameters = g_hash_table_new (NULL, NULL);
 
@@ -561,4 +563,15 @@ void
 tp_tests_simple_account_removed (TpTestsSimpleAccount *self)
 {
   tp_svc_account_emit_removed (self);
+}
+
+void
+tp_tests_simple_account_disabled (TpTestsSimpleAccount *self, gboolean state)
+{
+  GHashTable *change;
+  self->priv->enabled = state;
+  change = tp_asv_new (NULL, NULL);
+  tp_asv_set_boolean (change, "Enabled", state);
+  tp_svc_account_emit_account_property_changed(self, change);
+  g_hash_table_unref (change);
 }
