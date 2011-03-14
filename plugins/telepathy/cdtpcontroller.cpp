@@ -164,7 +164,7 @@ CDTpAccountPtr CDTpController::insertAccount(const Tp::AccountPtr &account)
     mAccounts.insert(account->objectPath(), accountWrapper);
 
     // Connect change notifications
-    connect(accountWrapper.data(),
+    connect(account.data(),
             SIGNAL(onlinenessChanged(bool)),
             SLOT(onAccountOnlinenessChanged(bool)));
     connect(accountWrapper.data(),
