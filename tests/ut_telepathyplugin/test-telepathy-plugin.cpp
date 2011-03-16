@@ -128,6 +128,7 @@ void TestTelepathyPlugin::init()
 void TestTelepathyPlugin::cleanup()
 {
     cleanupImpl();
+
     tp_cli_connection_call_disconnect(mConnection, -1, NULL, NULL, NULL, NULL);
     tp_tests_simple_account_manager_remove_account(mAccountManager, ACCOUNT_PATH);
     tp_tests_simple_account_removed(mAccount);
@@ -645,22 +646,15 @@ void TestTelepathyPlugin::testMergedContact()
     exp4.verifyPresence(presence);
     runExpectation(&exp4);
 
-    /* Change alias of contact2 and set a more available presence,
-     * verify it modify the global nickname/presence */
+#if 0
+    /* Change alias of contact2, verify it modify the global nickname */
     const char *alias = "Merged contact 2";
     tp_tests_contacts_connection_change_aliases(
         TP_TESTS_CONTACTS_CONNECTION (mConnService),
         1, &handle2, &alias);
-    presence = TP_TESTS_CONTACTS_CONNECTION_STATUS_AVAILABLE;
-    message = "Testing merged contact alias";
-    tp_tests_contacts_connection_change_presences(
-        TP_TESTS_CONTACTS_CONNECTION (mConnService),
-        1, &handle2, &presence, &message);
     exp4.verifyAlias(alias);
-    exp4.verifyPresence(presence);
     runExpectation(&exp4);
 
-#if 0
     /* NB#223264 - Contactsd incorrectly handle the removal of merged IM contacts */
     tp_tests_simple_account_disabled (mAccount, FALSE);
 
