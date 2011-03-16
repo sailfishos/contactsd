@@ -280,6 +280,45 @@ void TestTelepathyPlugin::testContactInfo()
     g_ptr_array_unref(infoPtrArray);
 }
 
+void TestTelepathyPlugin::testContactPhoneNumber()
+{
+    /* Create a contact with no ContactInfo */
+    TpHandle handle = ensureContact("failphone");
+    test_contact_list_manager_request_subscription(mListManager, 1, &handle,
+        "wait");
+
+    TestExpectationContact exp(EventAdded, "failphone");
+    runExpectation(&exp);
+
+    /* Set some ContactInfo on the contact */
+    GPtrArray *infoPtrArray = createContactInfoTel("+8888");
+    tp_tests_contacts_connection_change_contact_info(
+        TP_TESTS_CONTACTS_CONNECTION(mConnService), handle, infoPtrArray);
+
+    exp.setEvent(EventChanged);
+    exp.verifyInfo(infoPtrArray);
+    runExpectation(&exp);
+    g_ptr_array_unref(infoPtrArray);
+
+    /* Change the ContactInfo */
+    infoPtrArray = createContactInfoTel("+8887");
+    tp_tests_contacts_connection_change_contact_info(
+        TP_TESTS_CONTACTS_CONNECTION(mConnService), handle, infoPtrArray);
+
+    exp.verifyInfo(infoPtrArray);
+    runExpectation(&exp);
+    g_ptr_array_unref(infoPtrArray);
+
+    /* Change the ContactInfo */
+    infoPtrArray = createContactInfoTel("+8888");
+    tp_tests_contacts_connection_change_contact_info(
+        TP_TESTS_CONTACTS_CONNECTION(mConnService), handle, infoPtrArray);
+
+    exp.verifyInfo(infoPtrArray);
+    runExpectation(&exp);
+    g_ptr_array_unref(infoPtrArray);
+}
+
 void TestTelepathyPlugin::testBug220851()
 {
     /* Create a contact with no ContactInfo */

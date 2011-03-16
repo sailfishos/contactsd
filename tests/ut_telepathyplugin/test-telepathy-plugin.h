@@ -65,6 +65,7 @@ private Q_SLOTS:
     void testSelfContact();
     void testAuthorization();
     void testContactInfo();
+    void testContactPhoneNumber();
     void testRemoveContacts();
     //void testRemoveBuddyDBusAPI();
     void testInviteBuddyDBusAPI();

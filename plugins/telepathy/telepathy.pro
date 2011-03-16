@@ -2,7 +2,7 @@ TEMPLATE = lib
 QT -= gui
 QT += dbus
 
-CONFIG += plugin qtsparql
+CONFIG += plugin qtsparql qtcontacts_extensions_tracker
 system(qdbusxml2cpp -c BuddyManagementAdaptor -a buddymanagementadaptor.h:buddymanagementadaptor.cpp com.nokia.contacts.buddymanagement.xml)
 
 CONFIG(coverage):{

@@ -100,7 +100,17 @@ QString CDTpQueryBuilder::updateProperty(const QString &resource, const char *pr
 
 void CDTpQueryBuilder::appendRawSelection(const QString &str)
 {
+    appendRawSelectionInsert(str);
+    appendRawSelectionDelete(str);
+}
+
+void CDTpQueryBuilder::appendRawSelectionInsert(const QString &str)
+{
     append(mInsertPartWhere, str);
+}
+
+void CDTpQueryBuilder::appendRawSelectionDelete(const QString &str)
+{
     append(mDeletePartWhere, str);
 }
 
@@ -113,6 +123,17 @@ void CDTpQueryBuilder::appendRawQuery(const CDTpQueryBuilder &builder)
 {
     mSubQueries << builder.getRawQuery();
 }
+
+void CDTpQueryBuilder::prependRawQuery(const QString &str)
+{
+    mPreQueries << str;
+}
+
+void CDTpQueryBuilder::prependRawQuery(const CDTpQueryBuilder &builder)
+{
+    mPreQueries << builder.getRawQuery();
+}
+
 
 QString CDTpQueryBuilder::uniquify(const char *v)
 {
@@ -159,6 +180,11 @@ QString CDTpQueryBuilder::getRawQuery() const
     // Append raw queries
     Q_FOREACH (const QString &subQuery, mSubQueries) {
         rawQuery += subQuery;
+    }
+
+    // Prepend raw queries
+    Q_FOREACH (const QString &subQuery, mPreQueries) {
+        rawQuery = rawQuery.prepend(subQuery);
     }
 
     rawQuery += QString::fromLatin1("# --- END %1 ---\n").arg(mName);

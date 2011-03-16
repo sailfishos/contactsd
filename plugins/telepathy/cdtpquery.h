@@ -44,8 +44,13 @@ public:
     QString updateProperty(const QString &resource, const char *property, const QString &value, const QString &graph = defaultGraph);
 
     void appendRawSelection(const QString &str);
+    void appendRawSelectionInsert(const QString &str);
+    void appendRawSelectionDelete(const QString &str);
+
     void appendRawQuery(const QString &str);
     void appendRawQuery(const CDTpQueryBuilder &builder);
+    void prependRawQuery(const QString &str);
+    void prependRawQuery(const CDTpQueryBuilder &builder);
 
     QLatin1String name() const { return mName; };
     QString uniquify(const char *v = "?v");
@@ -63,6 +68,7 @@ private:
     QString mInsertPartWhere;
     QString mDeletePart;
     QString mDeletePartWhere;
+    QList<QString> mPreQueries;
     QList<QString> mSubQueries;
 
     int mVCount;

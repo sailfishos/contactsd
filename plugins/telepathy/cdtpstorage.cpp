@@ -20,6 +20,7 @@
 #include <TelepathyQt4/AvatarData>
 #include <TelepathyQt4/ContactCapabilities>
 #include <TelepathyQt4/ConnectionCapabilities>
+#include <qtcontacts-tracker/phoneutils.h>
 
 #include "cdtpstorage.h"
 #include "debug.h"
@@ -922,14 +923,27 @@ void CDTpStorage::addContactInfoToBuilder(CDTpQueryBuilder &builder,
          */
 
         if (!field.fieldName.compare(QLatin1String("tel"))) {
-            // FIXME: Should normalize phone number?
-            static const QString tmpl = QString::fromLatin1("<tel:%1>");
-            const QString voicePhoneNumber = tmpl.arg(field.fieldValue[0]);
+            const QString voicePhoneNumber = literalContactInfo(field, 0);
+
+            /* FIXME: Could change nco:PhoneNumber depending the the TYPE */
+            CDTpQueryBuilder subBuilder("Insert Anon PhoneNumber");
+            static const QString tmplQuery = QString::fromLatin1(
+                    "FILTER(NOT EXISTS { ?resource a nco:PhoneNumber ; nco:phoneNumber %1 })");
+            const QString phoneVar = subBuilder.uniquify("_:v");
+            subBuilder.createResource(phoneVar, "nco:PhoneNumber");
+            subBuilder.insertProperty(phoneVar, "nco:phoneNumber", voicePhoneNumber);
+            subBuilder.insertProperty(phoneVar, "maemo:localPhoneNumber",
+                    literal(qctNormalizePhoneNumber(field.fieldValue[0])));
+            subBuilder.appendRawSelection(tmplQuery.arg(voicePhoneNumber));
+            builder.prependRawQuery(subBuilder);
+
+            /* save phone details to imContact */
+            QString var = builder.uniquify("?phoneResource");
+            static const QString tmplPhoneResource = QString::fromLatin1(
+                "%1 nco:phoneNumber %2 .\n");
             const QString affiliation = ensureContactAffiliationToBuilder(builder, imContact, graph, field, affiliations);
-            builder.createResource(voicePhoneNumber, "nco:VoicePhoneNumber");
-            builder.insertProperty(voicePhoneNumber, "maemo:localPhoneNumber", literalContactInfo(field, 0));
-            builder.insertProperty(voicePhoneNumber, "nco:phoneNumber", literalContactInfo(field, 0));
-            builder.insertProperty(affiliation, "nco:hasPhoneNumber", voicePhoneNumber);
+            builder.appendRawSelectionInsert(tmplPhoneResource.arg(var).arg(voicePhoneNumber));
+            builder.insertProperty(affiliation, "nco:hasPhoneNumber", var);
         }
 
         else if (!field.fieldName.compare(QLatin1String("email"))) {
