@@ -1,3 +1,9 @@
+contactsd (0.5.61-1) unstable; urgency=low
+
+  * Changes: Normalize phone numbers and use anon iri
+
+ -- Xavier Claessens <xavier.claessens@collabora.co.uk>  Wed, 16 Mar 2011 16:50:02 +0100
+
 contactsd (0.5.60-1) unstable; urgency=low
 
   * Fixes: NB#233871 - contactsd-tests : CITA cases FAILS.
