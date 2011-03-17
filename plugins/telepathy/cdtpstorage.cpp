@@ -655,31 +655,20 @@ void CDTpStorage::addCreateContactsToBuilder(CDTpQueryBuilder &builder,
     builder.appendRawQuery(subBuilder);
 
     // Add ContactInfo seperately because we need to bind to the PersonContact
-    // and that makes things much slower
-    subBuilder = CDTpQueryBuilder("CreateContacts - add ContactInfo");
-    uint imContactCount = 0;
+    // and each phone number. that makes things much slower.
     Q_FOREACH (const CDTpContactPtr contactWrapper, contacts) {
         if (!contactWrapper->isInformationKnown()) {
             continue;
         }
 
         const QString imAddress = literalIMAddress(contactWrapper);
-
-        // Tracker supports at most 32 selection of the ?imContact_X
-        if (imContactCount == 32) {
-            builder.appendRawQuery(subBuilder);
-            subBuilder = CDTpQueryBuilder("CreateContacts - add ContactInfo - next part");
-            imContactCount = 0;
-        }
-
-        imContactCount++;
         const QString imContact = subBuilder.uniquify("?imContact");
         static const QString tmpl = QString::fromLatin1("%1 nco:hasAffiliation [ nco:hasIMAddress %2 ].");
+        subBuilder = CDTpQueryBuilder("CreateContacts - add ContactInfo");
         subBuilder.appendRawSelection(tmpl.arg(imContact).arg(imAddress));
-        addContactInfoToBuilder(subBuilder, imAddress, imContact,
-                contactWrapper->contact());
+        addContactInfoToBuilder(subBuilder, imAddress, imContact, contactWrapper->contact());
+        builder.appendRawQuery(subBuilder);
     }
-    builder.appendRawQuery(subBuilder);
 }
 
 void CDTpStorage::addRemoveContactsChangesToBuilder(CDTpQueryBuilder &builder,
@@ -944,7 +933,7 @@ void CDTpStorage::addContactInfoToBuilder(CDTpQueryBuilder &builder,
             /* save phone details to imContact */
             QString var = builder.uniquify("?phoneResource");
             static const QString tmplPhoneResource = QString::fromLatin1(
-                "%1 nco:phoneNumber %2 .\n");
+                "%1 nco:phoneNumber %2.");
             const QString affiliation = ensureContactAffiliationToBuilder(builder, imContact, graph, field, affiliations);
             builder.appendRawSelectionInsert(tmplPhoneResource.arg(var).arg(voicePhoneNumber));
             builder.insertProperty(affiliation, "nco:hasPhoneNumber", var);
