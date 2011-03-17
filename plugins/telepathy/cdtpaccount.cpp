@@ -29,11 +29,11 @@
 
 using namespace Contactsd;
 
-CDTpAccount::CDTpAccount(const Tp::AccountPtr &account, QObject *parent)
+CDTpAccount::CDTpAccount(const Tp::AccountPtr &account, bool newAccount, QObject *parent)
     : QObject(parent),
       mAccount(account),
       mHasRoster(false),
-      mFirstSeen(false),
+      mNewAccount(newAccount),
       mBlockSignals(false)
 {
     mRosterChangedTimer.setInterval(1000);
@@ -90,18 +90,6 @@ QString CDTpAccount::providerName() const
     }
 
     return mAccount->serviceName();
-}
-
-void CDTpAccount::firstTimeSeen()
-{
-    if (!hasRoster()) {
-        mFirstSeen = true;
-        return;
-    }
-
-    Q_FOREACH (const CDTpContactPtr &contactWrapper, mContacts.values()) {
-        maybeRequestExtraInfo(contactWrapper->contact());
-    }
 }
 
 void CDTpAccount::onAccountDisplayNameChanged()
@@ -192,12 +180,10 @@ void CDTpAccount::setContactManager(const Tp::ContactManagerPtr &contactManager)
 
     Q_FOREACH (const Tp::ContactPtr &contact, contactManager->allKnownContacts()) {
         insertContact(contact);
-        if (mFirstSeen) {
+        if (mNewAccount) {
             maybeRequestExtraInfo(contact);
         }
     }
-
-    mFirstSeen = false;
 }
 
 void CDTpAccount::emitRosterChanged()
@@ -213,6 +199,10 @@ void CDTpAccount::onRosterChangedTimeout()
 {
     mBlockSignals = false;
     Q_EMIT rosterChanged(CDTpAccountPtr(this));
+
+    if (mHasRoster) {
+        mNewAccount = false;
+    }
 }
 
 void CDTpAccount::onAllKnownContactsChanged(const Tp::Contacts &contactsAdded,

@@ -119,7 +119,7 @@ void CDTpController::onAccountManagerReady(Tp::PendingOperation *op)
              SLOT(onAccountRemoved(const Tp::AccountPtr &)));
 
     Q_FOREACH (const Tp::AccountPtr &account, mAccountSet->accounts()) {
-        insertAccount(account);
+        insertAccount(account, false);
     }
 
     mStorage->syncAccounts(mAccounts.values());
@@ -132,12 +132,8 @@ void CDTpController::onAccountAdded(const Tp::AccountPtr &account)
         return;
     }
 
-    CDTpAccountPtr accountWrapper = insertAccount(account);
+    CDTpAccountPtr accountWrapper = insertAccount(account, true);
     mStorage->syncAccount(accountWrapper);
-
-    // This is the first time we see this account, we can request additional
-    // info, like avatar for offline gtalk contacts.
-    accountWrapper->firstTimeSeen();
 }
 
 void CDTpController::onAccountRemoved(const Tp::AccountPtr &account)
@@ -157,10 +153,10 @@ void CDTpController::onAccountOnlinenessChanged(bool online)
     }
 }
 
-CDTpAccountPtr CDTpController::insertAccount(const Tp::AccountPtr &account)
+CDTpAccountPtr CDTpController::insertAccount(const Tp::AccountPtr &account, bool newAccount)
 {
     debug() << "Creating wrapper for account" << account->objectPath();
-    CDTpAccountPtr accountWrapper = CDTpAccountPtr(new CDTpAccount(account, this));
+    CDTpAccountPtr accountWrapper = CDTpAccountPtr(new CDTpAccount(account, newAccount, this));
     mAccounts.insert(account->objectPath(), accountWrapper);
 
     // Connect change notifications

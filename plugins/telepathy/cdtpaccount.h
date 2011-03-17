@@ -45,7 +45,7 @@ public:
     };
     Q_DECLARE_FLAGS(Changes, Change)
 
-    CDTpAccount(const Tp::AccountPtr &account, QObject *parent = 0);
+    CDTpAccount(const Tp::AccountPtr &account, bool newAccount, QObject *parent = 0);
     ~CDTpAccount();
 
     Tp::AccountPtr account() const { return mAccount; }
@@ -53,7 +53,7 @@ public:
     QList<CDTpContactPtr> contacts() const;
     CDTpContactPtr contact(const QString &id) const;
     bool hasRoster() const { return mHasRoster; };
-    void firstTimeSeen();
+    bool isNewAccount() const { return mNewAccount; };
 
 Q_SIGNALS:
     void changed(CDTpAccountPtr accountWrapper, CDTpAccount::Changes changes);
@@ -89,7 +89,7 @@ private:
     QHash<QString, CDTpContactPtr> mContacts;
     QTimer mRosterChangedTimer;
     bool mHasRoster;
-    bool mFirstSeen;
+    bool mNewAccount;
     bool mBlockSignals;
 };
 

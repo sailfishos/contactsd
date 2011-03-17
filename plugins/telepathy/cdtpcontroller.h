@@ -62,7 +62,7 @@ private Q_SLOTS:
     void clearOfflineBuffer(PendingOfflineRemoval *pr);
 
 private:
-    CDTpAccountPtr insertAccount(const Tp::AccountPtr &account);
+    CDTpAccountPtr insertAccount(const Tp::AccountPtr &account, bool newAccount);
     void removeAccount(const QString &accountObjectPath);
 
     void setImportStarted(const Tp::AccountPtr &account);

@@ -90,18 +90,7 @@ void CDTpStorage::syncAccounts(const QList<CDTpAccountPtr> &accounts)
         builder.appendRawQuery(subBuilder);
     }
 
-    /* Notify import progress for accounts that have contacts */
-    QList<CDTpAccountPtr> rosterAccounts;
-    Q_FOREACH (const CDTpAccountPtr &accountWrapper, accounts) {
-        if (!accountWrapper->contacts().isEmpty()) {
-            rosterAccounts << accountWrapper;
-            Q_EMIT syncStarted(accountWrapper);
-        }
-    }
-    CDTpAccountsSparqlQuery *query = new CDTpAccountsSparqlQuery(rosterAccounts, builder, this);
-    connect(query,
-            SIGNAL(finished(CDTpSparqlQuery *)),
-            SLOT(onSyncOperationEnded(CDTpSparqlQuery *)));
+    new CDTpSparqlQuery(builder, this);
 }
 
 void CDTpStorage::syncAccount(CDTpAccountPtr accountWrapper)
@@ -362,8 +351,9 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper)
         addSyncNoRosterAccountsContactsToBuilder(builder, accounts);
     }
 
-    /* if account has no contacts, we are done */
-    if (accountWrapper->contacts().isEmpty()) {
+    /* If it is not the first time account gets a roster, or if account has
+     * no contacts, execute query without notify import progress */
+    if (!accountWrapper->isNewAccount() || accountWrapper->contacts().isEmpty()) {
         new CDTpSparqlQuery(builder, this);
         return;
     }
@@ -1137,8 +1127,6 @@ void CDTpStorage::onSyncOperationEnded(CDTpSparqlQuery *query)
     CDTpAccountsSparqlQuery *accountsQuery = qobject_cast<CDTpAccountsSparqlQuery*>(query);
     QList<CDTpAccountPtr> accounts = accountsQuery->accounts();
 
-    /* FIXME: We don't know how many contacts were imported and how many just
-     * got updated */
     Q_FOREACH (const CDTpAccountPtr &accountWrapper, accounts) {
         Q_EMIT syncEnded(accountWrapper, accountWrapper->contacts().count(), 0);
     }
