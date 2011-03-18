@@ -28,6 +28,7 @@
 #include <QContactPresence>
 #include <QContactEmailAddress>
 #include <QContactGlobalPresence>
+#include <QContactTag>
 
 #include "test-expectation.h"
 #include "debug.h"
@@ -98,6 +99,12 @@ void TestFetchContacts::onContactsFetched()
 
 void TestExpectationInit::verify(Event event, const QList<QContact> &contacts)
 {
+    // For some reason VoiceMail contact gets added at init sometimes. Ignore it.
+    if (event ==EventAdded) {
+        QCOMPARE(contacts.count(), 1);
+        QCOMPARE(contacts[0].detail<QContactTag>().tag(), QLatin1String("voicemail"));
+        return;
+    }
     QCOMPARE(event, EventChanged);
     QCOMPARE(contacts.count(), 1);
     QCOMPARE(contacts[0].localId(), contactManager()->selfContactId());
