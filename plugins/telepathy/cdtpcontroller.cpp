@@ -96,7 +96,6 @@ void CDTpController::onAccountManagerReady(Tp::PendingOperation *op)
         return;
     }
 
-    checkOfflineOperations();
     debug() << "Account manager ready";
 
     Tp::AccountPropertyFilterPtr filter1 = Tp::AccountPropertyFilter::create();
@@ -146,23 +145,27 @@ void CDTpController::onAccountRemoved(const Tp::AccountPtr &account)
     mStorage->removeAccount(accountWrapper);
 }
 
-void CDTpController::onAccountOnlinenessChanged(bool online)
-{
-    if (online) {
-        checkOfflineOperations();
-    }
-}
-
 CDTpAccountPtr CDTpController::insertAccount(const Tp::AccountPtr &account, bool newAccount)
 {
     debug() << "Creating wrapper for account" << account->objectPath();
-    CDTpAccountPtr accountWrapper = CDTpAccountPtr(new CDTpAccount(account, newAccount, this));
+
+    // Get the list of contact ids waiting to be removed from server
+    mOfflineRosterBuffer->beginGroup(QLatin1String("OfflineRemovals"));
+    QStringList idsToRemove = mOfflineRosterBuffer->value(account->objectPath()).toStringList();
+    mOfflineRosterBuffer->endGroup();
+
+    CDTpAccountPtr accountWrapper = CDTpAccountPtr(new CDTpAccount(account, idsToRemove, newAccount, this));
     mAccounts.insert(account->objectPath(), accountWrapper);
 
+    // Start removal operation
+    if (!idsToRemove.isEmpty()) {
+        PendingOfflineRemoval *removalPending = new PendingOfflineRemoval(accountWrapper, idsToRemove, this);
+        connect(removalPending,
+                SIGNAL(finished(PendingOfflineRemoval *)),
+                SLOT(onRemovalFinished(PendingOfflineRemoval *)));
+    }
+
     // Connect change notifications
-    connect(account.data(),
-            SIGNAL(onlinenessChanged(bool)),
-            SLOT(onAccountOnlinenessChanged(bool)));
     connect(accountWrapper.data(),
             SIGNAL(changed(CDTpAccountPtr, CDTpAccount::Changes)),
             mStorage,
@@ -256,23 +259,12 @@ void CDTpController::onPresenceSubscriptionRequested(Tp::PendingOperation *op)
 
 void CDTpController::removeBuddy(const QString &accountPath, const QString &imId)
 {
-    // remove the contact from storage immediately
-    CDTpAccountPtr account = mAccounts.value(accountPath);
-    if (not account) {
-        // disabled accounts contacts are removed.
-        return;
-    }
+    debug() << "RemoveBuddy:" << imId;
 
-    // next block would remove it from tracker
-    CDTpContactPtr contact = account->contact(imId);
-    if (contact) {
-        mStorage->syncAccountContacts(account, QList<CDTpContactPtr>(), QList<CDTpContactPtr>() << contact);
-    } else {
-        // branch is important for offline use case - there are no contacts then in account
-        mStorage->removeAccountContacts(accountPath, QStringList() << imId);
-    }
+    // Remove contact from storage
+    mStorage->removeAccountContacts(accountPath, QStringList() << imId);
 
-    // then put to redlist removed, and call processRedList that would remove it if account is online
+    // Add contact to offlineRemovals, in case it does not get removed right now from server
     mOfflineRosterBuffer->beginGroup(QLatin1String("OfflineRemovals"));
     QStringList currentList = mOfflineRosterBuffer->value(accountPath).toStringList();
     if (!currentList.contains(imId)) {
@@ -281,46 +273,55 @@ void CDTpController::removeBuddy(const QString &accountPath, const QString &imId
     mOfflineRosterBuffer->setValue(accountPath, currentList);
     mOfflineRosterBuffer->endGroup();
     mOfflineRosterBuffer->sync();
-    checkOfflineOperations();
-}
 
-void CDTpController::clearOfflineBuffer(PendingOfflineRemoval *op)
-{
-    if (op->isError()) {
-      delete op;
-      return;
-    }
-
-    mOfflineRosterBuffer->beginGroup(QLatin1String("OfflineRemovals"));
-    mOfflineRosterBuffer->setValue(op->accountPath(), QStringList());
-    mOfflineRosterBuffer->endGroup();
-    mOfflineRosterBuffer->sync();
-}
-
-void CDTpController::checkOfflineOperations()
-{
-    mOfflineRosterBuffer->beginGroup(QLatin1String("OfflineRemovals"));
-    const QStringList accountList = mOfflineRosterBuffer->allKeys();
-
-    Q_FOREACH(const QString accountPath, accountList) {
-        const QStringList rosters = mOfflineRosterBuffer->value(accountPath).toStringList();
-        mStorage->contactsToAvoid(QLatin1String("/") + accountPath, rosters);
-        PendingOfflineRemoval *removalPending = new PendingOfflineRemoval(accountPath, rosters, this);
-        connect(removalPending,
-                SIGNAL(finished(PendingOfflineRemoval *)),
-                SLOT(clearOfflineBuffer(PendingOfflineRemoval *)));
-        }
-    mOfflineRosterBuffer->endGroup();
-}
-
-void CDTpController::onContactsRemoved(Tp::PendingOperation *op)
-{
-    // contacts get removed from redlist storage when rosterUpdated signal is
-    // processed in storage - following lines serve for logging only
-    if (op->isError()) {
-        warning() << Q_FUNC_INFO << "Could not remove contacts:" << op << op->errorName() << "-" << op->errorMessage();
+    CDTpAccountPtr accountWrapper = mAccounts[accountPath];
+    if (!accountWrapper) {
         return;
     }
+
+    // Add contact to account's avoid list
+    QStringList avoidList = accountWrapper->contactsToAvoid();
+    if (!avoidList.contains(imId)) {
+        avoidList << imId;
+    }
+    accountWrapper->setContactsToAvoid(avoidList);
+
+    // Start removal operation
+    PendingOfflineRemoval *removalPending = new PendingOfflineRemoval(accountWrapper, QStringList() << imId, this);
+    connect(removalPending,
+            SIGNAL(finished(PendingOfflineRemoval *)),
+            SLOT(onRemovalFinished(PendingOfflineRemoval *)));
+}
+
+void CDTpController::onRemovalFinished(PendingOfflineRemoval *op)
+{
+    debug() << "Contacts removed from server:" << op->contactIds().join(QLatin1String(", "));
+
+    CDTpAccountPtr accountWrapper = op->accountWrapper();
+    const QString accountPath = accountWrapper->account()->objectPath();
+
+    // Remove contacts from the OfflineRemovals
+    mOfflineRosterBuffer->beginGroup(QLatin1String("OfflineRemovals"));
+    QStringList currentList = mOfflineRosterBuffer->value(accountPath).toStringList();
+    Q_FOREACH (const QString id, op->contactIds()) {
+        currentList.removeOne(id);
+    }
+    if (currentList.isEmpty()) {
+        mOfflineRosterBuffer->remove(accountPath);
+    } else {
+        mOfflineRosterBuffer->setValue(accountPath, currentList);
+    }
+    mOfflineRosterBuffer->endGroup();
+    mOfflineRosterBuffer->sync();
+
+    // Remove contacts from account's avoid list, in case they get added back
+    QStringList avoidList = accountWrapper->contactsToAvoid();
+    Q_FOREACH (const QString &id, op->contactIds()) {
+        avoidList.removeOne(id);
+    }
+    accountWrapper->setContactsToAvoid(avoidList);
+
+    delete op;
 }
 
 bool CDTpController::registerDBusObject()
@@ -339,109 +340,52 @@ bool CDTpController::registerDBusObject()
     return true;
 }
 
-PendingOfflineRemoval::PendingOfflineRemoval(const QString &accountPath,
+PendingOfflineRemoval::PendingOfflineRemoval(CDTpAccountPtr accountWrapper,
         const QStringList &contacts, QObject *parent) : QObject(parent)
 {
     mContactIds = contacts;
-    mAccountPath = accountPath;
-    mIsError = false;
+    mAccountWrapper = accountWrapper;
 
-    Tp::AccountPtr account =
-    Tp::Account::create(QLatin1String(TELEPATHY_ACCOUNT_MANAGER_BUS_NAME)
-            , QLatin1String("/") + accountPath);
-    connect(account->becomeReady(Tp::Features() << Tp::Account::FeatureCore),
-        SIGNAL(finished(Tp::PendingOperation *)),
-        SLOT(onOfflineAccountReady(Tp::PendingOperation *)));
+    onRosterChanged(mAccountWrapper);
+    connect(mAccountWrapper.data(),
+            SIGNAL(rosterChanged(CDTpAccountPtr)),
+            SLOT(onRosterChanged(CDTpAccountPtr)));
 }
 
 PendingOfflineRemoval::~PendingOfflineRemoval()
 {
 }
 
-void PendingOfflineRemoval::onOfflineAccountReady(Tp::PendingOperation *po)
+void PendingOfflineRemoval::onRosterChanged(CDTpAccountPtr accountWrapper)
 {
-   if (po->isError()) {
-       debug() << "Error Creating Account" << po->errorName() << po->errorMessage();
-       mIsError = true;
-       mErrorMessage = po->errorMessage();
-       mErrorName = po->errorName();
-       Q_EMIT finished(this);
-       return;
-   }
-
-   Tp::PendingReady *pr = qobject_cast<Tp::PendingReady *>(po);
-   Tp::AccountPtr account = Tp::AccountPtr(qobject_cast<Tp::Account *>(
-                                  (Tp::Account *) pr->object().data()));
-   if (account) {
-       mAccount = account;
-   } else {
-       mIsError = true;
-       mErrorName = QLatin1String("invalid account");
-       mErrorMessage = QLatin1String("Casting failed");
-       Q_EMIT finished(this);
-   }
-
-   if (account && account->isOnline() && account->connection()) {
-       connect(account->connection()->becomeReady(Tp::Connection::FeatureRoster),
-               SIGNAL(finished(Tp::PendingOperation *)),
-               SLOT(onConnectnionReady(Tp::PendingOperation *)));
-   } else {
-       connect(account.data(),
-               SIGNAL(connectionChanged(Tp::ConnectionPtr)),
-               SLOT(onConnectionChanged(Tp::ConnectionPtr)));
-   }
-}
-
-void PendingOfflineRemoval::onConnectionReady(Tp::PendingOperation * op)
-{
-    if (op->isError()) {
-        debug() << "Error with Connection" << op->errorName() << op->errorMessage();
-        mIsError = true;
-        mErrorMessage = op->errorMessage();
-        mErrorName = op->errorName();
+    if (!accountWrapper->hasRoster()) {
+        return;
     }
 
-    Tp::PendingReady * pr = qobject_cast<Tp::PendingReady *>(op);
-    Tp::ConnectionPtr connection =
-        Tp::ConnectionPtr(qobject_cast<Tp::Connection *>((Tp::Connection *) pr->object().data()));
-    if (connection) {
-        Tp::ContactManagerPtr manager = connection->contactManager();
-        QList<Tp::ContactPtr> idsToRemove;
-        const Tp::Contacts knowncontacts =  manager->allKnownContacts();
+    debug() << "Account has a roster, start removing contacts from server";
 
-        Q_FOREACH(const QString contact, mContactIds) {
-            Q_FOREACH(const Tp::ContactPtr tpcontact, knowncontacts) {
-                if (tpcontact->id() == contact) {
-                    idsToRemove << tpcontact;
-                }
+    mManager = accountWrapper->account()->connection()->contactManager();
+    QList<Tp::ContactPtr> contactsToRemove;
+    Q_FOREACH(const QString contactId, mContactIds) {
+        Q_FOREACH(const Tp::ContactPtr tpcontact, mManager->allKnownContacts()) {
+            if (tpcontact->id() == contactId) {
+                contactsToRemove << tpcontact;
             }
         }
-        Tp::PendingOperation *call = manager->removeContacts(idsToRemove);
-        connect(call,
-                SIGNAL(finished(Tp::PendingOperation *)),
-                SLOT(onContactsRemoved(Tp::PendingOperation *)));
     }
+
+    Tp::PendingOperation *call = mManager->removeContacts(contactsToRemove);
+    connect(call,
+            SIGNAL(finished(Tp::PendingOperation *)),
+            SLOT(onContactsRemoved(Tp::PendingOperation *)));
 }
 
 void PendingOfflineRemoval::onContactsRemoved(Tp::PendingOperation *op)
 {
-    // contacts get removed from redlist storage when rosterUpdated signal is
-    // processed in storage - following lines serve for logging only
+    // Failed to remove contacts, will retry next time account goes online
     if (op->isError()) {
-        mIsError  = true;
-        mErrorName = op->errorName();
-        mErrorMessage = op->errorMessage();
-        Q_EMIT finished(this);
         return;
     }
 
-    mIsError = false;
     Q_EMIT finished(this);
-}
-
-void PendingOfflineRemoval::onConnectionChanged(Tp::ConnectionPtr connection)
-{
-    connect(connection->becomeReady(Tp::Connection::FeatureRoster),
-               SIGNAL(finished(Tp::PendingOperation *)),
-               SLOT(onConnectionReady(Tp::PendingOperation *)));
 }

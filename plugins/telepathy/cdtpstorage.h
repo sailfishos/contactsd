@@ -56,7 +56,6 @@ public Q_SLOTS:
 
 public:
     void removeAccountContacts(const QString &accountPath, const QStringList &contactIds);
-    void contactsToAvoid(const QString &accountPath, const QStringList &contactIds);
 
 private Q_SLOTS:
     void onSyncOperationEnded(CDTpSparqlQuery *query);
@@ -154,7 +153,6 @@ private:
     QHash<CDTpContactPtr, CDTpContact::Changes> mUpdateQueue;
     QTimer mUpdateTimer;
     bool mUpdateRunning;
-    QMap<QString, QStringList> mContactsToAvoid;
 };
 
 #endif // CDTPSTORAGE_H

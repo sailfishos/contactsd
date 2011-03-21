@@ -67,7 +67,7 @@ private Q_SLOTS:
     void testContactInfo();
     void testContactPhoneNumber();
     void testRemoveContacts();
-    //void testRemoveBuddyDBusAPI();
+    void testRemoveBuddyDBusAPI();
     void testInviteBuddyDBusAPI();
     void testSetOffline();
     void testAvatar();

@@ -56,10 +56,9 @@ private Q_SLOTS:
     void onAccountOnlinenessChanged(bool online);
     void onSyncStarted(CDTpAccountPtr accountWrapper);
     void onSyncEnded(CDTpAccountPtr accountWrapper, int contactsAdded, int contactsRemoved);
-    void onContactsRemoved(Tp::PendingOperation *op);
     void onInviteContactRetrieved(Tp::PendingOperation *op);
     void onPresenceSubscriptionRequested(Tp::PendingOperation *op);
-    void clearOfflineBuffer(PendingOfflineRemoval *pr);
+    void onRemovalFinished(PendingOfflineRemoval *pr);
 
 private:
     CDTpAccountPtr insertAccount(const Tp::AccountPtr &account, bool newAccount);
@@ -69,7 +68,6 @@ private:
     void setImportEnded(const Tp::AccountPtr &account,
                         int contactsAdded, int contactsRemoved);
     bool registerDBusObject();
-    void checkOfflineOperations();
 
 private:
     CDTpStorage *mStorage;
@@ -84,27 +82,22 @@ class PendingOfflineRemoval : public QObject
     Q_OBJECT
 
 public:
-    PendingOfflineRemoval(const QString &accountPath, const QStringList &contactids,
+    PendingOfflineRemoval(CDTpAccountPtr accountWrapper, const QStringList &contactids,
             QObject *parent = 0);
-    virtual ~PendingOfflineRemoval();
-    QString accountPath() const { return mAccountPath;}
-    bool isError() const {return mIsError;}
-    QString errorName() const { return mErrorName;}
-    QString errorMessage() const { return mErrorMessage;}
+    ~PendingOfflineRemoval();
+    QStringList contactIds() const { return mContactIds; }
+    CDTpAccountPtr accountWrapper() const { return mAccountWrapper; }
+
 Q_SIGNALS:
     void finished(PendingOfflineRemoval *op);
 
 private Q_SLOTS:
-    void onOfflineAccountReady(Tp::PendingOperation *po);
-    void onConnectionReady(Tp::PendingOperation * op);
     void onContactsRemoved(Tp::PendingOperation *op);
-    void onConnectionChanged(Tp::ConnectionPtr connection);
+    void onRosterChanged(CDTpAccountPtr);
+
 private:
     QStringList mContactIds;
-    QString mAccountPath;
-    Tp::AccountPtr mAccount;
-    bool mIsError;
-    QString mErrorName;
-    QString mErrorMessage;
+    CDTpAccountPtr mAccountWrapper;
+    Tp::ContactManagerPtr mManager;
 };
 #endif // CDTPCONTROLLER_H

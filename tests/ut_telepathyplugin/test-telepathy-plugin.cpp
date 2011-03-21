@@ -362,67 +362,52 @@ void TestTelepathyPlugin::testRemoveContacts()
     runExpectation(&exp);
 }
 
-#if 0
 void TestTelepathyPlugin::testRemoveBuddyDBusAPI()
 {
-    // add again and remove using RemoveBuddy
-    TpHandle  handle = ensureContact("buddyyes");
-    test_contact_list_manager_request_subscription(mListManager, 1, &handle,
-        "please");
+    // Create 2 contacts
+    const char *buddy1 = "removebuddy1";
+    TpHandle handle1 = ensureContact(buddy1);
+    test_contact_list_manager_request_subscription(mListManager, 1, &handle1, "wait");
+    TestExpectationContact exp1(EventAdded, buddy1);
+    runExpectation(&exp1);
 
-    mExpectation.event = TestExpectation::Added;
-    mExpectation.flags = TestExpectation::OnlineAccounts;
-    mExpectation.fetchError = QContactManager::NoError;
-    mExpectation.accountUri = "buddyyes";
-    QCOMPARE(mLoop->exec(), 0);
+    const char *buddy2 = "removebuddy2";
+    TpHandle handle2 = ensureContact(buddy2);
+    test_contact_list_manager_request_subscription(mListManager, 1, &handle2, "wait");
+    TestExpectationContact exp2(EventAdded, buddy2);
+    runExpectation(&exp2);
 
-    handle = ensureContact("buddyNot");
-    test_contact_list_manager_request_subscription(mListManager, 1, &handle,
-        "please");
-
-    QString id2Remove("buddynot");
-    mExpectation.event = TestExpectation::Added;
-    mExpectation.flags = TestExpectation::OnlineAccounts;
-    mExpectation.accountUri = id2Remove;
-    QCOMPARE(mLoop->exec(), 0);
-
-    // remove buddynot and keep buddyyes
+    // Remove buddy1 when account is online
     BuddyManagementInterface *buddyIf = new BuddyManagementInterface("com.nokia.contactsd", "/telepathy", QDBusConnection::sessionBus(), 0);
     {
-        QDBusPendingReply<> async = buddyIf->removeBuddy(ACCOUNT_PATH, id2Remove);
+        QDBusPendingReply<> async = buddyIf->removeBuddy(ACCOUNT_PATH, buddy1);
         QDBusPendingCallWatcher watcher(async, this);
         watcher.waitForFinished();
         QVERIFY2(not async.isError(), async.error().message().toLatin1());
         QVERIFY(watcher.isValid());
     }
-    mExpectation.event = TestExpectation::Removed;
-    mExpectation.fetchError = QContactManager::DoesNotExistError;
-    QCOMPARE(mLoop->exec(), 0);
+    exp1.setEvent(EventRemoved);
+    runExpectation(&exp1);
 
-    // disconnect and try to remove buddyyes - buddyyes should stay in telepathycontact manager
-    // but removed from tracker
+    // Set account offline to test offline removal
     tp_cli_connection_call_disconnect(mConnection, -1, NULL, NULL, NULL, NULL);
-    mState = TestStateDisconnecting;
-    mExpectation.fetchError = QContactManager::NoError;
-    QCOMPARE(mLoop->exec(), 0);
+    TestExpectationDisconnect exp3(mContactCount);
+    runExpectation(&exp3);
+
+    // Remove buddy2 when account is offline
     {
-        QDBusPendingReply<> async = buddyIf->removeBuddy(ACCOUNT_PATH, "buddyyes");
+        QDBusPendingReply<> async = buddyIf->removeBuddy(ACCOUNT_PATH, buddy2);
         QDBusPendingCallWatcher watcher(async, this);
         watcher.waitForFinished();
         QVERIFY2(not async.isError(), async.error().message().toLatin1());
         QVERIFY(watcher.isValid());
-
     }
+    exp2.setEvent(EventRemoved);
+    runExpectation(&exp2);
 
-    // FIXME - connect back and verify that the contact has been removed from test contact manager
-    //QSKIP(QTest::SkipAll, "This part is yet implemented");
-    mExpectation.event = TestExpectation::Removed;
-    mState = TestStateReady;
-    mExpectation.fetchError = QContactManager::DoesNotExistError;
-    mExpectation.accountUri = "buddyyes";
-    QCOMPARE(mLoop->exec(), 0);
+    // FIXME: We should somehow verify that when setting account back online,
+    // buddy2 gets removed from roster
 }
-#endif
 
 void TestTelepathyPlugin::testInviteBuddyDBusAPI()
 {

@@ -29,9 +29,10 @@
 
 using namespace Contactsd;
 
-CDTpAccount::CDTpAccount(const Tp::AccountPtr &account, bool newAccount, QObject *parent)
+CDTpAccount::CDTpAccount(const Tp::AccountPtr &account, const QStringList &toAvoid, bool newAccount, QObject *parent)
     : QObject(parent),
       mAccount(account),
+      mContactsToAvoid(toAvoid),
       mHasRoster(false),
       mNewAccount(newAccount),
       mBlockSignals(false)
@@ -80,6 +81,17 @@ QList<CDTpContactPtr> CDTpAccount::contacts() const
     }
 
     return contacts;
+}
+
+void CDTpAccount::setContactsToAvoid(const QStringList &contactIds)
+{
+    mContactsToAvoid = contactIds;
+    Q_FOREACH (const QString &id, contactIds) {
+        CDTpContactPtr contactWrapper = mContacts.take(id);
+        if (contactWrapper) {
+            contactWrapper->setRemoved(true);
+        }
+    }
 }
 
 void CDTpAccount::onAccountDisplayNameChanged()
@@ -169,6 +181,9 @@ void CDTpAccount::setContactManager(const Tp::ContactManagerPtr &contactManager)
             SLOT(onAllKnownContactsChanged(const Tp::Contacts &, const Tp::Contacts &)));
 
     Q_FOREACH (const Tp::ContactPtr &contact, contactManager->allKnownContacts()) {
+        if (mContactsToAvoid.contains(contact->id())) {
+            continue;
+        }
         insertContact(contact);
         if (mNewAccount) {
             maybeRequestExtraInfo(contact);
@@ -206,6 +221,9 @@ void CDTpAccount::onAllKnownContactsChanged(const Tp::Contacts &contactsAdded,
     Q_FOREACH (const Tp::ContactPtr &contact, contactsAdded) {
         if (mContacts.contains(contact->id())) {
             warning() << "Internal error, contact was already in roster";
+            continue;
+        }
+        if (mContactsToAvoid.contains(contact->id())) {
             continue;
         }
         maybeRequestExtraInfo(contact);
