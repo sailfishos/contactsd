@@ -1,3 +1,9 @@
+contactsd (0.5.62-2) unstable; urgency=low
+
+  * Pass CITA again
+
+ -- Xavier Claessens <xavier.claessens@collabora.co.uk>  Mon, 21 Mar 2011 12:38:01 +0100
+
 contactsd (0.5.62-1) unstable; urgency=low
 
   * Fixes: NB#234208 - 'Import progress' banner is shown after making all accounts online.
