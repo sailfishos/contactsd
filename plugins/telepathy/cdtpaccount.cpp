@@ -82,16 +82,6 @@ QList<CDTpContactPtr> CDTpAccount::contacts() const
     return contacts;
 }
 
-QString CDTpAccount::providerName() const
-{
-    Tp::ProfilePtr profile = mAccount->profile();
-    if (profile != 0 && !profile->provider().isEmpty()) {
-        return profile->provider();
-    }
-
-    return mAccount->serviceName();
-}
-
 void CDTpAccount::onAccountDisplayNameChanged()
 {
     Q_EMIT changed(CDTpAccountPtr(this), DisplayName);

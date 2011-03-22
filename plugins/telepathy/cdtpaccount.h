@@ -49,7 +49,6 @@ public:
     ~CDTpAccount();
 
     Tp::AccountPtr account() const { return mAccount; }
-    QString providerName() const;
     QList<CDTpContactPtr> contacts() const;
     CDTpContactPtr contact(const QString &id) const;
     bool hasRoster() const { return mHasRoster; };

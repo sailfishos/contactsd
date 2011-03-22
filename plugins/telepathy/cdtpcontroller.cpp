@@ -190,13 +190,13 @@ CDTpAccountPtr CDTpController::insertAccount(const Tp::AccountPtr &account, bool
 void CDTpController::onSyncStarted(CDTpAccountPtr accountWrapper)
 {
     Tp::AccountPtr account = accountWrapper->account();
-    Q_EMIT importStarted(accountWrapper->providerName(), account->objectPath());
+    Q_EMIT importStarted(accountWrapper->account()->serviceName(), account->objectPath());
 }
 
 void CDTpController::onSyncEnded(CDTpAccountPtr accountWrapper, int contactsAdded, int contactsRemoved)
 {
     Tp::AccountPtr account = accountWrapper->account();
-    Q_EMIT importEnded(accountWrapper->providerName(), account->objectPath(),
+    Q_EMIT importEnded(accountWrapper->account()->serviceName(), account->objectPath(),
         contactsAdded, contactsRemoved, 0);
 }
 
