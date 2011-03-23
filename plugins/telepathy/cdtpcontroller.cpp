@@ -203,11 +203,6 @@ void CDTpController::onSyncEnded(CDTpAccountPtr accountWrapper, int contactsAdde
         contactsAdded, contactsRemoved, 0);
 }
 
-void CDTpController::inviteBuddy(const QString &accountPath, const QString &imId)
-{
-    inviteBuddies(accountPath, QStringList() << imId);
-}
-
 void CDTpController::inviteBuddies(const QString &accountPath, const QStringList &imIds)
 {
     debug() << "InviteBuddies:" << accountPath << imIds.join(QLatin1String(", "));
@@ -248,11 +243,6 @@ void CDTpController::onInviteContactRetrieved(Tp::PendingOperation *op)
     }
 
     pcontacts->manager()->requestPresenceSubscription(contacts);
-}
-
-void CDTpController::removeBuddy(const QString &accountPath, const QString &imId)
-{
-    removeBuddies(accountPath, QStringList() << imId);
 }
 
 void CDTpController::removeBuddies(const QString &accountPath, const QStringList &imIds)

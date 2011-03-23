@@ -380,7 +380,7 @@ void TestTelepathyPlugin::testRemoveBuddyDBusAPI()
     // Remove buddy1 when account is online
     BuddyManagementInterface *buddyIf = new BuddyManagementInterface("com.nokia.contactsd", "/telepathy", QDBusConnection::sessionBus(), 0);
     {
-        QDBusPendingReply<> async = buddyIf->removeBuddy(ACCOUNT_PATH, buddy1);
+        QDBusPendingReply<> async = buddyIf->removeBuddies(ACCOUNT_PATH, QStringList() << buddy1);
         QDBusPendingCallWatcher watcher(async, this);
         watcher.waitForFinished();
         QVERIFY2(not async.isError(), async.error().message().toLatin1());
@@ -396,7 +396,7 @@ void TestTelepathyPlugin::testRemoveBuddyDBusAPI()
 
     // Remove buddy2 when account is offline
     {
-        QDBusPendingReply<> async = buddyIf->removeBuddy(ACCOUNT_PATH, buddy2);
+        QDBusPendingReply<> async = buddyIf->removeBuddies(ACCOUNT_PATH, QStringList() << buddy2);
         QDBusPendingCallWatcher watcher(async, this);
         watcher.waitForFinished();
         QVERIFY2(not async.isError(), async.error().message().toLatin1());
@@ -415,7 +415,7 @@ void TestTelepathyPlugin::testInviteBuddyDBusAPI()
     // remove buddynot and keep buddyyes
     BuddyManagementInterface *buddyIf = new BuddyManagementInterface("com.nokia.contactsd", "/telepathy", QDBusConnection::sessionBus(), 0);
     {
-        QDBusPendingReply<> async = buddyIf->inviteBuddy(ACCOUNT_PATH, buddy);
+        QDBusPendingReply<> async = buddyIf->inviteBuddies(ACCOUNT_PATH, QStringList() << buddy);
         QDBusPendingCallWatcher watcher(async, this);
         watcher.waitForFinished();
         QVERIFY2(not async.isError(), async.error().message().toLatin1());
