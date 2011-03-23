@@ -1,3 +1,9 @@
+contactsd (0.5.63-2) unstable; urgency=low
+
+  * Changes: Keep ony plural form for InviteBuddies and RemoveBuddies
+
+ -- Xavier Claessens <xavier.claessens@collabora.co.uk>  Wed, 23 Mar 2011 12:13:31 +0100
+
 contactsd (0.5.63-1) unstable; urgency=low
 
   * Changes: Fix offline contact removal
