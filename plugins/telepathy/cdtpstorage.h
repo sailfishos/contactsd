@@ -78,8 +78,6 @@ private:
             CDTpAccount::Changes changes) const;
     void addSyncNoRosterAccountsContactsToBuilder(CDTpQueryBuilder &builder,
             const QList<CDTpAccountPtr> accounts) const;
-    void addSyncDisabledAccountsContactsToBuilder(CDTpQueryBuilder &builder,
-            const QList<CDTpAccountPtr> accounts) const;
     void addSyncRosterAccountsContactsToBuilder(CDTpQueryBuilder &builder,
             const QList<CDTpAccountPtr> &accounts) const;
     void addCreateContactsToBuilder(CDTpQueryBuilder &builder,
@@ -140,6 +138,7 @@ private:
     QString presenceType(Tp::ConnectionPresenceType presenceType) const;
     QString presenceState(Tp::Contact::PresenceState presenceState) const;
     QString literal(const QString &str) const;
+    QString literal(bool value) const;
     QString literal(const QDateTime &dateTimeValue) const;
     QString literalTimeStamp() const;
     QString literalIMAddress(const QString &accountPath, const QString &contactId) const;

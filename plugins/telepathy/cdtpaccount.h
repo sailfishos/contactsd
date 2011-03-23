@@ -41,6 +41,7 @@ public:
         Nickname    = (1 << 1),
         Presence    = (1 << 2),
         Avatar      = (1 << 3),
+        Enabled     = (1 << 4),
         All         = (1 << 5) -1
     };
     Q_DECLARE_FLAGS(Changes, Change)
@@ -71,12 +72,11 @@ private Q_SLOTS:
     void onAccountNicknameChanged();
     void onAccountCurrentPresenceChanged();
     void onAccountAvatarChanged();
+    void onAccountStateChanged();
     void onAccountConnectionChanged(const Tp::ConnectionPtr &connection);
+    void onContactListStateChanged(Tp::ContactListState);
     void onAccountContactChanged(CDTpContactPtr contactWrapper,
             CDTpContact::Changes changes);
-    void onAccountStateChanged(bool enabled);
-    void onContactListStateChanged(Tp::ContactListState);
-    void onRosterChangedTimeout();
     void onAllKnownContactsChanged(const Tp::Contacts &contactsAdded,
             const Tp::Contacts &contactsRemoved);
 
@@ -85,16 +85,13 @@ private:
     void setContactManager(const Tp::ContactManagerPtr &contactManager);
     CDTpContactPtr insertContact(const Tp::ContactPtr &contact);
     void maybeRequestExtraInfo(Tp::ContactPtr contact);
-    void emitRosterChanged();
 
 private:
     Tp::AccountPtr mAccount;
     QHash<QString, CDTpContactPtr> mContacts;
     QStringList mContactsToAvoid;
-    QTimer mRosterChangedTimer;
     bool mHasRoster;
     bool mNewAccount;
-    bool mBlockSignals;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(CDTpAccount::Changes)

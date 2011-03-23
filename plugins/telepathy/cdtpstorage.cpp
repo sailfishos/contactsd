@@ -186,16 +186,12 @@ void CDTpStorage::addSyncAccountsToBuilder(CDTpQueryBuilder &builder,
     addCreateAccountsToBuilder(subBuilder, accounts);
     builder.appendRawQuery(subBuilder);
 
-    // Sync all contacts of all accounts. Special case for no-roster/offline
-    // or disabled accounts.
+    // Sync all contacts of all accounts.
     QList<CDTpAccountPtr> rosterAccounts;
-    QList<CDTpAccountPtr> disabledAccounts;
     QList<CDTpAccountPtr> noRosterAccounts;
     Q_FOREACH (const CDTpAccountPtr &accountWrapper, accounts) {
         if (accountWrapper->hasRoster()) {
             rosterAccounts << accountWrapper;
-        } else if (!accountWrapper->account()->isEnabled()) {
-            disabledAccounts << accountWrapper;
         } else {
             noRosterAccounts << accountWrapper;
         }
@@ -204,12 +200,6 @@ void CDTpStorage::addSyncAccountsToBuilder(CDTpQueryBuilder &builder,
     if (!rosterAccounts.isEmpty()) {
         subBuilder = CDTpQueryBuilder("SyncRosterAccounts");
         addSyncRosterAccountsContactsToBuilder(subBuilder, rosterAccounts);
-        builder.appendRawQuery(subBuilder);
-    }
-
-    if (!disabledAccounts.isEmpty()) {
-        subBuilder = CDTpQueryBuilder("SyncDisabledAccounts");
-        addSyncDisabledAccountsContactsToBuilder(subBuilder, disabledAccounts);
         builder.appendRawQuery(subBuilder);
     }
 
@@ -283,6 +273,9 @@ void CDTpStorage::addRemoveAccountsChangesToBuilder(CDTpQueryBuilder &builder,
     if (changes & CDTpAccount::DisplayName) {
         builder.deleteProperty(imAccount, "nco:imDisplayName");
     }
+    if (changes & CDTpAccount::Enabled) {
+        builder.deleteProperty(imAccount, "nco:imEnabled");
+    }
 }
 
 void CDTpStorage::addAccountChangesToBuilder(CDTpQueryBuilder &builder,
@@ -309,6 +302,11 @@ void CDTpStorage::addAccountChangesToBuilder(CDTpQueryBuilder &builder,
     if (changes & CDTpAccount::DisplayName) {
         debug() << "  display name changed";
         builder.insertProperty(imAccount, "nco:imDisplayName", literal(account->displayName()),
+                privateGraph);
+    }
+    if (changes & CDTpAccount::Enabled) {
+        debug() << "  enabled changed";
+        builder.insertProperty(imAccount, "nco:imEnabled", literal(account->isEnabled()),
                 privateGraph);
     }
 }
@@ -345,8 +343,6 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper)
     QList<CDTpAccountPtr> accounts = QList<CDTpAccountPtr>() << accountWrapper;
     if (accountWrapper->hasRoster()) {
         addSyncRosterAccountsContactsToBuilder(builder, accounts);
-    } else if (!accountWrapper->account()->isEnabled()) {
-        addSyncDisabledAccountsContactsToBuilder(builder, accounts);
     } else {
         addSyncNoRosterAccountsContactsToBuilder(builder, accounts);
     }
@@ -514,13 +510,6 @@ void CDTpStorage::addSyncNoRosterAccountsContactsToBuilder(CDTpQueryBuilder &bui
         addCapabilitiesToBuilder(builder, literalIMAddress(accountWrapper),
                 accountWrapper->account()->capabilities());
     }
-}
-
-void CDTpStorage::addSyncDisabledAccountsContactsToBuilder(CDTpQueryBuilder &builder,
-        const QList<CDTpAccountPtr> accounts) const
-{
-    // FIXME: disabled for now
-    addSyncNoRosterAccountsContactsToBuilder(builder, accounts);
 }
 
 void CDTpStorage::addSyncRosterAccountsContactsToBuilder(CDTpQueryBuilder &builder,
@@ -1219,6 +1208,13 @@ QString CDTpStorage::literal(const QString &str) const
 {
     static const QString tmpl = QString::fromLatin1("\"%1\"");
     return tmpl.arg(sparqlEscape(str));
+}
+
+QString CDTpStorage::literal(bool value) const
+{
+    static const QString trueString = QString::fromLatin1("true");
+    static const QString falseString = QString::fromLatin1("false");
+    return value ? trueString : falseString;
 }
 
 // Copied from cubi/src/literalvalue.cpp
