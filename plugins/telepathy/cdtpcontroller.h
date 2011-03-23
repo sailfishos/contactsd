@@ -46,7 +46,9 @@ Q_SIGNALS:
 
 public Q_SLOTS:
     void inviteBuddy(const QString &accountPath, const QString &imId);
+    void inviteBuddies(const QString &accountPath, const QStringList &imIds);
     void removeBuddy(const QString &accountPath, const QString &imId);
+    void removeBuddies(const QString &accountPath, const QStringList &imIds);
 
 private Q_SLOTS:
     void onAccountManagerReady(Tp::PendingOperation *op);
