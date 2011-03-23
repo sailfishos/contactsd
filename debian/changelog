@@ -1,3 +1,9 @@
+contactsd (0.5.62-3) unstable; urgency=low
+
+  * Fix changelog
+
+ -- Xavier Claessens <xavier.claessens@collabora.co.uk>  Wed, 23 Mar 2011 13:47:37 +0100
+
 contactsd (0.5.62-2) unstable; urgency=low
 
   * Pass CITA again
@@ -8,7 +14,6 @@ contactsd (0.5.62-1) unstable; urgency=low
 
   * Fixes: NB#234208 - 'Import progress' banner is shown after making all accounts online.
   * Fixes: NB#235294 - Skype contacts gets displayed in contact list only after rebooting the device
-  * Fixes: NB#216659 - Skype contacts are not displayed in contact list view when skype account having more number of contacts (>100) is configured
 
  -- Xavier Claessens <xavier.claessens@collabora.co.uk>  Thu, 17 Mar 2011 13:44:49 +0100
 
