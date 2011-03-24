@@ -86,14 +86,21 @@ void TestFetchContacts::onContactsFetched()
     }
 
     if (req->error() == QContactManager::NoError) {
-        // For some reason, we get VoiceMail signals sometimes. Ignore them.
         QList<QContact> contacts;
         Q_FOREACH (const QContact &contact, req->contacts()) {
-            if (contact.detail<QContactTag>().tag() != QLatin1String("voicemail")) {
-                contacts << contact;
+            debug() << "Contact fetched:\n\n" << contact << "\n";
+
+            // For some reason, we get VoiceMail signals sometimes. Ignore them.
+            if (contact.detail<QContactTag>().tag() == QLatin1String("voicemail")) {
+                debug() << "Ignoring voicemail contact";
+                continue;
             }
+
+            contacts << contact;
         }
-        mExp->verify(mEvent, contacts);
+        if (!contacts.isEmpty()) {
+            mExp->verify(mEvent, contacts);
+        }
     } else {
         mExp->verify(mEvent, mContactIds, req->error());
     }
@@ -174,8 +181,6 @@ void TestExpectationContact::verify(Event event, const QList<QContactLocalId> &c
 
 void TestExpectationContact::verify(QContact contact)
 {
-    debug() << contact;
-
     if (!mAccountUri.isEmpty()) {
         const QString uri = QString("telepathy:%1!%2").arg(ACCOUNT_PATH).arg(mAccountUri);
         QList<QContactOnlineAccount> details = contact.details<QContactOnlineAccount>("DetailUri", uri);
