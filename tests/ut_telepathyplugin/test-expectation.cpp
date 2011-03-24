@@ -86,7 +86,14 @@ void TestFetchContacts::onContactsFetched()
     }
 
     if (req->error() == QContactManager::NoError) {
-        mExp->verify(mEvent, req->contacts());
+        // For some reason, we get VoiceMail signals sometimes. Ignore them.
+        QList<QContact> contacts;
+        Q_FOREACH (const QContact &contact, req->contacts()) {
+            if (contact.detail<QContactTag>().tag() != QLatin1String("voicemail")) {
+                contacts << contact;
+            }
+        }
+        mExp->verify(mEvent, contacts);
     } else {
         mExp->verify(mEvent, mContactIds, req->error());
     }
@@ -99,12 +106,6 @@ void TestFetchContacts::onContactsFetched()
 
 void TestExpectationInit::verify(Event event, const QList<QContact> &contacts)
 {
-    // For some reason VoiceMail contact gets added at init sometimes. Ignore it.
-    if (event ==EventAdded) {
-        QCOMPARE(contacts.count(), 1);
-        QCOMPARE(contacts[0].detail<QContactTag>().tag(), QLatin1String("voicemail"));
-        return;
-    }
     QCOMPARE(event, EventChanged);
     QCOMPARE(contacts.count(), 1);
     QCOMPARE(contacts[0].localId(), contactManager()->selfContactId());
