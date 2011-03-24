@@ -897,7 +897,7 @@ void CDTpStorage::addContactInfoToBuilder(CDTpQueryBuilder &builder,
             subBuilder.createResource(phoneVar, "nco:PhoneNumber");
             subBuilder.insertProperty(phoneVar, "nco:phoneNumber", voicePhoneNumber);
             subBuilder.insertProperty(phoneVar, "maemo:localPhoneNumber",
-                    literal(qctNormalizePhoneNumber(field.fieldValue[0])));
+                    literal(qctMakeLocalPhoneNumber(field.fieldValue[0])));
             subBuilder.appendRawSelection(tmplQuery.arg(voicePhoneNumber));
             builder.prependRawQuery(subBuilder);
 
