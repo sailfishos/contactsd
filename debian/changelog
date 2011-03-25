@@ -1,3 +1,9 @@
+contactsd (0.5.64-2) unstable; urgency=low
+
+  * Fixes: NB#233871 - contactsd-tests : CITA cases FAILS.
+
+ -- Xavier Claessens <xavier.claessens@collabora.co.uk>  Fri, 25 Mar 2011 10:30:41 +0100
+
 contactsd (0.5.64-1) unstable; urgency=low
 
   * Changes: Write nco:imEnabled property on nco:IMAccount
