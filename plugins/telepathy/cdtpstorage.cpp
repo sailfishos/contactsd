@@ -770,7 +770,7 @@ void CDTpStorage::addContactChangesToBuilder(CDTpQueryBuilder &builder,
     // Apply changes
     if (changes & CDTpContact::Alias) {
         debug() << "  alias changed";
-        builder.insertProperty(imAddress, "nco:imNickname", literal(contact->alias()),
+        builder.insertProperty(imAddress, "nco:imNickname", literal(contact->alias().trimmed()),
                 privateGraph);
     }
     if (changes & CDTpContact::Presence) {
