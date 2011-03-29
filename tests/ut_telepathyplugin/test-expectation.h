@@ -208,4 +208,26 @@ private:
     bool mGotMergedContact;
     QList<TestExpectationContact *> mContactExpectations;
 };
+
+// --- TestExpectationMass ---
+
+class TestExpectationMass : public TestExpectation
+{
+    Q_OBJECT
+
+public:
+    TestExpectationMass(int nAdded, int nChanged, int nRemoved);
+
+protected:
+    void verify(Event event, const QList<QContact> &contacts);
+    void verify(Event event, const QList<QContactLocalId> &contactIds, QContactManager::Error error);
+
+private:
+    void maybeEmitFinished();
+
+    int mAdded;
+    int mChanged;
+    int mRemoved;
+};
+
 #endif

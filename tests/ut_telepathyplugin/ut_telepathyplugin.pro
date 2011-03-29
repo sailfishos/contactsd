@@ -1,4 +1,4 @@
-PRE_TARGETDEPS += ../libtelepathy/liblibtelepathy.a
+PRE_TARGETDEPS += ../libtelepathy/libtelepathy.a
 
 TARGET = ut_telepathyplugin
 target.path = $$BINDIR
@@ -23,7 +23,7 @@ system(qdbusxml2cpp -c BuddyManagementInterface -p buddymanagementinterface.h:bu
 
 INCLUDEPATH += ..
 QMAKE_LIBDIR += ../libtelepathy
-LIBS += -llibtelepathy
+LIBS += -ltelepathy
 
 CONFIG(coverage): {
 QMAKE_CXXFLAGS += -c -g --coverage -ftest-coverage -fprofile-arcs

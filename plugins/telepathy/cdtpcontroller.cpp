@@ -132,7 +132,7 @@ void CDTpController::onAccountAdded(const Tp::AccountPtr &account)
     }
 
     CDTpAccountPtr accountWrapper = insertAccount(account, true);
-    mStorage->syncAccount(accountWrapper);
+    mStorage->createAccount(accountWrapper);
 }
 
 void CDTpController::onAccountRemoved(const Tp::AccountPtr &account)

@@ -1,4 +1,4 @@
-TARGET = libtelepathy
+TARGET = telepathy
 TEMPLATE = lib
 
 CONFIG -= warn_on qt

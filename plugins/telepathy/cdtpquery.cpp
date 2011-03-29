@@ -76,28 +76,6 @@ QString CDTpQueryBuilder::deletePropertyWithGraph(const QString &resource, const
     return value;
 }
 
-QString CDTpQueryBuilder::deletePropertyAndLinkedResource(const QString &resource, const char *property, const QString &graph)
-{
-    QString oldValue;
-
-    if (graph.isEmpty()) {
-        oldValue = deleteProperty(resource, property);
-    } else {
-        oldValue = deletePropertyWithGraph(resource, property, graph);
-    }
-
-    deleteResource(oldValue);
-
-    return oldValue;
-}
-
-QString CDTpQueryBuilder::updateProperty(const QString &resource, const char *property, const QString &value, const QString &graph)
-{
-    const QString oldValue = deleteProperty(resource, property);
-    insertProperty(resource, property, value, graph);
-    return oldValue;
-}
-
 void CDTpQueryBuilder::appendRawSelection(const QString &str)
 {
     appendRawSelectionInsert(str);
@@ -116,22 +94,26 @@ void CDTpQueryBuilder::appendRawSelectionDelete(const QString &str)
 
 void CDTpQueryBuilder::appendRawQuery(const QString &str)
 {
-    mSubQueries << str;
+    if (!str.isEmpty()) {
+        mSubQueries << str;
+    }
 }
 
 void CDTpQueryBuilder::appendRawQuery(const CDTpQueryBuilder &builder)
 {
-    mSubQueries << builder.getRawQuery();
+    appendRawQuery(builder.getRawQuery());
 }
 
 void CDTpQueryBuilder::prependRawQuery(const QString &str)
 {
-    mPreQueries << str;
+    if (!str.isEmpty()) {
+        mPreQueries << str;
+    }
 }
 
 void CDTpQueryBuilder::prependRawQuery(const CDTpQueryBuilder &builder)
 {
-    mPreQueries << builder.getRawQuery();
+    prependRawQuery(builder.getRawQuery());
 }
 
 
@@ -157,21 +139,29 @@ QString CDTpQueryBuilder::getRawQuery() const
         }
     }
 
-    // WHERE part
-    QString insertWhereLines = setIndentation(mInsertPartWhere, indent);
-    QString deleteWhereLines = setIndentation(mDeletePartWhere, indent);
-
     // Build final query
+    bool empty = true;
     QString rawQuery;
     rawQuery += QString::fromLatin1("# --- START %1 ---\n").arg(mName);
+
+    // Prepend raw queries
+    Q_FOREACH (const QString &subQuery, mPreQueries) {
+        empty = false;
+        rawQuery += subQuery;
+    }
+
     if (!deleteLines.isEmpty()) {
+        empty = false;
         rawQuery += QString::fromLatin1("DELETE {\n%1\n}\n").arg(deleteLines);
+        QString deleteWhereLines = setIndentation(mDeletePartWhere, indent);
         if (!deleteWhereLines.isEmpty()) {
             rawQuery += QString::fromLatin1("WHERE {\n%1\n}\n").arg(deleteWhereLines);
         }
     }
     if (!insertLines.isEmpty()) {
-        rawQuery += QString::fromLatin1("INSERT {\n%1\n}\n").arg(insertLines);
+        empty = false;
+        rawQuery += QString::fromLatin1("INSERT OR REPLACE {\n%1\n}\n").arg(insertLines);
+        QString insertWhereLines = setIndentation(mInsertPartWhere, indent);
         if (!insertWhereLines.isEmpty()) {
             rawQuery += QString::fromLatin1("WHERE {\n%1\n}\n").arg(insertWhereLines);
         }
@@ -179,15 +169,15 @@ QString CDTpQueryBuilder::getRawQuery() const
 
     // Append raw queries
     Q_FOREACH (const QString &subQuery, mSubQueries) {
+        empty = false;
         rawQuery += subQuery;
     }
 
-    // Prepend raw queries
-    Q_FOREACH (const QString &subQuery, mPreQueries) {
-        rawQuery = rawQuery.prepend(subQuery);
-    }
-
     rawQuery += QString::fromLatin1("# --- END %1 ---\n").arg(mName);
+
+    if (empty) {
+         return QString();
+    }
 
     return rawQuery;
 }

@@ -541,57 +541,6 @@ void TestTelepathyPlugin::testIRIEncode()
     runExpectation(&exp);
 }
 
-TpHandle TestTelepathyPlugin::ensureContact(const gchar *id)
-{
-    TpHandleRepoIface *serviceRepo =
-        tp_base_connection_get_handles(mConnService, TP_HANDLE_TYPE_CONTACT);
-
-    TpHandle handle = tp_handle_ensure(serviceRepo, id, NULL, NULL);
-
-    return handle;
-}
-
-void TestTelepathyPlugin::runExpectation(TestExpectation *exp)
-{
-    QVERIFY(mExpectation == 0);
-    mExpectation = exp;
-    mExpectation->setContactManager(mContactManager);
-    connect(mExpectation, SIGNAL(finished()),
-            mLoop, SLOT(quit()));
-
-    QCOMPARE(mLoop->exec(), 0);
-
-    mExpectation = 0;
-}
-
-void TestTelepathyPlugin::contactsAdded(const QList<QContactLocalId>& contactIds)
-{
-    debug() << "Got contactsAdded";
-    mContactCount += contactIds.count();
-    verify(EventAdded, contactIds);
-}
-
-void TestTelepathyPlugin::contactsChanged(const QList<QContactLocalId>& contactIds)
-{
-    debug() << "Got contactsChanged";
-    verify(EventChanged, contactIds);
-}
-
-void TestTelepathyPlugin::contactsRemoved(const QList<QContactLocalId>& contactIds)
-{
-    debug() << "Got contactsRemoved";
-    mContactCount -= contactIds.count();
-    QVERIFY(mContactCount >= 0);
-    verify(EventRemoved, contactIds);
-}
-
-void TestTelepathyPlugin::verify(Event event,
-    const QList<QContactLocalId> &contactIds)
-{
-    QVERIFY(mExpectation != 0);
-    mExpectation->verify(event, contactIds);
-}
-
 void TestTelepathyPlugin::testMergedContact()
 {
     /* create new contact */
@@ -689,5 +638,94 @@ void TestTelepathyPlugin::onContactsFetched()
     QCOMPARE (req->error(), QContactManager::NoError);
     QVERIFY(req->contacts().count() >= 1);
 }
+
+#define LETTERS "abcdefghijklmnopqrstuvwxyz"
+#define NUMBERS "0123456789"
+#define ALNUM LETTERS NUMBERS
+#define TEXT ALNUM " "
+
+static gchar *randomString(int len, const gchar *chars = LETTERS)
+{
+    gchar *result = g_new0(gchar, len + 1);
+    for (int i = 0; i < len; i++) {
+        result[i] = chars[qrand() % strlen(chars)];
+    }
+
+    return result;
+}
+
+#define N_CONTACTS 1000
+
+void TestTelepathyPlugin::testBenchmark()
+{
+    /* create lots of new contacts */
+    GArray *handles = g_array_new(FALSE, FALSE, sizeof(TpHandle));
+    for (int i = 0; i < N_CONTACTS; i++) {
+        TpHandle handle = ensureContact(randomString(6));
+        g_array_append_val(handles, handle);
+    }
+    test_contact_list_manager_request_subscription(mListManager,
+            handles->len, (TpHandle *) handles->data, "wait");
+    TestExpectationMass exp(N_CONTACTS, 0, 0);
+    runExpectation(&exp);
+
+    /* Set account offline */
+    tp_cli_connection_call_disconnect(mConnection, -1, NULL, NULL, NULL, NULL);
+
+    TestExpectationDisconnect exp2(mContactCount);
+    runExpectation(&exp2);
+}
+
+TpHandle TestTelepathyPlugin::ensureContact(const gchar *id)
+{
+    TpHandleRepoIface *serviceRepo =
+        tp_base_connection_get_handles(mConnService, TP_HANDLE_TYPE_CONTACT);
+
+    TpHandle handle = tp_handle_ensure(serviceRepo, id, NULL, NULL);
+
+    return handle;
+}
+
+void TestTelepathyPlugin::runExpectation(TestExpectation *exp)
+{
+    QVERIFY(mExpectation == 0);
+    mExpectation = exp;
+    mExpectation->setContactManager(mContactManager);
+    connect(mExpectation, SIGNAL(finished()),
+            mLoop, SLOT(quit()));
+
+    QCOMPARE(mLoop->exec(), 0);
+
+    mExpectation = 0;
+}
+
+void TestTelepathyPlugin::contactsAdded(const QList<QContactLocalId>& contactIds)
+{
+    debug() << "Got contactsAdded";
+    mContactCount += contactIds.count();
+    verify(EventAdded, contactIds);
+}
+
+void TestTelepathyPlugin::contactsChanged(const QList<QContactLocalId>& contactIds)
+{
+    debug() << "Got contactsChanged";
+    verify(EventChanged, contactIds);
+}
+
+void TestTelepathyPlugin::contactsRemoved(const QList<QContactLocalId>& contactIds)
+{
+    debug() << "Got contactsRemoved";
+    mContactCount -= contactIds.count();
+    QVERIFY(mContactCount >= 0);
+    verify(EventRemoved, contactIds);
+}
+
+void TestTelepathyPlugin::verify(Event event,
+    const QList<QContactLocalId> &contactIds)
+{
+    QVERIFY(mExpectation != 0);
+    mExpectation->verify(event, contactIds);
+}
+
 
 QTEST_MAIN(TestTelepathyPlugin)

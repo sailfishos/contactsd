@@ -396,3 +396,42 @@ void TestExpectationMerge::maybeEmitFinished()
         emitFinished();
     }
 }
+
+// --- TestExpectationMass ---
+
+TestExpectationMass::TestExpectationMass(int nAdded, int nChanged, int nRemoved)
+        : mAdded(nAdded), mChanged(nChanged), mRemoved(nRemoved)
+{
+}
+
+void TestExpectationMass::verify(Event event, const QList<QContact> &contacts)
+{
+    if (event == EventAdded) {
+        mAdded -= contacts.count();
+        QVERIFY(mAdded >= 0);
+    }
+    if (event == EventChanged) {
+        mChanged -= contacts.count();
+        QVERIFY(mChanged >= 0);
+    }
+
+    maybeEmitFinished();
+}
+
+void TestExpectationMass::verify(Event event, const QList<QContactLocalId> &contactIds,
+        QContactManager::Error error)
+{
+    QCOMPARE(event, EventRemoved);
+    QCOMPARE(error, QContactManager::DoesNotExistError);
+    mRemoved -= contactIds.count();
+    QVERIFY(mRemoved >= 0);
+
+    maybeEmitFinished();
+}
+
+void TestExpectationMass::maybeEmitFinished()
+{
+    if (mAdded == 0 && mChanged == 0 && mRemoved == 0) {
+        emitFinished();
+    }
+}

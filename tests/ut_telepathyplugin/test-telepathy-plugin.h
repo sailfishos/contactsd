@@ -77,6 +77,9 @@ private Q_SLOTS:
     void testBug220851();
     void testIRIEncode();
 
+    /* Benchmark */
+    void testBenchmark();
+
     void cleanup();
     void cleanupTestCase();
 
