@@ -3,6 +3,7 @@
        <credential name="Cellular" />
        <credential name="TrackerReadAccess" />
        <credential name="TrackerWriteAccess" />
+       <credential name="GRP::metadata-users" />
        <for path="/usr/bin/contactsd" />
     </request>
 </aegis>
