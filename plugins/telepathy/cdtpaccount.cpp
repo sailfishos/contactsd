@@ -118,6 +118,7 @@ void CDTpAccount::onAccountConnectionChanged(const Tp::ConnectionPtr &connection
     setConnection(connection);
     if (oldHasRoster != mHasRoster) {
         Q_EMIT rosterChanged(CDTpAccountPtr(this));
+        mNewAccount = false;
     }
 }
 
@@ -140,17 +141,18 @@ void CDTpAccount::onContactListStateChanged(Tp::ContactListState state)
 {
     Q_UNUSED(state);
 
-    bool oldHasRoster = mHasRoster;
-
     /* NB#240743 - It can happen that tpqt4 still emits signals on the
      * ContactManager after connection has been removed from the account.
      * In that case Tp::Account::connectionChanged() should be emitted soon */
-    if (mAccount->connection()) {
-        setContactManager(mAccount->connection()->contactManager());
+    if (!mAccount->connection()) {
+        return;
     }
 
+    bool oldHasRoster = mHasRoster;
+    setContactManager(mAccount->connection()->contactManager());
     if (oldHasRoster != mHasRoster) {
         Q_EMIT rosterChanged(CDTpAccountPtr(this));
+        mNewAccount = false;
     }
 }
 
