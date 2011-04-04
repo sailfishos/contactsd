@@ -862,7 +862,9 @@ CDTpQueryBuilder CDTpStorage::purgeContactsBuilder() const
 {
     /* Purge nco:IMAddress not bound from an nco:IMAccount */
 
-    /* Step 1 - Clean nco:PersonContact from all info imported from the imAddress. */
+    /* Step 1 - Clean nco:PersonContact from all info imported from the imAddress.
+     * Note: We don't delete the affiliation because it could contain other
+     * info (See NB#239973) */
     static const QString affiliationVar = QString::fromLatin1("?affiliation");
     static const QString selection = QString::fromLatin1(
             "GRAPH %1 { ?imAddress a nco:IMAddress }.\n"
@@ -873,7 +875,7 @@ CDTpQueryBuilder CDTpStorage::purgeContactsBuilder() const
     CDTpQueryBuilder builder("PurgeContacts - step 1");
     builder.appendRawSelection(selection);
     builder.deleteProperty(imContactVar, "nie:contentLastModified");
-    builder.deleteResource(affiliationVar);
+    builder.deleteProperty(affiliationVar, "nco:hasIMAddress", imAddressVar);
     builder.deleteResource(imAddressVar);
     addRemoveContactInfoToBuilder(builder, imAddressVar, imContactVar);
 
