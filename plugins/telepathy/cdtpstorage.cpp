@@ -970,6 +970,18 @@ void CDTpStorage::addContactInfoToBuilder(CDTpQueryBuilder &builder,
             }
         }
 
+        else if (!field.fieldName.compare(QLatin1String("x-gender"))) {
+            if (field.fieldValue[0] == QLatin1String("male")) {
+                static const QString maleIri = QLatin1String("nco:gender-male");
+                builder.insertProperty(imContactVar, "nco:gender", maleIri, graph);
+            } else if (field.fieldValue[0] == QLatin1String("female")) {
+                static const QString femaleIri = QLatin1String("nco:gender-female");
+                builder.insertProperty(imContactVar, "nco:gender", femaleIri, graph);
+            } else {
+                debug() << "Unsupported gender:" << field.fieldValue[0];
+            }
+        }
+
         else {
             debug() << "Unsupported VCard field" << field.fieldName;
         }
