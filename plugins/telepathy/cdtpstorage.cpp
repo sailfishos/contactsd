@@ -562,7 +562,7 @@ CDTpQueryBuilder CDTpStorage::createContactsBuilder(const QList<CDTpContactPtr> 
         "    }\n"
         "}\n"
         "WHERE {\n"
-        "    GRAPH %2 { ?imAddress a nco:IMAddress }.\n"
+        "    GRAPH %2 { ?imAddress nco:imID ?imID }.\n"
         "    FILTER (NOT EXISTS { ?imContact nco:hasAffiliation [ nco:hasIMAddress ?imAddress ] })\n"
         "}\n");
     builder.appendRawQuery(tmpl.arg(CDTpQueryBuilder::defaultGraph).arg(privateGraph)
@@ -866,22 +866,32 @@ CDTpQueryBuilder CDTpStorage::purgeContactsBuilder() const
      * Note: We don't delete the affiliation because it could contain other
      * info (See NB#239973) */
     static const QString affiliationVar = QString::fromLatin1("?affiliation");
-    static const QString selection = QString::fromLatin1(
-            "GRAPH %1 { ?imAddress a nco:IMAddress }.\n"
+    static const QString tmpl1 = QString::fromLatin1(
+            "GRAPH %1 { ?imAddress nco:imID ?imID }.\n"
             "?imContact nco:hasAffiliation ?affiliation.\n"
             "?affiliation nco:hasIMAddress ?imAddress.\n"
             "FILTER(NOT EXISTS { ?imAccount nco:hasIMContact ?imAddress }).")
             .arg(privateGraph);
     CDTpQueryBuilder builder("PurgeContacts - step 1");
-    builder.appendRawSelection(selection);
+    builder.appendRawSelection(tmpl1);
     builder.deleteProperty(imContactVar, "nie:contentLastModified");
     builder.deleteProperty(affiliationVar, "nco:hasIMAddress", imAddressVar);
-    builder.deleteResource(imAddressVar);
     addRemoveContactInfoToBuilder(builder, imAddressVar, imContactVar);
+
+    /* Step 1.1 - Remove the nco:IMAddress resource.
+     * This must be done in a separate query because of NB#242979 */
+    CDTpQueryBuilder subBuilder("PurgeContacts - step 1.1");
+    static const QString tmpl11 = QString::fromLatin1(
+            "GRAPH %1 { ?imAddress nco:imID ?imID }.\n"
+            "FILTER(NOT EXISTS { ?imAccount nco:hasIMContact ?imAddress }).")
+            .arg(privateGraph);
+    subBuilder.appendRawSelection(tmpl11);
+    subBuilder.deleteResource(imAddressVar);
+    builder.appendRawQuery(subBuilder);
 
     /* Step 2 - Purge nco:PersonContact with generator "telepathy" but with no
      * nco:IMAddress bound anymore */
-    CDTpQueryBuilder subBuilder("PurgeContacts - step 2");
+    subBuilder = CDTpQueryBuilder("PurgeContacts - step 2");
     static const QString tmpl2 = QString::fromLatin1(
             "?imContact nie:generator %1.\n"
             "FILTER(NOT EXISTS { ?imContact nco:hasAffiliation [nco:hasIMAddress ?v] })")
