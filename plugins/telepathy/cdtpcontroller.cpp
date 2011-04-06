@@ -98,16 +98,31 @@ void CDTpController::onAccountManagerReady(Tp::PendingOperation *op)
 
     debug() << "Account manager ready";
 
-    Tp::AccountPropertyFilterPtr filter1 = Tp::AccountPropertyFilter::create();
-    filter1->addProperty(QString::fromLatin1("valid"), true);
-    filter1->addProperty(QString::fromLatin1("hasBeenOnline"), true);
+    Tp::AccountPropertyFilterPtr propFilter;
+    Tp::AccountFilterPtr notFilter;
+    QList<Tp::AccountFilterConstPtr> filters;
 
-    Tp::AccountPropertyFilterPtr normalizedNameFilter = Tp::AccountPropertyFilter::create();
-    normalizedNameFilter->addProperty(QString::fromLatin1("normalizedName"), QString());
-    Tp::AccountFilterPtr filter2 = Tp::NotFilter<Tp::Account>::create(normalizedNameFilter);
+    propFilter = Tp::AccountPropertyFilter::create();
+    propFilter->addProperty(QString::fromLatin1("valid"), true);
+    propFilter->addProperty(QString::fromLatin1("hasBeenOnline"), true);
+    filters << propFilter;
 
-    Tp::AccountFilterPtr filter = Tp::AndFilter<Tp::Account>::create(
-            QList<Tp::AccountFilterConstPtr>() << filter1 << filter2);
+    propFilter = Tp::AccountPropertyFilter::create();
+    propFilter->addProperty(QString::fromLatin1("normalizedName"), QString());
+    notFilter = Tp::NotFilter<Tp::Account>::create(propFilter);
+    filters << notFilter;
+
+    propFilter = Tp::AccountPropertyFilter::create();
+    propFilter->addProperty(QString::fromLatin1("cmName"), QLatin1String("ring"));
+    notFilter = Tp::NotFilter<Tp::Account>::create(propFilter);
+    filters << notFilter;
+
+    propFilter = Tp::AccountPropertyFilter::create();
+    propFilter->addProperty(QString::fromLatin1("cmName"), QLatin1String("mmscm"));
+    notFilter = Tp::NotFilter<Tp::Account>::create(propFilter);
+    filters << notFilter;
+
+    Tp::AccountFilterPtr filter = Tp::AndFilter<Tp::Account>::create(filters);
 
     mAccountSet = mAM->filterAccounts(filter);
     connect(mAccountSet.data(),
