@@ -922,6 +922,7 @@ void CDTpStorage::addRemoveContactInfoToBuilder(CDTpQueryBuilder &builder,
     /* Remove all triples on imContact and in graph. All sub-resources will be
      * GCed by qct sometimes */
     builder.deletePropertyWithGraph(imContact, "nco:birthDate", graph);
+    builder.deletePropertyWithGraph(imContact, "nco:gender", graph);
     builder.deletePropertyWithGraph(imContact, "nco:note", graph);
     builder.deletePropertyWithGraph(imContact, "nco:hasAffiliation", graph);
 }
