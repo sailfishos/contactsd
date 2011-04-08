@@ -749,9 +749,23 @@ CDTpQueryBuilder CDTpStorage::createContactInfoBuilder(CDTpContactPtr contactWra
         }
 
         else if (!field.fieldName.compare(QLatin1String("adr"))) {
+            static QHash<QString, QString> knownTypes;
+            if (knownTypes.isEmpty()) {
+                knownTypes.insert(QLatin1String("dom"), QLatin1String("nco:DomesticDeliveryAddress"));
+                knownTypes.insert(QLatin1String("intl"), QLatin1String("nco:InternationalDeliveryAddress"));
+                knownTypes.insert(QLatin1String("parcel"), QLatin1String("nco:ParcelDeliveryAddress"));
+            }
+
+            QStringList resourceTypes = QStringList() << QLatin1String("nco:PostalAddress");
+            Q_FOREACH (const QString &type, subTypes) {
+                if (knownTypes.contains(type)) {
+                    resourceTypes << knownTypes[type];
+                }
+            }
+
             const Value affiliation = ensureContactAffiliationToBuilder(builder, affiliations, affiliationLabel, imContactVar, graph);
             const Value postalAddress = BlankValue(builder.uniquify("address"));
-            builder.createResource(postalAddress, "nco:PostalAddress");
+            builder.createResource(postalAddress, resourceTypes);
             builder.insertProperty(postalAddress, "nco:pobox",           literalContactInfo(field, 0));
             builder.insertProperty(postalAddress, "nco:extendedAddress", literalContactInfo(field, 1));
             builder.insertProperty(postalAddress, "nco:streetAddress",   literalContactInfo(field, 2));
