@@ -23,23 +23,26 @@
 #include <QObject>
 
 #include <QtSparql>
+#include <cubi.h>
 
 #include "cdtpaccount.h"
 #include "cdtpcontact.h"
+
+CUBI_USE_NAMESPACE
 
 class CDTpQueryBuilder
 {
 public:
     CDTpQueryBuilder(const char *text = "");
 
-    static const QString defaultGraph;
+    static const Value defaultGraph;
 
-    void createResource(const QString &resource, const char *type, const QString &graph = defaultGraph);
-    void insertProperty(const QString &resource, const char *property, const QString &value, const QString &graph = defaultGraph);
-    void deleteResource(const QString &resource);
-    void deleteProperty(const QString &resource, const char *property, const QString &value);
-    QString deleteProperty(const QString &resource, const char *property);
-    QString deletePropertyWithGraph(const QString &resource, const char *property, const QString &graph);
+    void createResource(const Value &resource, const char *type, const Value &graph = defaultGraph);
+    void insertProperty(const Value &resource, const char *property, const Value &value, const Value &graph = defaultGraph);
+    void deleteResource(const Value &resource);
+    void deleteProperty(const Value &resource, const char *property, const Value &value);
+    Value deleteProperty(const Value &resource, const char *property);
+    Value deletePropertyWithGraph(const Value &resource, const char *property, const Value &graph);
 
     void appendRawSelection(const QString &str);
     void appendRawSelectionInsert(const QString &str);
@@ -51,7 +54,7 @@ public:
     void prependRawQuery(const CDTpQueryBuilder &builder);
 
     QLatin1String name() const { return mName; };
-    QString uniquify(const char *v = "?v");
+    QString uniquify(const char *v = "v");
     QString getRawQuery() const;
     QSparqlQuery getSparqlQuery() const;
 

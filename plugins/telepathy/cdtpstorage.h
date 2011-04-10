@@ -74,51 +74,47 @@ private:
             bool purgeContacts = false) const;
     CDTpQueryBuilder createContactsBuilder(const QList<CDTpContactPtr> &contacts) const;
     void addContactChangesToBuilder(CDTpQueryBuilder &builder,
-            const QString &imAddress,
+            const Value &imAddress,
             CDTpContact::Changes changes,
             Tp::ContactPtr contact) const;
     void addPresenceToBuilder(CDTpQueryBuilder &builder,
-            const QString &imAddress,
+            const Value &imAddress,
             const Tp::Presence &presence) const;
     void addRemoveCapabilitiesToBuilder(CDTpQueryBuilder &builder,
-            const QString &imAddress) const;
+            const Value &imAddress) const;
     void addCapabilitiesToBuilder(CDTpQueryBuilder &builder,
-            const QString &imAddress,
+            const Value &imAddress,
             Tp::CapabilitiesBase capabilities) const;
     void addAvatarToBuilder(CDTpQueryBuilder &builder,
-            const QString &imAddress,
+            const Value &imAddress,
             const QString &fileName) const;
     CDTpQueryBuilder createContactInfoBuilder(CDTpContactPtr contactWrapper) const;
-    QString ensureContactAffiliationToBuilder(CDTpQueryBuilder &builder,
-            const QString &imContact,
-            const QString &graph,
+    Value ensureContactAffiliationToBuilder(CDTpQueryBuilder &builder,
+            const Value &imContact,
+            const Value &graph,
             const Tp::ContactInfoField &field,
-            QHash<QString, QString> &affiliations) const;
+            QHash<QString, Value> &affiliations) const;
     CDTpQueryBuilder removeContactsBuilder(CDTpAccountPtr accountWrapper,
             const QList<CDTpContactPtr> &contacts) const;
     CDTpQueryBuilder removeContactsBuilder(const QString &accountPath,
             const QStringList &contactIds) const;
     CDTpQueryBuilder purgeContactsBuilder() const;
     void addRemoveContactInfoToBuilder(CDTpQueryBuilder &builder,
-            const QString &imAddress,
-            const QString &imContact) const;
+            const Value &imAddress,
+            const Value &imContact) const;
 
-
-    QString presenceType(Tp::ConnectionPresenceType presenceType) const;
-    QString presenceState(Tp::Contact::PresenceState presenceState) const;
-    QString literal(const QString &str) const;
-    QString literal(bool value) const;
-    QString literal(const QDateTime &dateTimeValue) const;
-    QString literalTimeStamp() const;
-    QString literalIMAddress(const QString &accountPath, const QString &contactId, bool resource = true) const;
-    QString literalIMAddress(const CDTpContactPtr &contactWrapper, bool resource = true) const;
-    QString literalIMAddress(const CDTpAccountPtr &accountWrapper, bool resource = true) const;
-    QString literalIMAddressList(const QList<CDTpContactPtr> &contacts) const;
-    QString literalIMAddressList(const QList<CDTpAccountPtr> &accounts) const;
-    QString literalIMAccount(const QString &accountPath, bool resource = true) const;
-    QString literalIMAccount(const CDTpAccountPtr &accountWrapper, bool resource = true) const;
-    QString literalIMAccountList(const QList<CDTpAccountPtr> &accounts) const;
-    QString literalContactInfo(const Tp::ContactInfoField &field, int i) const;
+    Value presenceType(Tp::ConnectionPresenceType presenceType) const;
+    Value presenceState(Tp::Contact::PresenceState presenceState) const;
+    Value literalTimeStamp() const;
+    Value literalIMAddress(const QString &accountPath, const QString &contactId, bool resource = true) const;
+    Value literalIMAddress(const CDTpContactPtr &contactWrapper, bool resource = true) const;
+    Value literalIMAddress(const CDTpAccountPtr &accountWrapper, bool resource = true) const;
+    Value literalIMAddressList(const QList<CDTpContactPtr> &contacts) const;
+    Value literalIMAddressList(const QList<CDTpAccountPtr> &accounts) const;
+    Value literalIMAccount(const QString &accountPath, bool resource = true) const;
+    Value literalIMAccount(const CDTpAccountPtr &accountWrapper, bool resource = true) const;
+    Value literalIMAccountList(const QList<CDTpAccountPtr> &accounts) const;
+    Value literalContactInfo(const Tp::ContactInfoField &field, int i) const;
 
 private:
     QHash<CDTpContactPtr, CDTpContact::Changes> mUpdateQueue;

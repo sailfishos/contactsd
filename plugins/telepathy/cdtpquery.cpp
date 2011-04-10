@@ -26,7 +26,7 @@ using namespace Contactsd;
 
 /* --- CDTpQueryBuilder --- */
 
-const QString CDTpQueryBuilder::defaultGraph = QString::fromLatin1("<urn:uuid:08070f5c-a334-4d19-a8b0-12a3071bfab9>");
+const Value CDTpQueryBuilder::defaultGraph = ResourceValue(QString::fromLatin1("urn:uuid:08070f5c-a334-4d19-a8b0-12a3071bfab9"));
 static const QString indent = QString::fromLatin1("    ");
 static const QString indent2 = indent + indent;
 
@@ -34,46 +34,46 @@ CDTpQueryBuilder::CDTpQueryBuilder(const char *text) : mVCount(0), mName(text)
 {
 }
 
-void CDTpQueryBuilder::createResource(const QString &resource, const char *type, const QString &graph)
+void CDTpQueryBuilder::createResource(const Value &resource, const char *type, const Value &graph)
 {
-    mInsertPart[graph][resource] << QString::fromLatin1("a %1").arg(QLatin1String(type));
+    mInsertPart[graph.sparql()][resource.sparql()] << QString::fromLatin1("a %1").arg(QLatin1String(type));
 }
 
-void CDTpQueryBuilder::insertProperty(const QString &resource, const char *property, const QString &value, const QString &graph)
+void CDTpQueryBuilder::insertProperty(const Value &resource, const char *property, const Value &value, const Value &graph)
 {
-    mInsertPart[graph][resource] << QString::fromLatin1("%1 %2").arg(QLatin1String(property)).arg(value);
+    mInsertPart[graph.sparql()][resource.sparql()] << QString::fromLatin1("%1 %2").arg(QLatin1String(property)).arg(value.sparql());
 }
 
-void CDTpQueryBuilder::deleteResource(const QString &resource)
+void CDTpQueryBuilder::deleteResource(const Value &resource)
 {
-    append(mDeletePart, QString::fromLatin1("%1 a rdfs:Resource.").arg(resource));
+    append(mDeletePart, QString::fromLatin1("%1 a rdfs:Resource.").arg(resource.sparql()));
 }
 
-void CDTpQueryBuilder::deleteProperty(const QString &resource, const char *property, const QString &value)
+void CDTpQueryBuilder::deleteProperty(const Value &resource, const char *property, const Value &value)
 {
-    append(mDeletePart, QString::fromLatin1("%1 %2 %3.").arg(resource).arg(QLatin1String(property)).arg(value));
+    append(mDeletePart, QString::fromLatin1("%1 %2 %3.").arg(resource.sparql()).arg(QLatin1String(property)).arg(value.sparql()));
 }
 
-QString CDTpQueryBuilder::deleteProperty(const QString &resource, const char *property)
+Value CDTpQueryBuilder::deleteProperty(const Value &resource, const char *property)
 {
-    const QString value = uniquify();
+    const Value v = Variable(uniquify());
 
-    append(mDeletePart, QString::fromLatin1("%1 %2 %3.").arg(resource).arg(QLatin1String(property)).arg(value));
+    append(mDeletePart, QString::fromLatin1("%1 %2 %3.").arg(resource.sparql()).arg(QLatin1String(property)).arg(v.sparql()));
     append(mDeletePartWhere, QString::fromLatin1("OPTIONAL { %1 %2 %3 }.")
-            .arg(resource).arg(QLatin1String(property)).arg(value));
+            .arg(resource.sparql()).arg(QLatin1String(property)).arg(v.sparql()));
 
-    return value;
+    return v;
 }
 
-QString CDTpQueryBuilder::deletePropertyWithGraph(const QString &resource, const char *property, const QString &graph)
+Value CDTpQueryBuilder::deletePropertyWithGraph(const Value &resource, const char *property, const Value &graph)
 {
-    const QString value = uniquify();
+    const Value v = Variable(uniquify());
 
-    append(mDeletePart, QString::fromLatin1("%1 %2 %3.").arg(resource).arg(QLatin1String(property)).arg(value));
+    append(mDeletePart, QString::fromLatin1("%1 %2 %3.").arg(resource.sparql()).arg(QLatin1String(property)).arg(v.sparql()));
     append(mDeletePartWhere, QString::fromLatin1("OPTIONAL { GRAPH %1 { %2 %3 %4 } }.")
-            .arg(graph).arg(resource).arg(QLatin1String(property)).arg(value));
+            .arg(graph.sparql()).arg(resource.sparql()).arg(QLatin1String(property)).arg(v.sparql()));
 
-    return value;
+    return v;
 }
 
 void CDTpQueryBuilder::appendRawSelection(const QString &str)
