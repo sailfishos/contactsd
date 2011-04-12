@@ -63,60 +63,6 @@ private Q_SLOTS:
     void onUpdateFinished(CDTpSparqlQuery *query);
 
 private:
-    QString saveAccountAvatar(CDTpAccountPtr accountWrapper) const;
-
-    CDTpQueryBuilder createAccountsBuilder(const QList<CDTpAccountPtr> &accounts) const;
-    void addAccountChangesToBuilder(CDTpQueryBuilder &builder,
-            CDTpAccountPtr accountWrapper,
-            CDTpAccount::Changes changes) const;
-    CDTpQueryBuilder syncNoRosterAccountsContactsBuilder(const QList<CDTpAccountPtr> accounts) const;
-    CDTpQueryBuilder syncRosterAccountsContactsBuilder(const QList<CDTpAccountPtr> &accounts,
-            bool purgeContacts = false) const;
-    CDTpQueryBuilder createContactsBuilder(const QList<CDTpContactPtr> &contacts) const;
-    void addContactChangesToBuilder(CDTpQueryBuilder &builder,
-            const Value &imAddress,
-            CDTpContact::Changes changes,
-            Tp::ContactPtr contact) const;
-    void addPresenceToBuilder(CDTpQueryBuilder &builder,
-            const Value &imAddress,
-            const Tp::Presence &presence) const;
-    void addRemoveCapabilitiesToBuilder(CDTpQueryBuilder &builder,
-            const Value &imAddress) const;
-    void addCapabilitiesToBuilder(CDTpQueryBuilder &builder,
-            const Value &imAddress,
-            Tp::CapabilitiesBase capabilities) const;
-    void addAvatarToBuilder(CDTpQueryBuilder &builder,
-            const Value &imAddress,
-            const QString &fileName) const;
-    CDTpQueryBuilder createContactInfoBuilder(CDTpContactPtr contactWrapper) const;
-    Value ensureContactAffiliationToBuilder(CDTpQueryBuilder &builder,
-            QHash<QString, Value> &affiliations,
-            QString affiliationLabel,
-            const Value &imContact,
-            const Value &graph) const;
-    CDTpQueryBuilder removeContactsBuilder(CDTpAccountPtr accountWrapper,
-            const QList<CDTpContactPtr> &contacts) const;
-    CDTpQueryBuilder removeContactsBuilder(const QString &accountPath,
-            const QStringList &contactIds) const;
-    CDTpQueryBuilder purgeContactsBuilder() const;
-    void addRemoveContactInfoToBuilder(CDTpQueryBuilder &builder,
-            const Value &imAddress,
-            const Value &imContact) const;
-
-    Value presenceType(Tp::ConnectionPresenceType presenceType) const;
-    Value presenceState(Tp::Contact::PresenceState presenceState) const;
-    Value literalTimeStamp() const;
-    Value literalIMAddress(const QString &accountPath, const QString &contactId, bool resource = true) const;
-    Value literalIMAddress(const CDTpContactPtr &contactWrapper, bool resource = true) const;
-    Value literalIMAddress(const CDTpAccountPtr &accountWrapper, bool resource = true) const;
-    Value literalIMAddressList(const QList<CDTpContactPtr> &contacts) const;
-    Value literalIMAddressList(const QList<CDTpAccountPtr> &accounts) const;
-    Value literalIMAccount(const QString &accountPath, bool resource = true) const;
-    Value literalIMAccount(const CDTpAccountPtr &accountWrapper, bool resource = true) const;
-    Value literalIMAccountList(const QList<CDTpAccountPtr> &accounts) const;
-    Value literalContactInfo(const Tp::ContactInfoField &field, int i) const;
-
-private:
     QHash<CDTpContactPtr, CDTpContact::Changes> mUpdateQueue;
     QTimer mUpdateTimer;
     bool mUpdateRunning;

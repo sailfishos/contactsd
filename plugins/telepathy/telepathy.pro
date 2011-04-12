@@ -2,7 +2,7 @@ TEMPLATE = lib
 QT -= gui
 QT += dbus
 
-CONFIG += plugin qtsparql qtcontacts_extensions_tracker cubi-0.1
+CONFIG += plugin qtsparql qtcontacts_extensions_tracker cubi-0.1 cubi-0.1-tracker-0.10-ontologies
 system(qdbusxml2cpp -c BuddyManagementAdaptor -a buddymanagementadaptor.h:buddymanagementadaptor.cpp com.nokia.contacts.buddymanagement.xml)
 
 CONFIG(coverage):{

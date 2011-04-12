@@ -26,203 +26,49 @@ using namespace Contactsd;
 
 /* --- CDTpQueryBuilder --- */
 
-const Value CDTpQueryBuilder::defaultGraph = ResourceValue(QString::fromLatin1("urn:uuid:08070f5c-a334-4d19-a8b0-12a3071bfab9"));
-static const QString indent = QString::fromLatin1("    ");
-static const QString indent2 = indent + indent;
-
-CDTpQueryBuilder::CDTpQueryBuilder(const char *text) : mVCount(0), mName(text)
+CDTpQueryBuilder::CDTpQueryBuilder()
 {
 }
 
-void CDTpQueryBuilder::createResource(const Value &resource, const char *type, const Value &graph)
+void CDTpQueryBuilder::append(const UpdateBase &q)
 {
-    mInsertPart[graph.sparql()][resource.sparql()] << QString::fromLatin1("a %1").arg(QLatin1String(type));
+    mQueries.append(q);
 }
 
-void CDTpQueryBuilder::createResource(const Value &resource, QStringList types, const Value &graph)
+void CDTpQueryBuilder::prepend(const UpdateBase &q)
 {
-    mInsertPart[graph.sparql()][resource.sparql()] << QString::fromLatin1("a %1").arg(types.join(QLatin1String(", ")));
+    mQueries.prepend(q);
 }
 
-void CDTpQueryBuilder::insertProperty(const Value &resource, const char *property, const Value &value, const Value &graph)
+void CDTpQueryBuilder::append(const CDTpQueryBuilder &builder)
 {
-    mInsertPart[graph.sparql()][resource.sparql()] << QString::fromLatin1("%1 %2").arg(QLatin1String(property)).arg(value.sparql());
+    mQueries.append(builder.mQueries);
 }
 
-void CDTpQueryBuilder::deleteResource(const Value &resource)
+void CDTpQueryBuilder::prepend(const CDTpQueryBuilder &builder)
 {
-    append(mDeletePart, QString::fromLatin1("%1 a rdfs:Resource.").arg(resource.sparql()));
+    // Poor man's QList::prepend - QTBUG-4312
+    QList<UpdateBase> tmp;
+    tmp.append(builder.mQueries);
+    tmp.append(mQueries);
+    mQueries = tmp;
 }
 
-void CDTpQueryBuilder::deleteProperty(const Value &resource, const char *property, const Value &value)
+QString CDTpQueryBuilder::sparql(Options::SparqlOptions options) const
 {
-    append(mDeletePart, QString::fromLatin1("%1 %2 %3.").arg(resource.sparql()).arg(QLatin1String(property)).arg(value.sparql()));
-}
-
-Value CDTpQueryBuilder::deleteProperty(const Value &resource, const char *property)
-{
-    const Value v = Variable(uniquify());
-
-    append(mDeletePart, QString::fromLatin1("%1 %2 %3.").arg(resource.sparql()).arg(QLatin1String(property)).arg(v.sparql()));
-    append(mDeletePartWhere, QString::fromLatin1("OPTIONAL { %1 %2 %3 }.")
-            .arg(resource.sparql()).arg(QLatin1String(property)).arg(v.sparql()));
-
-    return v;
-}
-
-Value CDTpQueryBuilder::deletePropertyWithGraph(const Value &resource, const char *property, const Value &graph)
-{
-    const Value v = Variable(uniquify());
-
-    append(mDeletePart, QString::fromLatin1("%1 %2 %3.").arg(resource.sparql()).arg(QLatin1String(property)).arg(v.sparql()));
-    append(mDeletePartWhere, QString::fromLatin1("OPTIONAL { GRAPH %1 { %2 %3 %4 } }.")
-            .arg(graph.sparql()).arg(resource.sparql()).arg(QLatin1String(property)).arg(v.sparql()));
-
-    return v;
-}
-
-void CDTpQueryBuilder::appendRawSelection(const QString &str)
-{
-    appendRawSelectionInsert(str);
-    appendRawSelectionDelete(str);
-}
-
-void CDTpQueryBuilder::appendRawSelectionInsert(const QString &str)
-{
-    append(mInsertPartWhere, str);
-}
-
-void CDTpQueryBuilder::appendRawSelectionDelete(const QString &str)
-{
-    append(mDeletePartWhere, str);
-}
-
-void CDTpQueryBuilder::appendRawQuery(const QString &str)
-{
-    if (!str.isEmpty()) {
-        mSubQueries << str;
-    }
-}
-
-void CDTpQueryBuilder::appendRawQuery(const CDTpQueryBuilder &builder)
-{
-    appendRawQuery(builder.getRawQuery());
-}
-
-void CDTpQueryBuilder::prependRawQuery(const QString &str)
-{
-    if (!str.isEmpty()) {
-        mPreQueries << str;
-    }
-}
-
-void CDTpQueryBuilder::prependRawQuery(const CDTpQueryBuilder &builder)
-{
-    prependRawQuery(builder.getRawQuery());
-}
-
-
-QString CDTpQueryBuilder::uniquify(const char *v)
-{
-    return QString::fromLatin1("%1_%2").arg(QLatin1String(v)).arg(++mVCount);
-}
-
-QString CDTpQueryBuilder::getRawQuery() const
-{
-    // DELETE part
-    QString deleteLines = setIndentation(mDeletePart, indent);
-
-    // INSERT part
-    QString insertLines;
-    InsertPart::const_iterator i;
-    for (i = mInsertPart.constBegin(); i != mInsertPart.constEnd(); ++i) {
-        QString graphLines = setIndentation(buildInsertPart(i.value()), indent2);
-        if (!graphLines.isEmpty()) {
-            insertLines += indent + QString::fromLatin1("GRAPH %1 {\n").arg(i.key());
-            insertLines += graphLines + QString::fromLatin1("\n");
-            insertLines += indent + QString::fromLatin1("}\n");
-        }
-    }
-
-    // Build final query
-    bool empty = true;
     QString rawQuery;
-    rawQuery += QString::fromLatin1("# --- START %1 ---\n").arg(mName);
-
-    // Prepend raw queries
-    Q_FOREACH (const QString &subQuery, mPreQueries) {
-        empty = false;
-        rawQuery += subQuery;
-    }
-
-    if (!deleteLines.isEmpty()) {
-        empty = false;
-        rawQuery += QString::fromLatin1("DELETE {\n%1\n}\n").arg(deleteLines);
-        QString deleteWhereLines = setIndentation(mDeletePartWhere, indent);
-        if (!deleteWhereLines.isEmpty()) {
-            rawQuery += QString::fromLatin1("WHERE {\n%1\n}\n").arg(deleteWhereLines);
-        }
-    }
-    if (!insertLines.isEmpty()) {
-        empty = false;
-        rawQuery += QString::fromLatin1("INSERT OR REPLACE {\n%1\n}\n").arg(insertLines);
-        QString insertWhereLines = setIndentation(mInsertPartWhere, indent);
-        if (!insertWhereLines.isEmpty()) {
-            rawQuery += QString::fromLatin1("WHERE {\n%1\n}\n").arg(insertWhereLines);
-        }
-    }
-
-    // Append raw queries
-    Q_FOREACH (const QString &subQuery, mSubQueries) {
-        empty = false;
-        rawQuery += subQuery;
-    }
-
-    rawQuery += QString::fromLatin1("# --- END %1 ---\n").arg(mName);
-
-    if (empty) {
-         return QString();
+    Q_FOREACH (const UpdateBase &q, mQueries) {
+        rawQuery += q.sparql(options);
+        rawQuery += QLatin1String("\n");
     }
 
     return rawQuery;
 }
 
-void CDTpQueryBuilder::append(QString &part, const QString &str)
+QSparqlQuery CDTpQueryBuilder::sparqlQuery() const
 {
-    if (!part.isEmpty()) {
-        part += QString::fromLatin1("\n");
-    }
-    part += str;
-}
-
-QString CDTpQueryBuilder::setIndentation(const QString &part, const QString &indentation) const
-{
-    if (part.isEmpty()) {
-        return QString();
-    }
-    return indentation + QString(part).replace(QChar::fromLatin1('\n'),
-            QString::fromLatin1("\n") + indentation);
-}
-
-QString CDTpQueryBuilder::buildInsertPart(const QHash<QString, QStringList> &part) const
-{
-    QString ret;
-
-    QHash<QString, QStringList>::const_iterator i;
-    for (i = part.constBegin(); i != part.constEnd(); ++i) {
-        if (!ret.isEmpty()) {
-            ret += QString::fromLatin1("\n");
-        }
-        ret += QString::fromLatin1("%1 %2.").arg(i.key())
-                .arg(i.value().join(QString::fromLatin1(";\n    ")));
-    }
-
-    return ret;
-}
-
-QSparqlQuery CDTpQueryBuilder::getSparqlQuery() const
-{
-    return QSparqlQuery(getRawQuery(), QSparqlQuery::InsertStatement);
+    return QSparqlQuery(sparql(Options::DefaultSparqlOptions | Options::GroupPatterns),
+            QSparqlQuery::InsertStatement);
 }
 
 /* --- CDTpSparqlQuery --- */
@@ -234,11 +80,11 @@ CDTpSparqlQuery::CDTpSparqlQuery(const CDTpQueryBuilder &builder, QObject *paren
     mId = ++counter;
     mTime.start();
 
-    debug() << "query" << mId << "started:" << builder.name();
-    debug() << builder.getRawQuery();
+    debug() << "query" << mId << "started";
+    debug() << builder.sparql(Options::DefaultSparqlOptions | Options::GroupPatterns | Options::PrettyPrint);
 
     QSparqlConnection &connection = com::nokia::contactsd::SparqlConnectionManager::defaultConnection();
-    QSparqlResult *result = connection.exec(builder.getSparqlQuery());
+    QSparqlResult *result = connection.exec(builder.sparqlQuery());
 
     if (not result) {
         warning() << Q_FUNC_INFO << " - QSparqlConnection::exec() == 0";

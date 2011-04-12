@@ -33,48 +33,19 @@ CUBI_USE_NAMESPACE
 class CDTpQueryBuilder
 {
 public:
-    CDTpQueryBuilder(const char *text = "");
+    CDTpQueryBuilder();
 
-    static const Value defaultGraph;
+    void append(const UpdateBase &q);
+    void prepend(const UpdateBase &q);
 
-    void createResource(const Value &resource, const char *type, const Value &graph = defaultGraph);
-    void createResource(const Value &resource, QStringList types, const Value &graph = defaultGraph);
-    void insertProperty(const Value &resource, const char *property, const Value &value, const Value &graph = defaultGraph);
-    void deleteResource(const Value &resource);
-    void deleteProperty(const Value &resource, const char *property, const Value &value);
-    Value deleteProperty(const Value &resource, const char *property);
-    Value deletePropertyWithGraph(const Value &resource, const char *property, const Value &graph);
+    void append(const CDTpQueryBuilder &builder);
+    void prepend(const CDTpQueryBuilder &builder);
 
-    void appendRawSelection(const QString &str);
-    void appendRawSelectionInsert(const QString &str);
-    void appendRawSelectionDelete(const QString &str);
-
-    void appendRawQuery(const QString &str);
-    void appendRawQuery(const CDTpQueryBuilder &builder);
-    void prependRawQuery(const QString &str);
-    void prependRawQuery(const CDTpQueryBuilder &builder);
-
-    QLatin1String name() const { return mName; };
-    QString uniquify(const char *v = "v");
-    QString getRawQuery() const;
-    QSparqlQuery getSparqlQuery() const;
+    QString sparql(Options::SparqlOptions options = Options::DefaultSparqlOptions) const;
+    QSparqlQuery sparqlQuery() const;
 
 private:
-    void append(QString &part, const QString &str);
-    QString setIndentation(const QString &part, const QString &indentation) const;
-    QString buildInsertPart(const QHash<QString, QStringList> &part) const;
-
-    // graph <> (resource <> (list of "property value"))
-    typedef QHash<QString, QHash<QString, QStringList> >InsertPart;
-    InsertPart mInsertPart;
-    QString mInsertPartWhere;
-    QString mDeletePart;
-    QString mDeletePartWhere;
-    QList<QString> mPreQueries;
-    QList<QString> mSubQueries;
-
-    int mVCount;
-    QLatin1String mName;
+    QList<UpdateBase> mQueries;
 };
 
 /* --- CDTpSparqlQuery --- */
