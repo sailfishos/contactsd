@@ -39,6 +39,11 @@ void CDTpQueryBuilder::createResource(const Value &resource, const char *type, c
     mInsertPart[graph.sparql()][resource.sparql()] << QString::fromLatin1("a %1").arg(QLatin1String(type));
 }
 
+void CDTpQueryBuilder::createResource(const Value &resource, QStringList types, const Value &graph)
+{
+    mInsertPart[graph.sparql()][resource.sparql()] << QString::fromLatin1("a %1").arg(types.join(QLatin1String(", ")));
+}
+
 void CDTpQueryBuilder::insertProperty(const Value &resource, const char *property, const Value &value, const Value &graph)
 {
     mInsertPart[graph.sparql()][resource.sparql()] << QString::fromLatin1("%1 %2").arg(QLatin1String(property)).arg(value.sparql());

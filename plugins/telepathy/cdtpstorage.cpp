@@ -661,6 +661,13 @@ void CDTpStorage::addAvatarToBuilder(CDTpQueryBuilder &builder,
 CDTpQueryBuilder CDTpStorage::createContactInfoBuilder(CDTpContactPtr contactWrapper) const
 {
     if (!contactWrapper->isInformationKnown()) {
+        debug() << "contact information is unknown";
+        return CDTpQueryBuilder();
+    }
+
+    Tp::ContactInfoFieldList listContactInfo = contactWrapper->contact()->infoFields().allFields();
+    if (listContactInfo.count() == 0) {
+        debug() << "contact information is empty";
         return CDTpQueryBuilder();
     }
 
@@ -668,12 +675,7 @@ CDTpQueryBuilder CDTpStorage::createContactInfoBuilder(CDTpContactPtr contactWra
      * know from which contact it comes from */
     const Value graph = literalIMAddress(contactWrapper);
 
-    Tp::ContactInfoFieldList listContactInfo = contactWrapper->contact()->infoFields().allFields();
-    if (listContactInfo.count() == 0) {
-        debug() << "No contact info present";
-        return CDTpQueryBuilder();
-    }
-
+    /* Create a builder with ?imContact bound to this contact */
     static const QString tmpl = QString::fromLatin1("?_imContact nco:hasAffiliation [ nco:hasIMAddress %1 ].");
     CDTpQueryBuilder builder("CreateContactInfo");
     builder.appendRawSelection(tmpl.arg(literalIMAddress(contactWrapper).sparql()));
@@ -684,49 +686,86 @@ CDTpQueryBuilder CDTpStorage::createContactInfoBuilder(CDTpContactPtr contactWra
             continue;
         }
 
+        /* Extract field types */
+        QStringList subTypes;
+        QString affiliationLabel = QLatin1String("Other");
+        Q_FOREACH (const QString &param, field.parameters) {
+            if (!param.startsWith(QLatin1String("type="))) {
+                continue;
+            }
+            const QString type = param.mid(5);
+            if (type == QLatin1String("home")) {
+                affiliationLabel = QLatin1String("Home");
+            } else if (type == QLatin1String("work")) {
+                affiliationLabel = QLatin1String("Work");
+            } else {
+                subTypes << param.mid(5);
+            }
+        }
+
         /* FIXME:
          *  - Do we care about "fn" and "nickname" ?
          *  - How do we write affiliation for "org" ?
          */
-
         if (!field.fieldName.compare(QLatin1String("tel"))) {
-            const Value voicePhoneNumber = literalContactInfo(field, 0);
+            static QHash<QString, QString> knownTypes;
+            if (knownTypes.isEmpty()) {
+                knownTypes.insert(QLatin1String("bbsl"), QLatin1String("nco:BbsNumber"));
+                knownTypes.insert(QLatin1String("car"), QLatin1String("nco:CarPhoneNumber"));
+                knownTypes.insert(QLatin1String("cell"), QLatin1String("nco:CellPhoneNumber"));
+                knownTypes.insert(QLatin1String("fax"), QLatin1String("nco:FaxNumber"));
+                knownTypes.insert(QLatin1String("isdn"), QLatin1String("nco:IsdnNumber"));
+                knownTypes.insert(QLatin1String("modem"), QLatin1String("nco:ModemNumber"));
+                knownTypes.insert(QLatin1String("pager"), QLatin1String("nco:PagerNumber"));
+                knownTypes.insert(QLatin1String("pcs"), QLatin1String("nco:PcsNumber"));
+                knownTypes.insert(QLatin1String("video"), QLatin1String("nco:VideoTelephoneNumber"));
+                knownTypes.insert(QLatin1String("voice"), QLatin1String("nco:VoicePhoneNumber"));
+            }
 
-            /* FIXME: Could change nco:PhoneNumber depending the the TYPE */
-            CDTpQueryBuilder subBuilder("Insert Anon PhoneNumber");
-            static const QString tmplQuery = QString::fromLatin1(
-                    "FILTER(NOT EXISTS { ?resource a nco:PhoneNumber ; nco:phoneNumber %1 })");
-            const Value phoneVar = BlankValue(subBuilder.uniquify());
-            subBuilder.createResource(phoneVar, "nco:PhoneNumber");
-            subBuilder.insertProperty(phoneVar, "nco:phoneNumber", voicePhoneNumber);
-            subBuilder.insertProperty(phoneVar, "maemo:localPhoneNumber",
+            QStringList resourceTypes = QStringList() << QLatin1String("nco:PhoneNumber");
+            Q_FOREACH (const QString &type, subTypes) {
+                if (knownTypes.contains(type)) {
+                    resourceTypes << knownTypes[type];
+                }
+            }
+
+            const Value affiliation = ensureContactAffiliationToBuilder(builder, affiliations, affiliationLabel, imContactVar, graph);
+            const Value phoneNumber = qctMakePhoneNumberResource(field.fieldValue[0], subTypes);
+            builder.createResource(phoneNumber, resourceTypes);
+            builder.insertProperty(phoneNumber, "nco:phoneNumber", literalContactInfo(field, 0));
+            builder.insertProperty(phoneNumber, "maemo:localPhoneNumber",
                     LiteralValue(qctMakeLocalPhoneNumber(field.fieldValue[0])));
-            subBuilder.appendRawSelection(tmplQuery.arg(voicePhoneNumber.sparql()));
-            builder.prependRawQuery(subBuilder);
-
-            /* save phone details to imContact */
-            Value var = Variable(builder.uniquify("phoneResource"));
-            static const QString tmplPhoneResource = QString::fromLatin1(
-                "%1 nco:phoneNumber %2.");
-            const Value affiliation = ensureContactAffiliationToBuilder(builder, imContactVar, graph, field, affiliations);
-            builder.appendRawSelectionInsert(tmplPhoneResource.arg(var.sparql()).arg(voicePhoneNumber.sparql()));
-            builder.insertProperty(affiliation, "nco:hasPhoneNumber", var);
+            builder.insertProperty(affiliation, "nco:hasPhoneNumber", phoneNumber);
         }
 
         else if (!field.fieldName.compare(QLatin1String("email"))) {
             // FIXME: Should normalize email address?
             static const QString tmpl = QString::fromLatin1("mailto:%1");
             const Value emailAddress = ResourceValue(tmpl.arg(field.fieldValue[0]));
-            const Value affiliation = ensureContactAffiliationToBuilder(builder, imContactVar, graph, field, affiliations);
+            const Value affiliation = ensureContactAffiliationToBuilder(builder, affiliations, affiliationLabel, imContactVar, graph);
             builder.createResource(emailAddress, "nco:EmailAddress");
             builder.insertProperty(emailAddress, "nco:emailAddress", literalContactInfo(field, 0));
             builder.insertProperty(affiliation, "nco:hasEmailAddress", emailAddress);
         }
 
         else if (!field.fieldName.compare(QLatin1String("adr"))) {
-            const Value affiliation = ensureContactAffiliationToBuilder(builder, imContactVar, graph, field, affiliations);
+            static QHash<QString, QString> knownTypes;
+            if (knownTypes.isEmpty()) {
+                knownTypes.insert(QLatin1String("dom"), QLatin1String("nco:DomesticDeliveryAddress"));
+                knownTypes.insert(QLatin1String("intl"), QLatin1String("nco:InternationalDeliveryAddress"));
+                knownTypes.insert(QLatin1String("parcel"), QLatin1String("nco:ParcelDeliveryAddress"));
+            }
+
+            QStringList resourceTypes = QStringList() << QLatin1String("nco:PostalAddress");
+            Q_FOREACH (const QString &type, subTypes) {
+                if (knownTypes.contains(type)) {
+                    resourceTypes << knownTypes[type];
+                }
+            }
+
+            const Value affiliation = ensureContactAffiliationToBuilder(builder, affiliations, affiliationLabel, imContactVar, graph);
             const Value postalAddress = BlankValue(builder.uniquify("address"));
-            builder.createResource(postalAddress, "nco:PostalAddress");
+            builder.createResource(postalAddress, resourceTypes);
             builder.insertProperty(postalAddress, "nco:pobox",           literalContactInfo(field, 0));
             builder.insertProperty(postalAddress, "nco:extendedAddress", literalContactInfo(field, 1));
             builder.insertProperty(postalAddress, "nco:streetAddress",   literalContactInfo(field, 2));
@@ -738,17 +777,17 @@ CDTpQueryBuilder CDTpStorage::createContactInfoBuilder(CDTpContactPtr contactWra
         }
 
         else if (!field.fieldName.compare(QLatin1String("url"))) {
-            const Value affiliation = ensureContactAffiliationToBuilder(builder, imContactVar, graph, field, affiliations);
+            const Value affiliation = ensureContactAffiliationToBuilder(builder, affiliations, affiliationLabel, imContactVar, graph);
             builder.insertProperty(affiliation, "nco:url", literalContactInfo(field, 0));
         }
 
         else if (!field.fieldName.compare(QLatin1String("title"))) {
-            const Value affiliation = ensureContactAffiliationToBuilder(builder, imContactVar, graph, field, affiliations);
+            const Value affiliation = ensureContactAffiliationToBuilder(builder, affiliations, affiliationLabel, imContactVar, graph);
             builder.insertProperty(affiliation, "nco:title", literalContactInfo(field, 0));
         }
 
         else if (!field.fieldName.compare(QLatin1String("role"))) {
-            const Value affiliation = ensureContactAffiliationToBuilder(builder, imContactVar, graph, field, affiliations);
+            const Value affiliation = ensureContactAffiliationToBuilder(builder, affiliations, affiliationLabel, imContactVar, graph);
             builder.insertProperty(affiliation, "nco:role", literalContactInfo(field, 0));
         }
 
@@ -794,39 +833,20 @@ CDTpQueryBuilder CDTpStorage::createContactInfoBuilder(CDTpContactPtr contactWra
 }
 
 Value CDTpStorage::ensureContactAffiliationToBuilder(CDTpQueryBuilder &builder,
+        QHash<QString, Value> &affiliations,
+        QString affiliationLabel,
         const Value &imContact,
-        const Value &graph,
-        const Tp::ContactInfoField &field,
-        QHash<QString, Value> &affiliations) const
+        const Value &graph) const
 {
-    static QHash<QString, QString> knownTypes;
-    if (knownTypes.isEmpty()) {
-        knownTypes.insert (QLatin1String("work"), QLatin1String("Work"));
-        knownTypes.insert (QLatin1String("home"), QLatin1String("Home"));
-    }
-
-    QString type = QLatin1String("Other");
-    Q_FOREACH (const QString &parameter, field.parameters) {
-        if (!parameter.startsWith(QLatin1String("type="))) {
-            continue;
-        }
-
-        const QString str = parameter.mid(5);
-        if (knownTypes.contains(str)) {
-            type = knownTypes[str];
-            break;
-        }
-    }
-
-    if (!affiliations.contains(type)) {
+    if (!affiliations.contains(affiliationLabel)) {
         const Value affiliation = BlankValue(builder.uniquify("affiliation"));
         builder.createResource(affiliation, "nco:Affiliation");
-        builder.insertProperty(affiliation, "rdfs:label", LiteralValue(type));
+        builder.insertProperty(affiliation, "rdfs:label", LiteralValue(affiliationLabel));
         builder.insertProperty(imContact, "nco:hasAffiliation", affiliation, graph);
-        affiliations.insert(type, affiliation);
+        affiliations.insert(affiliationLabel, affiliation);
     }
 
-    return affiliations[type];
+    return affiliations[affiliationLabel];
 }
 
 CDTpQueryBuilder CDTpStorage::removeContactsBuilder(CDTpAccountPtr accountWrapper,

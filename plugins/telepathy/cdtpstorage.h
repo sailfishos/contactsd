@@ -90,10 +90,10 @@ private:
             const QString &fileName) const;
     CDTpQueryBuilder createContactInfoBuilder(CDTpContactPtr contactWrapper) const;
     Value ensureContactAffiliationToBuilder(CDTpQueryBuilder &builder,
+            QHash<QString, Value> &affiliations,
+            QString affiliationLabel,
             const Value &imContact,
-            const Value &graph,
-            const Tp::ContactInfoField &field,
-            QHash<QString, Value> &affiliations) const;
+            const Value &graph) const;
     CDTpQueryBuilder removeContactsBuilder(CDTpAccountPtr accountWrapper,
             const QList<CDTpContactPtr> &contacts) const;
     CDTpQueryBuilder removeContactsBuilder(const QString &accountPath,

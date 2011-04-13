@@ -38,6 +38,7 @@ public:
     static const Value defaultGraph;
 
     void createResource(const Value &resource, const char *type, const Value &graph = defaultGraph);
+    void createResource(const Value &resource, QStringList types, const Value &graph = defaultGraph);
     void insertProperty(const Value &resource, const char *property, const Value &value, const Value &graph = defaultGraph);
     void deleteResource(const Value &resource);
     void deleteProperty(const Value &resource, const char *property, const Value &value);
