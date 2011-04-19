@@ -47,26 +47,23 @@ Q_SIGNALS:
 public Q_SLOTS:
     void inviteBuddies(const QString &accountPath, const QStringList &imIds);
     void removeBuddies(const QString &accountPath, const QStringList &imIds);
+    void onRosterChanged(CDTpAccountPtr accountWrapper);
 
 private Q_SLOTS:
     void onAccountManagerReady(Tp::PendingOperation *op);
     void onAccountAdded(const Tp::AccountPtr &account);
     void onAccountRemoved(const Tp::AccountPtr &account);
-    void onAccountReady(CDTpAccountPtr accountWrapper);
-    void onAccountOnlinenessChanged(bool online);
     void onSyncStarted(CDTpAccountPtr accountWrapper);
     void onSyncEnded(CDTpAccountPtr accountWrapper, int contactsAdded, int contactsRemoved);
-    void onInviteContactRetrieved(Tp::PendingOperation *op);
-    void onPresenceSubscriptionRequested(Tp::PendingOperation *op);
-    void onRemovalFinished(PendingOfflineRemoval *pr);
+    void onInvitationFinished(Tp::PendingOperation *op);
+    void onRemovalFinished(Tp::PendingOperation *op);
 
 private:
     CDTpAccountPtr insertAccount(const Tp::AccountPtr &account, bool newAccount);
     void removeAccount(const QString &accountObjectPath);
-
-    void setImportStarted(const Tp::AccountPtr &account);
-    void setImportEnded(const Tp::AccountPtr &account,
-                        int contactsAdded, int contactsRemoved);
+    void maybeStartOfflineOperations(CDTpAccountPtr accountWrapper);
+    QStringList updateOfflineRosterBuffer(const QString group, const QString accountPath,
+        const QStringList idsToAdd, const QStringList idsToRemove);
     bool registerDBusObject();
 
 private:
@@ -77,27 +74,39 @@ private:
     QSettings *mOfflineRosterBuffer;
 };
 
-class PendingOfflineRemoval : public QObject
+class CDTpRemovalOperation : public Tp::PendingOperation
 {
     Q_OBJECT
 
 public:
-    PendingOfflineRemoval(CDTpAccountPtr accountWrapper, const QStringList &contactids,
-            QObject *parent = 0);
-    ~PendingOfflineRemoval();
+    CDTpRemovalOperation(CDTpAccountPtr accountWrapper, const QStringList &contactIds);
     QStringList contactIds() const { return mContactIds; }
     CDTpAccountPtr accountWrapper() const { return mAccountWrapper; }
 
-Q_SIGNALS:
-    void finished(PendingOfflineRemoval *op);
-
 private Q_SLOTS:
     void onContactsRemoved(Tp::PendingOperation *op);
-    void onRosterChanged(CDTpAccountPtr);
 
 private:
     QStringList mContactIds;
     CDTpAccountPtr mAccountWrapper;
-    Tp::ContactManagerPtr mManager;
 };
+
+class CDTpInvitationOperation : public Tp::PendingOperation
+{
+    Q_OBJECT
+
+public:
+    CDTpInvitationOperation(CDTpAccountPtr accountWrapper, const QStringList &contactIds);
+    QStringList contactIds() const { return mContactIds; }
+    CDTpAccountPtr accountWrapper() const { return mAccountWrapper; }
+
+private Q_SLOTS:
+    void onContactsRetrieved(Tp::PendingOperation *op);
+    void onPresenceSubscriptionRequested(Tp::PendingOperation *op);
+
+private:
+    QStringList mContactIds;
+    CDTpAccountPtr mAccountWrapper;
+};
+
 #endif // CDTPCONTROLLER_H

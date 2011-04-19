@@ -411,8 +411,7 @@ void TestTelepathyPlugin::testRemoveBuddyDBusAPI()
 
 void TestTelepathyPlugin::testInviteBuddyDBusAPI()
 {
-    const QString buddy("buddy");
-    // remove buddynot and keep buddyyes
+    const QString buddy("invitebuddy");
     BuddyManagementInterface *buddyIf = new BuddyManagementInterface("com.nokia.contactsd", "/telepathy", QDBusConnection::sessionBus(), 0);
     {
         QDBusPendingReply<> async = buddyIf->inviteBuddies(ACCOUNT_PATH, QStringList() << buddy);
