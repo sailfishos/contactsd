@@ -6,7 +6,7 @@ SUBDIRS += libtelepathy ut_telepathyplugin
 UNIT_TESTS += ut_telepathyplugin
 
 testxml.target = tests.xml
-testxml.commands = $$PWD/mktests.sh $$UNIT_TESTS >$@ || rm -f $@
+testxml.commands = sh $$PWD/mktests.sh $$UNIT_TESTS >$@ || rm -f $@
 testxml.depends = $$UNIT_TESTS
 
 install_testxml.files = $$testxml.target
