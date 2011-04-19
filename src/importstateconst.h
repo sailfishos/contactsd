@@ -42,6 +42,12 @@ enum AccountImportState {
 
 const QLatin1String SettingsOrganization("Nokia");
 const QLatin1String SettingsApplication("Contactsd");
+
+/*!
+ * This is used as the "account path" for MfE or Sync framework to update the import progress.
+ * When we get non-service contacts from MfE or Sync, we can check the import state by using this string.
+ */
+const QLatin1String MfeSync("MfeSync");
 }
 
 #endif // IMPORTSTATECONST_H_
