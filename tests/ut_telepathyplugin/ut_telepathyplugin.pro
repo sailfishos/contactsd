@@ -9,7 +9,7 @@ include(tests.pri)
 TEMPLATE = app
 
 CONFIG += test qt mobility
-QT += testlib
+QT += testlib dbus
 QT -= gui
 MOBILITY += contacts
 CONFIG += link_pkgconfig
