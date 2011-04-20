@@ -67,8 +67,7 @@ QString CDTpQueryBuilder::sparql(Options::SparqlOptions options) const
 
 QSparqlQuery CDTpQueryBuilder::sparqlQuery() const
 {
-    return QSparqlQuery(sparql(Options::DefaultSparqlOptions | Options::GroupPatterns),
-            QSparqlQuery::InsertStatement);
+    return QSparqlQuery(sparql(), QSparqlQuery::InsertStatement);
 }
 
 /* --- CDTpSparqlQuery --- */
@@ -81,7 +80,7 @@ CDTpSparqlQuery::CDTpSparqlQuery(const CDTpQueryBuilder &builder, QObject *paren
     mTime.start();
 
     debug() << "query" << mId << "started";
-    debug() << builder.sparql(Options::DefaultSparqlOptions | Options::GroupPatterns | Options::PrettyPrint);
+    debug() << builder.sparql(Options::DefaultSparqlOptions | Options::PrettyPrint);
 
     QSparqlConnection &connection = com::nokia::contactsd::SparqlConnectionManager::defaultConnection();
     QSparqlResult *result = connection.exec(builder.sparqlQuery());
