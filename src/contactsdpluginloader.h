@@ -54,6 +54,7 @@ Q_SIGNALS:
     void importEnded(int contactsAdded, int contactsRemoved,
                      int contactsMerged);
     void pluginsLoaded();
+    void error(int code, const QString &message);
 
 private Q_SLOTS:
     void onPluginImportStarted(const QString &service, const QString &account);

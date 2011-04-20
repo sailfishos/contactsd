@@ -25,8 +25,6 @@
 #include <QString>
 #include <QUrl>
 
-#include <QtSparql/QSparqlQuery>
-
 #include "cdtpaccount.h"
 #include "cdtpcontact.h"
 #include "cdtpquery.h"
@@ -42,6 +40,7 @@ public:
 Q_SIGNALS:
     void syncStarted(CDTpAccountPtr accountWrapper);
     void syncEnded(CDTpAccountPtr accountWrapper, int contactsAdded, int contactsRemoved);
+    void error(int code, const QString &message);
 
 public Q_SLOTS:
     void syncAccounts(const QList<CDTpAccountPtr> &accounts);
@@ -61,6 +60,7 @@ private Q_SLOTS:
     void onSyncOperationEnded(CDTpSparqlQuery *query);
     void onUpdateQueueTimeout();
     void onUpdateFinished(CDTpSparqlQuery *query);
+    void onSparqlQueryFinished(CDTpSparqlQuery *query);
 
 private:
     QHash<CDTpContactPtr, CDTpContact::Changes> mUpdateQueue;

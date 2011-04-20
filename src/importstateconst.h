@@ -40,6 +40,18 @@ enum AccountImportState {
     Finished
 };
 
+/*!
+ * \enum Contactsd::ErrorCode
+ * Error codes
+ *
+ * \value ErrorNoSpace - No disk space left for import operation
+ * \value ErrorUnknown - Unknown error occured
+ */
+enum ErrorCode {
+    ErrorUnknown = 1,
+    ErrorNoSpace,
+};
+
 const QLatin1String SettingsOrganization("Nokia");
 const QLatin1String SettingsApplication("Contactsd");
 

@@ -17,6 +17,10 @@
     <method name="hasActiveImports">
       <arg direction="out" type="as"/>
     </method>
+    <signal name="error">
+      <arg name="code" type="i" direction="out"/>
+      <arg name="message" type="s" direction="out"/>
+    </signal>
   </interface>
 </node>
 

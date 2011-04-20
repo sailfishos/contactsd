@@ -58,6 +58,9 @@ public:
     CDTpSparqlQuery(const CDTpQueryBuilder &builder, QObject *parent = 0);
     ~CDTpSparqlQuery() {};
 
+    bool hasError() { return mErrorSet; }
+    QSparqlError error() { return mError; }
+
 Q_SIGNALS:
     void finished(CDTpSparqlQuery *query);
 
@@ -67,6 +70,8 @@ private Q_SLOTS:
 private:
     uint mId;
     QTime mTime;
+    bool mErrorSet;
+    QSparqlError mError;
 };
 
 /* --- CDTpAccountsSparqlQuery --- */

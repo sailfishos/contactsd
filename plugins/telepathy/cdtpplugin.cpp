@@ -55,6 +55,9 @@ void CDTpPlugin::init()
     connect(mController,
             SIGNAL(importEnded(const QString &, const QString &, int, int, int)),
             SIGNAL(importEnded(const QString &, const QString &, int, int, int)));
+    connect(mController,
+            SIGNAL(error(int, const QString &)),
+            SIGNAL(error(int, const QString &)));
 }
 
 CDTpPlugin::MetaData CDTpPlugin::metaData()

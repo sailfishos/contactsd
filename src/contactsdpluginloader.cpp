@@ -126,6 +126,8 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir, const QString
                 this, SLOT(onPluginImportStarted(const QString &, const QString &)));
         connect(basePlugin, SIGNAL(importEnded(const QString &, const QString &, int, int, int)),
                 this, SLOT(onPluginImportEnded(const QString &, const QString &, int,int,int)));
+        connect(basePlugin, SIGNAL(error(int, const QString &)),
+                this, SIGNAL(error(int, const QString &)));
         basePlugin->init();
     }
 }

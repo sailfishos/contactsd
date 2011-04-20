@@ -74,7 +74,7 @@ QSparqlQuery CDTpQueryBuilder::sparqlQuery() const
 /* --- CDTpSparqlQuery --- */
 
 CDTpSparqlQuery::CDTpSparqlQuery(const CDTpQueryBuilder &builder, QObject *parent)
-        : QObject(parent)
+        : QObject(parent), mErrorSet(false)
 {
     static uint counter = 0;
     mId = ++counter;
@@ -104,13 +104,16 @@ CDTpSparqlQuery::CDTpSparqlQuery(const CDTpQueryBuilder &builder, QObject *paren
 
 void CDTpSparqlQuery::onQueryFinished()
 {
-    QSparqlResult *const result = qobject_cast<QSparqlResult *>(sender());
+    QSparqlResult *result = qobject_cast<QSparqlResult *>(sender());
 
     if (not result) {
         warning() << "QSparqlQuery finished with error:" << "Invalid signal sender";
+        mErrorSet = true;
     } else {
         if (result->hasError()) {
-            warning() << "QSparqlQuery finished with error:" << result->lastError().message();
+            mErrorSet = true;
+            mError = result->lastError();
+            warning() << "QSparqlQuery finished with error:" << mError.message();
         }
         result->deleteLater();
     }

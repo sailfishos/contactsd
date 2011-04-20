@@ -51,6 +51,9 @@ CDTpController::CDTpController(QObject *parent) : QObject(parent)
     connect(mStorage,
             SIGNAL(syncEnded(CDTpAccountPtr, int, int)),
             SLOT(onSyncEnded(CDTpAccountPtr, int, int)));
+    connect(mStorage,
+            SIGNAL(error(int, const QString &)),
+            SIGNAL(error(int, const QString &)));
 
     debug() << "Creating account manager";
     const QDBusConnection &bus = QDBusConnection::sessionBus();

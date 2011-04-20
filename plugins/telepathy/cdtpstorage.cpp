@@ -17,11 +17,15 @@
 **
 ****************************************************************************/
 
+#include <tracker-sparql.h>
+
 #include <TelepathyQt4/AvatarData>
 #include <TelepathyQt4/ContactCapabilities>
 #include <TelepathyQt4/ConnectionCapabilities>
 #include <qtcontacts-tracker/phoneutils.h>
 #include <tracker-0.10/ontologies.h>
+
+#include <importstateconst.h>
 
 #include "cdtpstorage.h"
 #include "debug.h"
@@ -879,7 +883,10 @@ void CDTpStorage::syncAccounts(const QList<CDTpAccountPtr> &accounts)
      * self IMAddress and the default-contact-me as well */
     builder.append(purgeContactsBuilder());
 
-    new CDTpSparqlQuery(builder, this);
+    CDTpSparqlQuery *query = new CDTpSparqlQuery(builder, this);
+    connect(query,
+            SIGNAL(finished(CDTpSparqlQuery *)),
+            SLOT(onSparqlQueryFinished(CDTpSparqlQuery *)));
 }
 
 void CDTpStorage::createAccount(CDTpAccountPtr accountWrapper)
@@ -892,7 +899,10 @@ void CDTpStorage::createAccount(CDTpAccountPtr accountWrapper)
 
     /* if account has no contacts, we are done */
     if (accountWrapper->contacts().isEmpty()) {
-        new CDTpSparqlQuery(builder, this);
+        CDTpSparqlQuery *query = new CDTpSparqlQuery(builder, this);
+        connect(query,
+                SIGNAL(finished(CDTpSparqlQuery *)),
+                SLOT(onSparqlQueryFinished(CDTpSparqlQuery *)));
         return;
     }
 
@@ -934,7 +944,10 @@ void CDTpStorage::updateAccount(CDTpAccountPtr accountWrapper,
 
     builder.append(i);
 
-    new CDTpSparqlQuery(builder, this);
+    CDTpSparqlQuery *query = new CDTpSparqlQuery(builder, this);
+    connect(query,
+            SIGNAL(finished(CDTpSparqlQuery *)),
+            SLOT(onSparqlQueryFinished(CDTpSparqlQuery *)));
 }
 
 void CDTpStorage::removeAccount(CDTpAccountPtr accountWrapper)
@@ -953,7 +966,10 @@ void CDTpStorage::removeAccount(CDTpAccountPtr accountWrapper)
      * default-contact-me */
     builder.append(purgeContactsBuilder());
 
-    new CDTpSparqlQuery(builder, this);
+    CDTpSparqlQuery *query = new CDTpSparqlQuery(builder, this);
+    connect(query,
+            SIGNAL(finished(CDTpSparqlQuery *)),
+            SLOT(onSparqlQueryFinished(CDTpSparqlQuery *)));
 }
 
 // This is called when account goes online/offline
@@ -971,7 +987,10 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper)
     /* If it is not the first time account gets a roster, or if account has
      * no contacts, execute query without notify import progress */
     if (!accountWrapper->isNewAccount() || accountWrapper->contacts().isEmpty()) {
-        new CDTpSparqlQuery(builder, this);
+        CDTpSparqlQuery *query = new CDTpSparqlQuery(builder, this);
+        connect(query,
+                SIGNAL(finished(CDTpSparqlQuery *)),
+                SLOT(onSparqlQueryFinished(CDTpSparqlQuery *)));
         return;
     }
 
@@ -1006,13 +1025,19 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper,
         builder.append(removeContactsBuilder(accountWrapper, contactsRemoved));
     }
 
-    new CDTpSparqlQuery(builder, this);
+    CDTpSparqlQuery *query = new CDTpSparqlQuery(builder, this);
+    connect(query,
+            SIGNAL(finished(CDTpSparqlQuery *)),
+            SLOT(onSparqlQueryFinished(CDTpSparqlQuery *)));
 }
 
 /* Use this only in offline mode - use syncAccountContacts in online mode */
 void CDTpStorage::removeAccountContacts(const QString &accountPath, const QStringList &contactIds)
 {
-    new CDTpSparqlQuery(removeContactsBuilder(accountPath, contactIds), this);
+    CDTpSparqlQuery *query = new CDTpSparqlQuery(removeContactsBuilder(accountPath, contactIds), this);
+    connect(query,
+            SIGNAL(finished(CDTpSparqlQuery *)),
+            SLOT(onSparqlQueryFinished(CDTpSparqlQuery *)));
 }
 
 void CDTpStorage::updateContact(CDTpContactPtr contactWrapper, CDTpContact::Changes changes)
@@ -1114,7 +1139,7 @@ void CDTpStorage::onUpdateQueueTimeout()
 
 void CDTpStorage::onUpdateFinished(CDTpSparqlQuery *query)
 {
-    Q_UNUSED(query);
+    onSparqlQueryFinished(query);
 
     mUpdateRunning = false;
     if (!mUpdateQueue.isEmpty()) {
@@ -1124,11 +1149,25 @@ void CDTpStorage::onUpdateFinished(CDTpSparqlQuery *query)
 
 void CDTpStorage::onSyncOperationEnded(CDTpSparqlQuery *query)
 {
+    onSparqlQueryFinished(query);
+
     CDTpAccountsSparqlQuery *accountsQuery = qobject_cast<CDTpAccountsSparqlQuery*>(query);
     QList<CDTpAccountPtr> accounts = accountsQuery->accounts();
 
     Q_FOREACH (const CDTpAccountPtr &accountWrapper, accounts) {
         Q_EMIT syncEnded(accountWrapper, accountWrapper->contacts().count(), 0);
+    }
+}
+
+void CDTpStorage::onSparqlQueryFinished(CDTpSparqlQuery *query)
+{
+    if (query->hasError()) {
+        QSparqlError e = query->error();
+        ErrorCode code = ErrorUnknown;
+        if (e.type() == QSparqlError::BackendError && e.number() == TRACKER_SPARQL_ERROR_NO_SPACE) {
+            code = ErrorNoSpace;
+        }
+        Q_EMIT error(code, e.message());
     }
 }
 
