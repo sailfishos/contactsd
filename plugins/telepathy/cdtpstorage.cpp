@@ -23,7 +23,7 @@
 #include <TelepathyQt4/ContactCapabilities>
 #include <TelepathyQt4/ConnectionCapabilities>
 #include <qtcontacts-tracker/phoneutils.h>
-#include <tracker-0.10/ontologies.h>
+#include <ontologies.h>
 
 #include <importstateconst.h>
 
