@@ -28,7 +28,7 @@ Suggests: account-plugin-google,
           account-plugin-skype
 Conflicts: libqtcontacts-tracker (<< 4.12.4),
            contacts (<= 0.6.26),
-           tracker (< 0.10.6)
+           tracker (< 0.10.10)
 Description: Contacts daemon - Observing telepathy and storing to tracker
 
 Package: contactsd-dbg
