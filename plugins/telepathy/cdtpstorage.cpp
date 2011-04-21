@@ -307,7 +307,7 @@ static CDTpQueryBuilder createContactInfoBuilder(CDTpContactPtr contactWrapper)
             } else if (type == QLatin1String("work")) {
                 affiliationLabel = QLatin1String("Work");
             } else {
-                subTypes << param.mid(5);
+                subTypes << type;
             }
         }
 
