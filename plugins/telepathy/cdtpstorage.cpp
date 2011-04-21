@@ -359,6 +359,7 @@ static CDTpQueryBuilder createContactInfoBuilder(CDTpContactPtr contactWrapper)
                 knownTypes.insert(QLatin1String("dom"), nco::DomesticDeliveryAddress::resource());
                 knownTypes.insert(QLatin1String("intl"), nco::InternationalDeliveryAddress::resource());
                 knownTypes.insert(QLatin1String("parcel"), nco::ParcelDeliveryAddress::resource());
+                knownTypes.insert(QLatin1String("postal"), maemo::PostalAddress::resource());
             }
 
             const Value affiliation = ensureContactAffiliation(g, affiliations, affiliationLabel, imContactVar);
