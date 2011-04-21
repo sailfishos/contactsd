@@ -311,10 +311,7 @@ static CDTpQueryBuilder createContactInfoBuilder(CDTpContactPtr contactWrapper)
             }
         }
 
-        /* FIXME:
-         *  - Do we care about "fn" and "nickname" ?
-         *  - How do we write affiliation for "org" ?
-         */
+        /* FIXME: do we care about "fn" and "nickname" ? */
         if (!field.fieldName.compare(QLatin1String("tel"))) {
             static QHash<QString, Value> knownTypes;
             if (knownTypes.isEmpty()) {
@@ -344,15 +341,6 @@ static CDTpQueryBuilder createContactInfoBuilder(CDTpContactPtr contactWrapper)
             g.addPattern(affiliation, nco::hasPhoneNumber::resource(), phoneNumber);
         }
 
-        else if (!field.fieldName.compare(QLatin1String("email"))) {
-            static const QString tmpl = QString::fromLatin1("mailto:%1");
-            const Value emailAddress = ResourceValue(tmpl.arg(field.fieldValue[0]));
-            const Value affiliation = ensureContactAffiliation(g, affiliations, affiliationLabel, imContactVar);
-            g.addPattern(emailAddress, aValue, nco::EmailAddress::resource());
-            g.addPattern(emailAddress, nco::emailAddress::resource(), literalContactInfo(field, 0));
-            g.addPattern(affiliation, nco::hasEmailAddress::resource(), emailAddress);
-        }
-
         else if (!field.fieldName.compare(QLatin1String("adr"))) {
             static QHash<QString, Value> knownTypes;
             if (knownTypes.isEmpty()) {
@@ -380,6 +368,15 @@ static CDTpQueryBuilder createContactInfoBuilder(CDTpContactPtr contactWrapper)
             g.addPattern(affiliation, nco::hasPostalAddress::resource(), postalAddress);
         }
 
+        else if (!field.fieldName.compare(QLatin1String("email"))) {
+            static const QString tmpl = QString::fromLatin1("mailto:%1");
+            const Value emailAddress = ResourceValue(tmpl.arg(field.fieldValue[0]));
+            const Value affiliation = ensureContactAffiliation(g, affiliations, affiliationLabel, imContactVar);
+            g.addPattern(emailAddress, aValue, nco::EmailAddress::resource());
+            g.addPattern(emailAddress, nco::emailAddress::resource(), literalContactInfo(field, 0));
+            g.addPattern(affiliation, nco::hasEmailAddress::resource(), emailAddress);
+        }
+
         else if (!field.fieldName.compare(QLatin1String("url"))) {
             const Value affiliation = ensureContactAffiliation(g, affiliations, affiliationLabel, imContactVar);
             g.addPattern(affiliation, nco::url::resource(), literalContactInfo(field, 0));
@@ -393,6 +390,15 @@ static CDTpQueryBuilder createContactInfoBuilder(CDTpContactPtr contactWrapper)
         else if (!field.fieldName.compare(QLatin1String("role"))) {
             const Value affiliation = ensureContactAffiliation(g, affiliations, affiliationLabel, imContactVar);
             g.addPattern(affiliation, nco::role::resource(), literalContactInfo(field, 0));
+        }
+
+        else if (!field.fieldName.compare(QLatin1String("org"))) {
+            const Value affiliation = ensureContactAffiliation(g, affiliations, affiliationLabel, imContactVar);
+            const BlankValue organizationContact;
+            g.addPattern(organizationContact, aValue, nco::OrganizationContact::resource());
+            g.addPattern(organizationContact, nco::fullname::resource(), literalContactInfo(field, 0));
+            g.addPattern(affiliation, nco::department::resource(), literalContactInfo(field, 1));
+            g.addPattern(affiliation, nco::org::resource(), organizationContact);
         }
 
         else if (!field.fieldName.compare(QLatin1String("note")) || !field.fieldName.compare(QLatin1String("desc"))) {
