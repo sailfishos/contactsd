@@ -1,3 +1,17 @@
+contactsd (0.5.67-1) unstable; urgency=low
+
+  * Fixes NB#245328 - Legal Bug
+  * Fixes NB#244617 - Contactsd should generate normalized phone number IRIs
+  * Changes: Write queries using cubi. This ensure proper escaping for all values
+  * Changes: Support PostalAddress subtypes
+  * Changes: Add MfeSync string to importstateconst.h
+  * Changes: Support offline invitation
+  * Changes: Add "error" signal on contactsd plugin and dbus iface
+  * Changes: Add support for maemo:PostalAddress
+  * Changes: Add support for ORG ContactInfo
+
+ -- Xavier Claessens <xavier.claessens@collabora.co.uk>  Thu, 28 Apr 2011 08:21:27 +0200
+
 contactsd (0.5.66-1) unstable; urgency=low
 
   * Changes: Fix issue forcing avatar/ContactInfo request each time account connects
