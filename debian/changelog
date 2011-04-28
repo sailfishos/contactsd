@@ -1,7 +1,7 @@
-contactsd (0.5.67-1) unstable; urgency=low
+contactsd (0.5.67-2) unstable; urgency=low
 
-  * Fixes NB#245328 - Legal Bug
-  * Fixes NB#244617 - Contactsd should generate normalized phone number IRIs
+  * Fixes: NB#245328 - Legal Bug
+  * Fixes: NB#244617 - Contactsd should generate normalized phone number IRIs
   * Changes: Write queries using cubi. This ensure proper escaping for all values
   * Changes: Support PostalAddress subtypes
   * Changes: Add MfeSync string to importstateconst.h
