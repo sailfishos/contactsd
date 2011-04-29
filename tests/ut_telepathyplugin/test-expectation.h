@@ -152,7 +152,7 @@ private:
         VerifyAll            = (1 << 6) - 1
     };
 
-    void verifyContactInfo(QString expectedName, const QStringList expectedValues) const;
+    void verifyContactInfo(const QString name, const QStringList values, const QStringList params) const;
 
     QString mAccountUri;
     Event mEvent;

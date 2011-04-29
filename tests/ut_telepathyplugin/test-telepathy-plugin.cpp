@@ -257,12 +257,15 @@ void TestTelepathyPlugin::testContactInfo()
 
     /* Set some ContactInfo on the contact */
     GPtrArray *infoPtrArray = createContactInfoTel("123");
-    const gchar *fieldValues[] = { "email@foo.com", NULL };
-    g_ptr_array_add (infoPtrArray, tp_value_array_build(3,
-        G_TYPE_STRING, "email",
-        G_TYPE_STRV, NULL,
-        G_TYPE_STRV, fieldValues,
-        G_TYPE_INVALID));
+    {
+        const gchar *fieldValues[] = { "email@foo.com", NULL };
+        const gchar *fieldParams[] = { "type=work", "type=something totally wrong", "some garbage", NULL };
+        g_ptr_array_add (infoPtrArray, tp_value_array_build(3,
+            G_TYPE_STRING, "email",
+            G_TYPE_STRV, fieldParams,
+            G_TYPE_STRV, fieldValues,
+            G_TYPE_INVALID));
+    }
     tp_tests_contacts_connection_change_contact_info(
         TP_TESTS_CONTACTS_CONNECTION(mConnService), handle, infoPtrArray);
 
@@ -273,6 +276,24 @@ void TestTelepathyPlugin::testContactInfo()
 
     /* Change the ContactInfo */
     infoPtrArray = createContactInfoTel("456");
+    {
+        const gchar *fieldValues[] = { "789", NULL };
+        const gchar *fieldParams[] = { "type=home", "type=cell", "type=video", NULL };
+        g_ptr_array_add (infoPtrArray, tp_value_array_build(3,
+            G_TYPE_STRING, "tel",
+            G_TYPE_STRV, fieldParams,
+            G_TYPE_STRV, fieldValues,
+            G_TYPE_INVALID));
+    }
+    {
+        const gchar *fieldValues[] = { "789", NULL };
+        const gchar *fieldParams[] = { "type=work", NULL };
+        g_ptr_array_add (infoPtrArray, tp_value_array_build(3,
+            G_TYPE_STRING, "tel",
+            G_TYPE_STRV, fieldParams,
+            G_TYPE_STRV, fieldValues,
+            G_TYPE_INVALID));
+    }
     tp_tests_contacts_connection_change_contact_info(
         TP_TESTS_CONTACTS_CONNECTION(mConnService), handle, infoPtrArray);
 

@@ -250,9 +250,26 @@ void TestExpectationContact::verify(QContact contact)
         uint nMatchedField = 0;
 
         Q_FOREACH (const QContactDetail &detail, contact.details()) {
+            QStringList params;
+            if (detail.contexts().contains("Work")) {
+                params << QLatin1String("type=work");
+            }
+            if (detail.contexts().contains("Home")) {
+                params << QLatin1String("type=home");
+            }
+
             if (detail.definitionName() == "PhoneNumber") {
                 QContactPhoneNumber phoneNumber = static_cast<QContactPhoneNumber>(detail);
-                verifyContactInfo("tel", QStringList() << phoneNumber.number());
+
+                Q_FOREACH (const QString &type, phoneNumber.subTypes()) {
+                    if (type == QLatin1String("Mobile")) {
+                        params << QLatin1String("type=cell");
+                    } else if (type == QLatin1String("Video")) {
+                        params << QLatin1String("type=video");
+                    }
+                }
+
+                verifyContactInfo("tel", QStringList() << phoneNumber.number(), params);
                 nMatchedField++;
             }
             else if (detail.definitionName() == "Address") {
@@ -263,12 +280,13 @@ void TestExpectationContact::verify(QContact contact)
                                                        << address.locality()
                                                        << address.region()
                                                        << address.postcode()
-                                                       << address.country());
+                                                       << address.country(),
+                                  params);
                 nMatchedField++;
             }
             else if (detail.definitionName() == "EmailAddress") {
                 QContactEmailAddress emailAddress = static_cast<QContactEmailAddress >(detail);
-                verifyContactInfo("email", QStringList() << emailAddress.emailAddress());
+                verifyContactInfo("email", QStringList() << emailAddress.emailAddress(), params);
                 nMatchedField++;
             }
         }
@@ -283,9 +301,19 @@ void TestExpectationContact::verify(QContact contact)
     }
 }
 
-void TestExpectationContact::verifyContactInfo(QString name, const QStringList values) const
+void TestExpectationContact::verifyContactInfo(const QString name, const QStringList values,
+        const QStringList params) const
 {
     QVERIFY2(mContactInfo != NULL, "Found ContactInfo field, was expecting none");
+
+    /* All well known params that must be matched */
+    static QStringList knownParams;
+    if (knownParams.isEmpty()) {
+        knownParams << QLatin1String("type=work");
+        knownParams << QLatin1String("type=home");
+        knownParams << QLatin1String("type=cell");
+        knownParams << QLatin1String("type=video");
+    }
 
     bool found = false;
     for (uint i = 0; i < mContactInfo->len; i++) {
@@ -303,6 +331,7 @@ void TestExpectationContact::verifyContactInfo(QString name, const QStringList v
             continue;
         }
 
+        /* Verify values match */
         bool match = true;
         for (int j = 0; j < values.count(); j++) {
             if (values[j] == QString("unmapped")) {
@@ -313,6 +342,24 @@ void TestExpectationContact::verifyContactInfo(QString name, const QStringList v
                 match = false;
                 break;
             }
+        }
+        if (!match) {
+            continue;
+        }
+
+        /* Verify params match */
+        QStringList expectedParams = params;
+        while (c_parameters && *c_parameters) {
+            QLatin1String c_param(*c_parameters);
+            if (!expectedParams.removeOne(c_param) &&
+                knownParams.contains(c_param)) {
+                match = false;
+                break;
+            }
+            c_parameters++;
+        }
+        if (!expectedParams.isEmpty()) {
+            match = false;
         }
 
         if (match) {

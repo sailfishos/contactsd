@@ -306,7 +306,7 @@ static CDTpQueryBuilder createContactInfoBuilder(CDTpContactPtr contactWrapper)
                 affiliationLabel = QLatin1String("Home");
             } else if (type == QLatin1String("work")) {
                 affiliationLabel = QLatin1String("Work");
-            } else {
+            } else if (!subTypes.contains(type)){
                 subTypes << type;
             }
         }
@@ -327,13 +327,18 @@ static CDTpQueryBuilder createContactInfoBuilder(CDTpContactPtr contactWrapper)
                 knownTypes.insert(QLatin1String("voice"), nco::VoicePhoneNumber::resource());
             }
 
-            const Value affiliation = ensureContactAffiliation(g, affiliations, affiliationLabel, imContactVar);
-            const Value phoneNumber = qctMakePhoneNumberResource(field.fieldValue[0], subTypes);
-            g.addPattern(phoneNumber, aValue, nco::PhoneNumber::resource());
+            QStringList realSubTypes;
             Q_FOREACH (const QString &type, subTypes) {
                 if (knownTypes.contains(type)) {
-                    g.addPattern(phoneNumber, aValue, knownTypes[type]);
+                    realSubTypes << type;
                 }
+            }
+
+            const Value affiliation = ensureContactAffiliation(g, affiliations, affiliationLabel, imContactVar);
+            const Value phoneNumber = qctMakePhoneNumberResource(field.fieldValue[0], realSubTypes);
+            g.addPattern(phoneNumber, aValue, nco::PhoneNumber::resource());
+            Q_FOREACH (const QString &type, realSubTypes) {
+                g.addPattern(phoneNumber, aValue, knownTypes[type]);
             }
             g.addPattern(phoneNumber, nco::phoneNumber::resource(), literalContactInfo(field, 0));
             g.addPattern(phoneNumber, maemo::localPhoneNumber::resource(),
@@ -350,13 +355,18 @@ static CDTpQueryBuilder createContactInfoBuilder(CDTpContactPtr contactWrapper)
                 knownTypes.insert(QLatin1String("postal"), maemo::PostalAddress::resource());
             }
 
+            QStringList realSubTypes;
+            Q_FOREACH (const QString &type, subTypes) {
+                if (knownTypes.contains(type)) {
+                    realSubTypes << type;
+                }
+            }
+
             const Value affiliation = ensureContactAffiliation(g, affiliations, affiliationLabel, imContactVar);
             const BlankValue postalAddress;
             g.addPattern(postalAddress, aValue, nco::PostalAddress::resource());
-            Q_FOREACH (const QString &type, subTypes) {
-                if (knownTypes.contains(type)) {
-                    g.addPattern(postalAddress, aValue, knownTypes[type]);
-                }
+            Q_FOREACH (const QString &type, realSubTypes) {
+                g.addPattern(postalAddress, aValue, knownTypes[type]);
             }
             g.addPattern(postalAddress, nco::pobox::resource(),           literalContactInfo(field, 0));
             g.addPattern(postalAddress, nco::extendedAddress::resource(), literalContactInfo(field, 1));
