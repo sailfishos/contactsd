@@ -24,14 +24,15 @@
 #include <QTest>
 #include <QFile>
 
-#include <QContactFetchByIdRequest>
+#include <QContactAddress>
 #include <QContactAvatar>
+#include <QContactEmailAddress>
+#include <QContactFetchByIdRequest>
+#include <QContactGlobalPresence>
 #include <QContactOnlineAccount>
 #include <QContactPhoneNumber>
-#include <QContactAddress>
 #include <QContactPresence>
-#include <QContactEmailAddress>
-#include <QContactGlobalPresence>
+#include <QContactSyncTarget>
 #include <QContactTag>
 
 #include "test-expectation.h"
@@ -133,10 +134,19 @@ TestExpectationCleanup::TestExpectationCleanup(int nContacts) :
 void TestExpectationCleanup::verify(Event event, const QList<QContact> &contacts)
 {
     QCOMPARE(event, EventChanged);
-    QCOMPARE(contacts.count(), 1);
-    QCOMPARE(contacts[0].localId(), contactManager()->selfContactId());
-    mNContacts--;
-    mSelfChanged = true;
+
+    Q_FOREACH (const QContact &contact, contacts) {
+        if (contact.localId() == contactManager()->selfContactId()) {
+            QVERIFY(!mSelfChanged);
+            mSelfChanged = true;
+            mNContacts--;
+            continue;
+        }
+
+        QContactSyncTarget detail = contact.detail<QContactSyncTarget>();
+        QCOMPARE(detail.syncTarget(), QLatin1String("addressbook"));
+        mNContacts--;
+    }
 
     maybeEmitFinished();
 }
@@ -302,6 +312,11 @@ void TestExpectationContact::verify(QContact contact)
 
     if (mFlags & VerifyLocalId) {
         QCOMPARE(contact.localId(), mLocalId);
+    }
+
+    if (mFlags & VerifyGenerator) {
+        QContactSyncTarget detail = contact.detail<QContactSyncTarget>();
+        QCOMPARE(detail.syncTarget(), mGenerator);
     }
 }
 

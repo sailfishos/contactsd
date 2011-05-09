@@ -25,7 +25,10 @@
 #include <QContactFetchByIdRequest>
 #include <QContactLocalIdFetchRequest>
 #include <QContactFetchRequest>
+#include <QContactRemoveRequest>
+#include <QContactSaveRequest>
 #include <QContactLocalIdFilter>
+#include <QContactOnlineAccount>
 
 #include <qtcontacts-tracker/contactmergerequest.h>
 
@@ -39,7 +42,7 @@
 #include "debug.h"
 
 TestTelepathyPlugin::TestTelepathyPlugin(QObject *parent) : Test(parent),
-        mContactCount(0), mExpectation(0)
+        mExpectation(0)
 {
 }
 
@@ -71,6 +74,7 @@ void TestTelepathyPlugin::initTestCase()
     connect(mContactManager,
             SIGNAL(contactsRemoved(const QList<QContactLocalId>&)),
             SLOT(contactsRemoved(const QList<QContactLocalId>&)));
+    mLocalContactIds += mContactManager->selfContactId();
 
     /* Create a fake AccountManager */
     TpDBusDaemon *dbus = tp_dbus_daemon_dup(NULL);
@@ -126,7 +130,6 @@ void TestTelepathyPlugin::init()
     /* Wait for self contact to appear */
     TestExpectationInit exp;
     runExpectation(&exp);
-    mContactCount = 1;
 }
 
 void TestTelepathyPlugin::cleanup()
@@ -137,9 +140,23 @@ void TestTelepathyPlugin::cleanup()
     tp_tests_simple_account_manager_remove_account(mAccountManager, ACCOUNT_PATH);
     tp_tests_simple_account_removed(mAccount);
 
-    /* Wait for all contacts to disappear */
-    TestExpectationCleanup exp(mContactCount);
+    /* Wait for all contacts to disappear, and local contacts to get updated */
+    TestExpectationCleanup exp(mLocalContactIds.count());
     runExpectation(&exp);
+
+    /* Remove remaining local contacts */
+    QList<QContactLocalId> contactsToRemove = mLocalContactIds;
+    contactsToRemove.removeOne(mContactManager->selfContactId());
+    if (!contactsToRemove.isEmpty()) {
+        QContactRemoveRequest *request = new QContactRemoveRequest();
+        request->setContactIds(contactsToRemove);
+        startRequest(request);
+
+        TestExpectationMass exp(0, 0, contactsToRemove.count());
+        runExpectation(&exp);
+    }
+
+    QVERIFY(mLocalContactIds.count() == 1);
 
     g_object_unref(mConnService);
     g_object_unref(mConnection);
@@ -416,7 +433,7 @@ void TestTelepathyPlugin::testRemoveBuddyDBusAPI()
 
     // Set account offline to test offline removal
     tp_cli_connection_call_disconnect(mConnection, -1, NULL, NULL, NULL, NULL);
-    TestExpectationDisconnect exp3(mContactCount);
+    TestExpectationDisconnect exp3(mLocalContactIds.count());
     runExpectation(&exp3);
 
     // Remove buddy2 when account is offline
@@ -461,7 +478,7 @@ void TestTelepathyPlugin::testSetOffline()
 
     tp_cli_connection_call_disconnect(mConnection, -1, NULL, NULL, NULL, NULL);
 
-    TestExpectationDisconnect exp2(mContactCount);
+    TestExpectationDisconnect exp2(mLocalContactIds.count());
     runExpectation(&exp2);
 }
 
@@ -565,6 +582,40 @@ void TestTelepathyPlugin::testIRIEncode()
     runExpectation(&exp);
 }
 
+void TestTelepathyPlugin::testBug253679()
+{
+    const char *id = "testbug253679";
+
+    /* Create a local contact with an OnlineAccount */
+    QContact contact;
+    QContactOnlineAccount onlineAccount;
+    onlineAccount.setAccountUri(id);
+    onlineAccount.setValue(QLatin1String("AccountPath"), QLatin1String(ACCOUNT_PATH));
+    contact.saveDetail(&onlineAccount);
+
+    QContactSaveRequest *request = new QContactSaveRequest();
+    request->setContact(contact);
+    startRequest(request);
+
+    TestExpectationContact exp(EventAdded);
+    exp.verifyGenerator("addressbook");
+    runExpectation(&exp);
+
+    /* Now add the same OnlineAccount in our telepathy account, we expect this
+     * to update existing contact and not create a new one */
+    TpHandle handle = ensureContact(id);
+    test_contact_list_manager_request_subscription(mListManager, 1, &handle,
+        "wait");
+    const char *alias = "NB#253679";
+    tp_tests_contacts_connection_change_aliases(
+        TP_TESTS_CONTACTS_CONNECTION (mConnService),
+        1, &handle, &alias);
+
+    exp.setEvent(EventChanged);
+    exp.verifyAlias(alias);
+    runExpectation(&exp);
+}
+
 void TestTelepathyPlugin::testMergedContact()
 {
     /* create new contact */
@@ -587,7 +638,9 @@ void TestTelepathyPlugin::testMergedContact()
     const QList<QContactLocalId> mergeIds = QList<QContactLocalId>() << contact2.localId();
     mergeContacts(contact1, mergeIds);
     exp1.verifyLocalId(contact1.localId());
+    exp1.verifyGenerator("telepathy");
     exp2.verifyLocalId(contact1.localId());
+    exp2.verifyGenerator("telepathy");
     const QList<TestExpectationContact *> expectations = QList<TestExpectationContact *>() << &exp1 << &exp2;
     TestExpectationMerge exp3(contact1.localId(), mergeIds, expectations);
     runExpectation(&exp3);
@@ -637,21 +690,26 @@ void TestTelepathyPlugin::mergeContacts(const QContact &contactTarget,
     }
 
     QctContactMergeRequest *mergeRequest = new QctContactMergeRequest();
-    connect(mergeRequest,
-            SIGNAL(resultsAvailable()),
-            SLOT(onMergeContactsFinished()));
     mergeRequest->setMergeIds(mergeIds);
-    mergeRequest->setManager(mContactManager);
-    QVERIFY(mergeRequest->start());
+    startRequest(mergeRequest);
 }
 
-void TestTelepathyPlugin::onMergeContactsFinished()
+void TestTelepathyPlugin::startRequest(QContactAbstractRequest *request)
 {
-    QctContactMergeRequest *req = qobject_cast<QctContactMergeRequest *>(sender());
-    QVERIFY(req != 0);
-    QVERIFY(req->isFinished());
-    QCOMPARE(req->error(), QContactManager::NoError);
-    req->deleteLater();
+    connect(request,
+            SIGNAL(resultsAvailable()),
+            SLOT(onRequestFinished()));
+    request->setManager(mContactManager);
+    QVERIFY(request->start());
+}
+
+void TestTelepathyPlugin::onRequestFinished()
+{
+    QContactAbstractRequest *request = qobject_cast<QContactAbstractRequest *>(sender());
+    QVERIFY(request != 0);
+    QVERIFY(request->isFinished());
+    QCOMPARE(request->error(), QContactManager::NoError);
+    request->deleteLater();
 }
 
 void TestTelepathyPlugin::onContactsFetched()
@@ -685,7 +743,7 @@ void TestTelepathyPlugin::testBenchmark()
     /* create lots of new contacts */
     GArray *handles = g_array_new(FALSE, FALSE, sizeof(TpHandle));
     for (int i = 0; i < N_CONTACTS; i++) {
-        TpHandle handle = ensureContact(randomString(6));
+        TpHandle handle = ensureContact(randomString(20));
         g_array_append_val(handles, handle);
     }
     test_contact_list_manager_request_subscription(mListManager,
@@ -696,7 +754,7 @@ void TestTelepathyPlugin::testBenchmark()
     /* Set account offline */
     tp_cli_connection_call_disconnect(mConnection, -1, NULL, NULL, NULL, NULL);
 
-    TestExpectationDisconnect exp2(mContactCount);
+    TestExpectationDisconnect exp2(mLocalContactIds.count());
     runExpectation(&exp2);
 }
 
@@ -726,21 +784,29 @@ void TestTelepathyPlugin::runExpectation(TestExpectation *exp)
 void TestTelepathyPlugin::contactsAdded(const QList<QContactLocalId>& contactIds)
 {
     debug() << "Got contactsAdded";
-    mContactCount += contactIds.count();
+    Q_FOREACH (const QContactLocalId &id, contactIds) {
+        QVERIFY(!mLocalContactIds.contains(id));
+        mLocalContactIds << id;
+    }
     verify(EventAdded, contactIds);
 }
 
 void TestTelepathyPlugin::contactsChanged(const QList<QContactLocalId>& contactIds)
 {
     debug() << "Got contactsChanged";
+    Q_FOREACH (const QContactLocalId &id, contactIds) {
+        QVERIFY(mLocalContactIds.contains(id));
+    }
     verify(EventChanged, contactIds);
 }
 
 void TestTelepathyPlugin::contactsRemoved(const QList<QContactLocalId>& contactIds)
 {
     debug() << "Got contactsRemoved";
-    mContactCount -= contactIds.count();
-    QVERIFY(mContactCount >= 0);
+    Q_FOREACH (const QContactLocalId &id, contactIds) {
+        QVERIFY(mLocalContactIds.contains(id));
+        mLocalContactIds.removeOne(id);
+    }
     verify(EventRemoved, contactIds);
 }
 
@@ -750,6 +816,5 @@ void TestTelepathyPlugin::verify(Event event,
     QVERIFY(mExpectation != 0);
     mExpectation->verify(event, contactIds);
 }
-
 
 QTEST_MAIN(TestTelepathyPlugin)

@@ -137,6 +137,7 @@ public:
     void verifyAuthorization(QString subscriptionState, QString publishState) { mSubscriptionState = subscriptionState; mPublishState = publishState; mFlags |= VerifyAuthorization; };
     void verifyInfo(GPtrArray *contactInfo) { mContactInfo = contactInfo; mFlags |= VerifyInfo; };
     void verifyLocalId(QContactLocalId localId) { mLocalId = localId; mFlags |= VerifyLocalId; };
+    void verifyGenerator(QString generator) { mGenerator = generator; mFlags |= VerifyGenerator; };
 
     void verify(QContact contact);
 
@@ -153,7 +154,8 @@ private:
         VerifyAuthorization  = (1 << 3),
         VerifyInfo           = (1 << 4),
         VerifyLocalId        = (1 << 5),
-        VerifyAll            = (1 << 6) - 1
+        VerifyGenerator      = (1 << 6),
+        VerifyAll            = (1 << 7) - 1
     };
 
     void verifyContactInfo(const QString name, const QStringList values, const QStringList params) const;
@@ -169,6 +171,7 @@ private:
     QString mPublishState;
     GPtrArray *mContactInfo;
     QContactLocalId mLocalId;
+    QString mGenerator;
 
     QContact mContact;
 };

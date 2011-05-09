@@ -27,7 +27,9 @@
 #include <QObject>
 #include <QTest>
 #include <QString>
+
 #include <QContactManager>
+#include <QContactAbstractRequest>
 
 #include <telepathy-glib/telepathy-glib.h>
 #include <TelepathyQt4/Contact>
@@ -58,7 +60,7 @@ protected Q_SLOTS:
     void contactsChanged(const QList<QContactLocalId>& contactIds);
     void contactsRemoved(const QList<QContactLocalId>& contactIds);
     void onContactsFetched();
-    void onMergeContactsFinished();
+    void onRequestFinished();
 
 private Q_SLOTS:
     void initTestCase();
@@ -77,6 +79,7 @@ private Q_SLOTS:
     void testAvatar();
 
     /* Specific tests */
+    void testBug253679();
     void testMergedContact();
     void testBug220851();
     void testIRIEncode();
@@ -94,6 +97,7 @@ private:
     void runExpectation(TestExpectation *expectation);
     void mergeContacts(const QContact &contactTarget,
             const QList<QContactLocalId> &sourceContactIds);
+    void startRequest(QContactAbstractRequest *request);
 
 private:
     QContactManager *mContactManager;
@@ -104,7 +108,7 @@ private:
     TpConnection *mConnection;
     TestContactListManager *mListManager;
 
-    int mContactCount;
+    QList<QContactLocalId> mLocalContactIds;
 
     TestExpectation *mExpectation;
 };
