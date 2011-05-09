@@ -1,6 +1,6 @@
 This package was debianized by Aleksandar Stojiljkovic on Fri, 09 Jul 2010 09:19:17 +0300.
 
-Copyright © 2010 Nokia Corporation and/or its subsidiary(-ies). All rights reserved. * 
+Copyright © 2011 Nokia Corporation and/or its subsidiary(-ies). All rights reserved. * 
 Contact: Aleksandar Stojiljkovic <aleksandar.stojiljkovic@nokia.com> * * 
 
 This library is free software; you can redistribute it and/or
@@ -16,4 +16,4 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 02110-1301 USA
 
-The Debian packaging is (C) 2010 Nokia Corporation and is licensed, see above.
+The Debian packaging is (C) 2011 Nokia Corporation and is licensed, see above.
