@@ -8,8 +8,8 @@
 #include <TelepathyQt4/Debug>
 #include <TelepathyQt4/DBus>
 #include <TelepathyQt4/PendingVoid>
-#include <TelepathyQt4/RefCounted>
 #include <TelepathyQt4/SharedPtr>
+#include <TelepathyQt4/RefCounted>
 
 using Tp::PendingOperation;
 using Tp::PendingVoid;
@@ -45,6 +45,8 @@ void Test::cleanupImpl()
 
 void Test::cleanupTestCaseImpl()
 {
+    // To allow for cleanup code to run (e.g. PendingOperation cleanup after they finish)
+    mLoop->processEvents();
 }
 
 void Test::expectSuccessfulCall(PendingOperation *op)
@@ -80,6 +82,20 @@ void Test::expectFailure(PendingOperation *op)
     }
 
     mLoop->exit(0);
+}  
+
+void Test::expectSuccessfulProperty(PendingOperation *op)
+{
+    if (op->isError()) {
+        qWarning().nospace() << op->errorName()
+            << ": " << op->errorMessage();
+        mPropertyValue = QVariant();
+        mLoop->exit(1);
+    } else {
+        Tp::PendingVariant *pv = qobject_cast<Tp::PendingVariant*>(op);
+        mPropertyValue = pv->result();
+        mLoop->exit(0);
+    }
 }
 
 void Test::processDBusQueue(Tp::DBusProxy *proxy)
@@ -89,10 +105,15 @@ void Test::processDBusQueue(Tp::DBusProxy *proxy)
     PendingVoid *call = new PendingVoid(peer.Ping(), Tp::SharedPtr<Tp::RefCounted>());
 
     // Wait for the reply to the Ping call
-    QVERIFY(connect(call,
-                SIGNAL(finished(Tp::PendingOperation*)),
-                SLOT(expectSuccessfulCall(Tp::PendingOperation*))));
-    QCOMPARE(mLoop->exec(), 0);
+    while (!call->isFinished()) {
+        mLoop->processEvents();
+    }
+
+    QVERIFY(call->isFinished());
+    QVERIFY(call->isValid());
+
+    // Do one more processEvents so the PendingVoid is always freed
+    mLoop->processEvents();
 }
 
 void Test::onWatchdog()
