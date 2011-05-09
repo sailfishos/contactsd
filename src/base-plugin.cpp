@@ -22,6 +22,7 @@
  **/
 
 #include "base-plugin.h"
+#include "debug.h"
 
 namespace Contactsd
 {
@@ -29,5 +30,54 @@ namespace Contactsd
 const QString BasePlugin::metaDataKeyVersion = QString::fromLatin1("version");
 const QString BasePlugin::metaDataKeyName    = QString::fromLatin1("name");
 const QString BasePlugin::metaDataKeyComment = QString::fromLatin1("comment");
+
+
+QSparqlConnection &BasePlugin::sparqlConnection()
+{
+    static const QStringList DefaultSparqlBackends = QStringList()
+            << QLatin1String("QTRACKER_DIRECT")
+            << QLatin1String("QTRACKER");
+    static const QString SparqlBackendsKey = QLatin1String("sparqlBackends");
+    static QThreadStorage<QSparqlConnection *> connection;
+
+    if (not connection.hasLocalData()) {
+        static const QStringList permittedDriverNames =
+                QSettings(QSettings::IniFormat, QSettings::UserScope, QLatin1String("Nokia"),
+                          QLatin1String("Contacts")).value(SparqlBackendsKey, DefaultSparqlBackends).toStringList();
+        bool validConnectionMissing = true;
+
+        foreach(const QString &driverName, permittedDriverNames) {
+            connection.setLocalData(new QSparqlConnection(driverName));
+
+            if (connection.localData()->isValid()) {
+                validConnectionMissing = false;
+                break;
+            }
+        }
+
+        if (validConnectionMissing) {
+            QString permittedDrivers = permittedDriverNames.join(QLatin1String(", "));
+            QString availableDrivers = QSparqlConnection::drivers().join(QLatin1String(", "));
+
+            if (permittedDrivers.isEmpty()) {
+                permittedDrivers = QLatin1String("none");
+            }
+
+            if (availableDrivers.isEmpty()) {
+                availableDrivers = QLatin1String("none");
+            }
+
+            warning() << Q_FUNC_INFO << QString::fromLatin1("Could not find any usable QtSparql backend driver. "
+                                        "Please install one of the configured drivers, or "
+                                        "correct the setting. Configured backends: %1. "
+                                        "Available backends: %2.").
+                    arg(permittedDrivers, availableDrivers);
+
+            connection.setLocalData(new QSparqlConnection(QLatin1String("invalid")));
+        }
+    }
+
+    return *connection.localData();
+}
 
 } // Contactsd

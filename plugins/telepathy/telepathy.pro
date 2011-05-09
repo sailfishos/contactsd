@@ -46,7 +46,6 @@ HEADERS  = cdtpaccount.h \
     cdtpplugin.h \
     cdtpquery.h \
     cdtpstorage.h \
-    sparqlconnectionmanager.h \
     buddymanagementadaptor.h
 
 SOURCES  = cdtpaccount.cpp \
@@ -55,7 +54,6 @@ SOURCES  = cdtpaccount.cpp \
     cdtpplugin.cpp \
     cdtpquery.cpp \
     cdtpstorage.cpp \
-    sparqlconnectionmanager.cpp \
     buddymanagementadaptor.cpp
 
 TARGET = telepathyplugin

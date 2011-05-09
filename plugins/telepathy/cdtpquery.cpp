@@ -24,7 +24,9 @@
 #include "cdtpquery.h"
 #include "cdtpstorage.h"
 #include "debug.h"
-#include "sparqlconnectionmanager.h"
+
+#include "base-plugin.h"
+
 
 using namespace Contactsd;
 
@@ -86,7 +88,7 @@ CDTpSparqlQuery::CDTpSparqlQuery(const CDTpQueryBuilder &builder, QObject *paren
     debug() << "query" << mId << "started";
     debug() << builder.sparql(Options::DefaultSparqlOptions | Options::PrettyPrint);
 
-    QSparqlConnection &connection = com::nokia::contactsd::SparqlConnectionManager::defaultConnection();
+    QSparqlConnection &connection = BasePlugin::sparqlConnection();
     QSparqlResult *result = connection.exec(builder.sparqlQuery());
 
     if (not result) {

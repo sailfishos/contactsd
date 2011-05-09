@@ -29,6 +29,8 @@
 #include <QVariant>
 #include <QStringList>
 #include <QMap>
+#include <QThreadStorage>
+#include <QtSparql>
 
 
 namespace Contactsd
@@ -47,6 +49,7 @@ public:
     virtual ~BasePlugin () { };
     virtual void init() = 0;
     virtual MetaData metaData() = 0;
+    static QSparqlConnection &sparqlConnection();
 
 Q_SIGNALS:
     // \param service - display name of a service (e.g. Gtalk, MSN)
