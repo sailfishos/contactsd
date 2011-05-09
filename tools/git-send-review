@@ -1,9 +1,30 @@
 #! /bin/bash
+
+# This file is part of QtContacts tracker storage plugin
+#
+# Copyright (c) 2009-2011 Nokia Corporation and/or its subsidiary(-ies).
+#
+# Contact:  Nokia Corporation (info@qt.nokia.com)
+#
+# GNU Lesser General Public License Usage
+# This file may be used under the terms of the GNU Lesser General Public License
+# version 2.1 as published by the Free Software Foundation and appearing in the
+# file LICENSE.LGPL included in the packaging of this file.  Please review the
+# following information to ensure the GNU Lesser General Public License version
+# 2.1 requirements will be met:
+# http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+#
+# In addition, as a special exception, Nokia gives you certain additional rights.
+# These rights are described in the Nokia Qt LGPL Exception version 1.1, included
+# in the file LGPL_EXCEPTION.txt in this package.
+#
+# Other Usage
+# Alternatively, this file may be used in accordance with the terms and
+# conditions contained in a signed written agreement between you and Nokia.
+
 ################################################################################
 ### git-send-review ############################################################
 ################################################################################
-### License: GPL2
-###
 ### usage: git-send-review
 ###
 ### Sends commits as mails from local branch HEAD against local master HEAD to
@@ -14,9 +35,11 @@
 ###
 ### Author: tapio laxstrom <tapio.laxstrom@cybercom.com>
 ################################################################################
+
 VERSION="0.4"
+
 ################################################################################
-### Helpper functions. #########################################################
+### Helper functions. ##########################################################
 ################################################################################
 
 ### Print optinal message, which is given as a parameter, remove generated files
@@ -63,7 +86,7 @@ check_required_commands() {
         echo "Git core is missing. Install with 'apt-get install git-core'."
         ERR_SO_EXIT="true"
     fi
-    
+
     which wc > /dev/null
     if [ "$?" != "0" ] ; then
         echo "Core utils are missing. Install with 'apt-get install git-core'."
@@ -85,13 +108,9 @@ check_required_commands() {
 check_required_gitconfig_variables() {
     USERADDRESS=`git config review.email`
     if [ -z "$USERADDRESS" ] ; then
-        USERADDRESS=`git config sendemail.from`
-        if [ -z "$USERADDRESS" ] ; then
-            echo "Set your email with 'git config review.email \"<your_email>\"'" \
-                 " or with 'git config user.email \"<your_email>\"'"
-            echo "   This is used in from field of the review mail."
-            CHECKFAIL="true"
-        fi
+        echo "Set your email with 'git config review.email \"<your_email>\"'"
+        echo "   This is used in from field of the review mail."
+        CHECKFAIL="true"
     fi
 
     REVIEWADDRESS=`git config review.to`
@@ -102,12 +121,8 @@ check_required_gitconfig_variables() {
 
     SMTPSERVER=`git config review.smtpserver`
     if [ -z "$SMTPSERVER" ] ; then
-        SMTPSERVER=`git config sendemail.smtpserver`
-        if [ -z "$SMTPSERVER" ] ; then
-            echo "Set smtp server with 'git config review.smtpserver \"<smtpserver>\"'"
-                 " or with 'git config sendemail.smtpserver \"<your_email>\"'"
-            CHECKFAIL="true"
-        fi
+        echo "Set smtp server with 'git config review.smtpserver \"<smtpserver>\"'"
+        CHECKFAIL="true"
     fi
 
     CONFIGFROMCOMMIT=`git config review.fromcommit`
@@ -129,7 +144,7 @@ check_required_gitconfig_variables() {
 summary_mail() {
     PATCHCOUNT=`ls -1 $TMPDIR| wc -l`
     if [ "$PATCHCOUNT" == "0" ]; then
-        clean_and_exit "No patches to mail. Are you sure the correct branch is checked out?"
+        clean_and_exit "No paches to mail. Are you sure the correct brach is checked out?"
     fi
 
     SUMMARYSUBJECT="[PATCH 0/$PATCHCOUNT] $SUBJECT"
@@ -213,7 +228,7 @@ do
 done
 
 REPLYADDRESS="$REVIEWADDRESS"
-if [ -z "$SUBJECT" ] ; then 
+if [ -z "$SUBJECT" ] ; then
     SUBJECT=`git log --pretty=format:%s -1`
 fi
 
@@ -227,6 +242,8 @@ SUMMARYID="<$STAMP@projects.maemo.org>"
 SUMMARYSENDCMD="git send-email \
     --quiet \
     --to $REVIEWADDRESS \
+    --from $USERADDRESS \
+    --smtp-server $SMTPSERVER \
     --no-signed-off-by-cc \
     --no-suppress-from \
     $DRYRUN \
@@ -236,26 +253,13 @@ PATCHSENDCMD="git send-email \
     --quiet \
     --to $REVIEWADDRESS \
     --suppress-from \
+    --smtp-server $SMTPSERVER \
     --in-reply-to $SUMMARYID \
     --no-signed-off-by-cc \
     --no-chain-reply-to \
+    --suppress-from \
     $DRYRUN \
     "
-
-# if review.email is not set and we are here, it means sendemail.from is set and
-# there is no need to add --from to git send-email command
-USERADDRESS=`git config review.email`
-if [ -n "$USERADDRESS" ] ; then
-    SUMMARYSENDCMD="$SUMMARYSENDCMD --from $USERADDRESS"
-fi
-
-# if review.smtpserver is not set and we are here, it means sendemail.smtpserver
-# is set and there is no need to add --smtp-server to git send-email command
-SMTPSERVER=`git config review.smtpserver`
-if [ -n "$SMTPSERVER" ] ; then
-    SUMMARYSENDCMD="$SUMMARYSENDCMD --smtp-server $SMTPSERVER"
-    PATCHSENDCMD="$PATCHSENDCMD --smtp-server $SMTPSERVER"
-fi
 
 ################################################################################
 ### Script starts here. ########################################################
