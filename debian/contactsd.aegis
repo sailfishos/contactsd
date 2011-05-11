@@ -1,9 +1,11 @@
 <aegis>
     <request>
-       <credential name="Cellular" />
-       <credential name="TrackerReadAccess" />
-       <credential name="TrackerWriteAccess" />
-       <credential name="GRP::metadata-users" />
-       <for path="/usr/bin/contactsd" />
+        <credential name="Cellular" />
+        <credential name="TrackerReadAccess" />
+        <credential name="TrackerWriteAccess" />
+        <credential name="GRP::metadata-users" />
+        <credential name="UID::user" />
+        <credential name="GID::users" />
+        <for path="/usr/bin/contactsd" />
     </request>
 </aegis>
