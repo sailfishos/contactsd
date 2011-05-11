@@ -1,3 +1,14 @@
+contactsd (0.5.68-1) unstable; urgency=low
+
+  * Fixes: NB#254636 - contactds is missing capabilities
+  * Changes: Share a QSparqlConnection across contactsd plugins
+  * Write unit test for NB#253679
+  * Update copyright/licence headers
+  * Changes: Ignore unknown and duplicate "type=x" params
+  * Add unit tests for ContactInfo types
+
+ -- Xavier Claessens <xavier.claessens@collabora.co.uk>  Wed, 11 May 2011 13:47:37 +0200
+
 contactsd (0.5.67-2) unstable; urgency=low
 
   * Fixes: NB#245328 - Legal Bug
