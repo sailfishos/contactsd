@@ -44,6 +44,7 @@ Section: libdevel
 Depends: contactsd (= ${binary:Version}),
          libqt4-dev,
          pkg-config (>= 0.21),
+         libqtsparql-dev,
          ${shlibs:Depends},
          ${misc:Depends}
 Description: Development headers for Contacts daemon plugins.
