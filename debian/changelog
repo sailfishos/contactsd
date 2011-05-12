@@ -1,3 +1,9 @@
+contactsd (0.5.69-1) unstable; urgency=low
+
+  * Fix build failure of external plugins: they need qtsparql now
+
+ -- Xavier Claessens <xavier.claessens@collabora.co.uk>  Wed, 11 May 2011 13:47:37 +0200
+
 contactsd (0.5.68-1) unstable; urgency=low
 
   * Fixes: NB#254636 - contactds is missing capabilities
