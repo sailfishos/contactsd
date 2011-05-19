@@ -67,6 +67,9 @@ private Q_SLOTS:
     void onSparqlQueryFinished(CDTpSparqlQuery *query);
 
 private:
+    void cancelQueuedUpdates(const QList<CDTpContactPtr> &contacts);
+
+private:
     QHash<CDTpContactPtr, CDTpContact::Changes> mUpdateQueue;
     QTimer mUpdateTimer;
     bool mUpdateRunning;

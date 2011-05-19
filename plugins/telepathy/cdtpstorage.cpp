@@ -973,6 +973,8 @@ void CDTpStorage::updateAccount(CDTpAccountPtr accountWrapper,
 
 void CDTpStorage::removeAccount(CDTpAccountPtr accountWrapper)
 {
+    cancelQueuedUpdates(accountWrapper->contacts());
+
     const Value imAccount = literalIMAccount(accountWrapper);
     debug() << "Remove account" << imAccount.sparql();
 
@@ -1043,6 +1045,7 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper,
     }
 
     if (!contactsRemoved.isEmpty()) {
+        cancelQueuedUpdates(contactsRemoved);
         builder.append(removeContactsBuilder(accountWrapper, contactsRemoved));
     }
 
@@ -1165,6 +1168,13 @@ void CDTpStorage::onUpdateFinished(CDTpSparqlQuery *query)
     mUpdateRunning = false;
     if (!mUpdateQueue.isEmpty()) {
         mUpdateTimer.start();
+    }
+}
+
+void CDTpStorage::cancelQueuedUpdates(const QList<CDTpContactPtr> &contacts)
+{
+    Q_FOREACH (const CDTpContactPtr &contactWrapper, contacts) {
+        mUpdateQueue.remove(contactWrapper);
     }
 }
 
