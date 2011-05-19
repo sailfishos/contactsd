@@ -29,6 +29,8 @@
 #include <QContactManager>
 #include <QContact>
 
+#include <TelepathyQt4/SharedPtr>
+
 #include <telepathy-glib/telepathy-glib.h>
 #include "libtelepathy/contacts-conn.h"
 
@@ -45,7 +47,7 @@ typedef enum {
 
 // --- TestExpectation ---
 
-class TestExpectation : public QObject
+class TestExpectation : public QObject, public Tp::RefCounted
 {
     Q_OBJECT
 
@@ -68,6 +70,7 @@ private:
 
     QContactManager *mContactManager;
 };
+typedef Tp::SharedPtr<TestExpectation> TestExpectationPtr;
 
 // --- TestFetchContacts ---
 
@@ -96,6 +99,7 @@ class TestExpectationInit : public TestExpectation
 protected:
     void verify(Event event, const QList<QContact> &contacts);
 };
+typedef Tp::SharedPtr<TestExpectationInit> TestExpectationInitPtr;
 
 // --- TestExpectationCleanup ---
 
@@ -117,6 +121,7 @@ private:
     int mNContacts;
     bool mSelfChanged;
 };
+typedef Tp::SharedPtr<TestExpectationCleanup> TestExpectationCleanupPtr;
 
 // --- TestExpectationContact ---
 
@@ -175,6 +180,7 @@ private:
 
     QContact mContact;
 };
+typedef Tp::SharedPtr<TestExpectationContact> TestExpectationContactPtr;
 
 // --- TestExpectationDisconnect ---
 
@@ -192,6 +198,7 @@ private:
     int mNContacts;
     bool mSelfChanged;
 };
+typedef Tp::SharedPtr<TestExpectationDisconnect> TestExpectationDisconnectPtr;
 
 // --- TestExpectationMerge ---
 
@@ -201,7 +208,7 @@ class TestExpectationMerge : public TestExpectation
 
 public:
     TestExpectationMerge(const QContactLocalId masterId, const QList<QContactLocalId> mergeIds,
-            const QList<TestExpectationContact *> expectations = QList<TestExpectationContact *>());
+            const QList<TestExpectationContactPtr> expectations = QList<TestExpectationContactPtr>());
 
 protected:
     void verify(Event event, const QList<QContact> &contacts);
@@ -213,8 +220,9 @@ private:
     QContactLocalId mMasterId;
     QList<QContactLocalId> mMergeIds;
     bool mGotMergedContact;
-    QList<TestExpectationContact *> mContactExpectations;
+    QList<TestExpectationContactPtr> mContactExpectations;
 };
+typedef Tp::SharedPtr<TestExpectationMerge> TestExpectationMergePtr;
 
 // --- TestExpectationMass ---
 
@@ -236,5 +244,6 @@ private:
     int mChanged;
     int mRemoved;
 };
+typedef Tp::SharedPtr<TestExpectationMass> TestExpectationMassPtr;
 
 #endif

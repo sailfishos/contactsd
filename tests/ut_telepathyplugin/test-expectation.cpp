@@ -421,7 +421,7 @@ void TestExpectationDisconnect::verify(Event event, const QList<QContact> &conta
 // --- TestExpectationMerge ---
 
 TestExpectationMerge::TestExpectationMerge(const QContactLocalId masterId,
-        const QList<QContactLocalId> mergeIds, const QList<TestExpectationContact *> expectations)
+        const QList<QContactLocalId> mergeIds, const QList<TestExpectationContactPtr> expectations)
         : mMasterId(masterId), mMergeIds(mergeIds), mGotMergedContact(false),
         mContactExpectations(expectations)
 {
@@ -434,7 +434,7 @@ void TestExpectationMerge::verify(Event event, const QList<QContact> &contacts)
     QCOMPARE(contacts[0].localId(), mMasterId);
     mGotMergedContact = true;
 
-    Q_FOREACH (TestExpectationContact *exp, mContactExpectations) {
+    Q_FOREACH (TestExpectationContactPtr exp, mContactExpectations) {
         exp->verify(contacts[0]);
     }
 

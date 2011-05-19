@@ -91,10 +91,12 @@ private Q_SLOTS:
     void cleanupTestCase();
 
 private:
-    TpHandle ensureContact(const gchar *id);
+    TpHandle ensureHandle(const gchar *id);
+    TestExpectationContactPtr createContact(const gchar *id, TpHandle &handle, bool please = false);
+    TestExpectationContactPtr createContact(const gchar *id, bool please = false);
     GPtrArray *createContactInfoTel(const gchar *number);
     void verify(Event event, const QList<QContactLocalId> &contactIds);
-    void runExpectation(TestExpectation *expectation);
+    void runExpectation(TestExpectationPtr expectation);
     void mergeContacts(const QContact &contactTarget,
             const QList<QContactLocalId> &sourceContactIds);
     void startRequest(QContactAbstractRequest *request);
@@ -110,7 +112,7 @@ private:
 
     QList<QContactLocalId> mLocalContactIds;
 
-    TestExpectation *mExpectation;
+    TestExpectationPtr mExpectation;
 };
 
 #endif
