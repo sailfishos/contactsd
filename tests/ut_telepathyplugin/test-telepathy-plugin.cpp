@@ -27,6 +27,7 @@
 #include <QContactFetchRequest>
 #include <QContactRemoveRequest>
 #include <QContactSaveRequest>
+#include <QContactSyncTarget>
 #include <QContactLocalIdFilter>
 #include <QContactOnlineAccount>
 
@@ -42,7 +43,7 @@
 #include "debug.h"
 
 TestTelepathyPlugin::TestTelepathyPlugin(QObject *parent) : Test(parent),
-        mExpectation(0)
+        mNOnlyLocalContacts(0)
 {
 }
 
@@ -140,7 +141,7 @@ void TestTelepathyPlugin::cleanup()
     tp_tests_simple_account_removed(mAccount);
 
     /* Wait for all contacts to disappear, and local contacts to get updated */
-    runExpectation(TestExpectationCleanupPtr(new TestExpectationCleanup(mLocalContactIds.count())));
+    runExpectation(TestExpectationCleanupPtr(new TestExpectationCleanup(mLocalContactIds.count() - mNOnlyLocalContacts)));
 
     /* Remove remaining local contacts */
     QList<QContactLocalId> contactsToRemove = mLocalContactIds;
@@ -154,6 +155,7 @@ void TestTelepathyPlugin::cleanup()
     }
 
     QVERIFY(mLocalContactIds.count() == 1);
+    mNOnlyLocalContacts = 0;
 
     g_object_unref(mConnService);
     g_object_unref(mConnection);
@@ -532,10 +534,40 @@ void TestTelepathyPlugin::testAvatar()
     runExpectation(exp);
 }
 
+void TestTelepathyPlugin::testDisable()
+{
+    /* Create a pure-im contact, it will have to be deleted */
+    createContact("testdisable-im");
+
+    /* Create an im contact and set it as local contact */
+    TestExpectationContactPtr exp = createContact("testdisable-local");
+
+    QContact contact = exp->contact();
+    QContactSyncTarget detail = contact.detail<QContactSyncTarget>();
+    contact.removeDetail(&detail);
+    detail.setSyncTarget(QString::fromLatin1("addressbook"));
+    contact.saveDetail(&detail);
+
+    QContactSaveRequest *request = new QContactSaveRequest();
+    request->setContact(contact);
+    startRequest(request);
+
+    exp->setEvent(EventChanged);
+    exp->verifyGenerator("addressbook");
+    runExpectation(exp);
+
+    tp_tests_simple_account_set_enabled (mAccount, FALSE);
+
+    // self contact and testdisable-local gets updated, testdisable-im gets removed
+    runExpectation(TestExpectationMassPtr(new TestExpectationMass(0, 2, 1)));
+    mNOnlyLocalContacts++;
+}
+
 void TestTelepathyPlugin::testIRIEncode()
 {
     /* Create a contact with a special id that could confuse tracker */
-    // FIXME: disabled for now because qct does not decode the id and test is failing.
+    // FIXME: NB#257949 - disabled for now because qct does not decode the id
+    // and test is failing.
     //createContact("<specialid>");
 }
 

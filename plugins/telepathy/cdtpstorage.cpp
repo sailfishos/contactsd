@@ -732,16 +732,21 @@ static CDTpQueryBuilder purgeContactsBuilder()
     return builder;
 }
 
+static Tp::Presence unknownPresence()
+{
+    static const Tp::Presence unknownPresence(Tp::ConnectionPresenceTypeUnknown, QLatin1String("unknown"), QString());
+    return unknownPresence;
+}
+
 static CDTpQueryBuilder syncNoRosterAccountsContactsBuilder(const QList<CDTpAccountPtr> accounts)
 {
     CDTpQueryBuilder builder;
 
     // Set presence to UNKNOWN for all contacts, except for self contact because
     // its presence is OFFLINE and will be set in updateAccount()
-    static const Tp::Presence unknownPresence(Tp::ConnectionPresenceTypeUnknown, QLatin1String("unknown"), QString());
     Insert i(Insert::Replace);
     Graph g(privateGraph);
-    addPresence(g, imAddressVar, unknownPresence);
+    addPresence(g, imAddressVar, unknownPresence());
     i.addData(g);
     g = Graph(defaultGraph);
     g.addPattern(imContactVar, nie::contentLastModified::resource(), literalTimeStamp());
@@ -834,6 +839,58 @@ static CDTpQueryBuilder syncRosterAccountsContactsBuilder(const QList<CDTpAccoun
     return builder;
 }
 
+static CDTpQueryBuilder syncDisabledAccountsContactsBuilder(const QList<CDTpAccountPtr> &accounts)
+{
+    CDTpQueryBuilder builder;
+
+    /* Disabled account: We want remove pure-IM contacts, but for merged/edited
+     * contacts we want to keep only its IMAddress as local information, so it
+     * will be merged again when we re-enable the account. */
+
+    /* Step 1 - Unlink pure-IM IMAddress from its IMAccount */
+    Delete d;
+    d.addData(imAccountVar, nco::hasIMContact::resource(), imAddressVar);
+    d.addRestriction(imAccountVar, nco::hasIMContact::resource(), imAddressVar);
+    d.addRestriction(imContactVar, imAddressChain, imAddressVar);
+    d.addRestriction(imContactVar, nie::generator::resource(), defaultGenerator);
+    d.setFilter(Filter(Functions::in.apply(Functions::str.apply(imAccountVar), literalIMAccountList(accounts))));
+    builder.append(d);
+
+    /* Step 2 - Delete pure-IM contacts since they are now unbound */
+    builder.append(purgeContactsBuilder());
+
+    /* Step 3 - remove ContactInfo from merged/edited contacts (those remaining) */
+    d = Delete();
+    addRemoveContactInfo(d, imAddressVar, imContactVar);
+    d.addRestriction(imContactVar, imAddressChain, imAddressVar);
+    d.addRestriction(imAccountVar, nco::hasIMContact::resource(), imAddressVar);
+    d.setFilter(Filter(Functions::and_.apply(
+        Functions::in.apply(Functions::str.apply(imAccountVar), literalIMAccountList(accounts)),
+        Functions::notIn.apply(Functions::str.apply(imAddressVar), literalIMAddressList(accounts)))));
+    builder.append(d);
+
+    /* Step 4 - move merged/edited IMAddress to qct's graph, set unknown
+     * presence and update PersonContact's timestamp */
+    Insert i(Insert::Replace);
+    Graph g(defaultGraph);
+    Variable imId;
+    g.addPattern(imContactVar, nie::contentLastModified::resource(), literalTimeStamp());
+    g.addPattern(imAddressVar, nco::imID::resource(), imId);
+    addPresence(g, imAddressVar, unknownPresence());
+    i.addData(g);
+    g = Graph(privateGraph);
+    g.addPattern(imAddressVar, nco::imID::resource(), imId);
+    i.addRestriction(g);
+    i.addRestriction(imAccountVar, nco::hasIMContact::resource(), imAddressVar);
+    i.addRestriction(imContactVar, imAddressChain, imAddressVar);
+    i.setFilter(Filter(Functions::and_.apply(
+        Functions::in.apply(Functions::str.apply(imAccountVar), literalIMAccountList(accounts)),
+        Functions::notIn.apply(Functions::str.apply(imAddressVar), literalIMAddressList(accounts)))));
+    builder.append(i);
+
+    return builder;
+}
+
 static CDTpQueryBuilder removeContactsBuilder(const QString &accountPath,
         const QStringList &contactIds)
 {
@@ -880,10 +937,13 @@ void CDTpStorage::syncAccounts(const QList<CDTpAccountPtr> &accounts)
         builder.append(createAccountsBuilder(accounts));
 
         // Split accounts that have their roster, and those who don't
+        QList<CDTpAccountPtr> disabledAccounts;
         QList<CDTpAccountPtr> rosterAccounts;
         QList<CDTpAccountPtr> noRosterAccounts;
         Q_FOREACH (const CDTpAccountPtr &accountWrapper, accounts) {
-            if (accountWrapper->hasRoster()) {
+            if (!accountWrapper->isEnabled()) {
+                disabledAccounts << accountWrapper;
+            } else if (accountWrapper->hasRoster()) {
                 rosterAccounts << accountWrapper;
             } else {
                 noRosterAccounts << accountWrapper;
@@ -891,6 +951,10 @@ void CDTpStorage::syncAccounts(const QList<CDTpAccountPtr> &accounts)
         }
 
         // Sync contacts
+        if (!disabledAccounts.isEmpty()) {
+            builder.append(syncDisabledAccountsContactsBuilder(disabledAccounts));
+        }
+
         if (!rosterAccounts.isEmpty()) {
             builder.append(syncRosterAccountsContactsBuilder(rosterAccounts));
         }
@@ -964,6 +1028,13 @@ void CDTpStorage::updateAccount(CDTpAccountPtr accountWrapper,
     i.addData(g);
 
     builder.append(i);
+
+    /* If account got disabled, we have special threatment for its contacts */
+    if ((changes & CDTpAccount::Enabled) != 0 && !accountWrapper->isEnabled()) {
+        cancelQueuedUpdates(accountWrapper->contacts());
+        QList<CDTpAccountPtr> accounts = QList<CDTpAccountPtr>() << accountWrapper;
+        builder.append(syncDisabledAccountsContactsBuilder(accounts));
+    }
 
     CDTpSparqlQuery *query = new CDTpSparqlQuery(builder, this);
     connect(query,

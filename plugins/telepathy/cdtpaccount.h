@@ -60,6 +60,7 @@ public:
     CDTpContactPtr contact(const QString &id) const;
     bool hasRoster() const { return mHasRoster; };
     bool isNewAccount() const { return mNewAccount; };
+    bool isEnabled() const { return mAccount->isEnabled(); };
     QStringList contactsToAvoid() const { return mContactsToAvoid; }
     void setContactsToAvoid(const QStringList &contactIds);
 

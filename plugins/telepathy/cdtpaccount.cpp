@@ -114,6 +114,14 @@ void CDTpAccount::onAccountAvatarChanged()
 void CDTpAccount::onAccountStateChanged()
 {
     Q_EMIT changed(CDTpAccountPtr(this), Enabled);
+
+    if (!isEnabled()) {
+        setConnection(Tp::ConnectionPtr());
+    } else {
+        /* Since contacts got removed when we disabled the account, we need
+         * to threat this account as new now that it is enabled again */
+        mNewAccount = true;
+    }
 }
 
 void CDTpAccount::onAccountConnectionChanged(const Tp::ConnectionPtr &connection)

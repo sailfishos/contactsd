@@ -77,6 +77,7 @@ private Q_SLOTS:
     void testInviteBuddyDBusAPI();
     void testSetOffline();
     void testAvatar();
+    void testDisable();
 
     /* Specific tests */
     void testBug253679();
@@ -111,6 +112,7 @@ private:
     TestContactListManager *mListManager;
 
     QList<QContactLocalId> mLocalContactIds;
+    int mNOnlyLocalContacts;
 
     TestExpectationPtr mExpectation;
 };

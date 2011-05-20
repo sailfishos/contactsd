@@ -137,7 +137,7 @@ tp_tests_simple_account_get_property (GObject *object,
       g_value_set_boolean (value, TRUE);
       break;
     case PROP_ENABLED:
-      g_value_set_boolean (value, TRUE);
+      g_value_set_boolean (value, self->priv->enabled);
       break;
     case PROP_NICKNAME:
       g_value_set_string (value, self->priv->nickname);
@@ -566,12 +566,12 @@ tp_tests_simple_account_removed (TpTestsSimpleAccount *self)
 }
 
 void
-tp_tests_simple_account_disabled (TpTestsSimpleAccount *self, gboolean state)
+tp_tests_simple_account_set_enabled (TpTestsSimpleAccount *self, gboolean enabled)
 {
   GHashTable *change;
-  self->priv->enabled = state;
+  self->priv->enabled = enabled;
   change = tp_asv_new (NULL, NULL);
-  tp_asv_set_boolean (change, "Enabled", state);
+  tp_asv_set_boolean (change, "Enabled", enabled);
   tp_svc_account_emit_account_property_changed(self, change);
   g_hash_table_unref (change);
 }
