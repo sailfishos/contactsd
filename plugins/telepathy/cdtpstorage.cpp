@@ -859,9 +859,17 @@ static CDTpQueryBuilder syncDisabledAccountsContactsBuilder(const QList<CDTpAcco
     /* Step 2 - Delete pure-IM contacts since they are now unbound */
     builder.append(purgeContactsBuilder());
 
-    /* Step 3 - remove ContactInfo from merged/edited contacts (those remaining) */
+    /* Step 3 - remove all imported info from merged/edited contacts (those remaining) */
     d = Delete();
     addRemoveContactInfo(d, imAddressVar, imContactVar);
+    deleteProperty(d, imAddressVar, nco::imPresence::resource());
+    deleteProperty(d, imAddressVar, nco::presenceLastModified::resource());
+    deleteProperty(d, imAddressVar, nco::imStatusMessage::resource());
+    deleteProperty(d, imAddressVar, nco::imCapability::resource());
+    deleteProperty(d, imAddressVar, nco::imAvatar::resource());
+    deleteProperty(d, imAddressVar, nco::imNickname::resource());
+    deleteProperty(d, imAddressVar, nco::imAddressAuthStatusFrom::resource());
+    deleteProperty(d, imAddressVar, nco::imAddressAuthStatusTo::resource());
     d.addRestriction(imContactVar, imAddressChain, imAddressVar);
     d.addRestriction(imAccountVar, nco::hasIMContact::resource(), imAddressVar);
     d.setFilter(Filter(Functions::and_.apply(
@@ -869,14 +877,12 @@ static CDTpQueryBuilder syncDisabledAccountsContactsBuilder(const QList<CDTpAcco
         Functions::notIn.apply(Functions::str.apply(imAddressVar), literalIMAddressList(accounts)))));
     builder.append(d);
 
-    /* Step 4 - move merged/edited IMAddress to qct's graph, set unknown
-     * presence and update PersonContact's timestamp */
+    /* Step 4 - move merged/edited IMAddress to qct's graph and update timestamp */
     Insert i(Insert::Replace);
     Graph g(defaultGraph);
     Variable imId;
     g.addPattern(imContactVar, nie::contentLastModified::resource(), literalTimeStamp());
     g.addPattern(imAddressVar, nco::imID::resource(), imId);
-    addPresence(g, imAddressVar, unknownPresence());
     i.addData(g);
     g = Graph(privateGraph);
     g.addPattern(imAddressVar, nco::imID::resource(), imId);
