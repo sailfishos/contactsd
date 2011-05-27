@@ -49,10 +49,6 @@ SOURCES += main.cpp \
     debug.cpp \
     base-plugin.cpp
 
-QMAKE_CLEAN += \
-    contactsimportprogressadaptor.h \
-    contactsimportprogressadaptor.cpp
-
 DEFINES += VERSION=\\\"$${VERSION}\\\"
 DEFINES += CONTACTSD_LOG_DIR=\\\"$$LOCALSTATEDIR/log\\\"
 DEFINES += CONTACTSD_PLUGINS_DIR=\\\"$$LIBDIR/contactsd-1.0/plugins\\\"
