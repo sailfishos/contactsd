@@ -20,6 +20,32 @@
 # Alternatively, this file may be used in accordance with the terms and
 # conditions contained in a signed written agreement between you and Nokia.
 
-TEMPLATE = subdirs
+TEMPLATE = lib
+QT -= gui
+QT += dbus
 
-SUBDIRS += telepathy garbage-collector
+system(qdbusxml2cpp -c GarbageCollectorAdaptor -a garbagecollectoradaptor.h:garbagecollectoradaptor.cpp com.nokia.contacts.GarbageCollector1.xml)
+
+CONFIG += plugin qtsparql
+
+INCLUDEPATH += $$TOP_SOURCEDIR/src
+DEFINES += ENABLE_DEBUG
+
+HEADERS  = \
+    gcplugin.h \
+    garbagecollectoradaptor.h
+
+SOURCES  = \
+    gcplugin.cpp \
+    garbagecollectoradaptor.cpp
+
+TARGET = garbagecollectorplugin
+target.path = $$LIBDIR/contactsd-1.0/plugins
+
+xml.files = com.nokia.contacts.GarbageCollector1.xml
+xml.path = $$INCLUDEDIR/contactsd-1.0
+
+INSTALLS += target xml
+
+OTHER_FILES += \
+    com.nokia.contacts.GarbageCollector1.xml
