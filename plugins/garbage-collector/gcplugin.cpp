@@ -154,21 +154,20 @@ void Collector::onTimeout()
     static QSparqlQueryOptions queryOptions;
     queryOptions.setPriority(QSparqlQueryOptions::LowPriority);
 
-    QSparqlResult *result = connection.exec(QSparqlQuery(mQuery, QSparqlQuery::DeleteStatement),
-                                            queryOptions);
+    QScopedPointer<QSparqlResult> result(connection.exec(QSparqlQuery(mQuery, QSparqlQuery::DeleteStatement),
+                                                         queryOptions));
 
-    if (not result) {
+    if (result.isNull()) {
         warning() << "QSparqlConnection::exec() == 0";
         return;
     }
     if (result->hasError()) {
         warning() << "Error exec query:" << result->lastError().message();
-        delete result;
         return;
     }
 
     result->setParent(this);
-    connect(result, SIGNAL(finished()), SLOT(onQueryFinished()), Qt::QueuedConnection);
+    connect(result.take(), SIGNAL(finished()), SLOT(onQueryFinished()), Qt::QueuedConnection);
 }
 
 void Collector::onQueryFinished()
