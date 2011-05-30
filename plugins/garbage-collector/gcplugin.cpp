@@ -87,8 +87,10 @@ void GcPlugin::Register(const QString &id, const QString &query)
 {
     mStorage.addQuery(id, query);
 
-    if (mCollectors.contains(id)) {
-        mCollectors[id]->setQuery(query);
+    const QHash<QString, Collector*>::Iterator collector = mCollectors.find(id);
+
+    if (collector != mCollectors.constEnd()) {
+        collector.value()->setQuery(query);
         return;
     }
 
