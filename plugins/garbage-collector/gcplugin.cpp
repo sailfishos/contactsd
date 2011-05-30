@@ -319,19 +319,16 @@ void QueryStorage::save()
         return;
     }
 
-    int errorCode = -1;
-
-    if ((errorCode = fsync(tmpFile.handle())) != 0) {
-        warning() << "Could not sync queries to disk:" << strerror(errorCode);
+    if (fsync(tmpFile.handle()) != 0) {
+        warning() << "Could not sync queries to disk:" << strerror(errno);
         return;
     }
 
     tmpFile.close();
 
     // We can't use Qt's rename because it won't overwrite an existing file
-    errorCode = -1;
     if (rename(tmpFile.fileName().toLocal8Bit(), filePath().toLocal8Bit()) != 0) {
-        warning() << "Could not overwrite old queries file:" << strerror(errorCode);
+        warning() << "Could not overwrite old queries file:" << strerror(errno);
         return;
     }
 }
