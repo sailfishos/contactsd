@@ -8,10 +8,6 @@
       <arg name="query" type="s" direction="in"/>
     </method>
 
-    <method name="Unregister">
-      <arg name="id" type="s" direction="in"/>
-    </method>
-
     <method name="Trigger">
       <arg name="id" type="s" direction="in"/>
       <arg name="load_increment" type="d" direction="in"/>

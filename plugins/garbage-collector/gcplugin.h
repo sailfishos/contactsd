@@ -42,7 +42,6 @@ public:
     void setQueries(const QHash<QString, Query> &queries);
     void addQuery(const QString &id, const QString &query);
     void updateLoad(const QString &id, double value);
-    void removeQuery(const QString &id);
 
 private:
     static QString filePath();
@@ -65,7 +64,6 @@ public:
 
 public Q_SLOTS:
     void Register(const QString &id, const QString &query);
-    void Unregister(const QString &id);
     void Trigger(const QString &id, double load_increment);
 
 private:

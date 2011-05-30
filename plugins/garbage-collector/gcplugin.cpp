@@ -96,19 +96,6 @@ void GcPlugin::Register(const QString &id, const QString &query)
     debug() << "New GarbageCollector query registered for id" << id;
 }
 
-void GcPlugin::Unregister(const QString &id)
-{
-    if (!mCollectors.contains(id)) {
-        debug() << "Error: unknown collector id" << id;
-        return;
-    }
-
-    debug() << "Unregistering query with id" << id;
-
-    mStorage.removeQuery(id);
-    delete mCollectors.take(id);
-}
-
 void GcPlugin::Trigger(const QString &id, double load_increment)
 {
     if (!mCollectors.contains(id)) {
@@ -244,13 +231,6 @@ void QueryStorage::updateLoad(const QString &id, double value)
     mQueries.insert(id, q);
 
     save();
-}
-
-void QueryStorage::removeQuery(const QString &id)
-{
-    if (mQueries.remove(id)) {
-        save();
-    }
 }
 
 QString QueryStorage::filePath()
