@@ -140,8 +140,7 @@ Collector::Collector(const QString &id, const QString &q, QObject *parent)
 void Collector::trigger(double v)
 {
     mLoad += v;
-    if (mLoad >= 1) {
-        // Restarts the timer if already running
+    if (mLoad >= 1 && not mTimer.isActive()) {
         mTimer.start();
     }
 }
