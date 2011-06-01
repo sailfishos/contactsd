@@ -6,7 +6,11 @@ SUBDIRS += src plugins tests
 
 pkgconfig.path=$$LIBDIR/pkgconfig
 pkgconfig.files=contactsd-1.0.pc
-INSTALLS += pkgconfig
+
+backupconf.path=$$PREFIX/share/backup-framework/applications/
+backupconf.files=contactsd.conf
+
+INSTALLS += pkgconfig backupconf
 
 check.target = check
 check.CONFIG = recursive
