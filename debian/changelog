@@ -1,3 +1,9 @@
+contactsd (0.5.72-1) unstable; urgency=low
+
+  * Changes: Add garbage collector plugin
+
+ -- Xavier Claessens <xavier.claessens@collabora.co.uk>  Wed, 01 Jun 2011 10:43:19 +0200
+
 contactsd (0.5.71-1) unstable; urgency=low
 
   * Changes: NB#247133 - Really removel all information coming from a disabled IMAddress
