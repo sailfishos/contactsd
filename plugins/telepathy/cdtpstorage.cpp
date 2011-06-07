@@ -231,14 +231,26 @@ static void addCapabilities(PatternGroup &g,
         const Value &imAddress,
         Tp::CapabilitiesBase capabilities)
 {
+    /* FIXME: We could also add im_capability_stream_tubes and
+     * im_capability_dbus_tubes */
+
     if (capabilities.textChats()) {
         g.addPattern(imAddress, nco::imCapability::resource(), nco::im_capability_text_chat::resource());
+    }
+    if (capabilities.streamedMediaCalls()) {
+        g.addPattern(imAddress, nco::imCapability::resource(), nco::im_capability_media_calls::resource());
     }
     if (capabilities.streamedMediaAudioCalls()) {
         g.addPattern(imAddress, nco::imCapability::resource(), nco::im_capability_audio_calls::resource());
     }
     if (capabilities.streamedMediaVideoCalls()) {
         g.addPattern(imAddress, nco::imCapability::resource(), nco::im_capability_video_calls::resource());
+    }
+    if (capabilities.upgradingStreamedMediaCalls()) {
+        g.addPattern(imAddress, nco::imCapability::resource(), nco::im_capability_upgrading_calls::resource());
+    }
+    if (capabilities.fileTransfers()) {
+        g.addPattern(imAddress, nco::imCapability::resource(), nco::im_capability_file_transfers::resource());
     }
 }
 
