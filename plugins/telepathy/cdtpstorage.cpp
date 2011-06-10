@@ -873,6 +873,8 @@ static CDTpQueryBuilder syncDisabledAccountsContactsBuilder(const QList<CDTpAcco
 
     /* Step 3 - remove all imported info from merged/edited contacts (those remaining) */
     d = Delete();
+    d.addRestriction(imContactVar, imAddressChain, imAddressVar);
+    d.addRestriction(imAccountVar, nco::hasIMContact::resource(), imAddressVar);
     addRemoveContactInfo(d, imAddressVar, imContactVar);
     deleteProperty(d, imAddressVar, nco::imPresence::resource());
     deleteProperty(d, imAddressVar, nco::presenceLastModified::resource());
@@ -882,8 +884,6 @@ static CDTpQueryBuilder syncDisabledAccountsContactsBuilder(const QList<CDTpAcco
     deleteProperty(d, imAddressVar, nco::imNickname::resource());
     deleteProperty(d, imAddressVar, nco::imAddressAuthStatusFrom::resource());
     deleteProperty(d, imAddressVar, nco::imAddressAuthStatusTo::resource());
-    d.addRestriction(imContactVar, imAddressChain, imAddressVar);
-    d.addRestriction(imAccountVar, nco::hasIMContact::resource(), imAddressVar);
     d.setFilter(Filter(Functions::and_.apply(
         Functions::in.apply(Functions::str.apply(imAccountVar), literalIMAccountList(accounts)),
         Functions::notIn.apply(Functions::str.apply(imAddressVar), literalIMAddressList(accounts)))));
