@@ -1180,6 +1180,13 @@ void CDTpStorage::onUpdateQueueTimeout()
     for (iter = mUpdateQueue.constBegin(); iter != mUpdateQueue.constEnd(); iter++) {
         CDTpContactPtr contactWrapper = iter.key();
         CDTpContact::Changes changes = iter.value();
+
+        // Skip the contact in case its account was deleted before this function
+        // was invoked
+        if (contactWrapper->accountWrapper().isNull()) {
+            continue;
+        }
+
         if (!contactWrapper->isVisible()) {
             continue;
         }

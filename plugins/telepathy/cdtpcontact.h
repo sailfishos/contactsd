@@ -80,7 +80,7 @@ private:
 
     friend class CDTpAccount;
     Tp::ContactPtr mContact;
-    CDTpAccount *mAccountWrapper;
+    QPointer<CDTpAccount> mAccountWrapper;
     bool mRemoved;
     bool mVisible;
     Changes mQueuedChanges;

@@ -74,7 +74,7 @@ CDTpContact::~CDTpContact()
 
 CDTpAccountPtr CDTpContact::accountWrapper() const
 {
-    return CDTpAccountPtr(mAccountWrapper);
+    return CDTpAccountPtr(mAccountWrapper.data());
 }
 
 bool CDTpContact::isAvatarKnown() const
