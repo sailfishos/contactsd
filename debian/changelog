@@ -1,3 +1,9 @@
+contactsd (0.5.76-1) unstable; urgency=low
+
+  * Fixes: NB#257462 - Crash in literalIMAddress
+
+ -- Xavier Claessens <xavier.claessens@collabora.co.uk>  Mon, 13 Jun 2011 11:05:36 +0200
+
 contactsd (0.5.75-1) unstable; urgency=low
 
   * Fixes NB#261351 - Presence of merged contact card shown after disabling the account
