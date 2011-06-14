@@ -682,6 +682,8 @@ static CDTpQueryBuilder createContactsBuilder(const QList<CDTpContactPtr> &conta
 
 static CDTpQueryBuilder purgeContactsBuilder()
 {
+    static const Function equalsMeContact = Functions::equal.apply(imContactVar,
+                                                                   nco::default_contact_me::resource());
     /* Purge nco:IMAddress not bound from an nco:IMAccount */
 
     CDTpQueryBuilder builder;
@@ -700,7 +702,14 @@ static CDTpQueryBuilder purgeContactsBuilder()
     d.addRestriction(affiliationVar, nco::hasIMAddress::resource(), imAddressVar);
     Exists e;
     e.addPattern(imAccountVar, nco::hasIMContact::resource(), imAddressVar);
-    d.setFilter(Filter(Functions::not_.apply(Filter(e))));
+    Exists e2;
+    e2.addPattern(imAddressVar, nco::imAddressAuthStatusFrom::resource(), Variable());
+    /* we delete addresses that are not connected to an IMAccount, but spare the ones
+       that don't have their AuthStatus set (those are failed invitations)
+       The IMAddress on me-contact has no AuthStatus set, but we delete it anyway*/
+    d.setFilter(Filter(Functions::and_.apply(Functions::not_.apply(Filter(e)),
+                                             Functions::or_.apply(Filter(e2),
+                                                                  equalsMeContact))));
     deleteProperty(d, imContactVar, nie::contentLastModified::resource());
     addRemoveContactInfo(d, imAddressVar, imContactVar);
     builder.append(d);
