@@ -28,6 +28,16 @@
       <arg name="accountPath" type="s" direction="in"/>
       <arg name="imIds" type="as" direction="in"/>
     </method>
+    <method name="inviteBuddiesOnContact">
+      <!--
+      <doc>
+        <arg tag="brief">Outgoing authorization request, sent only if account is online. Noop if account is offline. Attaches buddies to the given tracker contact, identified by its local id.</arg>
+      </doc>
+      -->
+      <arg name="accountPath" type="s" direction="in"/>
+      <arg name="imIds" type="as" direction="in"/>
+      <arg name="contactId" type="u" direction="in"/>
+    </method>
   </interface>
 </node>
 

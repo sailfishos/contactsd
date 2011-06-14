@@ -272,10 +272,19 @@ void CDTpController::maybeStartOfflineOperations(CDTpAccountPtr accountWrapper)
 
 void CDTpController::inviteBuddies(const QString &accountPath, const QStringList &imIds)
 {
+    inviteBuddiesOnContact(accountPath, imIds, 0);
+}
+
+void CDTpController::inviteBuddiesOnContact(const QString &accountPath, const QStringList &imIds, uint localId)
+{
     debug() << "InviteBuddies:" << accountPath << imIds.join(QLatin1String(", "));
 
     // Add ids to offlineInvitations, in case operation does not succeed now
     updateOfflineRosterBuffer(offlineInvitations, accountPath, imIds, QStringList());
+
+    if (localId != 0) {
+        mStorage->createAccountContacts(accountPath, imIds, localId);
+    }
 
     CDTpAccountPtr accountWrapper = mAccounts[accountPath];
     if (!accountWrapper) {

@@ -51,6 +51,7 @@ Q_SIGNALS:
 
 public Q_SLOTS:
     void inviteBuddies(const QString &accountPath, const QStringList &imIds);
+    void inviteBuddiesOnContact(const QString &accountPath, const QStringList &imIds, uint localId);
     void removeBuddies(const QString &accountPath, const QStringList &imIds);
     void onRosterChanged(CDTpAccountPtr accountWrapper);
 

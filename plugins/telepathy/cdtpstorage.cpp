@@ -947,6 +947,41 @@ static CDTpQueryBuilder removeContactsBuilder(CDTpAccountPtr accountWrapper,
     return removeContactsBuilder(accountWrapper->account()->objectPath(), contactIds);
 }
 
+static CDTpQueryBuilder createIMAddressBuilder(const QString &accountPath,
+                                               const QStringList &imIds,
+                                               uint localId)
+{
+    CDTpQueryBuilder builder;
+
+    Insert i(Insert::Replace);
+    Graph g(privateGraph);
+    const ResourceValue imAccount = literalIMAccount(accountPath);
+    PatternGroup restrictions;
+
+    Q_FOREACH (const QString &imId, imIds) {
+        const ResourceValue imAddress = literalIMAddress(accountPath, imId);
+        const BlankValue affiliation;
+
+        g.addPattern(imAddress, rdf::type::resource(), nco::IMAddress::resource());
+        g.addPattern(imAddress, nco::imID::resource(), LiteralValue(imId));
+        g.addPattern(affiliation, rdf::type::resource(), nco::Affiliation::resource());
+        g.addPattern(affiliation, nco::hasIMAddress::resource(), imAddress);
+        g.addPattern(imContactVar, nco::hasAffiliation::resource(), affiliation);
+        g.addPattern(imAccount, nco::hasIMContact::resource(), imAddress);
+    }
+
+    i.addData(g);
+
+    restrictions.addPattern(imContactVar, rdf::type::resource(), nco::PersonContact::resource());
+    restrictions.setFilter(Functions::equal.apply(Functions::trackerId.apply(imContactVar),
+                                                   LiteralValue(localId)));
+    i.addRestriction(restrictions);
+
+    builder.append(i);
+
+    return builder;
+}
+
 void CDTpStorage::syncAccounts(const QList<CDTpAccountPtr> &accounts)
 {
     /* Remove IMAccount that does not exist anymore */
@@ -1148,6 +1183,15 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper,
     }
 
     CDTpSparqlQuery *query = new CDTpSparqlQuery(builder, this);
+    connect(query,
+            SIGNAL(finished(CDTpSparqlQuery *)),
+            SLOT(onSparqlQueryFinished(CDTpSparqlQuery *)));
+}
+
+void CDTpStorage::createAccountContacts(const QString &accountPath, const QStringList &imIds, uint localId)
+{
+    CDTpSparqlQuery *query = new CDTpSparqlQuery(createIMAddressBuilder(accountPath, imIds, localId),
+                                                 this);
     connect(query,
             SIGNAL(finished(CDTpSparqlQuery *)),
             SLOT(onSparqlQueryFinished(CDTpSparqlQuery *)));
