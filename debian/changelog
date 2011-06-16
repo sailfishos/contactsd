@@ -1,3 +1,10 @@
+contactsd (0.5.77-1) unstable; urgency=low
+
+  * Changes: CDTPStorage: only purge IMAddresses that were handled by contactsd
+  * Changes: Add inviteBuddiesOnContact dbus method
+
+ -- Xavier Claessens <xavier.claessens@collabora.co.uk>  Thu, 16 Jun 2011 16:43:27 +0200
+
 contactsd (0.5.76-1) unstable; urgency=low
 
   * Fixes: NB#257462 - Crash in literalIMAddress
