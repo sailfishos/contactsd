@@ -1,3 +1,9 @@
+contactsd (0.5.78-1) unstable; urgency=low
+
+  * Fixes: NB#256758 - Change in avatar from assigned to default from Desktop PC does not get reflected for an imported gtalk / Skype contact
+
+ -- Xavier Claessens <xavier.claessens@collabora.co.uk>  Thu, 23 Jun 2011 13:47:21 +0200
+
 contactsd (0.5.77-1) unstable; urgency=low
 
   * Changes: CDTPStorage: only purge IMAddresses that were handled by contactsd
