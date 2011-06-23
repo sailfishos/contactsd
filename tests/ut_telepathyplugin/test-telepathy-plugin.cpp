@@ -532,6 +532,14 @@ void TestTelepathyPlugin::testAvatar()
 
     exp->verifyAlias(alias);
     runExpectation(exp);
+
+    /* Remove avatar from first contact */
+    tp_tests_contacts_connection_change_avatar_data(
+        TP_TESTS_CONTACTS_CONNECTION (mConnService),
+        handle, NULL, NULL, NULL);
+
+    exp->verifyAvatar(QByteArray());
+    runExpectation(exp);
 }
 
 void TestTelepathyPlugin::testDisable()
