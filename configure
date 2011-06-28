@@ -17,9 +17,9 @@
 #   make the release, tag it
 #   set nano_version to 1
 
-MAJOR_VERSION=0
-MINOR_VERSION=5
-MICRO_VERSION=77
+MAJOR_VERSION=1
+MINOR_VERSION=0
+MICRO_VERSION=0
 NANO_VERSION=0
 
 if [ $NANO_VERSION -eq "0" ]; then

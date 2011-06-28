@@ -1,3 +1,9 @@
+contactsd (1.0.0-1) unstable; urgency=low
+
+  * No changes, just tagging 1.0.0 release to mark the milestone
+
+ -- Xavier Claessens <xavier.claessens@collabora.co.uk>  Tue, 28 Jun 2011 12:58:52 +0200
+
 contactsd (0.5.77-1) unstable; urgency=low
 
   * Changes: CDTPStorage: only purge IMAddresses that were handled by contactsd
