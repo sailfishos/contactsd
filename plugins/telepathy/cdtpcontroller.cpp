@@ -50,12 +50,6 @@ CDTpController::CDTpController(QObject *parent) : QObject(parent)
             QSettings::UserScope, QLatin1String("Nokia"),
             QLatin1String("Contactsd"));
     connect(mStorage,
-            SIGNAL(syncStarted(CDTpAccountPtr)),
-            SLOT(onSyncStarted(CDTpAccountPtr)));
-    connect(mStorage,
-            SIGNAL(syncEnded(CDTpAccountPtr, int, int)),
-            SLOT(onSyncEnded(CDTpAccountPtr, int, int)));
-    connect(mStorage,
             SIGNAL(error(int, const QString &)),
             SIGNAL(error(int, const QString &)));
 
@@ -113,7 +107,6 @@ void CDTpController::onAccountManagerReady(Tp::PendingOperation *op)
 
     propFilter = Tp::AccountPropertyFilter::create();
     propFilter->addProperty(QString::fromLatin1("valid"), true);
-    propFilter->addProperty(QString::fromLatin1("hasBeenOnline"), true);
     filters << propFilter;
 
     propFilter = Tp::AccountPropertyFilter::create();
@@ -216,20 +209,28 @@ CDTpAccountPtr CDTpController::insertAccount(const Tp::AccountPtr &account, bool
             SIGNAL(rosterContactChanged(CDTpContactPtr, CDTpContact::Changes)),
             mStorage,
             SLOT(updateContact(CDTpContactPtr, CDTpContact::Changes)));
+    connect(accountWrapper.data(),
+            SIGNAL(syncStarted(Tp::AccountPtr)),
+            SLOT(onSyncStarted(Tp::AccountPtr)));
+    connect(accountWrapper.data(),
+            SIGNAL(syncEnded(Tp::AccountPtr, int, int)),
+            SLOT(onSyncEnded(Tp::AccountPtr, int, int)));
+
+    /* If sync already started at account construction, we couldn't catch signal */
+    if (accountWrapper->isImporting())
+        onSyncStarted(accountWrapper->account());
 
     return accountWrapper;
 }
 
-void CDTpController::onSyncStarted(CDTpAccountPtr accountWrapper)
+void CDTpController::onSyncStarted(Tp::AccountPtr account)
 {
-    Tp::AccountPtr account = accountWrapper->account();
-    Q_EMIT importStarted(accountWrapper->account()->serviceName(), account->objectPath());
+    Q_EMIT importStarted(account->serviceName(), account->objectPath());
 }
 
-void CDTpController::onSyncEnded(CDTpAccountPtr accountWrapper, int contactsAdded, int contactsRemoved)
+void CDTpController::onSyncEnded(Tp::AccountPtr account, int contactsAdded, int contactsRemoved)
 {
-    Tp::AccountPtr account = accountWrapper->account();
-    Q_EMIT importEnded(accountWrapper->account()->serviceName(), account->objectPath(),
+    Q_EMIT importEnded(account->serviceName(), account->objectPath(),
         contactsAdded, contactsRemoved, 0);
 }
 

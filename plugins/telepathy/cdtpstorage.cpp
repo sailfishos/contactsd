@@ -1076,8 +1076,6 @@ void CDTpStorage::createAccount(CDTpAccountPtr accountWrapper)
     i.addRestriction(imContactVar, imAddressChain, imAddressVar);
     builder.append(i);
 
-    /* Notify import progress */
-    Q_EMIT syncStarted(accountWrapper);
     CDTpAccountsSparqlQuery *query = new CDTpAccountsSparqlQuery(accountWrapper, builder, this);
     connect(query,
             SIGNAL(finished(CDTpSparqlQuery *)),
@@ -1161,8 +1159,6 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper)
         return;
     }
 
-    /* Notify import progress */
-    Q_EMIT syncStarted(accountWrapper);
     CDTpAccountsSparqlQuery *query = new CDTpAccountsSparqlQuery(accountWrapper, builder, this);
     connect(query,
             SIGNAL(finished(CDTpSparqlQuery *)),
@@ -1346,7 +1342,7 @@ void CDTpStorage::onSyncOperationEnded(CDTpSparqlQuery *query)
     QList<CDTpAccountPtr> accounts = accountsQuery->accounts();
 
     Q_FOREACH (const CDTpAccountPtr &accountWrapper, accounts) {
-        Q_EMIT syncEnded(accountWrapper, accountWrapper->contacts().count(), 0);
+        accountWrapper->emitSyncEnded(accountWrapper->contacts().count(), 0);
     }
 }
 

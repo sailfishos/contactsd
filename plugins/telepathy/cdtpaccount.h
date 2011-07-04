@@ -61,8 +61,11 @@ public:
     bool hasRoster() const { return mHasRoster; };
     bool isNewAccount() const { return mNewAccount; };
     bool isEnabled() const { return mAccount->isEnabled(); };
+    bool isImporting() const { return mImporting; };
     QStringList contactsToAvoid() const { return mContactsToAvoid; }
     void setContactsToAvoid(const QStringList &contactIds);
+
+    void emitSyncEnded(int contactsAdded, int contactsRemoved);
 
 Q_SIGNALS:
     void changed(CDTpAccountPtr accountWrapper, CDTpAccount::Changes changes);
@@ -71,6 +74,8 @@ Q_SIGNALS:
             const QList<CDTpContactPtr> &contactsAdded,
             const QList<CDTpContactPtr> &contactsRemoved);
     void rosterContactChanged(CDTpContactPtr contactWrapper, CDTpContact::Changes changes);
+    void syncStarted(Tp::AccountPtr account);
+    void syncEnded(Tp::AccountPtr account, int contactsAdded, int contactsRemoved);
 
 private Q_SLOTS:
     void onAccountDisplayNameChanged();
@@ -97,6 +102,7 @@ private:
     QStringList mContactsToAvoid;
     bool mHasRoster;
     bool mNewAccount;
+    bool mImporting;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(CDTpAccount::Changes)

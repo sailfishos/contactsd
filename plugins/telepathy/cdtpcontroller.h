@@ -59,8 +59,8 @@ private Q_SLOTS:
     void onAccountManagerReady(Tp::PendingOperation *op);
     void onAccountAdded(const Tp::AccountPtr &account);
     void onAccountRemoved(const Tp::AccountPtr &account);
-    void onSyncStarted(CDTpAccountPtr accountWrapper);
-    void onSyncEnded(CDTpAccountPtr accountWrapper, int contactsAdded, int contactsRemoved);
+    void onSyncStarted(Tp::AccountPtr account);
+    void onSyncEnded(Tp::AccountPtr account, int contactsAdded, int contactsRemoved);
     void onInvitationFinished(Tp::PendingOperation *op);
     void onRemovalFinished(Tp::PendingOperation *op);
 

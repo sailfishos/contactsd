@@ -42,8 +42,6 @@ public:
     ~CDTpStorage();
 
 Q_SIGNALS:
-    void syncStarted(CDTpAccountPtr accountWrapper);
-    void syncEnded(CDTpAccountPtr accountWrapper, int contactsAdded, int contactsRemoved);
     void error(int code, const QString &message);
 
 public Q_SLOTS:

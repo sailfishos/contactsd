@@ -142,10 +142,22 @@ void CDTpAccount::setConnection(const Tp::ConnectionPtr &connection)
     mHasRoster = false;
 
     if (connection) {
+        /* If this is the first time account gets a connection, report we are
+         * importing. Note that connection could still be CONNECTING so it is
+         * not sure we'll actually import anything. */
+        if (mNewAccount) {
+            mImporting = true;
+            Q_EMIT syncStarted(mAccount);
+        }
+
         connect(connection->contactManager().data(),
                 SIGNAL(stateChanged(Tp::ContactListState)),
                 SLOT(onContactListStateChanged(Tp::ContactListState)));
         setContactManager(connection->contactManager());
+    } else if (mImporting) {
+        /* We lost the connection while importing, probably failed to connect,
+         * report 0 contacts retrieved */
+        emitSyncEnded(0, 0);
     }
 }
 
@@ -194,6 +206,14 @@ void CDTpAccount::setContactManager(const Tp::ContactManagerPtr &contactManager)
         if (mNewAccount) {
             maybeRequestExtraInfo(contact);
         }
+    }
+}
+
+void CDTpAccount::emitSyncEnded(int contactsAdded, int contactsRemoved)
+{
+    if (mImporting) {
+        mImporting = false;
+        Q_EMIT syncEnded(mAccount, contactsAdded, contactsRemoved);
     }
 }
 
