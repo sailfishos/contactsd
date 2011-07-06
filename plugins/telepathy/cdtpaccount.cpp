@@ -38,7 +38,8 @@ CDTpAccount::CDTpAccount(const Tp::AccountPtr &account, const QStringList &toAvo
       mAccount(account),
       mContactsToAvoid(toAvoid),
       mHasRoster(false),
-      mNewAccount(newAccount)
+      mNewAccount(newAccount),
+      mImporting(false)
 {
     // connect all signals we care about, so we can signal that the account
     // changed accordingly
