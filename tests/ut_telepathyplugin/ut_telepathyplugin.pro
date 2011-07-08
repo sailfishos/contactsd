@@ -36,7 +36,7 @@ QT -= gui
 MOBILITY += contacts
 CONFIG += link_pkgconfig
 PKGCONFIG += TelepathyQt4 telepathy-glib
-CONFIG += qtcontacts_extensions_tracker
+CONFIG += qtcontacts_extensions_tracker qtsparql
 DEFINES += QT_NO_KEYWORDS
 DEFINES += ENABLE_DEBUG
 

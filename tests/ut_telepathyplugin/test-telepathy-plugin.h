@@ -61,6 +61,7 @@ protected Q_SLOTS:
     void contactsRemoved(const QList<QContactLocalId>& contactIds);
     void onContactsFetched();
     void onRequestFinished();
+    void onLeakQueryFinished();
 
 private Q_SLOTS:
     void initTestCase();
@@ -115,6 +116,8 @@ private:
     int mNOnlyLocalContacts;
 
     TestExpectationPtr mExpectation;
+
+    bool mCheckLeakedResources;
 };
 
 #endif

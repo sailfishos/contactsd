@@ -31,6 +31,8 @@
 #include <QContactLocalIdFilter>
 #include <QContactOnlineAccount>
 
+#include <QtSparql>
+
 #include <qtcontacts-tracker/contactmergerequest.h>
 
 #include <TelepathyQt4/Debug>
@@ -43,7 +45,7 @@
 #include "debug.h"
 
 TestTelepathyPlugin::TestTelepathyPlugin(QObject *parent) : Test(parent),
-        mNOnlyLocalContacts(0)
+        mNOnlyLocalContacts(0), mCheckLeakedResources(true)
 {
 }
 
@@ -97,6 +99,9 @@ void TestTelepathyPlugin::cleanupTestCase()
 void TestTelepathyPlugin::init()
 {
     initImpl();
+
+    mNOnlyLocalContacts = 0;
+    mCheckLeakedResources = true;
 
     /* Create a fake Connection */
     tp_tests_create_and_connect_conn(TP_TESTS_TYPE_CONTACTS_CONNECTION,
@@ -155,11 +160,70 @@ void TestTelepathyPlugin::cleanup()
     }
 
     QVERIFY(mLocalContactIds.count() == 1);
-    mNOnlyLocalContacts = 0;
+
+    static QSparqlConnection *connection = new QSparqlConnection("QTRACKER_DIRECT");
+    if (mCheckLeakedResources) {
+        static const QString query(QString::fromLatin1 ("SELECT * {"
+                "OPTIONAL {?v1 a nco:IMAddress}."
+                "OPTIONAL {?v2 a nco:Affiliation}."
+                "OPTIONAL {?v3 a nco:PhoneNumber}."
+                "OPTIONAL {?v4 a nco:PostalAddress}."
+                "OPTIONAL {?v5 a nco:EmailAddress}."
+                "OPTIONAL {?v6 a nco:OrganizationContact}."
+            "}"));
+
+        QSparqlResult *result = connection->exec(QSparqlQuery(query, QSparqlQuery::SelectStatement));
+        QVERIFY(result != 0);
+        QVERIFY(!result->hasError());
+        connect(result, SIGNAL(finished()), SLOT(onLeakQueryFinished()), Qt::QueuedConnection);
+        QCOMPARE(mLoop->exec(), 0);
+    } else {
+        /* If we don't assert those does not exist, delete them to be sure and
+         * not fail on next tests  */
+        static const QString query(QString::fromLatin1 ("DELETE {"
+            "?v1 a rdfs:Resource."
+            "?v2 a rdfs:Resource."
+            "?v3 a rdfs:Resource."
+            "?v4 a rdfs:Resource."
+            "?v5 a rdfs:Resource."
+            "?v6 a rdfs:Resource."
+        "} WHERE {"
+            "OPTIONAL {?v1 a nco:IMAddress}."
+            "OPTIONAL {?v2 a nco:Affiliation}."
+            "OPTIONAL {?v3 a nco:PhoneNumber}."
+            "OPTIONAL {?v4 a nco:PostalAddress}."
+            "OPTIONAL {?v5 a nco:EmailAddress}."
+            "OPTIONAL {?v6 a nco:OrganizationContact}."
+        "}"));
+
+        QSparqlResult *result = connection->exec(QSparqlQuery(query, QSparqlQuery::DeleteStatement));
+        QVERIFY(result != 0);
+        QVERIFY(!result->hasError());
+        connect(result, SIGNAL(finished()), mLoop, SLOT(quit()), Qt::QueuedConnection);
+        QCOMPARE(mLoop->exec(), 0);
+    }
 
     g_object_unref(mConnService);
     g_object_unref(mConnection);
     g_object_unref(mAccount);
+}
+
+void TestTelepathyPlugin::onLeakQueryFinished()
+{
+    QSparqlResult *result = qobject_cast<QSparqlResult *>(sender());
+
+    while (result->next()) {
+        bool leak = false;
+        for (int i = 0; i < 6; i++) {
+            if (!result->stringValue(i).isEmpty()) {
+                qDebug() << "Got leaked resource:" << result->stringValue(i);
+                leak = true;
+            }
+        }
+        QVERIFY(!leak);
+    }
+
+    mLoop->quit();
 }
 
 void TestTelepathyPlugin::testBasicUpdates()
@@ -569,6 +633,9 @@ void TestTelepathyPlugin::testDisable()
     // self contact and testdisable-local gets updated, testdisable-im gets removed
     runExpectation(TestExpectationMassPtr(new TestExpectationMass(0, 2, 1)));
     mNOnlyLocalContacts++;
+
+    /* FIXME: we can't verify leaked resource because some are qct's responsability */
+    mCheckLeakedResources = false;
 }
 
 void TestTelepathyPlugin::testIRIEncode()
@@ -611,6 +678,9 @@ void TestTelepathyPlugin::testBug253679()
     exp->setEvent(EventChanged);
     exp->verifyAlias(alias);
     runExpectation(exp);
+
+    /* FIXME: we can't verify leaked resource because some are qct's responsability */
+    mCheckLeakedResources = false;
 }
 
 void TestTelepathyPlugin::testMergedContact()

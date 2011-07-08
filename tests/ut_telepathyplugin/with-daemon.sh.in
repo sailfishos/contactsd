@@ -43,6 +43,7 @@ ut_pid=$!
 
 # Start Contacts Daemon in background
 export CONTACTSD_PLUGINS_DIRS=@PLUGINDIR@
+export CONTACTSD_DIRECT_GC=1
 @BINDIR@/contactsd &
 contactsd_pid=$!
 

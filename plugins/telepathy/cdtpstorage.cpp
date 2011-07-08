@@ -27,6 +27,7 @@
 #include <TelepathyQt4/ContactCapabilities>
 #include <TelepathyQt4/ConnectionCapabilities>
 #include <qtcontacts-tracker/phoneutils.h>
+#include <qtcontacts-tracker/garbagecollector.h>
 #include <ontologies.h>
 
 #include <importstateconst.h>
@@ -46,11 +47,15 @@ static const Variable imContactVar = Variable(QString::fromLatin1("imContact"));
 static const Variable imAccountVar = Variable(QString::fromLatin1("imAccount"));
 static const ValueChain imAddressChain = ValueChain() << nco::hasAffiliation::resource() << nco::hasIMAddress::resource();
 
-CDTpStorage::CDTpStorage(QObject *parent) : QObject(parent), mUpdateRunning(false)
+CDTpStorage::CDTpStorage(QObject *parent) : QObject(parent),
+    mUpdateRunning(false), mDirectGC(false)
 {
     mUpdateTimer.setInterval(0);
     mUpdateTimer.setSingleShot(true);
     connect(&mUpdateTimer, SIGNAL(timeout()), SLOT(onUpdateQueueTimeout()));
+
+    if (!qgetenv("CONTACTSD_DIRECT_GC").isEmpty())
+        mDirectGC = true;
 }
 
 CDTpStorage::~CDTpStorage()
@@ -993,6 +998,114 @@ static CDTpQueryBuilder createIMAddressBuilder(const QString &accountPath,
     return builder;
 }
 
+static CDTpQueryBuilder createGarbageCollectorBuilder()
+{
+    CDTpQueryBuilder builder;
+
+    /* Resources we leak in the various queries:
+     *
+     *  - nfo:FileDataObject in privateGraph for each avatar update.
+     *  - nco:Affiliation in privateGraph for each deleted IMAddress.
+     *  - nco:Affiliationn nco:PhoneNumber, nco:PostalAddress, nco:EmailAddress
+     *    and nco:OrganizationContact in the IMAddress graph for each
+     *    ContactInfo update.
+     */
+
+    /* Each avatar update leaks the previous nfo:FileDataObject in privateGraph */
+    Delete d;
+    Exists e;
+    Graph g(privateGraph);
+    Variable dataObject;
+    d.addData(dataObject, aValue, nfo::FileDataObject::resource());
+    g.addPattern(dataObject, aValue, nfo::FileDataObject::resource());
+    e.addPattern(imAddressVar, nco::imAvatar::resource(), dataObject);
+    d.addRestriction(g);
+    d.setFilter(Functions::not_.apply(Filter(e)));
+    builder.append(d);
+
+    /* Affiliations used to link to the IMAddress are leaked when IMAddress is
+     * deleted. If affiliation is in privateGraph and has no hasIMAddress we
+     * can purge it and unlink from PersonContact.
+     *
+     * FIXME: Because of NB#242979 we need to split the unlink and actually
+     * deletion of the affiliation
+     */
+
+    /* Part 1. Delete the affiliation */
+    d = Delete();
+    g = Graph(privateGraph);
+    e = Exists();
+    Variable affiliation;
+    d.addData(affiliation, aValue, rdfs::Resource::resource());
+    g.addPattern(affiliation, aValue, nco::Affiliation::resource());
+    d.addRestriction(g);
+    e.addPattern(affiliation, nco::hasIMAddress::resource(), Variable());
+    d.setFilter(Functions::not_.apply(Filter(e)));
+    builder.append(d);
+
+    /* Part 2. Delete hasAffiliation if linked resource does not exist anymore  */
+    d = Delete();
+    g = Graph(privateGraph);
+    e = Exists();
+    d.addData(imContactVar, nco::hasAffiliation::resource(), affiliation);
+    g.addPattern(imContactVar, nco::hasAffiliation::resource(), affiliation);
+    d.addRestriction(g);
+    e.addPattern(affiliation, aValue, rdfs::Resource::resource());
+    d.setFilter(Functions::not_.apply(Filter(e)));
+    builder.append(d);
+
+    /* Each ContactInfo update leaks various resources in IMAddress graph. But
+     * the IMAddress could even not exist anymore... so drop everything from
+     * a telepathy: graph not linked anymore
+     */
+
+    typedef QPair<Value, Value> ValuePair;
+    static QList<ValuePair> contactInfoResources;
+    if (contactInfoResources.isEmpty()) {
+        contactInfoResources << ValuePair(nco::Affiliation::resource(), nco::hasAffiliation::resource());
+        contactInfoResources << ValuePair(nco::PhoneNumber::resource(), nco::hasPhoneNumber::resource());
+        contactInfoResources << ValuePair(nco::PostalAddress::resource(), nco::hasPostalAddress::resource());
+        contactInfoResources << ValuePair(nco::EmailAddress::resource(), nco::hasEmailAddress::resource());
+        contactInfoResources << ValuePair(nco::OrganizationContact::resource(), nco::org::resource());
+    }
+
+    Q_FOREACH (const ValuePair &pair, contactInfoResources) {
+        Variable graph;
+        d = Delete();
+        e = Exists();
+        g = Graph(graph);
+        Variable resource;
+        d.addData(resource, aValue, rdfs::Resource::resource());
+        g.addPattern(resource, aValue, pair.first);
+        e.addPattern(Variable(), pair.second, resource);
+        d.addRestriction(g);
+        d.setFilter(Functions::and_.apply(
+                Functions::startsWith.apply(graph, LiteralValue(QLatin1String("telepathy:"))),
+                Functions::not_.apply(Filter(e))));
+        builder.append(d);
+    }
+
+    return builder;
+}
+
+void CDTpStorage::triggerGarbageCollector(CDTpQueryBuilder &builder, uint nContacts)
+{
+    if (mDirectGC) {
+        builder.append(createGarbageCollectorBuilder());
+        return;
+    }
+
+    static bool registered = false;
+    if (!registered) {
+        registered = true;
+        QctGarbageCollector::registerQuery(QLatin1String("com.nokia.contactsd"),
+                createGarbageCollectorBuilder().sparql());
+    }
+
+    QctGarbageCollector::trigger(QLatin1String("com.nokia.contactsd"),
+            ((double)nContacts)/1000);
+}
+
 void CDTpStorage::syncAccounts(const QList<CDTpAccountPtr> &accounts)
 {
     /* Remove IMAccount that does not exist anymore */
@@ -1006,6 +1119,7 @@ void CDTpStorage::syncAccounts(const QList<CDTpAccountPtr> &accounts)
     builder.append(d);
 
     /* Sync accounts and their contacts */
+    uint nContacts = 0;
     if (!accounts.isEmpty()) {
         builder.append(createAccountsBuilder(accounts));
 
@@ -1021,6 +1135,7 @@ void CDTpStorage::syncAccounts(const QList<CDTpAccountPtr> &accounts)
             } else {
                 noRosterAccounts << accountWrapper;
             }
+            nContacts += accountWrapper->contacts().count();
         }
 
         // Sync contacts
@@ -1040,6 +1155,8 @@ void CDTpStorage::syncAccounts(const QList<CDTpAccountPtr> &accounts)
     /* Purge IMAddresses not bound from an account anymore, this include the
      * self IMAddress and the default-contact-me as well */
     builder.append(purgeContactsBuilder());
+
+    triggerGarbageCollector(builder, nContacts);
 
     CDTpSparqlQuery *query = new CDTpSparqlQuery(builder, this);
     connect(query,
@@ -1105,6 +1222,7 @@ void CDTpStorage::updateAccount(CDTpAccountPtr accountWrapper,
         cancelQueuedUpdates(accountWrapper->contacts());
         QList<CDTpAccountPtr> accounts = QList<CDTpAccountPtr>() << accountWrapper;
         builder.append(syncDisabledAccountsContactsBuilder(accounts));
+        triggerGarbageCollector(builder, accountWrapper->contacts().count());
     }
 
     CDTpSparqlQuery *query = new CDTpSparqlQuery(builder, this);
@@ -1131,6 +1249,8 @@ void CDTpStorage::removeAccount(CDTpAccountPtr accountWrapper)
      * default-contact-me */
     builder.append(purgeContactsBuilder());
 
+    triggerGarbageCollector(builder, 200);
+
     CDTpSparqlQuery *query = new CDTpSparqlQuery(builder, this);
     connect(query,
             SIGNAL(finished(CDTpSparqlQuery *)),
@@ -1145,6 +1265,7 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper)
     QList<CDTpAccountPtr> accounts = QList<CDTpAccountPtr>() << accountWrapper;
     if (accountWrapper->hasRoster()) {
         builder = syncRosterAccountsContactsBuilder(accounts, true);
+        triggerGarbageCollector(builder, accountWrapper->contacts().count());
     } else {
         builder = syncNoRosterAccountsContactsBuilder(accounts);
     }
@@ -1187,6 +1308,7 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper,
     if (!contactsRemoved.isEmpty()) {
         cancelQueuedUpdates(contactsRemoved);
         builder.append(removeContactsBuilder(accountWrapper, contactsRemoved));
+        triggerGarbageCollector(builder, contactsRemoved.count());
     }
 
     CDTpSparqlQuery *query = new CDTpSparqlQuery(builder, this);
@@ -1207,7 +1329,12 @@ void CDTpStorage::createAccountContacts(const QString &accountPath, const QStrin
 /* Use this only in offline mode - use syncAccountContacts in online mode */
 void CDTpStorage::removeAccountContacts(const QString &accountPath, const QStringList &contactIds)
 {
-    CDTpSparqlQuery *query = new CDTpSparqlQuery(removeContactsBuilder(accountPath, contactIds), this);
+    CDTpQueryBuilder builder;
+
+    builder = removeContactsBuilder(accountPath, contactIds);
+    triggerGarbageCollector(builder, 200);
+
+    CDTpSparqlQuery *query = new CDTpSparqlQuery(builder, this);
     connect(query,
             SIGNAL(finished(CDTpSparqlQuery *)),
             SLOT(onSparqlQueryFinished(CDTpSparqlQuery *)));
@@ -1308,6 +1435,8 @@ void CDTpStorage::onUpdateQueueTimeout()
     i.addRestriction(imContactVar, imAddressChain, imAddressVar);
     i.setFilter(Filter(Functions::in.apply(Functions::str.apply(imAddressVar), literalIMAddressList(allContacts))));
     builder.append(i);
+
+    triggerGarbageCollector(builder, allContacts.count());
 
     // Launch the query
     mUpdateRunning = true;

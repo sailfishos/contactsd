@@ -67,11 +67,13 @@ private Q_SLOTS:
 
 private:
     void cancelQueuedUpdates(const QList<CDTpContactPtr> &contacts);
+    void triggerGarbageCollector(CDTpQueryBuilder &builder, uint nContacts);
 
 private:
     QHash<CDTpContactPtr, CDTpContact::Changes> mUpdateQueue;
     QTimer mUpdateTimer;
     bool mUpdateRunning;
+    bool mDirectGC;
 };
 
 #endif // CDTPSTORAGE_H
