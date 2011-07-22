@@ -37,6 +37,30 @@ using namespace Contactsd;
 // import timeout is 5 minutes
 const int IMPORT_TIMEOUT = 5 * 60 * 1000;
 
+class MsgHandlerGuard
+{
+private:
+    const QtMsgHandler m_msgHandler;
+    const QString m_context;
+
+public:
+    MsgHandlerGuard(const QString &context)
+        : m_msgHandler(qInstallMsgHandler(0))
+        , m_context(context)
+    {
+        // we had to cheat a bit to lookup the handler - there is no decicated mechanism
+        qInstallMsgHandler(m_msgHandler);
+    }
+
+    ~MsgHandlerGuard()
+    {
+        if (qInstallMsgHandler(m_msgHandler) != m_msgHandler) {
+            warning() << "Message handler got modified by"
+                      << m_context << " - don't do that!";
+        }
+    }
+};
+
 ContactsdPluginLoader::ContactsdPluginLoader()
     : mImportTimer(0)
 {
@@ -81,8 +105,10 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir, const QString
     dir.setFilter(QDir::Files | QDir::NoSymLinks);
 
     Q_FOREACH (const QString &fileName, dir.entryList()) {
-        QString absFileName(dir.absoluteFilePath(fileName));
+        QString absFileName = dir.absoluteFilePath(fileName);
         debug() << "Trying to load plugin" << absFileName;
+
+        MsgHandlerGuard guard(absFileName);
 
         QPluginLoader *loader = new QPluginLoader(absFileName);
 
@@ -140,6 +166,8 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir, const QString
                 this, SIGNAL(error(int, const QString &)));
 
         basePlugin->init();
+
+        Q_UNUSED(guard); // actually we do: RAII
     }
 }
 
