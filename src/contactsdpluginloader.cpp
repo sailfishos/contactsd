@@ -62,8 +62,8 @@ ContactsdPluginLoader::~ContactsdPluginLoader()
 void ContactsdPluginLoader::loadPlugins(const QStringList &plugins)
 {
     QStringList pluginsDirs;
-    QString pluginsDirsEnv = QString::fromLocal8Bit(
-            qgetenv("CONTACTSD_PLUGINS_DIRS"));
+    QString pluginsDirsEnv = QString::fromLocal8Bit(qgetenv("CONTACTSD_PLUGINS_DIRS"));
+
     if (pluginsDirsEnv.isEmpty()) {
         pluginsDirs << CONTACTSD_PLUGINS_DIR;
     } else {
@@ -77,13 +77,15 @@ void ContactsdPluginLoader::loadPlugins(const QStringList &plugins)
 
 void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir, const QStringList &plugins)
 {
-    QPluginLoader *loader;
     QDir dir(pluginsDir);
     dir.setFilter(QDir::Files | QDir::NoSymLinks);
+
     Q_FOREACH (const QString &fileName, dir.entryList()) {
         QString absFileName(dir.absoluteFilePath(fileName));
         debug() << "Trying to load plugin" << absFileName;
-        loader = new QPluginLoader(absFileName);
+
+        QPluginLoader *loader = new QPluginLoader(absFileName);
+
         if (!loader->load()) {
             debug() << "Error loading plugin" << absFileName <<
                 "-" << loader->errorString();
@@ -93,6 +95,7 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir, const QString
 
         QObject *pluginObject = loader->instance();
         BasePlugin *basePlugin = qobject_cast<BasePlugin *>(pluginObject);
+
         if (!basePlugin) {
             debug() << "Error loading plugin" << absFileName << "- not a Contactd::BasePlugin";
             loader->unload();
@@ -101,6 +104,7 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir, const QString
         }
 
         BasePlugin::MetaData metaData = basePlugin->metaData();
+
         if (!metaData.contains(BasePlugin::metaDataKeyName)) {
             warning() << "Error loading plugin" << absFileName << "- invalid plugin metadata";
             loader->unload();
@@ -109,6 +113,7 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir, const QString
         }
 
         QString pluginName = metaData[BasePlugin::metaDataKeyName].toString();
+
         if (!plugins.isEmpty() && !plugins.contains(pluginName)) {
             warning() << "Ignoring plugin" << absFileName;
             loader->unload();
@@ -126,12 +131,14 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir, const QString
 
         debug() << "Plugin" << pluginName << "loaded";
         mPluginStore.insert(pluginName, loader);
+
         connect(basePlugin, SIGNAL(importStarted(const QString &, const QString &)),
                 this, SLOT(onPluginImportStarted(const QString &, const QString &)));
         connect(basePlugin, SIGNAL(importEnded(const QString &, const QString &, int, int, int)),
                 this, SLOT(onPluginImportEnded(const QString &, const QString &, int,int,int)));
         connect(basePlugin, SIGNAL(error(int, const QString &)),
                 this, SIGNAL(error(int, const QString &)));
+
         basePlugin->init();
     }
 }
