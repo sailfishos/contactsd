@@ -1342,13 +1342,13 @@ void CDTpStorage::removeAccountContacts(const QString &accountPath, const QStrin
 
 void CDTpStorage::updateContact(CDTpContactPtr contactWrapper, CDTpContact::Changes changes)
 {
-    if (!mUpdateQueue.contains(contactWrapper)) {
+    if (not mUpdateQueue.contains(contactWrapper)) {
         mUpdateQueue.insert(contactWrapper, changes);
     } else {
         mUpdateQueue[contactWrapper] |= changes;
     }
 
-    if (!mUpdateRunning) {
+    if (not mUpdateRunning && not mUpdateTimer.isActive()) {
         mUpdateTimer.start();
     }
 }
@@ -1451,7 +1451,8 @@ void CDTpStorage::onUpdateFinished(CDTpSparqlQuery *query)
     onSparqlQueryFinished(query);
 
     mUpdateRunning = false;
-    if (!mUpdateQueue.isEmpty()) {
+
+    if (not mUpdateQueue.isEmpty() && not mUpdateTimer.isActive()) {
         mUpdateTimer.start();
     }
 }

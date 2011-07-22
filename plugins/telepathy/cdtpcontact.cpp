@@ -136,7 +136,10 @@ void CDTpContact::onBlockStatusChanged()
 void CDTpContact::emitChanged(CDTpContact::Changes changes)
 {
     mQueuedChanges |= changes;
-    mQueuedChangesTimer.start();
+
+    if (not mQueuedChangesTimer.isActive()) {
+        mQueuedChangesTimer.start();
+    }
 }
 
 void CDTpContact::onQueuedChangesTimeout()
