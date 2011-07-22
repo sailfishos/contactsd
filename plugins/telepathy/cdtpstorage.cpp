@@ -38,6 +38,9 @@
 CUBI_USE_NAMESPACE_RESOURCES
 using namespace Contactsd;
 
+static const int UPDATE_TIMEOUT = 150; // ms
+static const int UPDATE_THRESHOLD = 50; // contacts
+
 static const LiteralValue defaultGenerator = LiteralValue(QString::fromLatin1("telepathy"));
 static const ResourceValue defaultGraph = ResourceValue(QString::fromLatin1("urn:uuid:08070f5c-a334-4d19-a8b0-12a3071bfab9"));
 static const ResourceValue privateGraph = ResourceValue(QString::fromLatin1("urn:uuid:679293d4-60f0-49c7-8d63-f1528fe31f66"));
@@ -50,7 +53,7 @@ static const ValueChain imAddressChain = ValueChain() << nco::hasAffiliation::re
 CDTpStorage::CDTpStorage(QObject *parent) : QObject(parent),
     mUpdateRunning(false), mDirectGC(false)
 {
-    mUpdateTimer.setInterval(0);
+    mUpdateTimer.setInterval(UPDATE_TIMEOUT);
     mUpdateTimer.setSingleShot(true);
     connect(&mUpdateTimer, SIGNAL(timeout()), SLOT(onUpdateQueueTimeout()));
 
@@ -1348,8 +1351,13 @@ void CDTpStorage::updateContact(CDTpContactPtr contactWrapper, CDTpContact::Chan
         mUpdateQueue[contactWrapper] |= changes;
     }
 
-    if (not mUpdateRunning && not mUpdateTimer.isActive()) {
-        mUpdateTimer.start();
+    if (not mUpdateRunning) {
+        // Only update IM contacts in tracker after queuing 50 contacts or after
+        // not receiving an update notifiction for 150 ms. This dramatically reduces
+        // system but also keeps update latency within acceptable bounds.
+        if (not mUpdateTimer.isActive() || mUpdateQueue.count() < UPDATE_THRESHOLD) {
+            mUpdateTimer.start();
+        }
     }
 }
 
