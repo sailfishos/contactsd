@@ -30,6 +30,23 @@
 
 using namespace Contactsd;
 
+static QtMsgHandler defaultMsgHandler = 0;
+
+static void nullMsgHandler(QtMsgType type, const char *msg)
+{
+    if (QtDebugMsg == type) {
+        return; // no debug messages please
+    }
+
+    // Actually qInstallMsgHandler() returned null in main() when
+    // I checked, so defaultMsgHandler should be null - but let's be careful.
+    if (defaultMsgHandler) {
+        defaultMsgHandler(type, msg);
+    } else {
+        fprintf(stderr, "%s\n", msg);
+    }
+}
+
 static void usage()
 {
     qDebug() << "Usage: contactsd [OPTION]...\n";
@@ -75,6 +92,10 @@ int main(int argc, char **argv)
             return -1;
         }
         ++i;
+    }
+
+    if (not logConsole) {
+        defaultMsgHandler = qInstallMsgHandler(nullMsgHandler);
     }
 
     enableDebug(logConsole);
