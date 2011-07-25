@@ -21,37 +21,30 @@
  ** conditions contained in a signed written agreement between you and Nokia.
  **/
 
-#include "cdbirthdaycontroller.h"
-#include "cdbirthdayplugin.h"
-#include "debug.h"
+#ifndef CDBIRTHDAYCONTROLLER_H
+#define CDBIRTHDAYCONTROLLER_H
 
-using namespace Contactsd;
+#include <QObject>
+#include <QList>
+#include <QtSparqlTrackerExtensions/TrackerChangeNotifier>
 
-CDBirthdayPlugin::CDBirthdayPlugin()
-    : mController(0)
+QTM_USE_NAMESPACE
+
+class CDBirthdayController : public QObject
 {
-}
+    Q_OBJECT
 
-CDBirthdayPlugin::~CDBirthdayPlugin()
-{
-    delete mController;
-}
+public:
+    explicit CDBirthdayController(QObject *parent = 0);
+    ~CDBirthdayController();
 
-void CDBirthdayPlugin::init()
-{
-    debug() << "Initializing contactsd birthday plugin";
+private Q_SLOTS:
+    void onGraphChanged(const QList<TrackerChangeNotifier::Quad> &deletions,
+                        const QList<TrackerChangeNotifier::Quad> &insertions);
 
-    debug() << "Creating birthday controller";
-    mController = new CDBirthdayController(this);
-}
+private:
+    QList<TrackerChangeNotifier::Quad> mDeleteNotifications;
+    QList<TrackerChangeNotifier::Quad> mInsertNotifications;
+};
 
-CDBirthdayPlugin::MetaData CDBirthdayPlugin::metaData()
-{
-    MetaData data;
-    data[metaDataKeyName]    = QVariant(QLatin1String("birthday"));
-    data[metaDataKeyVersion] = QVariant(QLatin1String("0.1"));
-    data[metaDataKeyComment] = QVariant(QLatin1String("contactsd birthday plugin"));
-    return data;
-}
-
-Q_EXPORT_PLUGIN2(birthdayplugin, CDBirthdayPlugin)
+#endif // CDBIRTHDAYCONTROLLER_H

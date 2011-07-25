@@ -13,7 +13,10 @@ Build-Depends: debhelper (>= 7.2.3),
                libqtcontacts-extensions-tracker-dev (>= 4.13.8),
                libcubi-0.1-dev (>= 0.1.7),
                libcubi-0.1-tracker-0.10-ontologies-dev,
-               libtracker-sparql-dev
+               libtracker-sparql-dev,
+               libqtsparql-tracker-extensions-dev (>= 0.0.3),
+               libmkcal-dev,
+               libmeegotouch-dev
 Standards-Version: 3.8.1
 
 Package: contactsd

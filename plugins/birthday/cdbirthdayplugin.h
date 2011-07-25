@@ -31,6 +31,8 @@
 
 #include "base-plugin.h"
 
+class CDBirthdayController;
+
 class CDBirthdayPlugin : public Contactsd::BasePlugin
 {
     Q_OBJECT
@@ -41,6 +43,9 @@ public:
 
     void init();
     MetaData metaData();
+
+private:
+    CDBirthdayController *mController;
 };
 
 #endif // CDBIRTHDAYPLUGIN_H

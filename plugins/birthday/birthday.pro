@@ -23,7 +23,7 @@
 TEMPLATE = lib
 QT -= gui
 
-CONFIG += plugin qtsparql qtcontacts_extensions_tracker
+CONFIG += plugin qtsparql qtsparql-tracker-extensions qtcontacts_extensions_tracker cubi-0.1-tracker-0.10-ontologies
 
 CONFIG(coverage):{
 QMAKE_CXXFLAGS += -c -g  --coverage -ftest-coverage -fprofile-arcs
@@ -35,9 +35,11 @@ DEFINES += QT_NO_CAST_TO_ASCII QT_NO_CAST_FROM_ASCII
 INCLUDEPATH += $$TOP_SOURCEDIR/src
 DEFINES += ENABLE_DEBUG
 
-HEADERS  = cdbirthdayplugin.h \
+HEADERS  = cdbirthdaycontroller.h \
+    cdbirthdayplugin.h
 
-SOURCES  = cdbirthdayplugin.cpp \
+SOURCES  = cdbirthdaycontroller.cpp \
+    cdbirthdayplugin.cpp
 
 TARGET = birthdayplugin
 target.path = $$LIBDIR/contactsd-1.0/plugins
