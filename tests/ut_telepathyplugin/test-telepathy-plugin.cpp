@@ -212,18 +212,20 @@ void TestTelepathyPlugin::onLeakQueryFinished()
 {
     QSparqlResult *result = qobject_cast<QSparqlResult *>(sender());
 
+    bool leak = false;
+
     while (result->next()) {
-        bool leak = false;
         for (int i = 0; i < 6; i++) {
             if (!result->stringValue(i).isEmpty()) {
                 qDebug() << "Got leaked resource:" << result->stringValue(i);
                 leak = true;
             }
         }
-        QVERIFY(!leak);
     }
 
     mLoop->quit();
+
+    QVERIFY(!leak);
 }
 
 void TestTelepathyPlugin::testBasicUpdates()
