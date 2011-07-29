@@ -29,5 +29,11 @@ export XDG_DATA_HOME=$tmpdir/local
 export XDG_CACHE_HOME=$tmpdir/cache
 export XDG_CONFIG_HOME=$tmpdir/config
 
+mkdir -p $XDG_CONFIG_HOME/tracker
+cat <<EOF >$XDG_CONFIG_HOME/tracker/tracker-store.cfg
+[General]
+Verbosity=3
+EOF
+
 @SCRIPTDIR@/with-session-bus.sh --config-file=@SCRIPTDIR@/session.conf -- \
   @SCRIPTDIR@/@WITH_DAEMON@ @BINDIR@/ut_telepathyplugin $@
