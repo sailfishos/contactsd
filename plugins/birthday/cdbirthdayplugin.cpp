@@ -25,6 +25,8 @@
 #include "cdbirthdayplugin.h"
 #include "debug.h"
 
+#include <QContactManager>
+
 using namespace Contactsd;
 
 CDBirthdayPlugin::CDBirthdayPlugin()
@@ -41,8 +43,21 @@ void CDBirthdayPlugin::init()
 {
     debug() << "Initializing contactsd birthday plugin";
 
+    debug() << "Creating birthday contact manager";
+
+    static const QLatin1String trackerManager = QLatin1String("tracker");
+    QContactManager *manager = new QContactManager(trackerManager, QMap<QString, QString>(), this);
+
+    if (manager == 0) {
+        emit error(/* Made-up error */ 1, QLatin1String("Unable to initialise QContactManager"));
+    }
+
+    if (manager->managerName() != trackerManager) {
+        emit error(/* Made-up error */ 2, QLatin1String("Tracker plugin not found"));
+    }
+
     debug() << "Creating birthday controller";
-    mController = new CDBirthdayController(this);
+    mController = new CDBirthdayController(manager, this);
 }
 
 CDBirthdayPlugin::MetaData CDBirthdayPlugin::metaData()

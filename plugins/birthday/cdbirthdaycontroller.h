@@ -27,7 +27,11 @@
 #include <QObject>
 #include <QList>
 #include <QtSparqlTrackerExtensions/TrackerChangeNotifier>
-#include <QContactId>
+#include <QContact>
+#include <QContactAbstractRequest>
+#include <QContactManager>
+
+class CDBirthdayCalendar;
 
 QTM_USE_NAMESPACE
 
@@ -36,21 +40,27 @@ class CDBirthdayController : public QObject
     Q_OBJECT
 
 public:
-    explicit CDBirthdayController(QObject *parent = 0);
+    explicit CDBirthdayController(QContactManager * const manager,
+                                  QObject *parent = 0);
     ~CDBirthdayController();
 
 private Q_SLOTS:
     void onGraphChanged(const QList<TrackerChangeNotifier::Quad> &deletions,
                         const QList<TrackerChangeNotifier::Quad> &insertions);
+    void onFetchRequestStateChanged(const QContactAbstractRequest::State &newState);
 
 private:
     void processNotificationQueues();
     void processNotifications(QList<TrackerChangeNotifier::Quad> &notifications,
                               QSet<QContactLocalId> &propertyChanges);
+    void fetchContacts(const QList<QContactLocalId> &contactIds);
+    void updateBirthdays(const QList<QContact> &changedBirthdays);
 
 private:
     QList<TrackerChangeNotifier::Quad> mDeleteNotifications;
     QList<TrackerChangeNotifier::Quad> mInsertNotifications;
+    CDBirthdayCalendar *mCalendar;
+    QContactManager *mManager;
 };
 
 #endif // CDBIRTHDAYCONTROLLER_H

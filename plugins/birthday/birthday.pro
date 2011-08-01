@@ -23,7 +23,7 @@
 TEMPLATE = lib
 QT -= gui
 
-CONFIG += plugin qtsparql qtsparql-tracker-extensions qtcontacts_extensions_tracker cubi-0.1-tracker-0.10-ontologies
+CONFIG += plugin qtsparql qtsparql-tracker-extensions qtcontacts_extensions_tracker cubi-0.1-tracker-0.10-ontologies meegotouch mkcal
 
 CONFIG(coverage):{
 QMAKE_CXXFLAGS += -c -g  --coverage -ftest-coverage -fprofile-arcs
@@ -35,10 +35,12 @@ DEFINES += QT_NO_CAST_TO_ASCII QT_NO_CAST_FROM_ASCII
 INCLUDEPATH += $$TOP_SOURCEDIR/src
 DEFINES += ENABLE_DEBUG
 
-HEADERS  = cdbirthdaycontroller.h \
+HEADERS  = cdbirthdaycalendar.h \
+    cdbirthdaycontroller.h \
     cdbirthdayplugin.h
 
-SOURCES  = cdbirthdaycontroller.cpp \
+SOURCES  = cdbirthdaycalendar.cpp \
+    cdbirthdaycontroller.cpp \
     cdbirthdayplugin.cpp
 
 TARGET = birthdayplugin
