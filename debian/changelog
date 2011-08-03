@@ -1,3 +1,13 @@
+contactsd (1.0.1-1) unstable; urgency=low
+
+  * Fixes: NB#266778 - UI performance lag when changing network connection
+  * Fixes: NB#269430 - mfe contactsd plugin stops debug messages
+  * Fixes: NB#270997 - contactsd is leaking resources in tracker
+  * Fixes: NB#265941 - Import progress banner gets displayed almost after a minute if the Skype account contains more number of contacts
+  * Fixes: NB#256758 - Change in avatar from assigned to default from Desktop PC does not get reflected for an imported gtalk / Skype contact
+
+ -- Adrien Bustany <adrien.bustany@nokia.com>  Wed, 03 Aug 2011 10:57:00 +0300
+
 contactsd (1.0.0-1) unstable; urgency=low
 
   * No changes, just tagging 1.0.0 release to mark the milestone
