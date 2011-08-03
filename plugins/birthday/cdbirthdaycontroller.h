@@ -24,12 +24,15 @@
 #ifndef CDBIRTHDAYCONTROLLER_H
 #define CDBIRTHDAYCONTROLLER_H
 
-#include <QObject>
-#include <QList>
-#include <QtSparqlTrackerExtensions/TrackerChangeNotifier>
+#include <QtCore>
+
 #include <QContact>
 #include <QContactAbstractRequest>
 #include <QContactManager>
+
+#include <QtSparql>
+
+#include <QtSparqlTrackerExtensions/TrackerChangeNotifier>
 
 class CDBirthdayCalendar;
 
@@ -40,27 +43,41 @@ class CDBirthdayController : public QObject
     Q_OBJECT
 
 public:
-    explicit CDBirthdayController(QContactManager * const manager,
+    explicit CDBirthdayController(QSparqlConnection &connection,
                                   QObject *parent = 0);
     ~CDBirthdayController();
 
 private Q_SLOTS:
+    void onTrackerIdsFetched();
     void onGraphChanged(const QList<TrackerChangeNotifier::Quad> &deletions,
                         const QList<TrackerChangeNotifier::Quad> &insertions);
-    void onFetchRequestStateChanged(const QContactAbstractRequest::State &newState);
+    void onFetchRequestStateChanged(QContactAbstractRequest::State newState);
 
 private:
+    void fetchTrackerIds();
+    void connectChangeNotifier();
     void processNotificationQueues();
     void processNotifications(QList<TrackerChangeNotifier::Quad> &notifications,
-                              QSet<QContactLocalId> &propertyChanges);
+                              QSet<QContactLocalId> &propertyChanges,
+                              QSet<QContactLocalId> &resourceChanges);
     void fetchContacts(const QList<QContactLocalId> &contactIds);
     void updateBirthdays(const QList<QContact> &changedBirthdays);
 
 private:
+    enum {
+        NcoBirthDate,
+        RdfType,
+        NcoPersonContact,
+        NcoContactGroup,
+        NTrackerIds
+    };
+
+    QSparqlConnection &mSparqlConnection;
     QList<TrackerChangeNotifier::Quad> mDeleteNotifications;
     QList<TrackerChangeNotifier::Quad> mInsertNotifications;
     CDBirthdayCalendar *mCalendar;
     QContactManager *mManager;
+    int mTrackerIds[NTrackerIds];
 };
 
 #endif // CDBIRTHDAYCONTROLLER_H
