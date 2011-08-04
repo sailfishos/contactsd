@@ -83,20 +83,35 @@ public:
     Collector(const QString &id, const QString &q, QObject *parent);
 
     void trigger(double v);
-    void setLoad(double load) { mLoad = load; };
-    double load() const { return mLoad; };
-    void setQuery(const QString &query) { mQuery = query; };
-    const QString &query() const { return mQuery; };
+    void setLoad(double load) { mLoad = load; }
+    double load() const { return mLoad; }
+    void setQuery(const QString &query) { mQuery = query; }
+    const QString &query() const { return mQuery; }
 
 private Q_SLOTS:
     void onTimeout();
-    void onQueryFinished();
 
 private:
+    QSparqlQueryOptions mQueryOptions;
     const QString mId;
     QString mQuery;
     double mLoad;
     QTimer mTimer;
+};
+
+class CollectorResult : public QObject
+{
+    Q_OBJECT
+
+public:
+    CollectorResult(const QString &id, QSparqlResult *result, QObject *parent);
+
+private Q_SLOTS:
+    void onQueryFinished();
+
+private:
+    const QString mId;
+    QSparqlResult *mResult;
 };
 
 #endif // GCPLUGIN_H

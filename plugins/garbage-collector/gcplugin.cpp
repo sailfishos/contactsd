@@ -132,6 +132,7 @@ Collector::Collector(const QString &id, const QString &q, QObject *parent)
     , mQuery(q)
     , mLoad(0)
 {
+    mQueryOptions.setPriority(QSparqlQueryOptions::LowPriority);
     mTimer.setInterval(TriggerTimeout*1000);
     mTimer.setSingleShot(true);
     connect(&mTimer, SIGNAL(timeout()), SLOT(onTimeout()));
@@ -140,6 +141,7 @@ Collector::Collector(const QString &id, const QString &q, QObject *parent)
 void Collector::trigger(double v)
 {
     mLoad += v;
+
     if (mLoad >= 1 && not mTimer.isActive()) {
         mTimer.start();
     }
@@ -148,39 +150,40 @@ void Collector::trigger(double v)
 void Collector::onTimeout()
 {
     debug() << "Launch query for collector" << mId;
+
     mLoad = 0;
 
     QSparqlConnection &connection = BasePlugin::sparqlConnection();
-    static QSparqlQueryOptions queryOptions;
-    queryOptions.setPriority(QSparqlQueryOptions::LowPriority);
-
-    QScopedPointer<QSparqlResult> result(connection.exec(QSparqlQuery(mQuery, QSparqlQuery::DeleteStatement),
-                                                         queryOptions));
-
-    if (result.isNull()) {
-        warning() << "QSparqlConnection::exec() == 0";
-        return;
-    }
-    if (result->hasError()) {
-        warning() << "Error exec query:" << result->lastError().message();
-        return;
-    }
-
-    result->setParent(this);
-    connect(result.take(), SIGNAL(finished()), SLOT(onQueryFinished()), Qt::QueuedConnection);
+    const QSparqlQuery query(mQuery, QSparqlQuery::DeleteStatement);
+    new CollectorResult(mId, connection.exec(query, mQueryOptions), this);
 }
 
-void Collector::onQueryFinished()
-{
-    QSparqlResult *result = qobject_cast<QSparqlResult *>(sender());
+///////////////////////////////////////////////////////////////////////////////
 
-    if (not result) {
-        warning() << "QSparqlQuery finished with error:" << "Invalid signal sender";
-    } else {
-        if (result->hasError()) {
-            warning() << "QSparqlQuery finished with error:" << result->lastError();
-        }
-        result->deleteLater();
+CollectorResult::CollectorResult(const QString &id, QSparqlResult *result, QObject *parent)
+    : QObject(parent), mId(id), mResult(result)
+{
+    if (not mResult) {
+        warning() << "Executing query for collector" << mId << "failed: No result created.";
+        return;
+    }
+
+    mResult->setParent(this);
+
+    if (mResult->hasError()) {
+        warning() << "Executing query for collector" << mId << "failed:"
+                  << mResult->lastError().message();
+        return;
+    }
+
+    connect(mResult, SIGNAL(finished()), SLOT(onQueryFinished()), Qt::QueuedConnection);
+}
+
+void CollectorResult::onQueryFinished()
+{
+    if (mResult->hasError()) {
+        warning() << "Query for collector" << mId << "finished with error:"
+                  << mResult->lastError();
     }
 }
 
