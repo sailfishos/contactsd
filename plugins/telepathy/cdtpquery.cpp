@@ -89,38 +89,29 @@ CDTpSparqlQuery::CDTpSparqlQuery(const CDTpQueryBuilder &builder, QObject *paren
     debug() << builder.sparql(Options::DefaultSparqlOptions | Options::PrettyPrint);
 
     QSparqlConnection &connection = BasePlugin::sparqlConnection();
-    QSparqlResult *result = connection.exec(builder.sparqlQuery());
+    mResult = connection.exec(builder.sparqlQuery());
+    mResult->setParent(this);
 
-    if (not result) {
+    if (not mResult) {
         warning() << Q_FUNC_INFO << " - QSparqlConnection::exec() == 0";
         deleteLater();
         return;
     }
-    if (result->hasError()) {
-        warning() << Q_FUNC_INFO << result->lastError().message();
-        delete result;
+    if (mResult->hasError()) {
+        warning() << Q_FUNC_INFO << mResult->lastError().message();
         deleteLater();
         return;
     }
 
-    result->setParent(this);
-    connect(result, SIGNAL(finished()), SLOT(onQueryFinished()), Qt::QueuedConnection);
+    connect(mResult, SIGNAL(finished()), SLOT(onQueryFinished()), Qt::QueuedConnection);
 }
 
 void CDTpSparqlQuery::onQueryFinished()
 {
-    QSparqlResult *result = qobject_cast<QSparqlResult *>(sender());
-
-    if (not result) {
-        warning() << "QSparqlQuery finished with error:" << "Invalid signal sender";
+    if (mResult->hasError()) {
         mErrorSet = true;
-    } else {
-        if (result->hasError()) {
-            mErrorSet = true;
-            mError = result->lastError();
-            warning() << "QSparqlQuery finished with error:" << mError.message();
-        }
-        result->deleteLater();
+        mError = mResult->lastError();
+        warning() << "query" << mId << "finished with error:" << mError.message();
     }
 
     debug() << "query" << mId << "finished. Time elapsed (ms):" << mTime.elapsed();

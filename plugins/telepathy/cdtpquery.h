@@ -60,7 +60,7 @@ class CDTpSparqlQuery : public QObject
 
 public:
     CDTpSparqlQuery(const CDTpQueryBuilder &builder, QObject *parent = 0);
-    ~CDTpSparqlQuery() {};
+    ~CDTpSparqlQuery() {}
 
     bool hasError() { return mErrorSet; }
     QSparqlError error() { return mError; }
@@ -76,6 +76,7 @@ private:
     QTime mTime;
     bool mErrorSet;
     QSparqlError mError;
+    QSparqlResult *mResult;
 };
 
 /* --- CDTpAccountsSparqlQuery --- */
