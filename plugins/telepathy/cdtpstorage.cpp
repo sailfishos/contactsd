@@ -1176,25 +1176,19 @@ void CDTpStorage::createAccount(CDTpAccountPtr accountWrapper)
     builder.append(createAccountsBuilder(accounts));
 
     /* if account has no contacts, we are done */
-    if (accountWrapper->contacts().isEmpty()) {
-        CDTpSparqlQuery *query = new CDTpSparqlQuery(builder, this);
-        connect(query,
-                SIGNAL(finished(CDTpSparqlQuery *)),
-                SLOT(onSparqlQueryFinished(CDTpSparqlQuery *)));
-        return;
+    if (not accountWrapper->contacts().isEmpty()) {
+        /* Create account's contacts */
+        builder.append(createContactsBuilder(accountWrapper->contacts()));
+
+        /* Update timestamp on all nco:PersonContact bound to this account */
+        Insert i(Insert::Replace);
+        Graph g(defaultGraph);
+        g.addPattern(imContactVar, nie::contentLastModified::resource(), literalTimeStamp());
+        i.addData(g);
+        i.addRestriction(literalIMAccount(accountWrapper), nco::hasIMContact::resource(), imAddressVar);
+        i.addRestriction(imContactVar, imAddressChain, imAddressVar);
+        builder.append(i);
     }
-
-    /* Create account's contacts */
-    builder.append(createContactsBuilder(accountWrapper->contacts()));
-
-    /* Update timestamp on all nco:PersonContact bound to this account */
-    Insert i(Insert::Replace);
-    Graph g(defaultGraph);
-    g.addPattern(imContactVar, nie::contentLastModified::resource(), literalTimeStamp());
-    i.addData(g);
-    i.addRestriction(literalIMAccount(accountWrapper), nco::hasIMContact::resource(), imAddressVar);
-    i.addRestriction(imContactVar, imAddressChain, imAddressVar);
-    builder.append(i);
 
     CDTpAccountsSparqlQuery *query = new CDTpAccountsSparqlQuery(accountWrapper, builder, this);
     connect(query,
