@@ -69,4 +69,34 @@ void CDBirthdayController::onGraphChanged(const QList<TrackerChangeNotifier::Qua
         debug() << notifier->watchedClass() << "birthday: deletions:" << deletions;
         debug() << notifier->watchedClass() << "birthday: insertions:" << insertions;
     }
+
+    processNotificationQueues();
+}
+
+void
+CDBirthdayController::processNotificationQueues()
+{
+    QSet<QContactLocalId> birthdayChangedIds;
+
+    processNotifications(mDeleteNotifications, birthdayChangedIds);
+    processNotifications(mInsertNotifications, birthdayChangedIds);
+
+    if (isDebugEnabled()) {
+        debug() << "changed birthdates: " << birthdayChangedIds.count() << birthdayChangedIds;
+    }
+}
+
+void
+CDBirthdayController::processNotifications(QList<TrackerChangeNotifier::Quad> &notifications,
+                                           QSet<QContactLocalId> &propertyChanges)
+{
+    foreach (const TrackerChangeNotifier::Quad &quad, notifications) {
+        // TODO: Query the nco:birthDate ID from tracker.
+        if (quad.predicate == 165) {
+            propertyChanges += quad.subject;
+        }
+    }
+
+    // Remove the processed notifications.
+    notifications.clear();
 }

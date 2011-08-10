@@ -27,6 +27,7 @@
 #include <QObject>
 #include <QList>
 #include <QtSparqlTrackerExtensions/TrackerChangeNotifier>
+#include <QContactId>
 
 QTM_USE_NAMESPACE
 
@@ -41,6 +42,11 @@ public:
 private Q_SLOTS:
     void onGraphChanged(const QList<TrackerChangeNotifier::Quad> &deletions,
                         const QList<TrackerChangeNotifier::Quad> &insertions);
+
+private:
+    void processNotificationQueues();
+    void processNotifications(QList<TrackerChangeNotifier::Quad> &notifications,
+                              QSet<QContactLocalId> &propertyChanges);
 
 private:
     QList<TrackerChangeNotifier::Quad> mDeleteNotifications;
