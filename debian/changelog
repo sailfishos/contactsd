@@ -1,3 +1,9 @@
+contactsd (1.0.2-1) unstable; urgency=low
+
+  * Fixes: NB#273095 - Import signals are not emitted if account has 0 contacts
+
+ -- Adrien Bustany <adrien.bustany@nokia.com>  Fri, 12 Aug 2011 09:58:00 +0300
+
 contactsd (1.0.1-1) unstable; urgency=low
 
   * Fixes: NB#266778 - UI performance lag when changing network connection
