@@ -1,6 +1,8 @@
+#! /bin/sh
+
 # This file is part of Contacts daemon
 #
-# Copyright (c) 2010-2011 Nokia Corporation and/or its subsidiary(-ies).
+# Copyright (c) 2011 Nokia Corporation and/or its subsidiary(-ies).
 #
 # Contact:  Nokia Corporation (info@qt.nokia.com)
 #
@@ -20,25 +22,40 @@
 # Alternatively, this file may be used in accordance with the terms and
 # conditions contained in a signed written agreement between you and Nokia.
 
-TEMPLATE = subdirs
-CONFIG += ordered
+set -e
 
-SUBDIRS += libtelepathy ut_birthdayplugin ut_telepathyplugin
+cleanup ()
+{
+  kill $contactsd_pid
+  tracker-control -r > /dev/null
+}
+trap cleanup INT HUP TERM
 
-UNIT_TESTS += ut_birthdayplugin ut_telepathyplugin
+tracker-control -r > /dev/null
+/usr/lib/tracker/tracker-store >/dev/null 2>&1 &
 
-testxml.target = tests.xml
-testxml.commands = sh $$PWD/mktests.sh $$UNIT_TESTS >$@ || rm -f $@
-testxml.depends = $$UNIT_TESTS
+sleep 3
 
-install_testxml.files = $$testxml.target
-install_testxml.path = $$PREFIX/share/contactsd-tests
-install_testxml.depends = $$testxml.target
-install_testxml.CONFIG = no_check_exist
+# Set the language manually since the key is missing in scratchbox
+gconftool-2 --type string --set /meegotouch/i18n/language en
 
-INSTALLS += install_testxml
+UNITTEST="$@"
 
-QMAKE_EXTRA_TARGETS += testxml
-QMAKE_DISTCLEAN += $$testxml.target
+# Start Contacts Daemon in background and wait a few seconds for it to launch
+export CONTACTSD_PLUGINS_DIRS=@PLUGINDIR@
+export CONTACTSD_DIRECT_GC=1
+# We load only the needed plugins (to avoid eg. voicemail creating contacts), and
+# still keep MfE since it crashes when unloaded before init() is called
+@BINDIR@/contactsd --plugins birthday,MfeSyncPlugin --log-console >contactsd.log 2>&1 &
+contactsd_pid=$!
 
-POST_TARGETDEPS += $$testxml.target
+sleep 5
+
+$UNITTEST
+
+e=$?
+
+trap - INT HUP TERM
+cleanup
+
+exit $e

@@ -38,6 +38,11 @@ plugins/telepathy/buddymanagementadaptor.h
 
 tests/tests.xml
 tests/mktests.sh
+tests/ut_birthdayplugin/check-ut_birthdayplugin-wrapper.sh
+tests/ut_birthdayplugin/check-with-daemon.sh
+tests/ut_birthdayplugin/ut_birthdayplugin
+tests/ut_birthdayplugin/ut_birthdayplugin-wrapper.sh
+tests/ut_birthdayplugin/with-daemon.sh
 tests/ut_contactsd/ut_contactsd
 tests/ut_telepathyplugin/buddymanagementinterface.cpp
 tests/ut_telepathyplugin/buddymanagementinterface.h
@@ -50,5 +55,3 @@ tests/ut_telepathyplugin/with-daemon.sh
 
 src/contactsimportprogressadaptor.cpp
 src/contactsimportprogressadaptor.h
-
-

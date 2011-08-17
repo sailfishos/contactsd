@@ -20,25 +20,23 @@
 # Alternatively, this file may be used in accordance with the terms and
 # conditions contained in a signed written agreement between you and Nokia.
 
-TEMPLATE = subdirs
-CONFIG += ordered
+check_daemon.target = check-with-daemon.sh
+check_daemon.depends = $$PWD/with-daemon.sh.in
+check_daemon.commands = \
+    sed -e "s,@BINDIR@,$$TOP_BUILDDIR/src,g" \
+        -e "s,@PLUGINDIR@,$$TOP_BUILDDIR/plugins/birthday,g" \
+    $< > $@ && chmod +x $@ || rm -f $@
 
-SUBDIRS += libtelepathy ut_birthdayplugin ut_telepathyplugin
+check_wrapper.target = check-ut_birthdayplugin-wrapper.sh
+check_wrapper.depends = $$PWD/ut_birthdayplugin-wrapper.sh.in
+check_wrapper.commands = \
+    sed -e "s,@SCRIPTDIR@,$$PWD,g" \
+        -e "s,@BINDIR@,$$PWD,g" \
+        -e "s,@WITH_DAEMON@,$$check_daemon.target,g" \
+    $< > $@ && chmod +x $@ || rm -f $@
 
-UNIT_TESTS += ut_birthdayplugin ut_telepathyplugin
+check.depends = $$TARGET check_wrapper check_daemon
+check.commands = sh $$check_wrapper.target
 
-testxml.target = tests.xml
-testxml.commands = sh $$PWD/mktests.sh $$UNIT_TESTS >$@ || rm -f $@
-testxml.depends = $$UNIT_TESTS
-
-install_testxml.files = $$testxml.target
-install_testxml.path = $$PREFIX/share/contactsd-tests
-install_testxml.depends = $$testxml.target
-install_testxml.CONFIG = no_check_exist
-
-INSTALLS += install_testxml
-
-QMAKE_EXTRA_TARGETS += testxml
-QMAKE_DISTCLEAN += $$testxml.target
-
-POST_TARGETDEPS += $$testxml.target
+QMAKE_EXTRA_TARGETS += check_wrapper check_daemon check
+QMAKE_CLEAN += $$check_daemon.target $$check_wrapper.target
