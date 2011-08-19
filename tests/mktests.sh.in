@@ -29,7 +29,7 @@ srcdir=`cd "$srcdir" && pwd`
 
 cat <<EOF
 <testdefinition version="0.1">
-  <suite name="$package">
+  <suite name="$package" timeout="600">
     <description>Unit and regression tests for Contacts Daemon</description>
 EOF
 
