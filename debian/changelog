@@ -1,3 +1,9 @@
+contactsd (1.0.3-1) unstable; urgency=low
+
+  * Fixes the ut_telepathyplugin test
+
+ -- Adrien Bustany <adrien.bustany@nokia.com>  Fri, 19 Aug 2011 16:16:00 +0300
+
 contactsd (1.0.2-2) unstable; urgency=low
 
   * Fixes: NB#277045 - Import signals are not emitted if account has 0 contacts
