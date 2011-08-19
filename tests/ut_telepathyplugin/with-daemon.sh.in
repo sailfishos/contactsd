@@ -31,7 +31,8 @@ cleanup ()
 }
 trap cleanup INT HUP TERM
 
-tracker-control -rs > /dev/null
+tracker-control -r > /dev/null
+/usr/lib/tracker/tracker-store >/dev/null 2>&1 &
 
 # Start the unit test in background so it register the AM
 "$@" &
