@@ -45,7 +45,9 @@ ut_pid=$!
 # Start Contacts Daemon in background
 export CONTACTSD_PLUGINS_DIRS=@PLUGINDIR@
 export CONTACTSD_DIRECT_GC=1
-@BINDIR@/contactsd &
+# We load only the needed plugins (to avoid eg. voicemail creating contacts), and
+# still keep MfE since it crashes when unloaded before init() is called
+@BINDIR@/contactsd --plugins telepathy,garbage-collector,MfeSyncPlugin &
 contactsd_pid=$!
 
 # wait for unit test to finish
