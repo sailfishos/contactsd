@@ -1019,7 +1019,7 @@ static CDTpQueryBuilder createGarbageCollectorBuilder()
     Exists e;
     Graph g(privateGraph);
     Variable dataObject;
-    d.addData(dataObject, aValue, nfo::FileDataObject::resource());
+    d.addData(dataObject, aValue, rdfs::Resource::resource());
     g.addPattern(dataObject, aValue, nfo::FileDataObject::resource());
     e.addPattern(imAddressVar, nco::imAvatar::resource(), dataObject);
     d.addRestriction(g);
