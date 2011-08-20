@@ -1,3 +1,9 @@
+contactsd (1.0.4-1) unstable; urgency=low
+
+  * Properly delete avatars in GC query
+
+ -- Adrien Bustany <adrien.bustany@nokia.com>  Sat, 20 Aug 2011 20:05:00 +0300
+
 contactsd (1.0.3-1) unstable; urgency=low
 
   * Fixes the ut_telepathyplugin test
