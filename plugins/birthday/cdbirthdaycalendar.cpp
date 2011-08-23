@@ -47,15 +47,20 @@ CDBirthdayCalendar::CDBirthdayCalendar(QObject *parent) :
     mCalendar = mKCal::ExtendedCalendar::Ptr(new mKCal::ExtendedCalendar(KDateTime::Spec::LocalZone()));
     mStorage = mKCal::ExtendedCalendar::defaultStorage(mCalendar);
 
+    MLocale * const locale = new MLocale(this);
+
+    if (not locale->isInstalledTrCatalog(QLatin1String("calendar"))) {
+        locale->installTrCatalog(QLatin1String("calendar"));
+    }
+
+    locale->connectSettings();
+    connect(locale, SIGNAL(settingsChanged()), this, SLOT(onLocaleChanged()));
+
+    MLocale::setDefault(*locale);
+
     mStorage->open();
 
     if (mStorage->notebook(calNotebookID).isNull()) {
-        MLocale locale;
-        if (not locale.isInstalledTrCatalog(QLatin1String("calendar"))) {
-            locale.installTrCatalog(QLatin1String("calendar"));
-            MLocale::setDefault(locale);
-        }
-
         mKCal::Notebook::Ptr nb = mKCal::Notebook::Ptr(new mKCal::Notebook(calNotebookID,
                                                                            qtTrId("qtn_caln_birthdays"),
                                                                            QLatin1String(""),
@@ -69,6 +74,10 @@ CDBirthdayCalendar::CDBirthdayCalendar(QObject *parent) :
                                                                            QLatin1String(""),
                                                                            0));
         mStorage->addNotebook(nb);
+    } else {
+        // Force calendar name update, if a locale change happened while
+        // contactsd was not running
+        onLocaleChanged();
     }
 }
 
@@ -185,4 +194,23 @@ QDate CDBirthdayCalendar::birthdayDate(const QContact &contact)
     }
 
     return event->dtStart().date();
+}
+
+void CDBirthdayCalendar::onLocaleChanged()
+{
+    mKCal::Notebook::Ptr notebook = mStorage->notebook(calNotebookID);
+
+    if (notebook == 0) {
+        warning() << Q_FUNC_INFO << "Calendar not found while changing locale";
+        return;
+    }
+
+    const QString name = qtTrId("qtn_caln_birthdays");
+
+    debug() << Q_FUNC_INFO << "Updating calendar name to" << name;
+    notebook->setName(name);
+
+    if (not mStorage->updateNotebook(notebook)) {
+        warning() << Q_FUNC_INFO << "Could not save calendar";
+    }
 }

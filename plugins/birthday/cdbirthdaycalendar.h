@@ -52,6 +52,9 @@ public:
 
     QDate birthdayDate(const QContact &contact);
 
+private Q_SLOTS:
+    void onLocaleChanged();
+
 private:
     mKCal::ExtendedCalendar::Ptr mCalendar;
     mKCal::ExtendedStorage::Ptr mStorage;
