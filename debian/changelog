@@ -1,3 +1,9 @@
+contactsd (1.0.5-1) unstable; urgency=low
+
+  * Use SIGTERM to kill contactsd in unit tests
+
+ -- Adrien Bustany <adrien.bustany@nokia.com>  Thu, 25 Aug 2011 15:27:00 +0300
+
 contactsd (1.0.4-1) unstable; urgency=low
 
   * Properly delete avatars in GC query
