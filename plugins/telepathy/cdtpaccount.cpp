@@ -143,6 +143,13 @@ void CDTpAccount::setConnection(const Tp::ConnectionPtr &connection)
     mHasRoster = false;
 
     if (connection) {
+        /* If the connection has no roster, no need to bother with sync signals */
+        if (not (connection->actualFeatures().contains(Tp::Connection::FeatureRoster))) {
+            debug() << "Account" << mAccount->objectPath() << "has no roster, not emitting sync signals";
+
+            return;
+        }
+
         /* If this is the first time account gets a connection, report we are
          * importing. Note that connection could still be CONNECTING so it is
          * not sure we'll actually import anything. */

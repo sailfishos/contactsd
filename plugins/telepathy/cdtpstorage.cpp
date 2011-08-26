@@ -25,6 +25,7 @@
 
 #include <TelepathyQt4/AvatarData>
 #include <TelepathyQt4/ContactCapabilities>
+#include <TelepathyQt4/ContactManager>
 #include <TelepathyQt4/ConnectionCapabilities>
 #include <qtcontacts-tracker/phoneutils.h>
 #include <qtcontacts-tracker/garbagecollector.h>
@@ -1191,9 +1192,22 @@ void CDTpStorage::createAccount(CDTpAccountPtr accountWrapper)
     }
 
     CDTpAccountsSparqlQuery *query = new CDTpAccountsSparqlQuery(accountWrapper, builder, this);
-    connect(query,
-            SIGNAL(finished(CDTpSparqlQuery *)),
-            SLOT(onSyncOperationEnded(CDTpSparqlQuery *)));
+
+    const Tp::ConnectionPtr accountConnection = accountWrapper->account()->connection();
+
+    // We will only get the contacts now if the roster is ready. If the roster is not ready,
+    // we should not emit syncEnded when the query ends since we won't have saved any contact
+    if (not accountConnection.isNull()
+     && (accountConnection->actualFeatures().contains(Tp::Connection::FeatureRoster))
+     && (accountConnection->contactManager()->state() == Tp::ContactListStateSuccess)) {
+        connect(query,
+                SIGNAL(finished(CDTpSparqlQuery *)),
+                SLOT(onSyncOperationEnded(CDTpSparqlQuery *)));
+    } else {
+        connect(query,
+                SIGNAL(finished(CDTpSparqlQuery *)),
+                SLOT(onSparqlQueryFinished(CDTpSparqlQuery*)));
+    }
 }
 
 void CDTpStorage::updateAccount(CDTpAccountPtr accountWrapper,

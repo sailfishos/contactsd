@@ -60,7 +60,8 @@ CDTpController::CDTpController(QObject *parent) : QObject(parent)
                            << Tp::Account::FeatureAvatar
                            << Tp::Account::FeatureCapabilities);
     Tp::ConnectionFactoryPtr connectionFactory = Tp::ConnectionFactory::create(bus,
-            Tp::Features() << Tp::Connection::FeatureCore
+            Tp::Features() << Tp::Connection::FeatureConnected
+                           << Tp::Connection::FeatureCore
                            << Tp::Connection::FeatureRoster);
     Tp::ChannelFactoryPtr channelFactory = Tp::ChannelFactory::create(bus);
     Tp::ContactFactoryPtr contactFactory = Tp::ContactFactory::create(
