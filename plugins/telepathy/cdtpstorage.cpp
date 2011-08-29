@@ -1281,9 +1281,9 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper)
         builder = syncNoRosterAccountsContactsBuilder(accounts);
     }
 
-    /* If it is not the first time account gets a roster, or if account has
-     * no contacts, execute query without notify import progress */
-    if (!accountWrapper->isNewAccount() || accountWrapper->contacts().isEmpty()) {
+    /* If it is not the first time account gets a roster, execute query without
+       notifying import progress */
+    if (!accountWrapper->isNewAccount()) {
         CDTpSparqlQuery *query = new CDTpSparqlQuery(builder, this);
         connect(query,
                 SIGNAL(finished(CDTpSparqlQuery *)),
