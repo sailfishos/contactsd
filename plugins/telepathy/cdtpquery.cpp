@@ -90,13 +90,15 @@ CDTpSparqlQuery::CDTpSparqlQuery(const CDTpQueryBuilder &builder, QObject *paren
 
     QSparqlConnection &connection = BasePlugin::sparqlConnection();
     mResult = connection.exec(builder.sparqlQuery());
-    mResult->setParent(this);
 
     if (not mResult) {
         warning() << Q_FUNC_INFO << " - QSparqlConnection::exec() == 0";
         deleteLater();
         return;
     }
+
+    mResult->setParent(this);
+
     if (mResult->hasError()) {
         warning() << Q_FUNC_INFO << mResult->lastError().message();
         deleteLater();
