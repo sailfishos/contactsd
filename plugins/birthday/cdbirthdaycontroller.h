@@ -28,6 +28,7 @@
 
 #include <QContact>
 #include <QContactAbstractRequest>
+#include <QContactFetchRequest>
 #include <QContactManager>
 
 #include <QtSparql>
@@ -52,10 +53,17 @@ private Q_SLOTS:
     void onGraphChanged(const QList<TrackerChangeNotifier::Quad> &deletions,
                         const QList<TrackerChangeNotifier::Quad> &insertions);
     void onFetchRequestStateChanged(QContactAbstractRequest::State newState);
+    void onFullSyncRequestStateChanged(QContactAbstractRequest::State newState);
 
 private:
     void fetchTrackerIds();
+    bool stampFileExists();
+    void createStampFile();
+    QString stampFilePath() const;
+    void updateAllBirthdays();
     void connectChangeNotifier();
+    bool processFetchRequest(QContactFetchRequest * const fetchRequest,
+                             QContactAbstractRequest::State newState);
     void processNotificationQueues();
     void processNotifications(QList<TrackerChangeNotifier::Quad> &notifications,
                               QSet<QContactLocalId> &propertyChanges,

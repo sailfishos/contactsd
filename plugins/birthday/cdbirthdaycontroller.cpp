@@ -25,10 +25,15 @@
 #include "cdbirthdaycalendar.h"
 #include "debug.h"
 
+#include <QDesktopServices>
+#include <QDir>
+#include <QFile>
+
 #include <cubi.h>
 #include <ontologies.h>
 
 #include <QContactBirthday>
+#include <QContactDetailFilter>
 #include <QContactFetchRequest>
 #include <QContactLocalIdFilter>
 
@@ -60,7 +65,15 @@ CDBirthdayController::CDBirthdayController(QSparqlConnection &connection,
 
     fetchTrackerIds();
 
-    mCalendar = new CDBirthdayCalendar(this);
+    if (not stampFileExists()) {
+        // Delete the calendar database.
+        mCalendar = new CDBirthdayCalendar(true, this);
+
+        updateAllBirthdays();
+    } else {
+        // Use the existing calendar database.
+        mCalendar = new CDBirthdayCalendar(false, this);
+    }
 }
 
 CDBirthdayController::~CDBirthdayController()
@@ -96,6 +109,68 @@ CDBirthdayController::fetchTrackerIds()
     }
 
     connect(result.take(), SIGNAL(finished()), this, SLOT(onTrackerIdsFetched()));
+}
+
+bool CDBirthdayController::stampFileExists()
+{
+    const QFile cacheFile(stampFilePath(), this);
+
+    return cacheFile.exists();
+}
+
+void CDBirthdayController::createStampFile()
+{
+    QFile cacheFile(stampFilePath(), this);
+
+    if (not cacheFile.exists()) {
+        if (not cacheFile.open(QIODevice::WriteOnly)) {
+            warning() << Q_FUNC_INFO << "Unable to create birthday plugin stamp file "
+                                     << cacheFile.fileName() << " with error " << cacheFile.errorString();
+        } else {
+            cacheFile.close();
+        }
+    }
+}
+
+QString CDBirthdayController::stampFilePath() const
+{
+    QString cacheLocation = QDir::cleanPath(QDesktopServices::storageLocation(QDesktopServices::CacheLocation));
+
+    if (cacheLocation.isEmpty()) {
+        cacheLocation = QDir::home().filePath(QLatin1String(".cache"));
+    }
+
+    return cacheLocation.append(QLatin1String("/contactsd/calendar.stamp"));
+}
+
+void
+CDBirthdayController::updateAllBirthdays()
+{
+    QContactFetchHint fetchHint;
+    static const QStringList detailDefinitions = QStringList() << QContactBirthday::DefinitionName
+                                                               << QContactDisplayLabel::DefinitionName;
+    fetchHint.setDetailDefinitionsHint(detailDefinitions);
+
+    // Filter on any contact with a birthday.
+    QContactDetailFilter fetchFilter;
+    fetchFilter.setDetailDefinitionName(QContactBirthday::DefinitionName);
+
+    QContactFetchRequest * const fetchRequest = new QContactFetchRequest(this);
+    fetchRequest->setManager(mManager);
+    fetchRequest->setFetchHint(fetchHint);
+    fetchRequest->setFilter(fetchFilter);
+
+    connect(fetchRequest,
+            SIGNAL(stateChanged(QContactAbstractRequest::State)),
+            SLOT(onFullSyncRequestStateChanged(QContactAbstractRequest::State)));
+
+    if (not fetchRequest->start()) {
+        warning() << Q_FUNC_INFO << "Unable to start contact birthdays fetch request";
+        delete fetchRequest;
+        return;
+    }
+
+    debug() << "Contact birthdays fetch request started";
 }
 
 void
@@ -170,13 +245,39 @@ void CDBirthdayController::onGraphChanged(const QList<TrackerChangeNotifier::Qua
 }
 
 void
+CDBirthdayController::onFullSyncRequestStateChanged(QContactAbstractRequest::State newState)
+{
+    QContactFetchRequest * const fetchRequest = qobject_cast<QContactFetchRequest*>(sender());
+
+    if (not processFetchRequest(fetchRequest, newState)) {
+        return;
+    }
+
+    updateBirthdays(fetchRequest->contacts());
+
+    // Create the stamp file only after a successful full sync.
+    createStampFile();
+}
+
+void
 CDBirthdayController::onFetchRequestStateChanged(QContactAbstractRequest::State newState)
 {
     QContactFetchRequest * const fetchRequest = qobject_cast<QContactFetchRequest*>(sender());
 
+    if (not processFetchRequest(fetchRequest, newState)) {
+        return;
+    }
+
+    updateBirthdays(fetchRequest->contacts());
+}
+
+bool
+CDBirthdayController::processFetchRequest(QContactFetchRequest * const fetchRequest,
+                                          QContactAbstractRequest::State newState)
+{
     if (fetchRequest == 0) {
         warning() << Q_FUNC_INFO << "Invalid fetch request";
-        return;
+        return false;
     }
 
     switch (newState) {
@@ -184,9 +285,9 @@ CDBirthdayController::onFetchRequestStateChanged(QContactAbstractRequest::State 
         break;
     case QContactAbstractRequest::CanceledState:
         fetchRequest->deleteLater();
-        return;
+        return false;
     default:
-        return;
+        return false;
     }
 
     fetchRequest->deleteLater();
@@ -196,10 +297,10 @@ CDBirthdayController::onFetchRequestStateChanged(QContactAbstractRequest::State 
     if (fetchRequest->error() != QContactManager::NoError) {
         warning() << Q_FUNC_INFO << "Error during birthday contact fetch request, code: "
                   << fetchRequest->error();
-        return;
+        return false;
     }
 
-    updateBirthdays(fetchRequest->contacts());
+    return true;
 }
 
 void

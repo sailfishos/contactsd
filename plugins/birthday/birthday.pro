@@ -21,7 +21,8 @@
 # conditions contained in a signed written agreement between you and Nokia.
 
 TEMPLATE = lib
-QT -= gui
+# gui is needed for QDesktopServices
+QT += gui
 
 CONFIG += plugin qtsparql qtsparql-tracker-extensions qtcontacts_extensions_tracker cubi-0.1-tracker-0.10-ontologies meegotouch mkcal
 

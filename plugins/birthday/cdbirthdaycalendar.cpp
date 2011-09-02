@@ -39,7 +39,8 @@ using namespace Contactsd;
 const QLatin1String calNotebookID("b1376da7-5555-1111-2222-227549c4e570");
 const QLatin1String calIDExtension(" com.nokia.birthday");
 
-CDBirthdayCalendar::CDBirthdayCalendar(QObject *parent) :
+CDBirthdayCalendar::CDBirthdayCalendar(bool fullSync,
+                                       QObject *parent) :
     QObject(parent),
     mCalendar(0),
     mStorage(0)
@@ -60,24 +61,21 @@ CDBirthdayCalendar::CDBirthdayCalendar(QObject *parent) :
 
     mStorage->open();
 
-    if (mStorage->notebook(calNotebookID).isNull()) {
-        mKCal::Notebook::Ptr nb = mKCal::Notebook::Ptr(new mKCal::Notebook(calNotebookID,
-                                                                           qtTrId("qtn_caln_birthdays"),
-                                                                           QLatin1String(""),
-                                                                           QLatin1String("#ff0000"),
-                                                                           false, // Not shared.
-                                                                           true, // Is master.
-                                                                           false, // Not synced to Ovi.
-                                                                           false, // Writable.
-                                                                           true, // Visible.
-                                                                           QLatin1String("Birthday-Nokia"),
-                                                                           QLatin1String(""),
-                                                                           0));
-        mStorage->addNotebook(nb);
+    mKCal::Notebook::Ptr notebook = mStorage->notebook(calNotebookID);
+
+    if (notebook.isNull()) {
+        notebook = createNotebook();
+        mStorage->addNotebook(notebook);
     } else {
-        // Force calendar name update, if a locale change happened while
-        // contactsd was not running
-        onLocaleChanged();
+        // Clear the calendar database if and only if restoring from a backup.
+        if (fullSync) {
+            mStorage->deleteNotebook(notebook);
+            notebook = createNotebook();
+            mStorage->addNotebook(notebook);
+        } else {
+            // Force calendar name update, if a locale change happened while contactsd was not running.
+            onLocaleChanged();
+        }
     }
 }
 
@@ -88,6 +86,22 @@ CDBirthdayCalendar::~CDBirthdayCalendar()
     }
 
     debug() << "Destroyed birthday calendar";
+}
+
+mKCal::Notebook::Ptr CDBirthdayCalendar::createNotebook()
+{
+    return mKCal::Notebook::Ptr(new mKCal::Notebook(calNotebookID,
+                                                    qtTrId("qtn_caln_birthdays"),
+                                                    QLatin1String(""),
+                                                    QLatin1String("#ff0000"),
+                                                    false, // Not shared.
+                                                    true, // Is master.
+                                                    false, // Not synced to Ovi.
+                                                    false, // Writable.
+                                                    true, // Visible.
+                                                    QLatin1String("Birthday-Nokia"),
+                                                    QLatin1String(""),
+                                                    0));
 }
 
 void CDBirthdayCalendar::updateBirthday(const QContact &contact)

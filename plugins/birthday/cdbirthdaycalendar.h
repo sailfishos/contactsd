@@ -39,7 +39,8 @@ class CDBirthdayCalendar : public QObject
 
 public:
     //! Constructor.
-    explicit CDBirthdayCalendar(QObject *parent = 0);
+    explicit CDBirthdayCalendar(bool fullSync,
+                                QObject *parent = 0);
     ~CDBirthdayCalendar();
 
     //! Updates and saves Birthday of \a contact to calendar.
@@ -51,6 +52,9 @@ public:
     void deleteBirthday(QContactLocalId id);
 
     QDate birthdayDate(const QContact &contact);
+
+private:
+    mKCal::Notebook::Ptr createNotebook();
 
 private Q_SLOTS:
     void onLocaleChanged();
