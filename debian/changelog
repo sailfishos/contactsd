@@ -1,3 +1,9 @@
+contactsd (1.0.7-1) unstable; urgency=low
+
+  * Fixes: NB#277722 - OTC-Imported contacts amounts are wrong in synchronization report
+
+ -- Adrien Bustany <adrien.bustany@nokia.com>  Fri, 09 Sep 2011 17:08:11 +0300
+
 contactsd (1.0.6-1) unstable; urgency=low
 
   * Fixes: NB#279211 - <coverity> defects from contactsd/1.0.3-1_0m6
