@@ -58,6 +58,8 @@ Q_SIGNALS:
     void importEnded(const QString &service, const QString &account,
                      int contactsAdded, int contactsRemoved, int contactsMerged);
     void error(int code, const QString &message);
+    // Emitted to inform that import timeout should be extended
+    void importAlive();
 };
 
 } // Contactsd

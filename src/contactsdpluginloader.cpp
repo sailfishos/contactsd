@@ -36,6 +36,8 @@ using namespace Contactsd;
 
 // import timeout is 5 minutes
 const int IMPORT_TIMEOUT = 5 * 60 * 1000;
+// alive check timeout is 30 seconds
+const int ALIVE_TIMEOUT = 30 * 1000;
 
 class MsgHandlerGuard
 {
@@ -63,6 +65,7 @@ public:
 
 ContactsdPluginLoader::ContactsdPluginLoader()
     : mImportTimer(0)
+    , mCheckAliveTimer(0)
 {
     if (registerNotificationService()) {
         (void) new ContactsImportProgressAdaptor(this);
@@ -164,6 +167,8 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir, const QString
                 this, SLOT(onPluginImportEnded(const QString &, const QString &, int,int,int)));
         connect(basePlugin, SIGNAL(error(int, const QString &)),
                 this, SIGNAL(error(int, const QString &)));
+        connect(basePlugin, SIGNAL(importAlive()),
+                this, SLOT(onImportAlive()));
 
         basePlugin->init();
 
@@ -238,19 +243,55 @@ void ContactsdPluginLoader::onPluginImportEnded(const QString &service, const QS
         }
     } else {
         stopImportTimer();
+        stopCheckAliveTimer();
         Q_EMIT importEnded(mImportState.contactsAdded(), mImportState.contactsRemoved(),
                            mImportState.contactsMerged());
+    }
+}
+
+void ContactsdPluginLoader::onImportAlive()
+{
+    if (0 != mCheckAliveTimer && mCheckAliveTimer->isActive()) {
+        startImportTimer();
     }
 }
 
 void ContactsdPluginLoader::onImportTimeout()
 {
     debug() << Q_FUNC_INFO;
-
     stopImportTimer();
-    Q_EMIT importEnded(mImportState.contactsAdded(), mImportState.contactsRemoved(),
-                       mImportState.contactsMerged());
-    mImportState.timeout();
+    startCheckAliveTimer();
+}
+
+void ContactsdPluginLoader::startCheckAliveTimer()
+{
+    stopCheckAliveTimer();
+
+    mCheckAliveTimer = new QTimer(this);
+    connect(mCheckAliveTimer, SIGNAL(timeout()),
+            this, SLOT(onCheckAliveTimeout()));
+    mCheckAliveTimer->start(ALIVE_TIMEOUT);
+}
+
+void ContactsdPluginLoader::stopCheckAliveTimer()
+{
+    if (0 == mCheckAliveTimer)
+        return;
+
+    mCheckAliveTimer->stop();
+    delete mCheckAliveTimer;
+    mCheckAliveTimer = 0;
+}
+
+void ContactsdPluginLoader::onCheckAliveTimeout()
+{
+    stopCheckAliveTimer();
+
+    if (0 == mImportTimer) {
+        Q_EMIT importEnded(mImportState.contactsAdded(), mImportState.contactsRemoved(),
+                           mImportState.contactsMerged());
+        mImportState.timeout();
+    }
 }
 
 void ContactsdPluginLoader::startImportTimer()

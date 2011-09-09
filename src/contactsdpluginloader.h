@@ -65,10 +65,14 @@ private Q_SLOTS:
     void onPluginImportEnded(const QString &service, const QString &account,
                              int contactsAdded, int contactsRemoved, int contactsMerged);
     void onImportTimeout();
+    void onImportAlive();
+    void onCheckAliveTimeout();
 
 private:
     void startImportTimer();
     void stopImportTimer();
+    void startCheckAliveTimer();
+    void stopCheckAliveTimer();
     QString pluginName(Contactsd::BasePlugin *plugin);
 
     typedef QMap<QString, QPluginLoader *> PluginStore;
@@ -76,6 +80,7 @@ private:
     ImportState mImportState;
 
     QTimer *mImportTimer;
+    QTimer *mCheckAliveTimer;
 };
 
 #endif
