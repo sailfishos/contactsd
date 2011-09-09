@@ -98,6 +98,7 @@ private:
 
 private:
     Tp::AccountPtr mAccount;
+    Tp::ConnectionPtr mCurrentConnection;
     QHash<QString, CDTpContactPtr> mContacts;
     QStringList mContactsToAvoid;
     bool mHasRoster;

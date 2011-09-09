@@ -36,6 +36,7 @@ using namespace Contactsd;
 CDTpAccount::CDTpAccount(const Tp::AccountPtr &account, const QStringList &toAvoid, bool newAccount, QObject *parent)
     : QObject(parent),
       mAccount(account),
+      mCurrentConnection(account->connection()),
       mContactsToAvoid(toAvoid),
       mHasRoster(false),
       mNewAccount(newAccount),
@@ -141,6 +142,7 @@ void CDTpAccount::setConnection(const Tp::ConnectionPtr &connection)
 
     mContacts.clear();
     mHasRoster = false;
+    mCurrentConnection = connection;
 
     if (connection) {
         /* If the connection has no roster, no need to bother with sync signals */
