@@ -193,21 +193,42 @@ void CDBirthdayCalendar::deleteBirthday(QContactLocalId id)
 
 QDate CDBirthdayCalendar::birthdayDate(const QContact &contact)
 {
+    KCalCore::Event::Ptr event = calendarEvent(contact);
+
+    if (event.isNull()) {
+        return QDate();
+    }
+
+    return event->dtStart().date();
+}
+
+QString CDBirthdayCalendar::summary(const QContact &contact)
+{
+    KCalCore::Event::Ptr event = calendarEvent(contact);
+
+    if (event.isNull()) {
+        return QString();
+    }
+
+    return event->summary();
+}
+
+KCalCore::Event::Ptr CDBirthdayCalendar::calendarEvent(const QContact &contact)
+{
     const QString cId = makeCalendarId(contact.localId());
 
     if (not mStorage->load(cId)) {
         warning() << Q_FUNC_INFO << "Unable to load event from calendar";
-        return QDate();
+        return KCalCore::Event::Ptr();
     }
 
     KCalCore::Event::Ptr event = mCalendar->event(cId);
 
     if (event.isNull()) {
         warning() << Q_FUNC_INFO << "Not found in calendar";
-        return QDate();
     }
 
-    return event->dtStart().date();
+    return event;
 }
 
 void CDBirthdayCalendar::onLocaleChanged()

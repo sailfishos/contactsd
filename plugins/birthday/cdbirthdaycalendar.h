@@ -46,15 +46,16 @@ public:
     //! Updates and saves Birthday of \a contact to calendar.
     void updateBirthday(const QContact &contact);
 
-    QString makeCalendarId(QContactLocalId id) const;
-
     //! Deletes \a contact birthday from calendar.
     void deleteBirthday(QContactLocalId id);
 
     QDate birthdayDate(const QContact &contact);
+    QString summary(const QContact &contact);
 
 private:
     mKCal::Notebook::Ptr createNotebook();
+    QString makeCalendarId(QContactLocalId id) const;
+    KCalCore::Event::Ptr calendarEvent(const QContact &contact);
 
 private Q_SLOTS:
     void onLocaleChanged();

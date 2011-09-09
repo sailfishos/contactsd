@@ -34,6 +34,7 @@
 
 #include <QContactBirthday>
 #include <QContactDetailFilter>
+#include <QContactDisplayLabel>
 #include <QContactFetchRequest>
 #include <QContactLocalIdFilter>
 
@@ -386,23 +387,27 @@ CDBirthdayController::updateBirthdays(const QList<QContact> &changedBirthdays)
 {
     foreach (const QContact &contact, changedBirthdays) {
         const QContactBirthday contactBirthday = contact.detail<QContactBirthday>();
+        const QContactDisplayLabel contactDisplayLabel = contact.detail<QContactDisplayLabel>();
         const QDate calendarBirthday = mCalendar->birthdayDate(contact);
+        const QString calendarSummary = mCalendar->summary(contact);
 
-        // birthDate was changed on the contact, so update the calendar.
-        if (not contactBirthday.date().isNull() && contactBirthday.date() != calendarBirthday) {
+        // Display label or birthdate was removed from the contact, so delete it from the calendar.
+        if (contactDisplayLabel.label().isNull() || contactBirthday.date().isNull()) {
             if (isDebugEnabled()) {
-                debug() << "Contact with calendar birthday: " << contactBirthday.date()
-                        << "changed details to: " << contact << ", so update the calendar event";
-            }
-
-            mCalendar->updateBirthday(contact);
-        // birthDate was removed from the contact, so delete it from the calendar.
-        } else if (contactBirthday.date().isNull() && not calendarBirthday.isNull()) {
-            if (isDebugEnabled()) {
-                debug() << "Contact: " << contact << " removed birthday, so delete the calendar event";
+                debug() << "Contact: " << contact << " removed birthday or displayLabel, so delete the calendar event";
             }
 
             mCalendar->deleteBirthday(contact.localId());
+        // Display label or birthdate was changed on the contact, so update the calendar.
+        } else if ((contactDisplayLabel.label() != calendarSummary) ||
+                   (contactBirthday.date() != calendarBirthday)) {
+            if (isDebugEnabled()) {
+                debug() << "Contact with calendar birthday: " << contactBirthday.date()
+                        << " and calendar displayLabel: " << calendarSummary
+                        << " changed details to: " << contact << ", so update the calendar event";
+            }
+
+            mCalendar->updateBirthday(contact);
         }
     }
 }
