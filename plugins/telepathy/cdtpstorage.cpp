@@ -648,28 +648,108 @@ static CDTpQueryBuilder createAccountsBuilder(const QList<CDTpAccountPtr> &accou
     return builder;
 }
 
-static CDTpQueryBuilder createContactsBuilder(const QList<CDTpContactPtr> &contacts)
+static CDTpQueryBuilder updateContactsInfoBuilder(const QList<CDTpContactPtr> &contacts,
+                                                  const QHash<QString, CDTpContact::Changes> &changes = QHash<QString, CDTpContact::Changes>())
 {
     CDTpQueryBuilder builder;
 
-    // Ensure all imAddress exists and are linked from imAccount
+    QStringList deleteInfoAddresses;
+    QList<CDTpContactPtr> updateInfoContacts;
+
+    Q_FOREACH (const CDTpContactPtr contactWrapper, contacts) {
+        const QString address = imAddress(contactWrapper);
+        const QHash<QString, CDTpContact::Changes>::ConstIterator contactChanges = changes.find(address);
+
+        if (contactChanges == changes.constEnd()) {
+            warning() << "Internal error: unknown changes for" << address;
+            continue;
+        }
+
+        // Contact info needs to be deleted for existing contacts that had it changed
+        if (contactChanges.value() != CDTpContact::Added && (contactChanges.value() & CDTpContact::Information)) {
+            deleteInfoAddresses.append(address);
+        }
+
+        // and it needs to be updated for new contacts, or existing contacts that had it changed (CDTpContact::Added
+        // sets CDTpContact::Information to 1)
+        if (contactChanges.value() & CDTpContact::Information) {
+            updateInfoContacts.append(contactWrapper);
+        }
+    }
+
+    // Delete ContactInfo for the contacts that had it updated
+    if (!deleteInfoAddresses.isEmpty()) {
+        Delete d;
+        d.addRestriction(imContactVar, imAddressChain, imAddressVar);
+        d.setFilter(Filter(Functions::in.apply(Functions::str.apply(imAddressVar),
+                                               LiteralValue(deleteInfoAddresses))));
+        addRemoveContactInfo(d, imAddressVar, imContactVar);
+        builder.append(d);
+    }
+
+    Q_FOREACH (const CDTpContactPtr &contactWrapper, updateInfoContacts) {
+        builder.append(createContactInfoBuilder(contactWrapper));
+    }
+
+    return builder;
+}
+
+static CDTpQueryBuilder createContactsBuilder(const QList<CDTpContactPtr> &contacts,
+                                              const QHash<QString, CDTpContact::Changes> &changes = QHash<QString, CDTpContact::Changes>())
+{
+    CDTpQueryBuilder builder;
+
+    // nco:imCapability is multi valued, so we have to explicitely delete before
+    // updating it (at least until we don't have null support in Tracker)
+    QStringList capsDeleteAddresses;
+
+    // Ensure all imAddress exist and are linked from imAccount for new contacts
     Insert i(Insert::Replace);
     Graph g(privateGraph);
     Q_FOREACH (const CDTpContactPtr contactWrapper, contacts) {
         CDTpAccountPtr accountWrapper = contactWrapper->accountWrapper();
+        const QString contactAddress = imAddress(contactWrapper);
+        const QHash<QString, CDTpContact::Changes>::ConstIterator contactChanges = changes.find(contactAddress);
+
+        if (contactChanges == changes.constEnd()) {
+            warning() << "Internal error: Unknown changes for" << contactAddress;
+            continue;
+        }
 
         const Value imAddress = literalIMAddress(contactWrapper);
-        g.addPattern(imAddress, aValue, nco::IMAddress::resource());
-        g.addPattern(imAddress, nco::imID::resource(), LiteralValue(contactWrapper->contact()->id()));
-        g.addPattern(imAddress, nco::imProtocol::resource(), LiteralValue(accountWrapper->account()->protocolName()));
 
-        const Value imAccount = literalIMAccount(accountWrapper);
-        g.addPattern(imAccount, nco::hasIMContact::resource(), imAddress);
+        // If it's a new contact in the roster, we need to create an IMAddress for it
+        if (contactChanges.value() == CDTpContact::Added) {
+            g.addPattern(imAddress, aValue, nco::IMAddress::resource());
+            g.addPattern(imAddress, nco::imID::resource(), LiteralValue(contactWrapper->contact()->id()));
+            g.addPattern(imAddress, nco::imProtocol::resource(), LiteralValue(accountWrapper->account()->protocolName()));
+
+            const Value imAccount = literalIMAccount(accountWrapper);
+            g.addPattern(imAccount, nco::hasIMContact::resource(), imAddress);
+        } else {
+            // Else, if the capabilities changed we need to first delete the old one
+            // explicitly
+            if ((contactChanges.value() & CDTpContact::Capabilities) && (contactChanges.value() != CDTpContact::Added)) {
+                capsDeleteAddresses.append(contactAddress);
+            }
+        }
 
         // Add mutable properties except for ContactInfo
-        addContactChanges(g, imAddress, CDTpContact::All, contactWrapper->contact());
+        addContactChanges(g,
+                          imAddress,
+                          contactChanges.value(),
+                          contactWrapper->contact());
     }
     i.addData(g);
+
+    // Delete the nco:imCapability where needed
+    if (!capsDeleteAddresses.isEmpty()) {
+        Delete d;
+        deleteProperty(d, imAddressVar, nco::imCapability::resource());
+        d.setFilter(Functions::in.apply(imAddressVar, LiteralValue(capsDeleteAddresses)));
+        builder.append(d);
+    }
+
     builder.append(i);
 
     // Ensure all imAddresses are bound to a PersonContact
@@ -696,11 +776,6 @@ static CDTpQueryBuilder createContactsBuilder(const QList<CDTpContactPtr> &conta
     e.addPattern(imContactVar, imAddressChain, imAddressVar);
     i.setFilter(Functions::not_.apply(Filter(e)));
     builder.append(i);
-
-    // Add ContactInfo seperately because we need to bind to the PersonContact
-    Q_FOREACH (const CDTpContactPtr contactWrapper, contacts) {
-        builder.append(createContactInfoBuilder(contactWrapper));
-    }
 
     return builder;
 }
@@ -828,43 +903,52 @@ static CDTpQueryBuilder syncRosterAccountsContactsBuilder(const QList<CDTpAccoun
         bool purgeContacts = false)
 {
     QList<CDTpContactPtr> allContacts;
+    QHash<QString, CDTpContact::Changes> allChanges;
+
+    // The obsolete contacts are the one we have cached, but that are not in
+    // the roster anymore.
+    QStringList obsoleteAddresses;
+
     Q_FOREACH (const CDTpAccountPtr &accountWrapper, accounts) {
+        const QString accountPath = accountWrapper->account()->objectPath();
+        const QHash<QString, CDTpContact::Changes> changes = accountWrapper->rosterChanges();
+
         allContacts << accountWrapper->contacts();
-    }
 
-    /* Delete the hasIMContact property on IMAccounts (except for self contact)
-     * then sync all contacts (that will add back hasIMContact for them). After
-     * that we can purge all imAddresses not bound to an IMAccount anymore.
-     *
-     * Also remove imCapability from imAddresses because it is multi-valued */
-    CDTpQueryBuilder builder;
-    Delete d;
-    d.addData(imAccountVar, nco::hasIMContact::resource(), imAddressVar);
-    d.addRestriction(imAccountVar, nco::hasIMContact::resource(), imAddressVar);
-    d.setFilter(Filter(Functions::and_.apply(
-            Functions::notIn.apply(Functions::str.apply(imAddressVar), literalIMAddressList(accounts)),
-            Functions::in.apply(Functions::str.apply(imAccountVar), literalIMAccountList(accounts)))));
-    deleteProperty(d, imAddressVar, nco::imCapability::resource());
-    builder.append(d);
+        for (QHash<QString, CDTpContact::Changes>::ConstIterator it = changes.constBegin();
+             it != changes.constEnd(); ++it) {
+            const QString address = imAddress(accountPath, it.key());
 
-    /* Delete ContactInfo for those who know it */
-    QList<CDTpContactPtr> infoContacts;
-    Q_FOREACH (const CDTpContactPtr contactWrapper, allContacts) {
-        if (contactWrapper->isInformationKnown()) {
-            infoContacts << contactWrapper;
+            // If the contact was deleted, we just mark it for deletion in Tracker
+            // and don't need to add it to the global changes hash, since it's not
+            // in allContacts anyway
+            if (it.value() == CDTpContact::Deleted) {
+                obsoleteAddresses.append(address);
+                continue;
+            }
+
+            // We always update contact presence since this method is called after
+            // a presence change
+            allChanges.insert(address, it.value() | CDTpContact::Presence);
         }
     }
-    if (!infoContacts.isEmpty()) {
+
+    CDTpQueryBuilder builder;
+    // Remove the contacts that are not in the roster anymore (we actually just
+    // "disconnect" them from the IMAccount and they'll get garbage collected)
+    if (!obsoleteAddresses.isEmpty()) {
         Delete d;
-        d.addRestriction(imContactVar, imAddressChain, imAddressVar);
-        d.setFilter(Filter(Functions::in.apply(Functions::str.apply(imAddressVar), literalIMAddressList(infoContacts))));
-        addRemoveContactInfo(d, imAddressVar, imContactVar);
+        d.addData(imAccountVar, nco::hasIMContact::resource(), imAddressVar);
+        d.addRestriction(imAccountVar, nco::hasIMContact::resource(), imAddressVar);
+        d.setFilter(Filter(Functions::in.apply(Functions::str.apply(imAddressVar),
+                                               LiteralValue(QStringList(obsoleteAddresses)))));
         builder.append(d);
     }
 
     /* Now create all contacts */
     if (!allContacts.isEmpty()) {
-        builder.append(createContactsBuilder(allContacts));
+        builder.append(createContactsBuilder(allContacts, allChanges));
+        builder.append(updateContactsInfoBuilder(allContacts, allChanges));
 
         /* Update timestamp on all nco:PersonContact bound to this account */
         Insert i(Insert::Replace);
@@ -878,7 +962,7 @@ static CDTpQueryBuilder syncRosterAccountsContactsBuilder(const QList<CDTpAccoun
     }
 
     /* Purge IMAddresses not bound from an account anymore */
-    if (purgeContacts) {
+    if (purgeContacts && !obsoleteAddresses.isEmpty()) {
         builder.append(purgeContactsBuilder());
     }
 
@@ -1185,6 +1269,7 @@ void CDTpStorage::createAccount(CDTpAccountPtr accountWrapper)
     if (not accountWrapper->contacts().isEmpty()) {
         /* Create account's contacts */
         builder.append(createContactsBuilder(accountWrapper->contacts()));
+        builder.append(updateContactsInfoBuilder(accountWrapper->contacts()));
 
         /* Update timestamp on all nco:PersonContact bound to this account */
         Insert i(Insert::Replace);
@@ -1310,6 +1395,7 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper,
 
     if (!contactsAdded.isEmpty()) {
         builder.append(createContactsBuilder(contactsAdded));
+        builder.append(updateContactsInfoBuilder(contactsAdded));
 
         // Update nie:contentLastModified on all nco:PersonContact bound to contacts
         Insert i(Insert::Replace);
