@@ -66,6 +66,8 @@ public:
     void setContactsToAvoid(const QStringList &contactIds);
 
     void emitSyncEnded(int contactsAdded, int contactsRemoved);
+    QHash<QString, CDTpContact::Info> rosterCache() const;
+    void setRosterCache(const QHash<QString, CDTpContact::Info> &rosterCache);
 
 Q_SIGNALS:
     void changed(CDTpAccountPtr accountWrapper, CDTpAccount::Changes changes);
@@ -95,11 +97,13 @@ private:
     void setContactManager(const Tp::ContactManagerPtr &contactManager);
     CDTpContactPtr insertContact(const Tp::ContactPtr &contact);
     void maybeRequestExtraInfo(Tp::ContactPtr contact);
+    void makeRosterCache();
 
 private:
     Tp::AccountPtr mAccount;
     Tp::ConnectionPtr mCurrentConnection;
     QHash<QString, CDTpContactPtr> mContacts;
+    QHash<QString, CDTpContact::Info> mRosterCache;
     QStringList mContactsToAvoid;
     bool mHasRoster;
     bool mNewAccount;

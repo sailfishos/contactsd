@@ -119,6 +119,7 @@ void CDTpAccount::onAccountStateChanged()
 
     if (!isEnabled()) {
         setConnection(Tp::ConnectionPtr());
+        mRosterCache.clear();
     } else {
         /* Since contacts got removed when we disabled the account, we need
          * to threat this account as new now that it is enabled again */
@@ -139,6 +140,10 @@ void CDTpAccount::onAccountConnectionChanged(const Tp::ConnectionPtr &connection
 void CDTpAccount::setConnection(const Tp::ConnectionPtr &connection)
 {
     debug() << "Account" << mAccount->objectPath() << "- has connection:" << (connection != 0);
+
+    if (not mCurrentConnection.isNull()) {
+        makeRosterCache();
+    }
 
     mContacts.clear();
     mHasRoster = false;
@@ -225,6 +230,16 @@ void CDTpAccount::emitSyncEnded(int contactsAdded, int contactsRemoved)
         mImporting = false;
         Q_EMIT syncEnded(mAccount, contactsAdded, contactsRemoved);
     }
+}
+
+QHash<QString, CDTpContact::Info> CDTpAccount::rosterCache() const
+{
+    return mRosterCache;
+}
+
+void CDTpAccount::setRosterCache(const QHash<QString, CDTpContact::Info> &cache)
+{
+    mRosterCache = cache;
 }
 
 void CDTpAccount::onAllKnownContactsChanged(const Tp::Contacts &contactsAdded,
@@ -318,6 +333,15 @@ void CDTpAccount::maybeRequestExtraInfo(Tp::ContactPtr contact)
     if (!contact->isContactInfoKnown()) {
         debug() << contact->id() << "first seen: refresh ContactInfo";
         contact->refreshInfo();
+    }
+}
+
+void CDTpAccount::makeRosterCache()
+{
+    mRosterCache.clear();
+
+    Q_FOREACH (const CDTpContactPtr &ptr, mContacts) {
+        mRosterCache.insert(ptr->contact()->id(), ptr->info());
     }
 }
 
