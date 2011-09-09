@@ -156,6 +156,13 @@ static QString imAddress(const QString &accountPath)
     return tmpl.arg(accountPath);
 }
 
+static QString imAddress(const CDTpContactPtr &contactWrapper)
+{
+    const QString accountPath = contactWrapper->accountWrapper()->account()->objectPath();
+    const QString contactId = contactWrapper->contact()->id();
+    return imAddress(accountPath, contactId);
+}
+
 static QString imAccount(const QString &accountPath)
 {
     static const QString tmpl = QString::fromLatin1("telepathy:%1");
@@ -169,9 +176,7 @@ static ResourceValue literalIMAddress(const QString &accountPath, const QString 
 
 static ResourceValue literalIMAddress(const CDTpContactPtr &contactWrapper)
 {
-    const QString accountPath = contactWrapper->accountWrapper()->account()->objectPath();
-    const QString contactId = contactWrapper->contact()->id();
-    return ResourceValue(imAddress(accountPath, contactId));
+    return ResourceValue(imAddress(contactWrapper));
 }
 
 static ResourceValue literalIMAddress(const CDTpAccountPtr &accountWrapper)
