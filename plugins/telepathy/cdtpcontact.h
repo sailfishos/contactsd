@@ -46,7 +46,10 @@ public:
         Information    = (1 << 5),
         Blocked       = (1 << 6),
         Visibility    = (1 << 7),
-        All           = (1 << 8) -1
+        All           = (1 << 8) -1,
+        // Special values
+        Added         = (1 << 9) - 1,
+        Deleted       = 1 << 10
     };
     Q_DECLARE_FLAGS(Changes, Change)
 
