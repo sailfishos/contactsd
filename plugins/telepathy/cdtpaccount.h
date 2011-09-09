@@ -57,6 +57,7 @@ public:
 
     Tp::AccountPtr account() const { return mAccount; }
     QList<CDTpContactPtr> contacts() const;
+    QHash<QString, CDTpContact::Changes> rosterChanges() const;
     CDTpContactPtr contact(const QString &id) const;
     bool hasRoster() const { return mHasRoster; };
     bool isNewAccount() const { return mNewAccount; };

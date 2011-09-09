@@ -82,6 +82,39 @@ QList<CDTpContactPtr> CDTpAccount::contacts() const
     return contacts;
 }
 
+QHash<QString, CDTpContact::Changes> CDTpAccount::rosterChanges() const
+{
+    QHash<QString, CDTpContact::Changes> changes;
+
+    QSet<QString> cachedAddresses = mRosterCache.keys().toSet();
+    QSet<QString> currentAddresses;
+
+    Q_FOREACH (CDTpContactPtr contact, contacts()) {
+        const QString contactId = contact->contact()->id();
+        const QHash<QString, CDTpContact::Info>::ConstIterator it = mRosterCache.find(contactId);
+
+        currentAddresses.insert(contactId);
+
+        if (it == mRosterCache.constEnd()) {
+            qDebug() << "No cached contact for" << contactId;
+            changes.insert(contactId, CDTpContact::Added);
+            continue;
+        }
+
+        changes.insert(contactId, contact->info().diff(*it));
+    }
+
+    cachedAddresses.subtract(currentAddresses);
+
+    // The remaining addresses after the subtraction are those which were in
+    // the cache but are not in the contact list anymore
+    Q_FOREACH (const QString &id, cachedAddresses) {
+        changes.insert(id, CDTpContact::Deleted);
+    }
+
+    return changes;
+}
+
 void CDTpAccount::setContactsToAvoid(const QStringList &contactIds)
 {
     mContactsToAvoid = contactIds;
