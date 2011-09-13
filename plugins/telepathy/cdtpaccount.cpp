@@ -28,6 +28,8 @@
 #include <TelepathyQt4/Profile>
 
 #include "cdtpaccount.h"
+#include "cdtpaccountcacheloader.h"
+#include "cdtpaccountcachewriter.h"
 #include "cdtpcontact.h"
 #include "debug.h"
 
@@ -63,11 +65,22 @@ CDTpAccount::CDTpAccount(const Tp::AccountPtr &account, const QStringList &toAvo
             SIGNAL(stateChanged(bool)),
             SLOT(onAccountStateChanged()));
 
+    if (not newAccount) {
+        CDTpAccountCacheLoader loader(this);
+        loader.run();
+    }
+
     setConnection(mAccount->connection());
 }
 
 CDTpAccount::~CDTpAccount()
 {
+    if (not mCurrentConnection.isNull()) {
+        makeRosterCache();
+    }
+
+    CDTpAccountCacheWriter writer(this);
+    writer.run();
 }
 
 QList<CDTpContactPtr> CDTpAccount::contacts() const
@@ -153,6 +166,7 @@ void CDTpAccount::onAccountStateChanged()
     if (!isEnabled()) {
         setConnection(Tp::ConnectionPtr());
         mRosterCache.clear();
+        CDTpAccountCacheWriter(this).run();
     } else {
         /* Since contacts got removed when we disabled the account, we need
          * to threat this account as new now that it is enabled again */
