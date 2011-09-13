@@ -156,4 +156,12 @@ private:
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(CDTpContact::Changes)
 
+QDataStream& operator<<(QDataStream &stream, const Tp::Presence &presence);
+QDataStream& operator<<(QDataStream &stream, const Tp::ContactInfoField &field);
+QDataStream& operator<<(QDataStream &stream, const CDTpContact::Info &info);
+
+QDataStream& operator>>(QDataStream &stream, Tp::Presence &presence);
+QDataStream& operator>>(QDataStream &stream, Tp::ContactInfoField &field);
+QDataStream& operator>>(QDataStream &stream, CDTpContact::Info &info);
+
 #endif // CDTPCONTACT_H

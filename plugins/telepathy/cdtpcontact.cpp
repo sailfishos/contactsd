@@ -388,3 +388,107 @@ void CDTpContact::setRemoved(bool value)
     updateVisibility();
 }
 
+QDataStream& operator<<(QDataStream &stream, const Tp::Presence &presence)
+{
+    stream << presence.type();
+    stream << presence.status();
+    stream << presence.statusMessage();
+
+    return stream;
+}
+
+QDataStream& operator<<(QDataStream &stream, const Tp::ContactInfoField &field)
+{
+    stream << field.fieldName;
+    stream << field.parameters;
+    stream << field.fieldValue;
+
+    return stream;
+}
+
+QDataStream& operator<<(QDataStream &stream, const CDTpContact::Info &info)
+{
+    stream << info.alias();
+    stream << info.presence();
+    stream << info.capabilities();
+    stream << info.avatarPath();
+    stream << info.isSubscriptionStateKnown();
+    stream << (uint)info.subscriptionState();
+    stream << info.isPublishStateKnown();
+    stream << (uint)info.publishState();
+    stream << info.isContactInfoKnown();
+    stream << info.infoFields();
+    stream << info.isVisible();
+
+    return stream;
+}
+
+QDataStream& operator>>(QDataStream &stream, Tp::Presence &presence)
+{
+    uint type;
+    QString status;
+    QString statusMessage;
+
+    stream >> type;
+    stream >> status;
+    stream >> statusMessage;
+
+    presence.setStatus((Tp::ConnectionPresenceType)type, status, statusMessage);
+
+    return stream;
+}
+
+QDataStream& operator>>(QDataStream &stream, Tp::ContactInfoField &field)
+{
+    stream >> field.fieldName;
+    stream >> field.parameters;
+    stream >> field.fieldValue;
+
+    return stream;
+}
+
+QDataStream& operator>>(QDataStream &stream, CDTpContact::Info &info)
+{
+    QString alias;
+    stream >> alias;
+    info.setAlias(alias);
+
+    Tp::Presence presence;
+    stream >> presence;
+    info.setPresence(presence);
+
+    int capabilities;
+    stream >> capabilities;
+    info.setCapabilities(capabilities);
+
+    bool isSubscriptionStateKnown;
+    stream >> isSubscriptionStateKnown;
+    info.setSubscriptionStateKnown(isSubscriptionStateKnown);
+
+    uint subscriptionState;
+    stream >> subscriptionState;
+    info.setSubscriptionState((Tp::Contact::PresenceState)subscriptionState);
+
+    bool isPublishStateKnown;
+    stream >> isPublishStateKnown;
+    info.setPublishStateKnown(isPublishStateKnown);
+
+    uint publishState;
+    stream >> publishState;
+    info.setPublishState((Tp::Contact::PresenceState)publishState);
+
+    bool isContactInfoKnown;
+    stream >> isContactInfoKnown;
+    info.setContactInfoKnown(isContactInfoKnown);
+
+    Tp::ContactInfoFieldList fields;
+    stream >> fields;
+    info.setInfoFields(fields);
+
+    bool isVisible;
+    stream >> isVisible;
+    info.setVisible(isVisible);
+
+    return stream;
+}
+
