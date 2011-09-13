@@ -1,3 +1,9 @@
+contactsd (1.0.8) unstable; urgency=low
+
+  * Change changelog to make integration happy
+
+ -- Adrien Bustany <adrien.bustany@nokia.com>  Tue, 13 Sep 2011 13:37:40 +0300
+
 contactsd (1.0.7-1) unstable; urgency=low
 
   * Fixes: NB#277722 - OTC-Imported contacts amounts are wrong in synchronization report
@@ -6,8 +12,8 @@ contactsd (1.0.7-1) unstable; urgency=low
 
 contactsd (1.0.6-1) unstable; urgency=low
 
-  * Fixes: NB#279211 - <coverity> defects from contactsd/1.0.3-1_0m6
-  * Fixes: NB#279086: importEnded() is not emitted when re-enabling a disabled account with 0 contacts
+  * Fixed: NB#279211 - <coverity> defects from contactsd/1.0.3-1_0m6
+  * Fixed: NB#279086: importEnded() is not emitted when re-enabling a disabled account with 0 contacts
   * TP plugin: Emit syncEnded signal with the roster was actually received and saved
 
  -- Adrien Bustany <adrien.bustany@nokia.com>  Fri, 02 Sep 2011 14:21:18 +0300
