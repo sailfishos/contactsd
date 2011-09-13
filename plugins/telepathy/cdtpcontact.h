@@ -27,6 +27,7 @@
 #include <QObject>
 
 #include <TelepathyQt4/Contact>
+#include <TelepathyQt4/Presence>
 #include <TelepathyQt4/Types>
 
 #include "types.h"
@@ -49,6 +50,70 @@ public:
     };
     Q_DECLARE_FLAGS(Changes, Change)
 
+    class InfoData;
+
+    class Info {
+    public:
+        enum Capability {
+            TextChats                     = (1 << 0),
+            StreamedMediaCalls            = (1 << 1),
+            StreamedMediaAudioCalls       = (1 << 2),
+            StreamedMediaAudioVideoCalls  = (1 << 3),
+            UpgradingStreamMediaCalls     = (1 << 4),
+            FileTransfers                 = (1 << 5),
+            StreamTubes                   = (1 << 6),
+            DBusTubes                     = (1 << 7)
+        };
+        // Q_DECLARE_FLAGS does not work for nested classes
+        typedef int Capabilities;
+
+    public:
+        Info();
+        Info(const CDTpContact *contact);
+
+        Info(const Info &other);
+        Info& operator=(const Info &other);
+
+        ~Info();
+
+    public:
+        QString alias() const;
+        void setAlias(const QString &alias);
+
+        Tp::Presence presence() const;
+        void setPresence(const Tp::Presence &presence);
+
+        int capabilities() const;
+        void setCapabilities(int capabilities);
+
+        QString avatarPath() const;
+        void setAvatarPath(const QString &avatarPath);
+
+        bool isSubscriptionStateKnown() const;
+        void setSubscriptionStateKnown(bool known);
+
+        Tp::Contact::PresenceState subscriptionState() const;
+        void setSubscriptionState(Tp::Contact::PresenceState state);
+
+        bool isPublishStateKnown() const;
+        void setPublishStateKnown(bool known);
+
+        Tp::Contact::PresenceState publishState() const;
+        void setPublishState(Tp::Contact::PresenceState state);
+
+        bool isContactInfoKnown() const;
+        void setContactInfoKnown(bool known);
+
+        Tp::ContactInfoFieldList infoFields() const;
+        void setInfoFields(const Tp::ContactInfoFieldList &fields);
+
+        bool isVisible() const;
+        void setVisible(bool visible);
+
+    private:
+        QSharedDataPointer<InfoData> d;
+    };
+
      CDTpContact(Tp::ContactPtr contact, CDTpAccount *accountWrapper);
     ~CDTpContact();
 
@@ -59,6 +124,8 @@ public:
     bool isVisible() const { return mVisible; }
     bool isAvatarKnown() const;
     bool isInformationKnown() const;
+
+    Info info() const;
 
 Q_SIGNALS:
     void changed(CDTpContactPtr contact, CDTpContact::Changes changes);

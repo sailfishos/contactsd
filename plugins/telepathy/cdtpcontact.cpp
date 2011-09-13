@@ -22,12 +22,217 @@
  **/
 
 #include <TelepathyQt4/AvatarData>
+#include <TelepathyQt4/ContactCapabilities>
 
 #include "cdtpaccount.h"
 #include "cdtpcontact.h"
 #include "debug.h"
 
 using namespace Contactsd;
+
+///////////////////////////////////////////////////////////////////////////////
+
+class CDTpContact::InfoData : public QSharedData
+{
+public:
+    InfoData();
+
+    QString alias;
+    Tp::Presence presence;
+    int capabilities;
+    QString avatarPath;
+    Tp::Contact::PresenceState subscriptionState;
+    Tp::Contact::PresenceState publishState;
+    Tp::ContactInfoFieldList infoFields;
+    bool isSubscriptionStateKnown : 1;
+    bool isPublishStateKnown : 1;
+    bool isContactInfoKnown : 1;
+    bool isVisible : 1;
+};
+
+CDTpContact::InfoData::InfoData()
+    : isSubscriptionStateKnown(false)
+    , isPublishStateKnown(false)
+    , isContactInfoKnown(false)
+    , isVisible(false)
+{}
+
+///////////////////////////////////////////////////////////////////////////////
+
+static CDTpContact::Info::Capabilities makeInfoCaps(const Tp::CapabilitiesBase &capabilities)
+{
+    CDTpContact::Info::Capabilities caps = 0;
+
+    if (capabilities.textChats()) {
+        caps |= CDTpContact::Info::TextChats;
+    }
+    if (capabilities.streamedMediaCalls()) {
+        caps |= CDTpContact::Info::StreamedMediaCalls;
+    }
+    if (capabilities.streamedMediaAudioCalls()) {
+        caps |= CDTpContact::Info::StreamedMediaAudioCalls;
+    }
+    if (capabilities.streamedMediaVideoCalls()) {
+        caps |= CDTpContact::Info::StreamedMediaAudioVideoCalls;
+    }
+    if (capabilities.upgradingStreamedMediaCalls()) {
+        caps |= CDTpContact::Info::UpgradingStreamMediaCalls;
+    }
+    if (capabilities.fileTransfers()) {
+        caps |= CDTpContact::Info::FileTransfers;
+    }
+
+    return caps;
+}
+
+CDTpContact::Info::Info()
+    :d(new CDTpContact::InfoData)
+{
+}
+
+CDTpContact::Info::Info(const CDTpContact *contact)
+    : d(new CDTpContact::InfoData)
+{
+    const Tp::ContactPtr c = contact->contact();
+
+    d->alias = c->alias();
+    d->presence = c->presence();
+    d->capabilities = makeInfoCaps(c->capabilities());
+    d->avatarPath = c->avatarData().fileName;
+    d->subscriptionState = c->subscriptionState();
+    d->publishState = c->publishState();
+    d->infoFields = c->infoFields().allFields();
+    d->isSubscriptionStateKnown = c->isSubscriptionStateKnown();
+    d->isPublishStateKnown = c->isPublishStateKnown();
+    d->isContactInfoKnown = c->isContactInfoKnown();
+    d->isVisible = contact->isVisible();
+}
+
+CDTpContact::Info::Info(const CDTpContact::Info &other)
+    : d(other.d)
+{
+}
+
+CDTpContact::Info& CDTpContact::Info::operator=(const CDTpContact::Info &other)
+{
+    return (d = other.d, *this);
+}
+
+CDTpContact::Info::~Info()
+{
+}
+
+QString CDTpContact::Info::alias() const
+{
+    return d->alias;
+}
+
+void CDTpContact::Info::setAlias(const QString &alias)
+{
+    d->alias = alias;
+}
+
+Tp::Presence CDTpContact::Info::presence() const
+{
+    return d->presence;
+}
+
+void CDTpContact::Info::setPresence(const Tp::Presence &presence)
+{
+    d->presence = presence;
+}
+
+int CDTpContact::Info::capabilities() const
+{
+    return d->capabilities;
+}
+
+void CDTpContact::Info::setCapabilities(int capabilities)
+{
+    d->capabilities = capabilities;
+}
+
+QString CDTpContact::Info::avatarPath() const
+{
+    return d->avatarPath;
+}
+
+void CDTpContact::Info::setAvatarPath(const QString &avatarPath)
+{
+    d->avatarPath = avatarPath;
+}
+
+bool CDTpContact::Info::isSubscriptionStateKnown() const
+{
+    return d->isSubscriptionStateKnown;
+}
+
+void CDTpContact::Info::setSubscriptionStateKnown(bool known)
+{
+    d->isSubscriptionStateKnown = known;
+}
+
+Tp::Contact::PresenceState CDTpContact::Info::subscriptionState() const
+{
+    return d->subscriptionState;
+}
+
+void CDTpContact::Info::setSubscriptionState(Tp::Contact::PresenceState state)
+{
+    d->subscriptionState = state;
+}
+
+bool CDTpContact::Info::isPublishStateKnown() const
+{
+    return d->isPublishStateKnown;
+}
+
+void CDTpContact::Info::setPublishStateKnown(bool known)
+{
+    d->isPublishStateKnown = known;
+}
+
+Tp::Contact::PresenceState CDTpContact::Info::publishState() const
+{
+    return d->publishState;
+}
+
+void CDTpContact::Info::setPublishState(Tp::Contact::PresenceState state)
+{
+    d->publishState = state;
+}
+
+bool CDTpContact::Info::isContactInfoKnown() const
+{
+    return d->isContactInfoKnown;
+}
+
+void CDTpContact::Info::setContactInfoKnown(bool known)
+{
+    d->isContactInfoKnown = known;
+}
+
+Tp::ContactInfoFieldList CDTpContact::Info::infoFields() const
+{
+    return d->infoFields;
+}
+
+void CDTpContact::Info::setInfoFields(const Tp::ContactInfoFieldList &fields)
+{
+    d->infoFields = fields;
+}
+
+bool CDTpContact::Info::isVisible() const
+{
+    return d->isVisible;
+}
+
+void CDTpContact::Info::setVisible(bool visible)
+{
+    d->isVisible = visible;
+}
+
+///////////////////////////////////////////////////////////////////////////////
 
 CDTpContact::CDTpContact(Tp::ContactPtr contact, CDTpAccount *accountWrapper)
     : QObject(),
@@ -96,6 +301,11 @@ bool CDTpContact::isAvatarKnown() const
 bool CDTpContact::isInformationKnown() const
 {
     return mContact->isContactInfoKnown();
+}
+
+CDTpContact::Info CDTpContact::info() const
+{
+    return Info(this);
 }
 
 void CDTpContact::onContactAliasChanged()
