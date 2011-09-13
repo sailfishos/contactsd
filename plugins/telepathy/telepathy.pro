@@ -40,6 +40,8 @@ INCLUDEPATH += $$TOP_SOURCEDIR/src
 DEFINES += ENABLE_DEBUG
 
 HEADERS  = cdtpaccount.h \
+    cdtpaccountcacheloader.h \
+    cdtpaccountcachewriter.h \
     types.h \
     cdtpcontact.h \
     cdtpcontroller.h \
@@ -49,6 +51,8 @@ HEADERS  = cdtpaccount.h \
     buddymanagementadaptor.h
 
 SOURCES  = cdtpaccount.cpp \
+    cdtpaccountcacheloader.cpp \
+    cdtpaccountcachewriter.cpp \
     cdtpcontact.cpp \
     cdtpcontroller.cpp \
     cdtpplugin.cpp \
