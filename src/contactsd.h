@@ -25,6 +25,7 @@
 #define CONTACTSD_H
 
 #include <QObject>
+#include <QSocketNotifier>
 #include <QStringList>
 
 class ContactsdPluginLoader;
@@ -40,8 +41,17 @@ public:
     void loadPlugins(const QStringList &plugins = QStringList());
     QStringList loadedPlugins() const;
 
+    // UNIX signal handlers
+    static void unixSignalHandler(int /* unused */);
+
+private Q_SLOTS:
+    // Qt signal handler
+    void onUnixSignalReceived();
+
 private:
     ContactsdPluginLoader *mLoader;
+    static int sigFd[2];
+    QSocketNotifier *mSignalNotifier;
 };
 
 #endif // CONTACTSDAEMON_H

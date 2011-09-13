@@ -29,6 +29,9 @@
 #include "contactsdpluginloader.h"
 #include "debug.h"
 
+#include <unistd.h>
+#include <sys/socket.h>
+
 using namespace Contactsd;
 
 /*!
@@ -62,10 +65,24 @@ using namespace Contactsd;
   \return A list of plugin names.
 */
 
+int ContactsDaemon::sigFd[2] = {0, 0};
+
 ContactsDaemon::ContactsDaemon(QObject *parent)
     : QObject(parent),
       mLoader(new ContactsdPluginLoader())
 {
+    // The UNIX signals call unixSignalHandler(), but that is not called
+    // through the main loop. To process signals in the mainloop correctly,
+    // we create a socket, and write a byte on one end when the UNIX signal
+    // handler is invoked. This will trigger the QSocketNotifier::activated
+    // signal (this time *through* the main loop) and call onUnixSignalReceived()
+    // from where we can ask the QApplication to quit.
+    if(::socketpair(AF_UNIX, SOCK_STREAM, 0, sigFd) != 0) {
+        warning() << "Could not setup UNIX signal handler";
+    }
+
+    mSignalNotifier = new QSocketNotifier(sigFd[1], QSocketNotifier::Read, this);
+    connect(mSignalNotifier, SIGNAL(activated(int)), SLOT(onUnixSignalReceived()));
 }
 
 ContactsDaemon::~ContactsDaemon()
@@ -81,4 +98,28 @@ void ContactsDaemon::loadPlugins(const QStringList &plugins)
 QStringList ContactsDaemon::loadedPlugins() const
 {
     return mLoader->loadedPlugins();
+}
+
+void ContactsDaemon::unixSignalHandler(int)
+{
+    // Write a byte on the socket to activate the socket listener
+    char a = 1;
+    ::write(sigFd[0], &a, sizeof(a));
+}
+
+void ContactsDaemon::onUnixSignalReceived()
+{
+    // Mask signals
+    mSignalNotifier->setEnabled(false);
+
+    // Empty the socket buffer
+    char dummy;
+    ::read(sigFd[1], &dummy, sizeof(dummy));
+
+    debug() << "Received quit signal";
+
+    QCoreApplication::quit();
+
+    // Unmask signals
+    mSignalNotifier->setEnabled(true);
 }

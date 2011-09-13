@@ -25,6 +25,8 @@
 #include <QDBusConnection>
 #include <QTimer>
 
+#include <signal.h>
+
 #include "contactsd.h"
 #include "debug.h"
 
@@ -56,8 +58,33 @@ static void usage()
     qDebug() << "  --help               Display this help and exit";
 }
 
+static void setupUnixSignalHandlers()
+{
+    struct sigaction sigterm, sigint;
+
+    sigterm.sa_handler = ContactsDaemon::unixSignalHandler;
+    sigemptyset(&sigterm.sa_mask);
+    sigterm.sa_flags |= SA_RESTART;
+
+    if (sigaction(SIGTERM, &sigterm, 0) > 0) {
+        qWarning() << "Could not setup signal handler for SIGTERM";
+        return;
+    }
+
+    sigint.sa_handler = ContactsDaemon::unixSignalHandler;
+    sigemptyset(&sigint.sa_mask);
+    sigint.sa_flags |= SA_RESTART;
+
+    if (sigaction(SIGINT, &sigint, 0) > 0) {
+        qWarning() << "Could not setup signal handler for SIGINT";
+        return;
+    }
+}
+
 int main(int argc, char **argv)
 {
+    setupUnixSignalHandlers();
+
     QCoreApplication app(argc, argv);
 
     QStringList plugins;
