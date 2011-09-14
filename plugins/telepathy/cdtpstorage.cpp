@@ -879,13 +879,6 @@ static CDTpQueryBuilder syncNoRosterAccountsContactsBuilder(const QList<CDTpAcco
             Functions::in.apply(Functions::str.apply(imAccountVar), literalIMAccountList(accounts)))));
     builder.append(i);
 
-    // Remove capabilities from all imAddresses
-    Delete d;
-    d.addRestriction(imAccountVar, nco::hasIMContact::resource(), imAddressVar);
-    d.setFilter(Filter(Functions::in.apply(Functions::str.apply(imAccountVar), literalIMAccountList(accounts))));
-    deleteProperty(d, imAddressVar, nco::imCapability::resource());
-    builder.append(d);
-
     // Add capabilities on all contacts for each account
     Q_FOREACH (const CDTpAccountPtr &accountWrapper, accounts) {
         Insert i;
