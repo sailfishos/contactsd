@@ -594,16 +594,23 @@ static void addContactChanges(PatternGroup &g,
     }
 }
 
+static void updateTimestamp(Insert &i, const Value &subject)
+{
+    const Value timestamp = literalTimeStamp();
+
+    Graph g(defaultGraph);
+    g.addPattern(subject, nie::contentLastModified::resource(), timestamp);
+    i.addData(g);
+}
+
 static CDTpQueryBuilder createAccountsBuilder(const QList<CDTpAccountPtr> &accounts)
 {
     CDTpQueryBuilder builder;
     Insert i(Insert::Replace);
 
-    Graph g(defaultGraph);
-    g.addPattern(nco::default_contact_me::resource(), nie::contentLastModified::resource(), literalTimeStamp());
-    i.addData(g);
+    updateTimestamp(i, nco::default_contact_me::resource());
 
-    g = Graph(privateGraph);
+    Graph g(privateGraph);
     Q_FOREACH (const CDTpAccountPtr &accountWrapper, accounts) {
         Tp::AccountPtr account = accountWrapper->account();
         const Value imAccount = literalIMAccount(accountWrapper);
@@ -758,9 +765,9 @@ static CDTpQueryBuilder createContactsBuilder(const QList<CDTpContactPtr> &conta
     BlankValue imContact(QString::fromLatin1("contact"));
     g.addPattern(imContact, aValue, nco::PersonContact::resource());
     g.addPattern(imContact, nie::contentCreated::resource(), literalTimeStamp());
-    g.addPattern(imContact, nie::contentLastModified::resource(), literalTimeStamp());
     g.addPattern(imContact, nie::generator::resource(), defaultGenerator);
     i.addData(g);
+    updateTimestamp(i, imContact);
     g = Graph(privateGraph);
     BlankValue affiliation(QString::fromLatin1("affiliation"));
     g.addPattern(imContact, nco::hasAffiliation::resource(), affiliation);
@@ -840,9 +847,7 @@ static CDTpQueryBuilder purgeContactsBuilder()
 
     /* Step 3 - Add back nie:contentLastModified for nco:PersonContact missing one */
     Insert i(Insert::Replace);
-    g = Graph(defaultGraph);
-    g.addPattern(imContactVar, nie::contentLastModified::resource(), literalTimeStamp());
-    i.addData(g);
+    updateTimestamp(i, imContactVar);
     i.addRestriction(imContactVar, aValue, nco::PersonContact::resource());
     e = Exists();
     v = Variable();
@@ -869,9 +874,7 @@ static CDTpQueryBuilder syncNoRosterAccountsContactsBuilder(const QList<CDTpAcco
     Graph g(privateGraph);
     addPresence(g, imAddressVar, unknownPresence());
     i.addData(g);
-    g = Graph(defaultGraph);
-    g.addPattern(imContactVar, nie::contentLastModified::resource(), literalTimeStamp());
-    i.addData(g);
+    updateTimestamp(i, imContactVar);
     i.addRestriction(imAccountVar, nco::hasIMContact::resource(), imAddressVar);
     i.addRestriction(imContactVar, imAddressChain, imAddressVar);
     i.setFilter(Filter(Functions::and_.apply(
@@ -945,9 +948,7 @@ static CDTpQueryBuilder syncRosterAccountsContactsBuilder(const QList<CDTpAccoun
 
         /* Update timestamp on all nco:PersonContact bound to this account */
         Insert i(Insert::Replace);
-        Graph g(defaultGraph);
-        g.addPattern(imContactVar, nie::contentLastModified::resource(), literalTimeStamp());
-        i.addData(g);
+        updateTimestamp(i, imContactVar);
         i.addRestriction(imAccountVar, nco::hasIMContact::resource(), imAddressVar);
         i.addRestriction(imContactVar, imAddressChain, imAddressVar);
         i.setFilter(Filter(Functions::in.apply(Functions::str.apply(imAccountVar), literalIMAccountList(accounts))));
@@ -1004,9 +1005,9 @@ static CDTpQueryBuilder syncDisabledAccountsContactsBuilder(const QList<CDTpAcco
     Insert i(Insert::Replace);
     Graph g(defaultGraph);
     Variable imId;
-    g.addPattern(imContactVar, nie::contentLastModified::resource(), literalTimeStamp());
     g.addPattern(imAddressVar, nco::imID::resource(), imId);
     i.addData(g);
+    updateTimestamp(i, imContactVar);
     g = Graph(privateGraph);
     g.addPattern(imAddressVar, nco::imID::resource(), imId);
     i.addRestriction(g);
@@ -1266,9 +1267,7 @@ void CDTpStorage::createAccount(CDTpAccountPtr accountWrapper)
 
         /* Update timestamp on all nco:PersonContact bound to this account */
         Insert i(Insert::Replace);
-        Graph g(defaultGraph);
-        g.addPattern(imContactVar, nie::contentLastModified::resource(), literalTimeStamp());
-        i.addData(g);
+        updateTimestamp(i, imContactVar);
         i.addRestriction(literalIMAccount(accountWrapper), nco::hasIMContact::resource(), imAddressVar);
         i.addRestriction(imContactVar, imAddressChain, imAddressVar);
         builder.append(i);
@@ -1301,11 +1300,9 @@ void CDTpStorage::updateAccount(CDTpAccountPtr accountWrapper,
     CDTpQueryBuilder builder;
 
     Insert i(Insert::Replace);
-    Graph g(defaultGraph);
-    g.addPattern(nco::default_contact_me::resource(), nie::contentLastModified::resource(), literalTimeStamp());
-    i.addData(g);
+    updateTimestamp(i, nco::default_contact_me::resource());
 
-    g = Graph(privateGraph);
+    Graph g(privateGraph);
     addAccountChanges(g, accountWrapper, changes);
     i.addData(g);
 
@@ -1392,9 +1389,7 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper,
 
         // Update nie:contentLastModified on all nco:PersonContact bound to contacts
         Insert i(Insert::Replace);
-        Graph g(defaultGraph);
-        g.addPattern(imContactVar, nie::contentLastModified::resource(), literalTimeStamp());
-        i.addData(g);
+        updateTimestamp(i, imContactVar);
         i.addRestriction(imContactVar, imAddressChain, imAddressVar);
         i.setFilter(Filter(Functions::in.apply(Functions::str.apply(imAddressVar), literalIMAddressList(contactsAdded))));
         builder.append(i);
@@ -1529,9 +1524,7 @@ void CDTpStorage::onUpdateQueueTimeout()
 
     // Update nie:contentLastModified on all nco:PersonContact bound to contacts
     i = Insert(Insert::Replace);
-    g = Graph(defaultGraph);
-    g.addPattern(imContactVar, nie::contentLastModified::resource(), literalTimeStamp());
-    i.addData(g);
+    updateTimestamp(i, imContactVar);
     i.addRestriction(imContactVar, imAddressChain, imAddressVar);
     i.setFilter(Filter(Functions::in.apply(Functions::str.apply(imAddressVar), literalIMAddressList(allContacts))));
     builder.append(i);
