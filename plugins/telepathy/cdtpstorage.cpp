@@ -594,13 +594,55 @@ static void addContactChanges(PatternGroup &g,
     }
 }
 
-static void updateTimestamp(Insert &i, const Value &subject)
+/* "Tagging" the signal means that we insert the timestamp first in contactsd
+ * and then replace it right away in the default graph. That way, the final
+ * data in Tracker is the same, but the GraphUpdated signal will contain the
+ * additional update in contactsd graph, which can be matched by other
+ * processes listening to change signals.
+ * Timestamp updates are "tagged" if they only concern a presence/capability
+ * update
+ */
+
+enum UpdateTimestampMode {
+    UntaggedSignalUpdate,
+    TaggedSignalUpdate
+};
+
+static void updateTimestamp(Insert &i, const Value &subject, UpdateTimestampMode mode = UntaggedSignalUpdate)
 {
     const Value timestamp = literalTimeStamp();
 
     Graph g(defaultGraph);
+
+    if (mode == TaggedSignalUpdate) {
+        g = Graph(privateGraph);
+        g.addPattern(subject, nie::contentLastModified::resource(), timestamp);
+        i.addData(g);
+
+        g = Graph(defaultGraph);
+    }
+
     g.addPattern(subject, nie::contentLastModified::resource(), timestamp);
     i.addData(g);
+}
+
+static Insert updateTimestampOnIMAddresses(const QStringList &imAddresses, UpdateTimestampMode mode = UntaggedSignalUpdate)
+{
+    Insert i(Insert::Replace);
+    updateTimestamp(i, imContactVar, mode);
+    i.addRestriction(imContactVar, imAddressChain, imAddressVar);
+    i.setFilter(Filter(Functions::in.apply(Functions::str.apply(imAddressVar), LiteralValue(imAddresses))));
+
+    return i;
+}
+
+static bool contactChangedPresenceOrCapsOnly(CDTpContact::Changes changes)
+{
+    // We mask out only Presence and Capabilities
+    static const CDTpContact::Changes significantChangeMask =
+            (CDTpContact::Changes)(CDTpContact::All ^ (CDTpContact::Presence | CDTpContact::Capabilities));
+
+    return ((changes & significantChangeMask) == 0);
 }
 
 static CDTpQueryBuilder createAccountsBuilder(const QList<CDTpAccountPtr> &accounts)
@@ -874,7 +916,8 @@ static CDTpQueryBuilder syncNoRosterAccountsContactsBuilder(const QList<CDTpAcco
     Graph g(privateGraph);
     addPresence(g, imAddressVar, unknownPresence());
     i.addData(g);
-    updateTimestamp(i, imContactVar);
+    // We only update the contact presence, so tag the signal
+    updateTimestamp(i, imContactVar, TaggedSignalUpdate);
     i.addRestriction(imAccountVar, nco::hasIMContact::resource(), imAddressVar);
     i.addRestriction(imContactVar, imAddressChain, imAddressVar);
     i.setFilter(Filter(Functions::and_.apply(
@@ -901,6 +944,12 @@ static CDTpQueryBuilder syncRosterAccountsContactsBuilder(const QList<CDTpAccoun
     QList<CDTpContactPtr> allContacts;
     QHash<QString, CDTpContact::Changes> allChanges;
 
+    // The two following lists partition the list of updated IMAddresses in two:
+    // the addresses for which only the presence/capabilities got updated, and
+    // the addresses for which more information was updated
+    QStringList onlyPresenceChangedAddresses;
+    QStringList infoChangedAddresses;
+
     // The obsolete contacts are the one we have cached, but that are not in
     // the roster anymore.
     QStringList obsoleteAddresses;
@@ -921,6 +970,12 @@ static CDTpQueryBuilder syncRosterAccountsContactsBuilder(const QList<CDTpAccoun
             if (it.value() == CDTpContact::Deleted) {
                 obsoleteAddresses.append(address);
                 continue;
+            }
+
+            if (contactChangedPresenceOrCapsOnly(it.value())) {
+                onlyPresenceChangedAddresses.append(address);
+            } else {
+                infoChangedAddresses.append(address);
             }
 
             // We always update contact presence since this method is called after
@@ -947,12 +1002,13 @@ static CDTpQueryBuilder syncRosterAccountsContactsBuilder(const QList<CDTpAccoun
         builder.append(updateContactsInfoBuilder(allContacts, allChanges));
 
         /* Update timestamp on all nco:PersonContact bound to this account */
-        Insert i(Insert::Replace);
-        updateTimestamp(i, imContactVar);
-        i.addRestriction(imAccountVar, nco::hasIMContact::resource(), imAddressVar);
-        i.addRestriction(imContactVar, imAddressChain, imAddressVar);
-        i.setFilter(Filter(Functions::in.apply(Functions::str.apply(imAccountVar), literalIMAccountList(accounts))));
-        builder.append(i);
+        if (not onlyPresenceChangedAddresses.isEmpty()) {
+            builder.append(updateTimestampOnIMAddresses(onlyPresenceChangedAddresses, TaggedSignalUpdate));
+        }
+
+        if (not infoChangedAddresses.isEmpty()) {
+            builder.append(updateTimestampOnIMAddresses(infoChangedAddresses));
+        }
     }
 
     /* Purge IMAddresses not bound from an account anymore */
@@ -1458,10 +1514,17 @@ void CDTpStorage::onUpdateQueueTimeout()
     QList<CDTpContactPtr> allContacts;
     QList<CDTpContactPtr> infoContacts;
     QList<CDTpContactPtr> capsContacts;
+
+    // Separate contacts for which we can emit a "tagged" signal and the others
+    QStringList onlyPresenceChangedAddresses;
+    QStringList infoChangedAddresses;
+
     QHash<CDTpContactPtr, CDTpContact::Changes>::const_iterator iter;
+
     for (iter = mUpdateQueue.constBegin(); iter != mUpdateQueue.constEnd(); iter++) {
         CDTpContactPtr contactWrapper = iter.key();
         CDTpContact::Changes changes = iter.value();
+        const QString address = imAddress(contactWrapper);
 
         // Skip the contact in case its account was deleted before this function
         // was invoked
@@ -1471,6 +1534,12 @@ void CDTpStorage::onUpdateQueueTimeout()
 
         if (!contactWrapper->isVisible()) {
             continue;
+        }
+
+        if (contactChangedPresenceOrCapsOnly(changes)) {
+            onlyPresenceChangedAddresses.append(address);
+        } else {
+            infoChangedAddresses.append(address);
         }
 
         allContacts << contactWrapper;
@@ -1523,11 +1592,13 @@ void CDTpStorage::onUpdateQueueTimeout()
     }
 
     // Update nie:contentLastModified on all nco:PersonContact bound to contacts
-    i = Insert(Insert::Replace);
-    updateTimestamp(i, imContactVar);
-    i.addRestriction(imContactVar, imAddressChain, imAddressVar);
-    i.setFilter(Filter(Functions::in.apply(Functions::str.apply(imAddressVar), literalIMAddressList(allContacts))));
-    builder.append(i);
+    if (not onlyPresenceChangedAddresses.isEmpty()) {
+        builder.append(updateTimestampOnIMAddresses(onlyPresenceChangedAddresses, TaggedSignalUpdate));
+    }
+
+    if (not infoChangedAddresses.isEmpty()) {
+        builder.append(updateTimestampOnIMAddresses(infoChangedAddresses));
+    }
 
     triggerGarbageCollector(builder, allContacts.count());
 
