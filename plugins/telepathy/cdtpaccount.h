@@ -92,6 +92,7 @@ private Q_SLOTS:
             CDTpContact::Changes changes);
     void onAllKnownContactsChanged(const Tp::Contacts &contactsAdded,
             const Tp::Contacts &contactsRemoved);
+    void onDisconnectTimeout();
 
 private:
     void setConnection(const Tp::ConnectionPtr &connection);
@@ -106,6 +107,7 @@ private:
     QHash<QString, CDTpContactPtr> mContacts;
     QHash<QString, CDTpContact::Info> mRosterCache;
     QStringList mContactsToAvoid;
+    QTimer mDisconnectTimeout;
     bool mHasRoster;
     bool mNewAccount;
     bool mImporting;

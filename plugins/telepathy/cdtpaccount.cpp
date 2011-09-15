@@ -33,6 +33,8 @@
 #include "cdtpcontact.h"
 #include "debug.h"
 
+static const int DisconnectGracePeriod = 30 * 1000; // ms
+
 using namespace Contactsd;
 
 CDTpAccount::CDTpAccount(const Tp::AccountPtr &account, const QStringList &toAvoid, bool newAccount, QObject *parent)
@@ -71,6 +73,11 @@ CDTpAccount::CDTpAccount(const Tp::AccountPtr &account, const QStringList &toAvo
     }
 
     setConnection(mAccount->connection());
+
+    mDisconnectTimeout.setInterval(DisconnectGracePeriod);
+    mDisconnectTimeout.setSingleShot(true);
+
+    connect(&mDisconnectTimeout, SIGNAL(timeout()), SLOT(onDisconnectTimeout()));
 }
 
 CDTpAccount::~CDTpAccount()
@@ -177,6 +184,19 @@ void CDTpAccount::onAccountStateChanged()
 void CDTpAccount::onAccountConnectionChanged(const Tp::ConnectionPtr &connection)
 {
     bool oldHasRoster = mHasRoster;
+
+    // If we got disconnected, but not on user request, give a grace period
+    // before actually updating Tracker, in case the connection comes back
+    // quickly
+    if (not connection.isNull()) {
+        mDisconnectTimeout.stop();
+    } else if (not mCurrentConnection.isNull() && mCurrentConnection->status() != Tp::ConnectionStatusDisconnected) {
+        debug() << "Lost connection for account" << mAccount->objectPath()
+                << ", giving a grace period of" << DisconnectGracePeriod << "ms";
+        mDisconnectTimeout.start();
+        return;
+    }
+
     setConnection(connection);
     if (oldHasRoster != mHasRoster) {
         Q_EMIT rosterChanged(CDTpAccountPtr(this));
@@ -221,6 +241,14 @@ void CDTpAccount::setConnection(const Tp::ConnectionPtr &connection)
          * report 0 contacts retrieved */
         emitSyncEnded(0, 0);
     }
+}
+
+void CDTpAccount::onDisconnectTimeout()
+{
+    // Reset the current connection, and call onAccountConnectionChanged with
+    // a null connection again to actually put the account offline
+    mCurrentConnection = Tp::ConnectionPtr();
+    onAccountConnectionChanged(Tp::ConnectionPtr());
 }
 
 void CDTpAccount::onContactListStateChanged(Tp::ContactListState state)
