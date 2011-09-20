@@ -232,6 +232,40 @@ void CDTpContact::Info::setVisible(bool visible)
     d->isVisible = visible;
 }
 
+CDTpContact::Changes CDTpContact::Info::diff(const CDTpContact::Info &other) const
+{
+    Changes changes = 0;
+
+    if (d->alias != other.alias())
+        changes |= CDTpContact::Alias;
+
+    // We only compare the relevant fields (status is not saved in Tracker, and isValid is irrelevant)
+    if (d->presence.type() != other.presence().type()
+     || d->presence.statusMessage() != other.presence().statusMessage())
+        changes |= CDTpContact::Presence;
+
+    if (d->capabilities != other.capabilities())
+        changes |= CDTpContact::Capabilities;
+
+    if (d->avatarPath != other.avatarPath())
+        changes |= CDTpContact::Avatar;
+
+    if (d->isSubscriptionStateKnown != other.isSubscriptionStateKnown()
+     || d->isPublishStateKnown != other.isPublishStateKnown()
+     || d->subscriptionState != other.subscriptionState()
+     || d->publishState != other.publishState())
+        changes |= CDTpContact::Authorization;
+
+    if (other.isContactInfoKnown()
+     && d->infoFields != other.infoFields())
+        changes |= CDTpContact::Information;
+
+    if (d->isVisible != other.isVisible())
+        changes |= CDTpContact::Visibility;
+
+    return changes;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
 CDTpContact::CDTpContact(Tp::ContactPtr contact, CDTpAccount *accountWrapper)

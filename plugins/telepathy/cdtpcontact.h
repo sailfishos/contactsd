@@ -110,6 +110,8 @@ public:
         bool isVisible() const;
         void setVisible(bool visible);
 
+        CDTpContact::Changes diff(const CDTpContact::Info &other) const;
+
     private:
         QSharedDataPointer<InfoData> d;
     };
