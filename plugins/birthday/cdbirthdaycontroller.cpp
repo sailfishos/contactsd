@@ -68,12 +68,12 @@ CDBirthdayController::CDBirthdayController(QSparqlConnection &connection,
 
     if (not stampFileExists()) {
         // Delete the calendar database.
-        mCalendar = new CDBirthdayCalendar(true, this);
+        mCalendar = new CDBirthdayCalendar(CDBirthdayCalendar::FullSync, this);
 
         updateAllBirthdays();
     } else {
         // Use the existing calendar database.
-        mCalendar = new CDBirthdayCalendar(false, this);
+        mCalendar = new CDBirthdayCalendar(CDBirthdayCalendar::Incremental, this);
     }
 }
 

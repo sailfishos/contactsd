@@ -38,7 +38,7 @@ using namespace Contactsd;
 // A random ID.
 const QLatin1String calNotebookId("b1376da7-5555-1111-2222-227549c4e570");
 
-CDBirthdayCalendar::CDBirthdayCalendar(bool fullSync, QObject *parent) :
+CDBirthdayCalendar::CDBirthdayCalendar(SyncMode syncMode, QObject *parent) :
     QObject(parent),
     mCalendar(0),
     mStorage(0)
@@ -66,13 +66,17 @@ CDBirthdayCalendar::CDBirthdayCalendar(bool fullSync, QObject *parent) :
         mStorage->addNotebook(notebook);
     } else {
         // Clear the calendar database if and only if restoring from a backup.
-        if (fullSync) {
+        switch(syncMode) {
+        case Incremental:
+            // Force calendar name update, if a locale change happened while contactsd was not running.
+            onLocaleChanged();
+            break;
+
+        case FullSync:
             mStorage->deleteNotebook(notebook);
             notebook = createNotebook();
             mStorage->addNotebook(notebook);
-        } else {
-            // Force calendar name update, if a locale change happened while contactsd was not running.
-            onLocaleChanged();
+            break;
         }
     }
 }

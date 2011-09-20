@@ -38,8 +38,13 @@ class CDBirthdayCalendar : public QObject
     Q_OBJECT
 
 public:
+    enum SyncMode {
+        Incremental,
+        FullSync
+    };
+
     //! Constructor.
-    explicit CDBirthdayCalendar(bool fullSync, QObject *parent = 0);
+    explicit CDBirthdayCalendar(SyncMode syncMode, QObject *parent = 0);
     ~CDBirthdayCalendar();
 
     //! Updates and saves Birthday of \a contact to calendar.
