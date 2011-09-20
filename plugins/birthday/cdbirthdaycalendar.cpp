@@ -36,11 +36,9 @@
 using namespace Contactsd;
 
 // A random ID.
-const QLatin1String calNotebookID("b1376da7-5555-1111-2222-227549c4e570");
-const QLatin1String calIDExtension(" com.nokia.birthday");
+const QLatin1String calNotebookId("b1376da7-5555-1111-2222-227549c4e570");
 
-CDBirthdayCalendar::CDBirthdayCalendar(bool fullSync,
-                                       QObject *parent) :
+CDBirthdayCalendar::CDBirthdayCalendar(bool fullSync, QObject *parent) :
     QObject(parent),
     mCalendar(0),
     mStorage(0)
@@ -61,7 +59,7 @@ CDBirthdayCalendar::CDBirthdayCalendar(bool fullSync,
 
     mStorage->open();
 
-    mKCal::Notebook::Ptr notebook = mStorage->notebook(calNotebookID);
+    mKCal::Notebook::Ptr notebook = mStorage->notebook(calNotebookId);
 
     if (notebook.isNull()) {
         notebook = createNotebook();
@@ -90,7 +88,7 @@ CDBirthdayCalendar::~CDBirthdayCalendar()
 
 mKCal::Notebook::Ptr CDBirthdayCalendar::createNotebook()
 {
-    return mKCal::Notebook::Ptr(new mKCal::Notebook(calNotebookID,
+    return mKCal::Notebook::Ptr(new mKCal::Notebook(calNotebookId,
                                                     qtTrId("qtn_caln_birthdays"),
                                                     QLatin1String(""),
                                                     QLatin1String("#ff0000"),
@@ -106,24 +104,29 @@ mKCal::Notebook::Ptr CDBirthdayCalendar::createNotebook()
 
 void CDBirthdayCalendar::updateBirthday(const QContact &contact)
 {
+    // Retrieve contact details.
     const QContactDisplayLabel displayName = contact.detail<QContactDisplayLabel>();
-    const QContactBirthday cBirthday = contact.detail<QContactBirthday>();
+    const QContactBirthday contactBirthday = contact.detail<QContactBirthday>();
 
-    if (displayName.isEmpty() || cBirthday.isEmpty()) {
+    if (displayName.isEmpty() || contactBirthday.isEmpty()) {
         warning() << Q_FUNC_INFO << "Contact without name or birthday, local ID: "
                   << contact.localId();
         return;
     }
 
-    const QString cId = makeCalendarId(contact.localId());
-    mStorage->load(cId);
-    KCalCore::Event::Ptr event = mCalendar->event(cId);
+    // Retrieve birthday event.
+    if (not mStorage->isValidNotebook(calNotebookId)) {
+        warning() << Q_FUNC_INFO << "Invalid notebook ID: " << calNotebookId;
+        return;
+    }
+
+    KCalCore::Event::Ptr event = calendarEvent(contact.localId());
 
     if (event.isNull()) {
         // Add a new event.
         event = KCalCore::Event::Ptr(new KCalCore::Event());
         event->startUpdates();
-        event->setUid(cId);
+        event->setUid(calendarEventId(contact.localId()));
         event->setAllDay(true);
 
         // Recurrence.
@@ -134,7 +137,7 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
         // Ensure events appear as birthdays in the calendar, NB#259710.
         event->setCategories(QStringList() << QLatin1String("BIRTHDAY"));
 
-        if (not mCalendar->addEvent(event, calNotebookID)) {
+        if (not mCalendar->addEvent(event, calNotebookId)) {
             warning() << Q_FUNC_INFO << "Failed to add event to calendar";
             return;
         }
@@ -144,19 +147,16 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
         event->startUpdates();
     }
 
+    // Transfer birthday details from contact to calendar event.
     event->setSummary(displayName.label());
 
-    event->setDtStart(KDateTime(cBirthday.date(), QTime(), KDateTime::ClockTime));
-    event->setDtEnd(KDateTime(cBirthday.date().addDays(1), QTime(), KDateTime::ClockTime));
+    event->setDtStart(KDateTime(contactBirthday.date(), QTime(), KDateTime::ClockTime));
+    event->setDtEnd(KDateTime(contactBirthday.date().addDays(1), QTime(), KDateTime::ClockTime));
 
     event->setReadOnly(true);
     event->endUpdates();
 
-    if (not mStorage->isValidNotebook(calNotebookID)) {
-        warning() << Q_FUNC_INFO << "Invalid notebook ID: " << calNotebookID;
-        return;
-    }
-
+    // Commit calendar changes.
     if (not mStorage->save()) {
         warning() << Q_FUNC_INFO << "Failed to save event in calendar";
         return;
@@ -165,16 +165,9 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
     debug() << "Updated birthday event in calendar, local ID: " << contact.localId();
 }
 
-QString CDBirthdayCalendar::makeCalendarId(QContactLocalId id) const
+void CDBirthdayCalendar::deleteBirthday(QContactLocalId contactId)
 {
-    return QString::number(id) + calIDExtension;
-}
-
-void CDBirthdayCalendar::deleteBirthday(QContactLocalId id)
-{
-    const QString cId = makeCalendarId(id);
-    mStorage->load(cId);
-    KCalCore::Event::Ptr event = mCalendar->event(cId);
+    KCalCore::Event::Ptr event = calendarEvent(contactId);
 
     if (event.isNull()) {
         warning() << Q_FUNC_INFO << "Not found in calendar";
@@ -188,12 +181,12 @@ void CDBirthdayCalendar::deleteBirthday(QContactLocalId id)
         return;
     }
 
-    debug() << "Deleted birthday event in calendar, local ID: " << cId;
+    debug() << "Deleted birthday event in calendar, local ID: " << event->uid();
 }
 
-QDate CDBirthdayCalendar::birthdayDate(const QContact &contact)
+QDate CDBirthdayCalendar::birthdayDate(QContactLocalId contactId)
 {
-    KCalCore::Event::Ptr event = calendarEvent(contact);
+    KCalCore::Event::Ptr event = calendarEvent(contactId);
 
     if (event.isNull()) {
         return QDate();
@@ -202,9 +195,9 @@ QDate CDBirthdayCalendar::birthdayDate(const QContact &contact)
     return event->dtStart().date();
 }
 
-QString CDBirthdayCalendar::summary(const QContact &contact)
+QString CDBirthdayCalendar::summary(QContactLocalId contactId)
 {
-    KCalCore::Event::Ptr event = calendarEvent(contact);
+    KCalCore::Event::Ptr event = calendarEvent(contactId);
 
     if (event.isNull()) {
         return QString();
@@ -213,16 +206,22 @@ QString CDBirthdayCalendar::summary(const QContact &contact)
     return event->summary();
 }
 
-KCalCore::Event::Ptr CDBirthdayCalendar::calendarEvent(const QContact &contact)
+QString CDBirthdayCalendar::calendarEventId(QContactLocalId contactId)
 {
-    const QString cId = makeCalendarId(contact.localId());
+    static const QLatin1String calIdExtension(" com.nokia.birthday");
+    return QString::number(contactId) + calIdExtension;
+}
 
-    if (not mStorage->load(cId)) {
+KCalCore::Event::Ptr CDBirthdayCalendar::calendarEvent(QContactLocalId contactId)
+{
+    const QString eventId = calendarEventId(contactId);
+
+    if (not mStorage->load(eventId)) {
         warning() << Q_FUNC_INFO << "Unable to load event from calendar";
         return KCalCore::Event::Ptr();
     }
 
-    KCalCore::Event::Ptr event = mCalendar->event(cId);
+    KCalCore::Event::Ptr event = mCalendar->event(eventId);
 
     if (event.isNull()) {
         warning() << Q_FUNC_INFO << "Not found in calendar";
@@ -233,9 +232,9 @@ KCalCore::Event::Ptr CDBirthdayCalendar::calendarEvent(const QContact &contact)
 
 void CDBirthdayCalendar::onLocaleChanged()
 {
-    mKCal::Notebook::Ptr notebook = mStorage->notebook(calNotebookID);
+    mKCal::Notebook::Ptr notebook = mStorage->notebook(calNotebookId);
 
-    if (notebook == 0) {
+    if (notebook.isNull()) {
         warning() << Q_FUNC_INFO << "Calendar not found while changing locale";
         return;
     }
