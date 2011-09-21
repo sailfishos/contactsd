@@ -178,24 +178,21 @@ CDBirthdayController::onTrackerIdsFetched()
         return;
     }
 
-    // We will delete the result anyway
-    result->deleteLater();
-
     if (result->hasError()) {
         debug() << Q_FUNC_INFO << "Could not fetch Tracker IDs:" << result->lastError().message();
-        return;
-    }
-
-    if (not result->next()) {
+    } else if (not result->next()) {
         debug() << Q_FUNC_INFO << "No results returned";
         return;
+    } else {
+        const QSparqlResultRow row = result->current();
+
+        for (int i = 0; i < NTrackerIds; ++i) {
+            mTrackerIds[i] = row.value(i).toInt();
+        }
     }
 
-    const QSparqlResultRow row = result->current();
-
-    for (int i = 0; i < NTrackerIds; ++i) {
-        mTrackerIds[i] = row.value(i).toInt();
-    }
+    // Provide hint we are done with this result.
+    result->deleteLater();
 
     debug() << Q_FUNC_INFO << "Tracker IDs fetched, connecting the change notifier";
 
@@ -275,27 +272,32 @@ CDBirthdayController::processFetchRequest(QContactFetchRequest * const fetchRequ
         return false;
     }
 
+    bool success = false;
+
     switch (newState) {
     case QContactAbstractRequest::FinishedState:
+        debug() << "Birthday contacts fetch request finished";
+
+        if (fetchRequest->error() != QContactManager::NoError) {
+            warning() << Q_FUNC_INFO << "Error during birthday contact fetch request, code: "
+                      << fetchRequest->error();
+        } else {
+            success = true;
+        }
+
         break;
+
     case QContactAbstractRequest::CanceledState:
-        fetchRequest->deleteLater();
-        return false;
+        break;
+
     default:
         return false;
     }
 
+    // Provide hint we are done with this request.
     fetchRequest->deleteLater();
 
-    debug() << "Birthday contacts fetch request finished";
-
-    if (fetchRequest->error() != QContactManager::NoError) {
-        warning() << Q_FUNC_INFO << "Error during birthday contact fetch request, code: "
-                  << fetchRequest->error();
-        return false;
-    }
-
-    return true;
+    return success;
 }
 
 void
