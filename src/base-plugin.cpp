@@ -24,6 +24,8 @@
 #include "base-plugin.h"
 #include "debug.h"
 
+#include <QDesktopServices>
+
 namespace Contactsd
 {
 
@@ -32,7 +34,35 @@ const QString BasePlugin::metaDataKeyName    = QString::fromLatin1("name");
 const QString BasePlugin::metaDataKeyComment = QString::fromLatin1("comment");
 
 
-QSparqlConnection &BasePlugin::sparqlConnection()
+QDir
+BasePlugin::cacheDir()
+{
+    QString cacheRoot = QDesktopServices::storageLocation(QDesktopServices::CacheLocation);
+
+    if (cacheRoot.isEmpty()) {
+        cacheRoot = QDir::home().filePath(QLatin1String(".cache"));
+    }
+
+    QDir cacheDir = QDir(cacheRoot).absoluteFilePath(QLatin1String("contactsd"));
+
+    if (not cacheDir.exists()) {
+        if (not QDir::root().mkpath(cacheDir.path())) {
+            warning() << "Could not create cache dir";
+            return QDir();
+        }
+    }
+
+    return cacheDir;
+}
+
+QString
+BasePlugin::cacheFileName(const QString &fileName)
+{
+    return cacheDir().filePath(fileName);
+}
+
+QSparqlConnection &
+BasePlugin::sparqlConnection()
 {
     static const QStringList DefaultSparqlBackends = QStringList()
             << QLatin1String("QTRACKER_DIRECT")

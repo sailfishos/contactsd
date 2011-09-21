@@ -46,9 +46,13 @@ public:
     static const QString metaDataKeyComment;
     typedef QMap<QString, QVariant> MetaData;
 
-    virtual ~BasePlugin () { };
+    virtual ~BasePlugin () {}
     virtual void init() = 0;
     virtual MetaData metaData() = 0;
+
+    static QDir cacheDir();
+    static QString cacheFileName(const QString &fileName);
+
     static QSparqlConnection &sparqlConnection();
 
 Q_SIGNALS:

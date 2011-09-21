@@ -23,9 +23,9 @@
 
 #include "cdbirthdaycontroller.h"
 #include "cdbirthdaycalendar.h"
+#include "cdbirthdayplugin.h"
 #include "debug.h"
 
-#include <QDesktopServices>
 #include <QDir>
 #include <QFile>
 
@@ -135,13 +135,7 @@ void CDBirthdayController::createStampFile()
 
 QString CDBirthdayController::stampFilePath() const
 {
-    QString cacheLocation = QDir::cleanPath(QDesktopServices::storageLocation(QDesktopServices::CacheLocation));
-
-    if (cacheLocation.isEmpty()) {
-        cacheLocation = QDir::home().filePath(QLatin1String(".cache"));
-    }
-
-    return cacheLocation.append(QLatin1String("/contactsd/calendar.stamp"));
+    return BasePlugin::cacheFileName(QLatin1String("calendar.stamp"));
 }
 
 void

@@ -24,7 +24,7 @@ TEMPLATE = app
 TARGET = contactsd
 
 QT += dbus
-QT -= gui
+QT += gui # for QDesktopServices
 
 system(qdbusxml2cpp -c ContactsImportProgressAdaptor -a contactsimportprogressadaptor.h:contactsimportprogressadaptor.cpp com.nokia.contacts.importprogress.xml)
 

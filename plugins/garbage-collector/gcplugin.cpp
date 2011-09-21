@@ -238,31 +238,7 @@ void QueryStorage::updateLoad(const QString &id, double value)
 
 QString QueryStorage::filePath()
 {
-    static const QString cacheFileName = "queries";
-    static QString path;
-
-    if (not path.isNull()) {
-        return path;
-    }
-
-    QDir cacheDir;
-    const char *xdgCacheDir = getenv("XDG_CACHE_DIR");
-
-    if (xdgCacheDir != 0) {
-        cacheDir = QDir(QString::fromLocal8Bit(xdgCacheDir).append("/contactsd"));
-    } else {
-        cacheDir = QDir(QDir::home().absoluteFilePath(QString::fromLatin1(".cache/contactsd")));
-    }
-
-    if (not cacheDir.exists()) {
-        if (not QDir::root().mkpath(cacheDir.absolutePath())) {
-            warning() << "Could not create cache dir";
-            return QString();
-        }
-    }
-
-    path = cacheDir.absoluteFilePath(cacheFileName);
-    return path;
+    return BasePlugin::cacheFileName(QLatin1String("queries"));
 }
 
 void QueryStorage::load()
