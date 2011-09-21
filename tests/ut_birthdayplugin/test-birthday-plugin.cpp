@@ -71,12 +71,12 @@ void TestBirthdayPlugin::testAddAndRemoveBirthday()
 
     // Add contact with birthday to tracker.
     QContactName contactName;
-    contactName.setFirstName(contactID);
+    contactName.setCustomLabel(contactID);
     QContactBirthday contactBirthday;
     contactBirthday.setDateTime(contactBirthDate);
     QContact contact;
-    contact.saveDetail(&contactName);
-    contact.saveDetail(&contactBirthday);
+    QVERIFY(contact.saveDetail(&contactName));
+    QVERIFY(contact.saveDetail(&contactBirthday));
     QVERIFY2(mManager->saveContact(&contact), "Error saving contact to tracker");
 
     // Wait until calendar event gets to calendar.
@@ -117,12 +117,12 @@ void TestBirthdayPlugin::testChangeBirthday()
 
     // Add contact with birthday to tracker.
     QContactName contactName;
-    contactName.setFirstName(contactID);
+    contactName.setCustomLabel(contactID);
     QContactBirthday contactBirthday;
     contactBirthday.setDateTime(contactBirthDate);
     QContact contact;
-    contact.saveDetail(&contactName);
-    contact.saveDetail(&contactBirthday);
+    QVERIFY(contact.saveDetail(&contactName));
+    QVERIFY(contact.saveDetail(&contactBirthday));
     QVERIFY2(mManager->saveContact(&contact), "Error saving contact to tracker");
 
     // Wait until calendar event gets to calendar.
@@ -143,7 +143,7 @@ void TestBirthdayPlugin::testChangeBirthday()
 
     // Change the contact and see if the birthday is updated.
     contactBirthday.setDateTime(contactBirthDate.addDays(-1));
-    contact.saveDetail(&contactBirthday);
+    QVERIFY(contact.saveDetail(&contactBirthday));
     QVERIFY2(mManager->saveContact(&contact), "Unable to update test contact in tracker");
 
     // Wait until calendar event gets to calendar.
@@ -165,12 +165,12 @@ void TestBirthdayPlugin::testChangeName()
 
     // Add contact with birthday to tracker.
     QContactName contactName;
-    contactName.setFirstName(contactID);
+    contactName.setCustomLabel(contactID);
     QContactBirthday contactBirthday;
     contactBirthday.setDateTime(contactBirthDate);
     QContact contact;
-    contact.saveDetail(&contactName);
-    contact.saveDetail(&contactBirthday);
+    QVERIFY(contact.saveDetail(&contactName));
+    QVERIFY(contact.saveDetail(&contactBirthday));
     QVERIFY2(mManager->saveContact(&contact), "Error saving contact to tracker");
 
     // Wait until calendar event gets to calendar.
@@ -191,8 +191,8 @@ void TestBirthdayPlugin::testChangeName()
 
     // Change the contact name and see if the calendar is updated.
     const QString newContactID = QUuid::createUuid().toString();
-    contactName.setFirstName(newContactID);
-    contact.saveDetail(&contactName);
+    contactName.setCustomLabel(newContactID);
+    QVERIFY(contact.saveDetail(&contactName));
     // TODO: Should it be necessary to refetch the contact to get the synthesised displayLabel?
     contact = mManager->contact(contact.localId());
     QVERIFY2(mManager->saveContact(&contact), "Unable to update test contact in tracker");
