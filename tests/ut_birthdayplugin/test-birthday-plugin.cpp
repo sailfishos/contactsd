@@ -240,7 +240,7 @@ void TestBirthdayPlugin::testLocaleChange()
     // Check if locale name for calendar matches calendar name.
     //QVERIFY2(locale.isInstalledTrCatalog(QLatin1String("calendar")), "Calendar locale catalog not installed");
     const QString cLocaleCalendarName = qtTrId("qtn_caln_birthdays");
-    QVERIFY2(storage->notebook(calNotebookId)->name() == cLocaleCalendarName, "Locale name does not match calendar name");
+    QCOMPARE(storage->notebook(calNotebookId)->name(), cLocaleCalendarName);
 
     // Change locale and check name again.
     store.setValue(QLatin1String("language"), QLatin1String("fi"));
@@ -250,7 +250,7 @@ void TestBirthdayPlugin::testLocaleChange()
     const QString finnishLocaleCalendarName = qtTrId("qtn_caln_birthdays");
 
     QVERIFY2(storage->notebook(calNotebookId)->name() != cLocaleCalendarName, "Calendar name was not updated on locale change");
-    QVERIFY2(storage->notebook(calNotebookId)->name() == finnishLocaleCalendarName, "Locale name does not match calendar name");
+    QCOMPARE(storage->notebook(calNotebookId)->name(), finnishLocaleCalendarName);
 
     // Close the calendar.
     QVERIFY2(storage->close(), "Error closing the calendar");
