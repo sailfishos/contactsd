@@ -69,6 +69,7 @@ private:
                               QSet<QContactLocalId> &propertyChanges,
                               QSet<QContactLocalId> &resourceChanges);
     void fetchContacts(const QList<QContactLocalId> &contactIds);
+    void fetchContacts(const QContactFilter &filter, const char *slot);
     void updateBirthdays(const QList<QContact> &changedBirthdays);
 
 private:

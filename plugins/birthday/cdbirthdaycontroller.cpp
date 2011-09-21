@@ -274,31 +274,11 @@ CDBirthdayController::stampFilePath() const
 void
 CDBirthdayController::updateAllBirthdays()
 {
-    QContactFetchHint fetchHint;
-    static const QStringList detailDefinitions = QStringList() << QContactBirthday::DefinitionName
-                                                               << QContactDisplayLabel::DefinitionName;
-    fetchHint.setDetailDefinitionsHint(detailDefinitions);
-
-    // Filter on any contact with a birthday.
+    // Fetch any contact with a birthday.
     QContactDetailFilter fetchFilter;
     fetchFilter.setDetailDefinitionName(QContactBirthday::DefinitionName);
 
-    QContactFetchRequest * const fetchRequest = new QContactFetchRequest(this);
-    fetchRequest->setManager(mManager);
-    fetchRequest->setFetchHint(fetchHint);
-    fetchRequest->setFilter(fetchFilter);
-
-    connect(fetchRequest,
-            SIGNAL(stateChanged(QContactAbstractRequest::State)),
-            SLOT(onFullSyncRequestStateChanged(QContactAbstractRequest::State)));
-
-    if (not fetchRequest->start()) {
-        warning() << Q_FUNC_INFO << "Unable to start contact birthdays fetch request";
-        delete fetchRequest;
-        return;
-    }
-
-    debug() << "Contact birthdays fetch request started";
+    fetchContacts(fetchFilter, SLOT(onFullSyncRequestStateChanged(QContactAbstractRequest::State)));
 }
 
 void
@@ -317,30 +297,10 @@ CDBirthdayController::onFullSyncRequestStateChanged(QContactAbstractRequest::Sta
 void
 CDBirthdayController::fetchContacts(const QList<QContactLocalId> &contactIds)
 {
-    QContactFetchHint fetchHint;
-    static const QStringList detailDefinitions = QStringList() << QContactBirthday::DefinitionName
-                                                               << QContactDisplayLabel::DefinitionName;
-    fetchHint.setDetailDefinitionsHint(detailDefinitions);
-
     QContactLocalIdFilter fetchFilter;
     fetchFilter.setIds(contactIds);
 
-    QContactFetchRequest * const fetchRequest = new QContactFetchRequest(this);
-    fetchRequest->setManager(mManager);
-    fetchRequest->setFetchHint(fetchHint);
-    fetchRequest->setFilter(fetchFilter);
-
-    connect(fetchRequest,
-            SIGNAL(stateChanged(QContactAbstractRequest::State)),
-            SLOT(onFetchRequestStateChanged(QContactAbstractRequest::State)));
-
-    if (not fetchRequest->start()) {
-        warning() << Q_FUNC_INFO << "Unable to start birthday contact fetch request";
-        delete fetchRequest;
-        return;
-    }
-
-    debug() << "Birthday contacts fetch request started";
+    fetchContacts(fetchFilter, SLOT(onFetchRequestStateChanged(QContactAbstractRequest::State)));
 }
 
 void
@@ -352,6 +312,30 @@ CDBirthdayController::onFetchRequestStateChanged(QContactAbstractRequest::State 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // Common sync logic
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+void
+CDBirthdayController::fetchContacts(const QContactFilter &filter, const char *slot)
+{
+    QContactFetchHint fetchHint;
+    static const QStringList detailDefinitions = QStringList() << QContactBirthday::DefinitionName
+                                                               << QContactDisplayLabel::DefinitionName;
+    fetchHint.setDetailDefinitionsHint(detailDefinitions);
+
+    QContactFetchRequest * const fetchRequest = new QContactFetchRequest(this);
+    fetchRequest->setManager(mManager);
+    fetchRequest->setFetchHint(fetchHint);
+    fetchRequest->setFilter(filter);
+
+    connect(fetchRequest, SIGNAL(stateChanged(QContactAbstractRequest::State)), slot);
+
+    if (not fetchRequest->start()) {
+        warning() << Q_FUNC_INFO << "Unable to start birthday contact fetch request";
+        delete fetchRequest;
+        return;
+    }
+
+    debug() << "Birthday contacts fetch request started";
+}
 
 bool
 CDBirthdayController::processFetchRequest(QContactFetchRequest *const fetchRequest,
