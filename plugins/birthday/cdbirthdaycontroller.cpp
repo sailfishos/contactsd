@@ -81,6 +81,10 @@ CDBirthdayController::~CDBirthdayController()
 {
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// Tracker ID fetching
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 void
 CDBirthdayController::fetchTrackerIds()
 {
@@ -112,14 +116,142 @@ CDBirthdayController::fetchTrackerIds()
     connect(result.take(), SIGNAL(finished()), this, SLOT(onTrackerIdsFetched()));
 }
 
-bool CDBirthdayController::stampFileExists()
+void
+CDBirthdayController::onTrackerIdsFetched()
+{
+    QSparqlResult *result = qobject_cast<QSparqlResult*>(sender());
+
+    if (result == 0) {
+        debug() << Q_FUNC_INFO << "Invalid result";
+        return;
+    }
+
+    if (result->hasError()) {
+        debug() << Q_FUNC_INFO << "Could not fetch Tracker IDs:" << result->lastError().message();
+    } else if (not result->next()) {
+        debug() << Q_FUNC_INFO << "No results returned";
+        return;
+    } else {
+        const QSparqlResultRow row = result->current();
+
+        for (int i = 0; i < NTrackerIds; ++i) {
+            mTrackerIds[i] = row.value(i).toInt();
+        }
+    }
+
+    // Provide hint we are done with this result.
+    result->deleteLater();
+
+    debug() << Q_FUNC_INFO << "Tracker IDs fetched, connecting the change notifier";
+
+    connectChangeNotifier();
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// Contact monitor
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+void
+CDBirthdayController::connectChangeNotifier()
+{
+    const QStringList contactClassIris = QStringList()
+                                      << nco::PersonContact::iri()
+                                      << nco::ContactGroup::iri();
+
+    foreach (const QString &iri, contactClassIris) {
+        connect(new TrackerChangeNotifier(iri, this),
+            SIGNAL(changed(QList<TrackerChangeNotifier::Quad>,
+                           QList<TrackerChangeNotifier::Quad>)),
+            SLOT(onGraphChanged(QList<TrackerChangeNotifier::Quad>,
+                                QList<TrackerChangeNotifier::Quad>)));
+    }
+}
+
+void
+CDBirthdayController::onGraphChanged(const QList<TrackerChangeNotifier::Quad>& deletions,
+                                     const QList<TrackerChangeNotifier::Quad>& insertions)
+{
+    mDeleteNotifications += deletions;
+    mInsertNotifications += insertions;
+
+    if (isDebugEnabled()) {
+        TrackerChangeNotifier const * const notifier = qobject_cast<TrackerChangeNotifier *>(sender());
+
+        if (notifier == 0) {
+            warning() << Q_FUNC_INFO << "Error casting birthday change notifier";
+            return;
+        }
+
+        debug() << notifier->watchedClass() << "birthday: deletions:" << deletions;
+        debug() << notifier->watchedClass() << "birthday: insertions:" << insertions;
+    }
+
+    processNotificationQueues();
+}
+
+void
+CDBirthdayController::processNotifications(QList<TrackerChangeNotifier::Quad> &notifications,
+                                           QSet<QContactLocalId> &propertyChanges,
+                                           QSet<QContactLocalId> &resourceChanges)
+{
+    foreach (const TrackerChangeNotifier::Quad &quad, notifications) {
+        if (quad.predicate == mTrackerIds[NcoBirthDate]) {
+            propertyChanges += quad.subject;
+            continue;
+        }
+
+        if (quad.predicate == mTrackerIds[RdfType]) {
+            if (quad.object == mTrackerIds[NcoPersonContact]
+             || quad.object == mTrackerIds[NcoContactGroup]) {
+                resourceChanges += quad.subject;
+            }
+        }
+    }
+
+    // Remove the processed notifications.
+    notifications.clear();
+}
+
+void
+CDBirthdayController::processNotificationQueues()
+{
+    QSet<QContactLocalId> insertedContacts;
+    QSet<QContactLocalId> deletedContacts;
+    QSet<QContactLocalId> birthdayChangedIds;
+
+    // Process notification queues to determine contacts with changed birthdays.
+    processNotifications(mDeleteNotifications, birthdayChangedIds, deletedContacts);
+    processNotifications(mInsertNotifications, birthdayChangedIds, insertedContacts);
+
+    if (isDebugEnabled()) {
+        debug() << "changed birthdates: " << birthdayChangedIds.count() << birthdayChangedIds;
+    }
+
+    // Remove the birthdays for contacts that are not there anymore
+    foreach (QContactLocalId id, deletedContacts) {
+        mCalendar->deleteBirthday(id);
+    }
+
+    // Update the calendar with the birthday changes.
+    if (not birthdayChangedIds.isEmpty()) {
+        fetchContacts(birthdayChangedIds.toList());
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// Full sync logic
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool
+CDBirthdayController::stampFileExists()
 {
     const QFile cacheFile(stampFilePath(), this);
 
     return cacheFile.exists();
 }
 
-void CDBirthdayController::createStampFile()
+void
+CDBirthdayController::createStampFile()
 {
     QFile cacheFile(stampFilePath(), this);
 
@@ -133,7 +265,8 @@ void CDBirthdayController::createStampFile()
     }
 }
 
-QString CDBirthdayController::stampFilePath() const
+QString
+CDBirthdayController::stampFilePath() const
 {
     return BasePlugin::cacheFileName(QLatin1String("calendar.stamp"));
 }
@@ -169,74 +302,6 @@ CDBirthdayController::updateAllBirthdays()
 }
 
 void
-CDBirthdayController::onTrackerIdsFetched()
-{
-    QSparqlResult *result = qobject_cast<QSparqlResult*>(sender());
-
-    if (result == 0) {
-        debug() << Q_FUNC_INFO << "Invalid result";
-        return;
-    }
-
-    if (result->hasError()) {
-        debug() << Q_FUNC_INFO << "Could not fetch Tracker IDs:" << result->lastError().message();
-    } else if (not result->next()) {
-        debug() << Q_FUNC_INFO << "No results returned";
-        return;
-    } else {
-        const QSparqlResultRow row = result->current();
-
-        for (int i = 0; i < NTrackerIds; ++i) {
-            mTrackerIds[i] = row.value(i).toInt();
-        }
-    }
-
-    // Provide hint we are done with this result.
-    result->deleteLater();
-
-    debug() << Q_FUNC_INFO << "Tracker IDs fetched, connecting the change notifier";
-
-    connectChangeNotifier();
-}
-
-void
-CDBirthdayController::connectChangeNotifier()
-{
-    const QStringList contactClassIris = QStringList()
-                                      << nco::PersonContact::iri()
-                                      << nco::ContactGroup::iri();
-
-    foreach (const QString &iri, contactClassIris) {
-        connect(new TrackerChangeNotifier(iri, this),
-            SIGNAL(changed(QList<TrackerChangeNotifier::Quad>,
-                           QList<TrackerChangeNotifier::Quad>)),
-            SLOT(onGraphChanged(QList<TrackerChangeNotifier::Quad>,
-                                QList<TrackerChangeNotifier::Quad>)));
-    }
-}
-
-void CDBirthdayController::onGraphChanged(const QList<TrackerChangeNotifier::Quad>& deletions,
-                                          const QList<TrackerChangeNotifier::Quad>& insertions)
-{
-    mDeleteNotifications += deletions;
-    mInsertNotifications += insertions;
-
-    if (isDebugEnabled()) {
-        TrackerChangeNotifier const * const notifier = qobject_cast<TrackerChangeNotifier *>(sender());
-
-        if (notifier == 0) {
-            warning() << Q_FUNC_INFO << "Error casting birthday change notifier";
-            return;
-        }
-
-        debug() << notifier->watchedClass() << "birthday: deletions:" << deletions;
-        debug() << notifier->watchedClass() << "birthday: insertions:" << insertions;
-    }
-
-    processNotificationQueues();
-}
-
-void
 CDBirthdayController::onFullSyncRequestStateChanged(QContactAbstractRequest::State newState)
 {
     QContactFetchRequest * const fetchRequest = qobject_cast<QContactFetchRequest*>(sender());
@@ -251,6 +316,39 @@ CDBirthdayController::onFullSyncRequestStateChanged(QContactAbstractRequest::Sta
     createStampFile();
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// Incremental sync logic
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+void
+CDBirthdayController::fetchContacts(const QList<QContactLocalId> &contactIds)
+{
+    QContactFetchHint fetchHint;
+    static const QStringList detailDefinitions = QStringList() << QContactBirthday::DefinitionName
+                                                               << QContactDisplayLabel::DefinitionName;
+    fetchHint.setDetailDefinitionsHint(detailDefinitions);
+
+    QContactLocalIdFilter fetchFilter;
+    fetchFilter.setIds(contactIds);
+
+    QContactFetchRequest * const fetchRequest = new QContactFetchRequest(this);
+    fetchRequest->setManager(mManager);
+    fetchRequest->setFetchHint(fetchHint);
+    fetchRequest->setFilter(fetchFilter);
+
+    connect(fetchRequest,
+            SIGNAL(stateChanged(QContactAbstractRequest::State)),
+            SLOT(onFetchRequestStateChanged(QContactAbstractRequest::State)));
+
+    if (not fetchRequest->start()) {
+        warning() << Q_FUNC_INFO << "Unable to start birthday contact fetch request";
+        delete fetchRequest;
+        return;
+    }
+
+    debug() << "Birthday contacts fetch request started";
+}
+
 void
 CDBirthdayController::onFetchRequestStateChanged(QContactAbstractRequest::State newState)
 {
@@ -262,6 +360,10 @@ CDBirthdayController::onFetchRequestStateChanged(QContactAbstractRequest::State 
 
     updateBirthdays(fetchRequest->contacts());
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// Common sync logic
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool
 CDBirthdayController::processFetchRequest(QContactFetchRequest * const fetchRequest,
@@ -298,84 +400,6 @@ CDBirthdayController::processFetchRequest(QContactFetchRequest * const fetchRequ
     fetchRequest->deleteLater();
 
     return success;
-}
-
-void
-CDBirthdayController::processNotificationQueues()
-{
-    QSet<QContactLocalId> insertedContacts;
-    QSet<QContactLocalId> deletedContacts;
-    QSet<QContactLocalId> birthdayChangedIds;
-
-    // Process notification queues to determine contacts with changed birthdays.
-    processNotifications(mDeleteNotifications, birthdayChangedIds, deletedContacts);
-    processNotifications(mInsertNotifications, birthdayChangedIds, insertedContacts);
-
-    if (isDebugEnabled()) {
-        debug() << "changed birthdates: " << birthdayChangedIds.count() << birthdayChangedIds;
-    }
-
-    // Remove the birthdays for contacts that are not there anymore
-    foreach (QContactLocalId id, deletedContacts) {
-        mCalendar->deleteBirthday(id);
-    }
-
-    // Update the calendar with the birthday changes.
-    if (not birthdayChangedIds.isEmpty()) {
-        fetchContacts(birthdayChangedIds.toList());
-    }
-}
-
-void
-CDBirthdayController::processNotifications(QList<TrackerChangeNotifier::Quad> &notifications,
-                                           QSet<QContactLocalId> &propertyChanges,
-                                           QSet<QContactLocalId> &resourceChanges)
-{
-    foreach (const TrackerChangeNotifier::Quad &quad, notifications) {
-        if (quad.predicate == mTrackerIds[NcoBirthDate]) {
-            propertyChanges += quad.subject;
-            continue;
-        }
-
-        if (quad.predicate == mTrackerIds[RdfType]) {
-            if (quad.object == mTrackerIds[NcoPersonContact]
-             || quad.object == mTrackerIds[NcoContactGroup]) {
-                resourceChanges += quad.subject;
-            }
-        }
-    }
-
-    // Remove the processed notifications.
-    notifications.clear();
-}
-
-void
-CDBirthdayController::fetchContacts(const QList<QContactLocalId> &contactIds)
-{
-    QContactFetchHint fetchHint;
-    static const QStringList detailDefinitions = QStringList() << QContactBirthday::DefinitionName
-                                                               << QContactDisplayLabel::DefinitionName;
-    fetchHint.setDetailDefinitionsHint(detailDefinitions);
-
-    QContactLocalIdFilter fetchFilter;
-    fetchFilter.setIds(contactIds);
-
-    QContactFetchRequest * const fetchRequest = new QContactFetchRequest(this);
-    fetchRequest->setManager(mManager);
-    fetchRequest->setFetchHint(fetchHint);
-    fetchRequest->setFilter(fetchFilter);
-
-    connect(fetchRequest,
-            SIGNAL(stateChanged(QContactAbstractRequest::State)),
-            SLOT(onFetchRequestStateChanged(QContactAbstractRequest::State)));
-
-    if (not fetchRequest->start()) {
-        warning() << Q_FUNC_INFO << "Unable to start birthday contact fetch request";
-        delete fetchRequest;
-        return;
-    }
-
-    debug() << "Birthday contacts fetch request started";
 }
 
 void
