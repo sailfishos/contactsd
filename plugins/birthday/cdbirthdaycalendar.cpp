@@ -174,7 +174,7 @@ void CDBirthdayCalendar::deleteBirthday(QContactLocalId contactId)
     KCalCore::Event::Ptr event = calendarEvent(contactId);
 
     if (event.isNull()) {
-        warning() << Q_FUNC_INFO << "Not found in calendar";
+        debug() << Q_FUNC_INFO << "Not found in calendar:" << contactId;
         return;
     }
 
@@ -228,7 +228,7 @@ KCalCore::Event::Ptr CDBirthdayCalendar::calendarEvent(QContactLocalId contactId
     KCalCore::Event::Ptr event = mCalendar->event(eventId);
 
     if (event.isNull()) {
-        warning() << Q_FUNC_INFO << "Not found in calendar";
+        debug() << Q_FUNC_INFO << "Not found in calendar:" << contactId;
     }
 
     return event;
