@@ -340,7 +340,7 @@ CDBirthdayController::processNotifications(QList<TrackerChangeNotifier::Quad> &n
         if (quad.predicate == mTrackerIds[RdfType]) {
             if (quad.object == mTrackerIds[NcoPersonContact]
              || quad.object == mTrackerIds[NcoContactGroup]) {
-            resourceChanges += quad.subject;
+                resourceChanges += quad.subject;
             }
         }
     }
