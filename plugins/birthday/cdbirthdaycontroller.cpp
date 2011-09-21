@@ -304,16 +304,10 @@ CDBirthdayController::updateAllBirthdays()
 void
 CDBirthdayController::onFullSyncRequestStateChanged(QContactAbstractRequest::State newState)
 {
-    QContactFetchRequest * const fetchRequest = qobject_cast<QContactFetchRequest*>(sender());
-
-    if (not processFetchRequest(fetchRequest, newState)) {
-        return;
+    if (processFetchRequest(qobject_cast<QContactFetchRequest*>(sender()), newState)) {
+        // Create the stamp file only after a successful full sync.
+        createStampFile();
     }
-
-    updateBirthdays(fetchRequest->contacts());
-
-    // Create the stamp file only after a successful full sync.
-    createStampFile();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -352,13 +346,7 @@ CDBirthdayController::fetchContacts(const QList<QContactLocalId> &contactIds)
 void
 CDBirthdayController::onFetchRequestStateChanged(QContactAbstractRequest::State newState)
 {
-    QContactFetchRequest * const fetchRequest = qobject_cast<QContactFetchRequest*>(sender());
-
-    if (not processFetchRequest(fetchRequest, newState)) {
-        return;
-    }
-
-    updateBirthdays(fetchRequest->contacts());
+    processFetchRequest(qobject_cast<QContactFetchRequest*>(sender()), newState);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -366,7 +354,7 @@ CDBirthdayController::onFetchRequestStateChanged(QContactAbstractRequest::State 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool
-CDBirthdayController::processFetchRequest(QContactFetchRequest * const fetchRequest,
+CDBirthdayController::processFetchRequest(QContactFetchRequest *const fetchRequest,
                                           QContactAbstractRequest::State newState)
 {
     if (fetchRequest == 0) {
@@ -384,6 +372,7 @@ CDBirthdayController::processFetchRequest(QContactFetchRequest * const fetchRequ
             warning() << Q_FUNC_INFO << "Error during birthday contact fetch request, code: "
                       << fetchRequest->error();
         } else {
+            updateBirthdays(fetchRequest->contacts());
             success = true;
         }
 
