@@ -1,3 +1,9 @@
+contactsd (1.0.9-1) unstable; urgency=low
+
+  * Fixes: NB#248094 - Birthday view in calendar
+
+ -- Mathias Hasselmann <mathias@openismus.com>  Thu, 22 Sep 2011 14:15:13 +0200
+
 contactsd (1.0.8) unstable; urgency=low
 
   * Change changelog to make integration happy
