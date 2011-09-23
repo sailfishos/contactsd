@@ -78,6 +78,21 @@ CDTpAccount::CDTpAccount(const Tp::AccountPtr &account, const QStringList &toAvo
     mDisconnectTimeout.setSingleShot(true);
 
     connect(&mDisconnectTimeout, SIGNAL(timeout()), SLOT(onDisconnectTimeout()));
+
+    /* If this is the first time account gets a connection, report we are
+     * importing. Note that connection could still be CONNECTING so it is
+     * not sure we'll actually import anything.
+     * Emit through the mainloop, so that the controller has time to connect
+     * the signal first.
+     */
+    if (mNewAccount) {
+        mImporting = true;
+
+        qRegisterMetaType<Tp::AccountPtr>("Tp::AccountPtr");
+        staticMetaObject.invokeMethod(this,
+                                      "syncStarted", Qt::QueuedConnection,
+                                      Q_ARG(Tp::AccountPtr, mAccount));
+    }
 }
 
 CDTpAccount::~CDTpAccount()
@@ -178,6 +193,8 @@ void CDTpAccount::onAccountStateChanged()
         /* Since contacts got removed when we disabled the account, we need
          * to threat this account as new now that it is enabled again */
         mNewAccount = true;
+        mImporting = true;
+        Q_EMIT syncStarted(mAccount);
     }
 }
 
@@ -222,14 +239,6 @@ void CDTpAccount::setConnection(const Tp::ConnectionPtr &connection)
             debug() << "Account" << mAccount->objectPath() << "has no roster, not emitting sync signals";
 
             return;
-        }
-
-        /* If this is the first time account gets a connection, report we are
-         * importing. Note that connection could still be CONNECTING so it is
-         * not sure we'll actually import anything. */
-        if (mNewAccount) {
-            mImporting = true;
-            Q_EMIT syncStarted(mAccount);
         }
 
         connect(connection->contactManager().data(),
