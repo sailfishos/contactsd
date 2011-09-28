@@ -25,6 +25,7 @@ target.path = $$BINDIR
 
 include(check.pri)
 include(tests.pri)
+include(../common/test-common.pri)
 
 CONFIG += test qtsparql mobility mkcal meegotouch
 

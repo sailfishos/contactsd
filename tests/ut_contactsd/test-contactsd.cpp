@@ -23,6 +23,7 @@
 
 #include "test-contactsd.h"
 #include "importstate.h"
+#include <test-common.h>
 #include <QtDBus>
 #include <QByteArray>
 
@@ -203,4 +204,4 @@ void TestContactsd::cleanup()
         delete mLoader;
 }
 
-QTEST_MAIN(TestContactsd)
+CONTACTSD_TEST_MAIN(TestContactsd)

@@ -31,6 +31,8 @@ QMAKE_CXXFLAGS +=  -ftest-coverage -fprofile-arcs
 LIBS += -lgcov
 }
 
+include(../common/test-common.pri)
+
 TARGET = ut_contactsd
 target.path = $$BINDIR
 

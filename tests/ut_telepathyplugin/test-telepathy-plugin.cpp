@@ -40,6 +40,8 @@
 #include "libtelepathy/util.h"
 #include "libtelepathy/debug.h"
 
+#include <test-common.h>
+
 #include "test-telepathy-plugin.h"
 #include "buddymanagementinterface.h"
 #include "debug.h"
@@ -904,4 +906,4 @@ void TestTelepathyPlugin::verify(Event event,
     mExpectation->verify(event, contactIds);
 }
 
-QTEST_MAIN(TestTelepathyPlugin)
+CONTACTSD_TEST_MAIN(TestTelepathyPlugin)

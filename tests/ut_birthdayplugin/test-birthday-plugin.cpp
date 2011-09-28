@@ -23,6 +23,8 @@
 
 #include "test-birthday-plugin.h"
 
+#include <test-common.h>
+
 #include <extendedstorage.h>
 #include <extendedcalendar.h>
 
@@ -295,4 +297,4 @@ bool TestBirthdayPlugin::saveContact(QContact &contact)
     return mManager->saveContact(&contact);
 }
 
-QTEST_MAIN(TestBirthdayPlugin)
+CONTACTSD_TEST_MAIN(TestBirthdayPlugin)
