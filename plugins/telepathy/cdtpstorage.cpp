@@ -707,21 +707,24 @@ static CDTpQueryBuilder updateContactsInfoBuilder(const QList<CDTpContactPtr> &c
 
     Q_FOREACH (const CDTpContactPtr contactWrapper, contacts) {
         const QString address = imAddress(contactWrapper);
-        const QHash<QString, CDTpContact::Changes>::ConstIterator contactChanges = changes.find(address);
+        const QHash<QString, CDTpContact::Changes>::ConstIterator contactChangesIter = changes.find(address);
+        CDTpContact::Changes contactChanges = 0;
 
-        if (contactChanges == changes.constEnd()) {
+        if (contactChangesIter == changes.constEnd()) {
+            contactChanges = contactChangesIter.value();
+        } else {
             warning() << "Internal error: unknown changes for" << address;
-            continue;
+            contactChanges = CDTpContact::Added;
         }
 
         // Contact info needs to be deleted for existing contacts that had it changed
-        if (contactChanges.value() != CDTpContact::Added && (contactChanges.value() & CDTpContact::Information)) {
+        if (contactChanges != CDTpContact::Added && (contactChanges & CDTpContact::Information)) {
             deleteInfoAddresses.append(address);
         }
 
         // and it needs to be updated for new contacts, or existing contacts that had it changed (CDTpContact::Added
         // sets CDTpContact::Information to 1)
-        if (contactChanges.value() & CDTpContact::Information) {
+        if (contactChanges & CDTpContact::Information) {
             updateInfoContacts.append(contactWrapper);
         }
     }
@@ -758,17 +761,20 @@ static CDTpQueryBuilder createContactsBuilder(const QList<CDTpContactPtr> &conta
     Q_FOREACH (const CDTpContactPtr contactWrapper, contacts) {
         CDTpAccountPtr accountWrapper = contactWrapper->accountWrapper();
         const QString contactAddress = imAddress(contactWrapper);
-        const QHash<QString, CDTpContact::Changes>::ConstIterator contactChanges = changes.find(contactAddress);
+        const QHash<QString, CDTpContact::Changes>::ConstIterator contactChangesIter = changes.find(contactAddress);
+        CDTpContact::Changes contactChanges = 0;
 
-        if (contactChanges == changes.constEnd()) {
+        if (contactChangesIter != changes.constEnd()) {
+            contactChanges = contactChangesIter.value();
+        } else {
             warning() << "Internal error: Unknown changes for" << contactAddress;
-            continue;
+            contactChanges = CDTpContact::Added;
         }
 
         const Value imAddress = literalIMAddress(contactWrapper);
 
         // If it's a new contact in the roster, we need to create an IMAddress for it
-        if (contactChanges.value() == CDTpContact::Added) {
+        if (contactChanges == CDTpContact::Added) {
             g.addPattern(imAddress, aValue, nco::IMAddress::resource());
             g.addPattern(imAddress, nco::imID::resource(), LiteralValue(contactWrapper->contact()->id()));
             g.addPattern(imAddress, nco::imProtocol::resource(), LiteralValue(accountWrapper->account()->protocolName()));
@@ -778,7 +784,7 @@ static CDTpQueryBuilder createContactsBuilder(const QList<CDTpContactPtr> &conta
         } else {
             // Else, if the capabilities changed we need to first delete the old one
             // explicitly
-            if ((contactChanges.value() & CDTpContact::Capabilities) && (contactChanges.value() != CDTpContact::Added)) {
+            if ((contactChanges & CDTpContact::Capabilities) && (contactChanges != CDTpContact::Added)) {
                 capsDeleteAddresses.append(contactAddress);
             }
         }
@@ -786,7 +792,7 @@ static CDTpQueryBuilder createContactsBuilder(const QList<CDTpContactPtr> &conta
         // Add mutable properties except for ContactInfo
         addContactChanges(g,
                           imAddress,
-                          contactChanges.value(),
+                          contactChanges,
                           contactWrapper->contact());
     }
     i.addData(g);
