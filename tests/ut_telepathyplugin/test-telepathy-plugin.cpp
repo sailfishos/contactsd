@@ -81,6 +81,15 @@ void TestTelepathyPlugin::initTestCase()
             SLOT(contactsRemoved(const QList<QContactLocalId>&)));
     mLocalContactIds += mContactManager->selfContactId();
 
+    /* Create a secondary listener that does trigger for presence-only updates */
+    const QStringList classesToWatch = QStringList()
+            << QLatin1String("http://www.semanticdesktop.org/ontologies/2007/03/22/nco#PersonContact");
+    mOmitPresenceListener = new QctTrackerChangeListener(classesToWatch, this);
+    mOmitPresenceListener->setChangeFilterMode(QctTrackerChangeListener::OnlyPresenceChanges);
+    connect(mOmitPresenceListener,
+            SIGNAL(contactsChanged(const QList<QContactLocalId>&)),
+            SLOT(contactsPresenceChanged(const QList<QContactLocalId>&)));
+
     /* Create a fake AccountManager */
     TpDBusDaemon *dbus = tp_dbus_daemon_dup(NULL);
     mAccountManager = (TpTestsSimpleAccountManager *) tp_tests_object_new_static_class(
@@ -259,7 +268,7 @@ void TestTelepathyPlugin::testBasicUpdates()
         TP_TESTS_CONTACTS_CONNECTION (mConnService),
         1, &handle, &presence, &message);
 
-    exp->setEvent(EventChanged);
+    exp->setEvent(EventPresenceChanged);
     exp->verifyPresence(presence);
     runExpectation(exp);
 }
@@ -716,7 +725,7 @@ void TestTelepathyPlugin::testMergedContact()
     tp_tests_contacts_connection_change_presences(
         TP_TESTS_CONTACTS_CONNECTION (mConnService),
         1, &handle1, &presence, &message);
-    TestExpectationContactPtr exp4(new TestExpectationContact(EventChanged));
+    TestExpectationContactPtr exp4(new TestExpectationContact(EventPresenceChanged));
     exp4->verifyLocalId(contact1.localId());
     exp4->verifyPresence(presence);
     runExpectation(exp4);
@@ -887,6 +896,15 @@ void TestTelepathyPlugin::contactsChanged(const QList<QContactLocalId>& contactI
         QVERIFY(mLocalContactIds.contains(id));
     }
     verify(EventChanged, contactIds);
+}
+
+void TestTelepathyPlugin::contactsPresenceChanged(const QList<QContactLocalId>& contactIds)
+{
+    debug() << "Got contactsPresenceChanged";
+    Q_FOREACH (const QContactLocalId &id, contactIds) {
+        QVERIFY(mLocalContactIds.contains(id));
+    }
+    verify(EventPresenceChanged, contactIds);
 }
 
 void TestTelepathyPlugin::contactsRemoved(const QList<QContactLocalId>& contactIds)

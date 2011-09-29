@@ -42,6 +42,7 @@ QTM_USE_NAMESPACE
 typedef enum {
     EventAdded,
     EventChanged,
+    EventPresenceChanged,
     EventRemoved
 } Event;
 

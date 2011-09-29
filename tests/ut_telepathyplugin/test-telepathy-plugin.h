@@ -39,6 +39,8 @@
 #include "libtelepathy/simple-account-manager.h"
 #include "libtelepathy/simple-account.h"
 
+#include <qtcontacts-tracker/trackerchangelistener.h>
+
 #include "test.h"
 #include "test-expectation.h"
 
@@ -58,6 +60,7 @@ public:
 protected Q_SLOTS:
     void contactsAdded(const QList<QContactLocalId>& contactIds);
     void contactsChanged(const QList<QContactLocalId>& contactIds);
+    void contactsPresenceChanged(const QList<QContactLocalId>& contactIds);
     void contactsRemoved(const QList<QContactLocalId>& contactIds);
     void onContactsFetched();
     void onRequestFinished();
@@ -105,6 +108,7 @@ private:
 
 private:
     QContactManager *mContactManager;
+    QctTrackerChangeListener *mOmitPresenceListener;
     TpTestsSimpleAccountManager *mAccountManager;
     TpTestsSimpleAccount *mAccount;
 

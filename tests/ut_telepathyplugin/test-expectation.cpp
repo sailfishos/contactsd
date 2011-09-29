@@ -399,19 +399,27 @@ TestExpectationDisconnect::TestExpectationDisconnect(int nContacts) :
 
 void TestExpectationDisconnect::verify(Event event, const QList<QContact> &contacts)
 {
-    QCOMPARE(event, EventChanged);
-
     Q_FOREACH (const QContact contact, contacts) {
         if (contact.localId() == contactManager()->selfContactId()) {
+            QCOMPARE(event, EventChanged);
             verifyPresence(TP_TESTS_CONTACTS_CONNECTION_STATUS_OFFLINE);
             mSelfChanged = true;
+            mNContacts--;
         } else {
+            // Ignore EventChanged events, we want to check that we had a real
+            // tagged update here (for each contact we'll get both an EventChanged
+            // and an EventPresenceChanged
+            if (event == EventChanged) {
+                continue;
+            }
+
+            QCOMPARE(event, EventPresenceChanged);
             verifyPresence(TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN);
+            mNContacts--;
         }
         TestExpectationContact::verify(contact);
     }
 
-    mNContacts -= contacts.count();
     QVERIFY(mNContacts >= 0);
     if (mNContacts == 0 && mSelfChanged) {
         emitFinished();
