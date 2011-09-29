@@ -144,7 +144,7 @@ void TestBirthdayPlugin::testChangeBirthday()
     QCOMPARE(countCalendarEvents(eventList, contact), 1);
 
     // Change the contact and see if the birthday is updated.
-    contactBirthday.setDateTime(contactBirthDate.addDays(-1));
+    contactBirthday.setDateTime(contactBirthDate.addDays(-3));
     QVERIFY(contact.saveDetail(&contactBirthday));
     QVERIFY2(mManager->saveContact(&contact), "Unable to update test contact in tracker");
 
