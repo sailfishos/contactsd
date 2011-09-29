@@ -1,8 +1,8 @@
-contactsd (1.0.10~git1) UNRELEASED; urgency=low
+contactsd (1.0.10-1) unstable; urgency=low
 
-  * Automatic version bump after release
+  * Fixes: NB#282185 - contactsd should only write what's needed in Tracker
 
- -- Mathias Hasselmann <mathias@openismus.com>  Thu, 22 Sep 2011 14:15:13 +0200
+ -- Adrien Bustany <adrien.bustany@nokia.com>  Thu, 29 Sep 2011 15:03:00 +0300
 
 contactsd (1.0.9-1) unstable; urgency=low
 
