@@ -1,6 +1,7 @@
 contactsd (1.0.10-1) unstable; urgency=low
 
   * Fixes: NB#282185 - contactsd should only write what's needed in Tracker
+  * Retagging harmattan for Bifh to pick it.
 
  -- Adrien Bustany <adrien.bustany@nokia.com>  Thu, 29 Sep 2011 15:03:00 +0300
 
