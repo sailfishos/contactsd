@@ -156,6 +156,8 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
     // Must always set the recurrence as it depends on the event date.
     KCalCore::Recurrence * const rule = event->recurrence();
     rule->setStartDateTime(event->dtStart());
+
+    // This is not a boolean, but the frequency of the recurrence: every 1 year.
     rule->setYearly(1);
 
     event->setReadOnly(true);
