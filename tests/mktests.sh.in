@@ -38,9 +38,9 @@ do
     test -f "$suite/$suite.skip" && continue
 
     if [ -f $suite/$suite-wrapper.sh ]; then
-        command="@PREFIX@/share/contactsd-tests/$suite-wrapper.sh"
+        command="@PREFIX@/share/contactsd-tests/$suite/$suite-wrapper.sh"
     else
-        command="@BINDIR@/$suite"
+        command="@BINDIR@/$suite/$suite"
     fi
 
 cat <<EOF
