@@ -102,7 +102,10 @@ class CDTpInvitationOperation : public Tp::PendingOperation
     Q_OBJECT
 
 public:
-    CDTpInvitationOperation(CDTpAccountPtr accountWrapper, const QStringList &contactIds);
+    CDTpInvitationOperation(CDTpStorage *storage,
+                            CDTpAccountPtr accountWrapper,
+                            const QStringList &contactIds,
+                            uint contactLocalId);
     QStringList contactIds() const { return mContactIds; }
     CDTpAccountPtr accountWrapper() const { return mAccountWrapper; }
 
@@ -111,8 +114,10 @@ private Q_SLOTS:
     void onPresenceSubscriptionRequested(Tp::PendingOperation *op);
 
 private:
+    CDTpStorage *mStorage;
     QStringList mContactIds;
     CDTpAccountPtr mAccountWrapper;
+    uint mContactLocalId;
 };
 
 #endif // CDTPCONTROLLER_H

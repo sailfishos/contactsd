@@ -265,7 +265,8 @@ void CDTpController::maybeStartOfflineOperations(CDTpAccountPtr accountWrapper)
     QStringList idsToInvite = mOfflineRosterBuffer->value(account->objectPath()).toStringList();
     mOfflineRosterBuffer->endGroup();
     if (!idsToInvite.isEmpty()) {
-        CDTpInvitationOperation *op = new CDTpInvitationOperation(accountWrapper, idsToInvite);
+        // FIXME: We should also save the localId for offline operations
+        CDTpInvitationOperation *op = new CDTpInvitationOperation(mStorage, accountWrapper, idsToInvite, 0);
         connect(op,
                 SIGNAL(finished(Tp::PendingOperation *)),
                 SLOT(onInvitationFinished(Tp::PendingOperation *)));
@@ -284,10 +285,6 @@ void CDTpController::inviteBuddiesOnContact(const QString &accountPath, const QS
     // Add ids to offlineInvitations, in case operation does not succeed now
     updateOfflineRosterBuffer(offlineInvitations, accountPath, imIds, QStringList());
 
-    if (localId != 0) {
-        mStorage->createAccountContacts(accountPath, imIds, localId);
-    }
-
     CDTpAccountPtr accountWrapper = mAccounts[accountPath];
     if (!accountWrapper) {
         debug() << "Account not found";
@@ -296,7 +293,7 @@ void CDTpController::inviteBuddiesOnContact(const QString &accountPath, const QS
 
     // Start invitation operation
     if (accountWrapper->hasRoster()) {
-        CDTpInvitationOperation *op = new CDTpInvitationOperation(accountWrapper, imIds);
+        CDTpInvitationOperation *op = new CDTpInvitationOperation(mStorage, accountWrapper, imIds, localId);
         connect(op,
                 SIGNAL(finished(Tp::PendingOperation *)),
                 SLOT(onInvitationFinished(Tp::PendingOperation *)));
@@ -440,9 +437,15 @@ void CDTpRemovalOperation::onContactsRemoved(Tp::PendingOperation *op)
     setFinished();
 }
 
-CDTpInvitationOperation::CDTpInvitationOperation(CDTpAccountPtr accountWrapper,
-        const QStringList &contactIds) : PendingOperation(accountWrapper),
-        mContactIds(contactIds), mAccountWrapper(accountWrapper)
+CDTpInvitationOperation::CDTpInvitationOperation(CDTpStorage *storage,
+                                                 CDTpAccountPtr accountWrapper,
+                                                 const QStringList &contactIds,
+                                                 uint contactLocalId)
+    : PendingOperation(accountWrapper)
+    , mStorage(storage)
+    , mContactIds(contactIds)
+    , mAccountWrapper(accountWrapper)
+    , mContactLocalId(contactLocalId)
 {
     debug() << "CDTpInvitationOperation: start";
 
@@ -456,11 +459,28 @@ CDTpInvitationOperation::CDTpInvitationOperation(CDTpAccountPtr accountWrapper,
 void CDTpInvitationOperation::onContactsRetrieved(Tp::PendingOperation *op)
 {
     if (op->isError()) {
+        // We still create the IMAddress on the contact if the request fails, so
+        // that user has a feedback
+        if (mContactLocalId != 0) {
+            mStorage->createAccountContacts(mAccountWrapper->account()->objectPath(), mContactIds, mContactLocalId);
+        }
+
         setFinishedWithError(op->errorName(), op->errorMessage());
         return;
     }
 
     Tp::PendingContacts *pcontacts = qobject_cast<Tp::PendingContacts *>(op);
+
+    if (mContactLocalId != 0) {
+        QStringList resolvedIds;
+
+        foreach (const Tp::ContactPtr &c, pcontacts->contacts()) {
+            resolvedIds.append(c->id());
+        }
+
+        mStorage->createAccountContacts(mAccountWrapper->account()->objectPath(), resolvedIds, mContactLocalId);
+    }
+
     PendingOperation *call = pcontacts->manager()->requestPresenceSubscription(pcontacts->contacts());
     connect(call,
             SIGNAL(finished(Tp::PendingOperation *)),
