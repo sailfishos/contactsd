@@ -37,7 +37,7 @@ wrapper.commands = \
         -e \"s,@WITH_DAEMON@,$$daemon.target,g\" \
     $< > $@ && chmod +x $@ || rm -f $@
 
-install_extrascripts.files = $$wrapper.target $$daemon.target with-session-bus.sh session.conf
+install_extrascripts.files = $$wrapper.target $$daemon.target
 install_extrascripts.path = $$PREFIX/share/contactsd-tests/ut_telepathyplugin
 install_extrascripts.depends = daemon wrapper
 install_extrascripts.CONFIG = no_check_exist

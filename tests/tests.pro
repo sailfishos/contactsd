@@ -36,7 +36,12 @@ install_testxml.path = $$PREFIX/share/contactsd-tests
 install_testxml.depends = $$testxml.target
 install_testxml.CONFIG = no_check_exist
 
-INSTALLS += install_testxml
+install_extrascripts.files = with-session-bus.sh session.conf
+install_extrascripts.path = $$PREFIX/share/contactsd-tests
+install_extrascripts.depends = $$UNIT_TESTS
+install_extrascripts.CONFIG = no_check_exist
+
+INSTALLS += install_testxml install_extrascripts
 
 QMAKE_EXTRA_TARGETS += testxml
 QMAKE_DISTCLEAN += $$testxml.target
