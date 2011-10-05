@@ -36,4 +36,4 @@ Verbosity=3
 EOF
 
 @SCRIPTDIR@/with-session-bus.sh --config-file=@SCRIPTDIR@/session.conf -- \
-  @SCRIPTDIR@/@WITH_DAEMON@ @BINDIR@/ut_telepathyplugin $@
+  @SCRIPTDIR@/ut_telepathyplugin/@WITH_DAEMON@ @BINDIR@/ut_telepathyplugin $@
