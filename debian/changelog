@@ -1,3 +1,11 @@
+contactsd (1.0.12-1) unstable; urgency=low
+
+  * Kiinteä: NB#275463 - AddBuddy ids should get resolved by the connection manager
+  * Split the birthday plugin in a separate package
+  * Fix the path to the scripts in test package
+
+ -- Adrien Bustany <adrien.bustany@nokia.com>  Wed, 05 Oct 2011 13:12:35 +0300
+
 contactsd (1.0.11.1-1) unstable; urgency=low
 
   * Fix test packaging
@@ -19,7 +27,7 @@ contactsd (1.0.10-1) unstable; urgency=low
 
 contactsd (1.0.9-1) unstable; urgency=low
 
-  * Fixes: NB#248094 - Birthday view in calendar
+  * Kiinteä: NB#248094 - Birthday view in calendar
 
  -- Mathias Hasselmann <mathias@openismus.com>  Thu, 22 Sep 2011 14:15:13 +0200
 
