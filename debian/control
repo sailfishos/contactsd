@@ -57,6 +57,7 @@ Section: libdevel
 Architecture: any
 Depends: ci-testing,
          contactsd (=${binary:Version}),
+         contactsd-plugin-birthday (=${binary:Version}),
          tracker,
          libmcclient6,
          ${shlibs:Depends},
@@ -67,3 +68,16 @@ Description: Contactsd plugin (unit tests)
  Contacts daemon - Observing telepathy and storing to tracker.
  .
  This package contains unit tests for contactsd.
+
+Package: contactsd-plugin-birthday
+Architecture: any
+Section: libs
+Depends: contactsd (= ${binary:Version}),
+         libqtsparql-tracker-extensions0 (>= 0.0.3),
+         libmkcal,
+         libmeegotouchcore0,
+         ${shlibs:Depends},
+         ${misc:Depends}
+Description: Birthday plugin for contactsd
+ .
+ Synchronizes the birthdays from the contacts in Tracker to the calendar.
