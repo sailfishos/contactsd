@@ -26,11 +26,15 @@ set -e
 
 cleanup ()
 {
+  # Restore the original language
+  gconftool-2 --type string --set /meegotouch/i18n/language $CURRENT_LANG
+
   kill $contactsd_pid
   tracker-control -r > /dev/null
 }
 trap cleanup INT HUP TERM
 
+CURRENT_LANG=$(gconftool-2 --get /meegotouch/i18n/language)
 tracker-control -r > /dev/null
 /usr/lib/tracker/tracker-store >/dev/null 2>&1 &
 
@@ -57,5 +61,6 @@ e=$?
 
 trap - INT HUP TERM
 cleanup
+
 
 exit $e
