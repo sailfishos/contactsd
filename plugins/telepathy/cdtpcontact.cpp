@@ -495,6 +495,10 @@ QDataStream& operator>>(QDataStream &stream, CDTpContact::Info &info)
     stream >> capabilities;
     info.setCapabilities(capabilities);
 
+    QString avatarPath;
+    stream >> avatarPath;
+    info.setAvatarPath(avatarPath);
+
     bool isSubscriptionStateKnown;
     stream >> isSubscriptionStateKnown;
     info.setSubscriptionStateKnown(isSubscriptionStateKnown);
