@@ -1,3 +1,9 @@
+contactsd (1.0.12.3-1) unstable; urgency=low
+
+  * Add birthday plugin tests in EXPECTFAIL
+
+ -- Adrien Bustany <adrien.bustany@nokia.com>  Wed, 12 Oct 2011 11:11:11 +0300
+
 contactsd (1.0.12.2-1) unstable; urgency=low
 
   * Fixes: NB#285657 - Reboot loop due to contactsd crash
