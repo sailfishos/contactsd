@@ -43,13 +43,13 @@ public:
         Capabilities  = (1 << 2),
         Avatar        = (1 << 3),
         Authorization = (1 << 4),
-        Information    = (1 << 5),
+        Information   = (1 << 5),
         Blocked       = (1 << 6),
         Visibility    = (1 << 7),
         All           = (1 << 8) -1,
         // Special values
-        Added         = (1 << 9) - 1,
-        Deleted       = 1 << 10
+        Added         = (1 << 20) - 1,
+        Deleted       = (1 << 21)
     };
     Q_DECLARE_FLAGS(Changes, Change)
 
