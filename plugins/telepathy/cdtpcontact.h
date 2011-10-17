@@ -80,42 +80,12 @@ public:
         ~Info();
 
     public:
-        QString alias() const;
-        void setAlias(const QString &alias);
-
-        Tp::Presence presence() const;
-        void setPresence(const Tp::Presence &presence);
-
-        int capabilities() const;
-        void setCapabilities(int capabilities);
-
-        QString avatarPath() const;
-        void setAvatarPath(const QString &avatarPath);
-
-        bool isSubscriptionStateKnown() const;
-        void setSubscriptionStateKnown(bool known);
-
-        Tp::Contact::PresenceState subscriptionState() const;
-        void setSubscriptionState(Tp::Contact::PresenceState state);
-
-        bool isPublishStateKnown() const;
-        void setPublishStateKnown(bool known);
-
-        Tp::Contact::PresenceState publishState() const;
-        void setPublishState(Tp::Contact::PresenceState state);
-
-        bool isContactInfoKnown() const;
-        void setContactInfoKnown(bool known);
-
-        Tp::ContactInfoFieldList infoFields() const;
-        void setInfoFields(const Tp::ContactInfoFieldList &fields);
-
-        bool isVisible() const;
-        void setVisible(bool visible);
-
         CDTpContact::Changes diff(const CDTpContact::Info &other) const;
 
     private:
+        friend QDataStream& operator<<(QDataStream &stream, const CDTpContact::Info &info);
+        friend QDataStream& operator>>(QDataStream &stream, CDTpContact::Info &info);
+
         QSharedDataPointer<InfoData> d;
     };
 

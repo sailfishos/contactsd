@@ -122,145 +122,35 @@ CDTpContact::Info::~Info()
 {
 }
 
-QString CDTpContact::Info::alias() const
-{
-    return d->alias;
-}
-
-void CDTpContact::Info::setAlias(const QString &alias)
-{
-    d->alias = alias;
-}
-
-Tp::Presence CDTpContact::Info::presence() const
-{
-    return d->presence;
-}
-
-void CDTpContact::Info::setPresence(const Tp::Presence &presence)
-{
-    d->presence = presence;
-}
-
-int CDTpContact::Info::capabilities() const
-{
-    return d->capabilities;
-}
-
-void CDTpContact::Info::setCapabilities(int capabilities)
-{
-    d->capabilities = capabilities;
-}
-
-QString CDTpContact::Info::avatarPath() const
-{
-    return d->avatarPath;
-}
-
-void CDTpContact::Info::setAvatarPath(const QString &avatarPath)
-{
-    d->avatarPath = avatarPath;
-}
-
-bool CDTpContact::Info::isSubscriptionStateKnown() const
-{
-    return d->isSubscriptionStateKnown;
-}
-
-void CDTpContact::Info::setSubscriptionStateKnown(bool known)
-{
-    d->isSubscriptionStateKnown = known;
-}
-
-Tp::Contact::PresenceState CDTpContact::Info::subscriptionState() const
-{
-    return d->subscriptionState;
-}
-
-void CDTpContact::Info::setSubscriptionState(Tp::Contact::PresenceState state)
-{
-    d->subscriptionState = state;
-}
-
-bool CDTpContact::Info::isPublishStateKnown() const
-{
-    return d->isPublishStateKnown;
-}
-
-void CDTpContact::Info::setPublishStateKnown(bool known)
-{
-    d->isPublishStateKnown = known;
-}
-
-Tp::Contact::PresenceState CDTpContact::Info::publishState() const
-{
-    return d->publishState;
-}
-
-void CDTpContact::Info::setPublishState(Tp::Contact::PresenceState state)
-{
-    d->publishState = state;
-}
-
-bool CDTpContact::Info::isContactInfoKnown() const
-{
-    return d->isContactInfoKnown;
-}
-
-void CDTpContact::Info::setContactInfoKnown(bool known)
-{
-    d->isContactInfoKnown = known;
-}
-
-Tp::ContactInfoFieldList CDTpContact::Info::infoFields() const
-{
-    return d->infoFields;
-}
-
-void CDTpContact::Info::setInfoFields(const Tp::ContactInfoFieldList &fields)
-{
-    d->infoFields = fields;
-}
-
-bool CDTpContact::Info::isVisible() const
-{
-    return d->isVisible;
-}
-
-void CDTpContact::Info::setVisible(bool visible)
-{
-    d->isVisible = visible;
-}
-
 CDTpContact::Changes CDTpContact::Info::diff(const CDTpContact::Info &other) const
 {
     Changes changes = 0;
 
-    if (d->alias != other.alias())
+    if (d->alias != other.d->alias)
         changes |= CDTpContact::Alias;
 
     // We only compare the relevant fields (status is not saved in Tracker, and isValid is irrelevant)
-    if (d->presence.type() != other.presence().type()
-     || d->presence.statusMessage() != other.presence().statusMessage())
+    if (d->presence.type() != other.d->presence.type()
+     || d->presence.statusMessage() != other.d->presence.statusMessage())
         changes |= CDTpContact::Presence;
 
-    if (d->capabilities != other.capabilities())
+    if (d->capabilities != other.d->capabilities)
         changes |= CDTpContact::Capabilities;
 
-    if (d->avatarPath != other.avatarPath())
+    if (d->avatarPath != other.d->avatarPath)
         changes |= CDTpContact::Avatar;
 
-    if (d->isSubscriptionStateKnown != other.isSubscriptionStateKnown()
-     || d->isPublishStateKnown != other.isPublishStateKnown()
-     || d->subscriptionState != other.subscriptionState()
-     || d->publishState != other.publishState())
+    if (d->isSubscriptionStateKnown != other.d->isSubscriptionStateKnown
+     || d->isPublishStateKnown != other.d->isPublishStateKnown
+     || d->subscriptionState != other.d->subscriptionState
+     || d->publishState != other.d->publishState)
         changes |= CDTpContact::Authorization;
 
-    if (other.isContactInfoKnown()
-     && d->infoFields != other.infoFields())
+    if (other.d->isContactInfoKnown
+     && d->infoFields != other.d->infoFields)
         changes |= CDTpContact::Information;
 
-    if (d->isVisible != other.isVisible())
+    if (d->isVisible != other.d->isVisible)
         changes |= CDTpContact::Visibility;
 
     return changes;
@@ -442,17 +332,17 @@ QDataStream& operator<<(QDataStream &stream, const Tp::ContactInfoField &field)
 
 QDataStream& operator<<(QDataStream &stream, const CDTpContact::Info &info)
 {
-    stream << info.alias();
-    stream << info.presence();
-    stream << info.capabilities();
-    stream << info.avatarPath();
-    stream << info.isSubscriptionStateKnown();
-    stream << (uint)info.subscriptionState();
-    stream << info.isPublishStateKnown();
-    stream << (uint)info.publishState();
-    stream << info.isContactInfoKnown();
-    stream << info.infoFields();
-    stream << info.isVisible();
+    stream << info.d->alias;
+    stream << info.d->presence;
+    stream << info.d->capabilities;
+    stream << info.d->avatarPath;
+    stream << info.d->isSubscriptionStateKnown;
+    stream << uint(info.d->subscriptionState);
+    stream << info.d->isPublishStateKnown;
+    stream << uint(info.d->publishState);
+    stream << info.d->isContactInfoKnown;
+    stream << info.d->infoFields;
+    stream << info.d->isVisible;
 
     return stream;
 }
@@ -485,47 +375,47 @@ QDataStream& operator>>(QDataStream &stream, CDTpContact::Info &info)
 {
     QString alias;
     stream >> alias;
-    info.setAlias(alias);
+    info.d->alias = alias;
 
     Tp::Presence presence;
     stream >> presence;
-    info.setPresence(presence);
+    info.d->presence = presence;
 
     int capabilities;
     stream >> capabilities;
-    info.setCapabilities(capabilities);
+    info.d->capabilities = capabilities;
 
     QString avatarPath;
     stream >> avatarPath;
-    info.setAvatarPath(avatarPath);
+    info.d->avatarPath = avatarPath;
 
     bool isSubscriptionStateKnown;
     stream >> isSubscriptionStateKnown;
-    info.setSubscriptionStateKnown(isSubscriptionStateKnown);
+    info.d->isSubscriptionStateKnown = isSubscriptionStateKnown;
 
     uint subscriptionState;
     stream >> subscriptionState;
-    info.setSubscriptionState((Tp::Contact::PresenceState)subscriptionState);
+    info.d->subscriptionState = Tp::Contact::PresenceState(subscriptionState);
 
     bool isPublishStateKnown;
     stream >> isPublishStateKnown;
-    info.setPublishStateKnown(isPublishStateKnown);
+    info.d->isPublishStateKnown = isPublishStateKnown;
 
     uint publishState;
     stream >> publishState;
-    info.setPublishState((Tp::Contact::PresenceState)publishState);
+    info.d->publishState = Tp::Contact::PresenceState(publishState);
 
     bool isContactInfoKnown;
     stream >> isContactInfoKnown;
-    info.setContactInfoKnown(isContactInfoKnown);
+    info.d->isContactInfoKnown = isContactInfoKnown;
 
     Tp::ContactInfoFieldList fields;
     stream >> fields;
-    info.setInfoFields(fields);
+    info.d->infoFields = fields;
 
     bool isVisible;
     stream >> isVisible;
-    info.setVisible(isVisible);
+    info.d->isVisible = isVisible;
 
     return stream;
 }
