@@ -1494,11 +1494,7 @@ void CDTpStorage::removeAccountContacts(const QString &accountPath, const QStrin
 
 void CDTpStorage::updateContact(CDTpContactPtr contactWrapper, CDTpContact::Changes changes)
 {
-    if (not mUpdateQueue.contains(contactWrapper)) {
-        mUpdateQueue.insert(contactWrapper, changes);
-    } else {
-        mUpdateQueue[contactWrapper] |= changes;
-    }
+    mUpdateQueue[contactWrapper] |= changes;
 
     if (not mUpdateRunning) {
         // Only update IM contacts in tracker after queuing 50 contacts or after
