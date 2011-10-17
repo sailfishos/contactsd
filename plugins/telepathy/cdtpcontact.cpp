@@ -371,50 +371,36 @@ QDataStream& operator>>(QDataStream &stream, Tp::ContactInfoField &field)
     return stream;
 }
 
+static QDataStream& operator>>(QDataStream &stream, Tp::Contact::PresenceState &presenceState)
+{
+    uint value;
+    stream >> value;
+    presenceState = Tp::Contact::PresenceState(value);
+    return stream;
+}
+
 QDataStream& operator>>(QDataStream &stream, CDTpContact::Info &info)
 {
-    QString alias;
-    stream >> alias;
-    info.d->alias = alias;
-
-    Tp::Presence presence;
-    stream >> presence;
-    info.d->presence = presence;
-
-    int capabilities;
-    stream >> capabilities;
-    info.d->capabilities = capabilities;
-
-    QString avatarPath;
-    stream >> avatarPath;
-    info.d->avatarPath = avatarPath;
-
     bool isSubscriptionStateKnown;
-    stream >> isSubscriptionStateKnown;
-    info.d->isSubscriptionStateKnown = isSubscriptionStateKnown;
-
-    uint subscriptionState;
-    stream >> subscriptionState;
-    info.d->subscriptionState = Tp::Contact::PresenceState(subscriptionState);
-
     bool isPublishStateKnown;
-    stream >> isPublishStateKnown;
-    info.d->isPublishStateKnown = isPublishStateKnown;
-
-    uint publishState;
-    stream >> publishState;
-    info.d->publishState = Tp::Contact::PresenceState(publishState);
-
     bool isContactInfoKnown;
-    stream >> isContactInfoKnown;
-    info.d->isContactInfoKnown = isContactInfoKnown;
-
-    Tp::ContactInfoFieldList fields;
-    stream >> fields;
-    info.d->infoFields = fields;
-
     bool isVisible;
+
+    stream >> info.d->alias;
+    stream >> info.d->presence;
+    stream >> info.d->capabilities;
+    stream >> info.d->avatarPath;
+    stream >> isSubscriptionStateKnown;
+    stream >> info.d->subscriptionState;
+    stream >> isPublishStateKnown;
+    stream >> info.d->publishState;
+    stream >> isContactInfoKnown;
+    stream >> info.d->infoFields;
     stream >> isVisible;
+
+    info.d->isSubscriptionStateKnown = isSubscriptionStateKnown;
+    info.d->isPublishStateKnown = isPublishStateKnown;
+    info.d->isContactInfoKnown = isContactInfoKnown;
     info.d->isVisible = isVisible;
 
     return stream;
