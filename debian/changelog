@@ -1,3 +1,9 @@
+contactsd (1.0.13-1) unstable; urgency=low
+
+  * Fixes: NB#286474 - Invalid accounts don't get added to the contact
+
+ -- Adrien Bustany <adrien.bustany@nokia.com>  Mon, 17 Oct 2011 13:56:07 +0300
+
 contactsd (1.0.12.3-1) unstable; urgency=low
 
   * Add birthday plugin tests in EXPECTFAIL
