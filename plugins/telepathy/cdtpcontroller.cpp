@@ -478,6 +478,11 @@ void CDTpInvitationOperation::onContactsRetrieved(Tp::PendingOperation *op)
             resolvedIds.append(c->id());
         }
 
+        // Also create "failed" IMAddresses for invalid identifiers
+        foreach (const QString &id, pcontacts->invalidIdentifiers().keys()) {
+            resolvedIds.append(id);
+        }
+
         mStorage->createAccountContacts(mAccountWrapper->account()->objectPath(), resolvedIds, mContactLocalId);
     }
 
