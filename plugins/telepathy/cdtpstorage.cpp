@@ -270,8 +270,7 @@ static void addCapabilities(PatternGroup &g,
 
 static void addAvatar(PatternGroup &g,
         const Value &imAddress,
-        const QString &fileName,
-        bool knownAvatar)
+        const QString &fileName)
 {
     if (!fileName.isEmpty()) {
         const QUrl url = QUrl::fromLocalFile(fileName);
@@ -279,16 +278,8 @@ static void addAvatar(PatternGroup &g,
         g.addPattern(dataObject, aValue, nfo::FileDataObject::resource());
         g.addPattern(dataObject, nie::url::resource(), LiteralValue(url));
         g.addPattern(imAddress, nco::imAvatar::resource(), dataObject);
-    } else if (knownAvatar) {
-        /* We know that the contact has no avatar, that is different to having
-         * unknown avatar which can happen for offline contacts and in which
-         * case we want to keep the latest known avatar.
-         *
-         * This is a hack to profit of IoR speedup: we set imAvatar to an IRI
-         * that does not exists, easier/faster than deleting the property in a
-         * separate query. Qct will deal with that. */
-        const static ResourceValue noAvatar(QLatin1String("urn:contactsd:invalid-avatar"));
-        g.addPattern(imAddress, nco::imAvatar::resource(), noAvatar);
+    } else {
+        g.addPattern(imAddress, nco::imAvatar::resource(), NullValue());
     }
 }
 
@@ -545,7 +536,7 @@ static void addAccountChanges(PatternGroup &g,
     }
     if (changes & CDTpAccount::Avatar) {
         debug() << "  avatar changed";
-        addAvatar(g, imAddress, saveAccountAvatar(accountWrapper), true);
+        addAvatar(g, imAddress, saveAccountAvatar(accountWrapper));
     }
     if (changes & CDTpAccount::Nickname) {
         debug() << "  nickname changed";
@@ -583,7 +574,7 @@ static void addContactChanges(PatternGroup &g,
     }
     if (changes & CDTpContact::Avatar) {
         debug() << "  avatar changed";
-        addAvatar(g, imAddress, contact->avatarData().fileName, contact->isAvatarTokenKnown());
+        addAvatar(g, imAddress, contact->avatarData().fileName);
     }
     if (changes & CDTpContact::Authorization) {
         debug() << "  authorization changed";
