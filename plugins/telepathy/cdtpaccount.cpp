@@ -68,8 +68,7 @@ CDTpAccount::CDTpAccount(const Tp::AccountPtr &account, const QStringList &toAvo
             SLOT(onAccountStateChanged()));
 
     if (not newAccount) {
-        CDTpAccountCacheLoader loader(this);
-        loader.run();
+        CDTpAccountCacheLoader(this).run();
     }
 
     setConnection(mAccount->connection());
@@ -101,8 +100,7 @@ CDTpAccount::~CDTpAccount()
         makeRosterCache();
     }
 
-    CDTpAccountCacheWriter writer(this);
-    writer.run();
+    CDTpAccountCacheWriter(this).run();
 }
 
 QList<CDTpContactPtr> CDTpAccount::contacts() const
