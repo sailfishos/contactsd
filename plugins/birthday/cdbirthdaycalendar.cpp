@@ -221,8 +221,8 @@ QString CDBirthdayCalendar::summary(QContactLocalId contactId)
 
 QString CDBirthdayCalendar::calendarEventId(QContactLocalId contactId)
 {
-    static const QLatin1String calIdExtension(" com.nokia.birthday");
-    return QString::number(contactId) + calIdExtension;
+    static const QLatin1String calIdExtension("com.nokia.birthday/");
+    return calIdExtension + QString::number(contactId);
 }
 
 KCalCore::Event::Ptr CDBirthdayCalendar::calendarEvent(QContactLocalId contactId)
