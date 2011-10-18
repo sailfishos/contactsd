@@ -44,8 +44,6 @@ CDTpAccountCacheWriter::CDTpAccountCacheWriter(const CDTpAccount *account,
 
 void CDTpAccountCacheWriter::run()
 {
-    deleteLater();
-
     const QString accountPath = mAccount->account()->objectPath();
     const QString rosterFileName = cacheFilePath(mAccount);
     const QHash<QString, CDTpContact::Info> cache = mAccount->rosterCache();

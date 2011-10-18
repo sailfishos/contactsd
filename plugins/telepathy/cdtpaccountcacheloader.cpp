@@ -37,8 +37,6 @@ CDTpAccountCacheLoader::CDTpAccountCacheLoader(CDTpAccount *account, QObject *pa
 
 void CDTpAccountCacheLoader::run()
 {
-    deleteLater();
-
     const QString accountPath = mAccount->account()->objectPath();
     QFile cacheFile(CDTpAccountCacheWriter::cacheFilePath(mAccount));
 
