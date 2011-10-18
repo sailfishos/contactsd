@@ -127,16 +127,21 @@ CDBirthdayController::onTrackerIdsFetched()
     }
 
     if (result->hasError()) {
-        debug() << Q_FUNC_INFO << "Could not fetch Tracker IDs:" << result->lastError().message();
-    } else if (not result->next()) {
-        debug() << Q_FUNC_INFO << "No results returned";
+        warning() << Q_FUNC_INFO << "Could not fetch Tracker IDs:" << result->lastError().message();
+        result->deleteLater();
         return;
-    } else {
-        const QSparqlResultRow row = result->current();
+    }
 
-        for (int i = 0; i < NTrackerIds; ++i) {
-            mTrackerIds[i] = row.value(i).toInt();
-        }
+    if (not result->next()) {
+        warning() << Q_FUNC_INFO << "No results returned";
+        result->deleteLater();
+        return;
+    }
+
+    const QSparqlResultRow row = result->current();
+
+    for (int i = 0; i < NTrackerIds; ++i) {
+        mTrackerIds[i] = row.value(i).toInt();
     }
 
     // Provide hint we are done with this result.
