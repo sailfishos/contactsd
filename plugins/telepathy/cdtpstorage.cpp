@@ -755,6 +755,8 @@ static CDTpQueryBuilder createContactsBuilder(const QList<CDTpContactPtr> &conta
     // updating it (at least until we don't have null support in Tracker)
     QStringList capsDeleteAddresses;
 
+    QStringList allAddresses;
+
     // Ensure all imAddress exist and are linked from imAccount for new contacts
     Insert i(Insert::Replace);
     Graph g(privateGraph);
@@ -763,6 +765,8 @@ static CDTpQueryBuilder createContactsBuilder(const QList<CDTpContactPtr> &conta
         const QString contactAddress = imAddress(contactWrapper);
         const QHash<QString, CDTpContact::Changes>::ConstIterator contactChangesIter = changes.find(contactAddress);
         CDTpContact::Changes contactChanges = 0;
+
+        allAddresses.append(contactAddress);
 
         if (contactChangesIter != changes.constEnd()) {
             contactChanges = contactChangesIter.value();
@@ -829,7 +833,8 @@ static CDTpQueryBuilder createContactsBuilder(const QList<CDTpContactPtr> &conta
     i.addRestriction(g);
     Exists e;
     e.addPattern(imContactVar, imAddressChain, imAddressVar);
-    i.setFilter(Functions::not_.apply(Filter(e)));
+    i.setFilter(Functions::and_.apply(Functions::not_.apply(Filter(e)),
+                                      Functions::in.apply(Functions::str.apply(imAddressVar), LiteralValue(allAddresses))));
     builder.append(i);
 
     return builder;
