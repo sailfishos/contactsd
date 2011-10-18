@@ -710,7 +710,7 @@ static CDTpQueryBuilder updateContactsInfoBuilder(const QList<CDTpContactPtr> &c
         const QHash<QString, CDTpContact::Changes>::ConstIterator contactChangesIter = changes.find(address);
         CDTpContact::Changes contactChanges = 0;
 
-        if (contactChangesIter == changes.constEnd()) {
+        if (contactChangesIter != changes.constEnd()) {
             contactChanges = contactChangesIter.value();
         } else {
             warning() << "Internal error: unknown changes for" << address;
