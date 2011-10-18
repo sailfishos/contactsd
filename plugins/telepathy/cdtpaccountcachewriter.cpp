@@ -29,7 +29,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "base-plugin.h"
+#include "cdtpaccountcache.h"
 
 using namespace Contactsd;
 
@@ -45,7 +45,7 @@ CDTpAccountCacheWriter::CDTpAccountCacheWriter(const CDTpAccount *account,
 void CDTpAccountCacheWriter::run()
 {
     const QString accountPath = mAccount->account()->objectPath();
-    const QString rosterFileName = cacheFilePath(mAccount);
+    const QString rosterFileName = CDTpAccountCache::cacheFilePath(mAccount);
     const QHash<QString, CDTpContact::Info> cache = mAccount->rosterCache();
 
     if (cache.isEmpty()) {
@@ -69,7 +69,7 @@ void CDTpAccountCacheWriter::run()
     buffer.open(QIODevice::WriteOnly);
 
     QDataStream stream(&buffer);
-    stream << CDTPACCOUNTCACHE_VERSION;
+    stream << CDTpAccountCache::Version;
     stream << cache;
 
     buffer.close();
@@ -95,10 +95,4 @@ void CDTpAccountCacheWriter::run()
     }
 
     debug() << "Wrote" << mAccount->rosterCache().size() << "contacts to cache for account" << accountPath;
-}
-
-QString
-CDTpAccountCacheWriter::cacheFilePath(const CDTpAccount *account)
-{
-    return BasePlugin::cacheDir().absoluteFilePath(account->account()->objectPath().replace(QLatin1Char('/'), QLatin1Char('_')));
 }

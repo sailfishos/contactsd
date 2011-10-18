@@ -23,7 +23,7 @@
 
 #include "cdtpaccountcacheloader.h"
 
-#include "cdtpaccountcachewriter.h"
+#include "cdtpaccountcache.h"
 
 #include <debug.h>
 
@@ -38,7 +38,7 @@ CDTpAccountCacheLoader::CDTpAccountCacheLoader(CDTpAccount *account, QObject *pa
 void CDTpAccountCacheLoader::run()
 {
     const QString accountPath = mAccount->account()->objectPath();
-    QFile cacheFile(CDTpAccountCacheWriter::cacheFilePath(mAccount));
+    QFile cacheFile(CDTpAccountCache::cacheFilePath(mAccount));
 
     if (not cacheFile.exists()) {
         debug() << Q_FUNC_INFO << "Account" << accountPath << "has no cache file";
@@ -65,7 +65,7 @@ void CDTpAccountCacheLoader::run()
     int cacheVersion;
     stream >> cacheVersion;
 
-    if (cacheVersion != CDTPACCOUNTCACHE_VERSION) {
+    if (cacheVersion != CDTpAccountCache::Version) {
         warning() << "Wrong cache version for file" << cacheFile.fileName();
         cacheFile.remove();
     }

@@ -40,6 +40,7 @@ INCLUDEPATH += $$TOP_SOURCEDIR/src
 DEFINES += ENABLE_DEBUG
 
 HEADERS  = cdtpaccount.h \
+    cdtpaccountcache.h \
     cdtpaccountcacheloader.h \
     cdtpaccountcachewriter.h \
     types.h \

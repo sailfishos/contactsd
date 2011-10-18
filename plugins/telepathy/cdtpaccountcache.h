@@ -21,21 +21,20 @@
  ** conditions contained in a signed written agreement between you and Nokia.
  **/
 
-#ifndef CDTPACCOUNTCACHEWRITER_H
-#define CDTPACCOUNTCACHEWRITER_H
+#ifndef CDTPACCOUNTCACHE_H
+#define CDTPACCOUNTCACHE_H
+
+#include <QtCore>
 
 #include "cdtpaccount.h"
+#include "base-plugin.h"
 
-class CDTpAccountCacheWriter : public QObject
-{
-public:
-    CDTpAccountCacheWriter(const CDTpAccount *account, QObject *parent = 0);
+namespace CDTpAccountCache {
+    static int Version = 0;
 
-    void run();
+    static QString cacheFilePath(const CDTpAccount *account) {
+        return Contactsd::BasePlugin::cacheDir().absoluteFilePath(account->account()->objectPath().replace(QLatin1Char('/'), QLatin1Char('_')));
+    }
+}
 
-private:
-    const CDTpAccount *mAccount;
-    const QString mFilename;
-};
-
-#endif // CDTPACCOUNTCACHEWRITER_H
+#endif // CDTPACCOUNTCACHE_H
