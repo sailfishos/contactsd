@@ -1171,16 +1171,18 @@ static CDTpQueryBuilder createGarbageCollectorBuilder()
      */
 
     /* Each avatar update leaks the previous nfo:FileDataObject in privateGraph */
-    Delete d;
-    Exists e;
-    Graph g(privateGraph);
-    Variable dataObject;
-    d.addData(dataObject, aValue, rdfs::Resource::resource());
-    g.addPattern(dataObject, aValue, nfo::FileDataObject::resource());
-    e.addPattern(imAddressVar, nco::imAvatar::resource(), dataObject);
-    d.addRestriction(g);
-    d.setFilter(Functions::not_.apply(Filter(e)));
-    builder.append(d);
+    {
+        Delete d;
+        Exists e;
+        Graph g(privateGraph);
+        Variable fdo, img;
+        g.addPattern(fdo, aValue, nfo::FileDataObject::resource());
+        e.addPattern(imAddressVar, nco::imAvatar::resource(), fdo);
+        d.addData(fdo, aValue, rdfs::Resource::resource());
+        d.addRestriction(g);
+        d.setFilter(Functions::not_.apply(Filter(e)));
+        builder.append(d);
+    }
 
     /* Affiliations used to link to the IMAddress are leaked when IMAddress is
      * deleted. If affiliation is in privateGraph and has no hasIMAddress we
@@ -1191,27 +1193,32 @@ static CDTpQueryBuilder createGarbageCollectorBuilder()
      */
 
     /* Part 1. Delete the affiliation */
-    d = Delete();
-    g = Graph(privateGraph);
-    e = Exists();
-    Variable affiliation;
-    d.addData(affiliation, aValue, rdfs::Resource::resource());
-    g.addPattern(affiliation, aValue, nco::Affiliation::resource());
-    d.addRestriction(g);
-    e.addPattern(affiliation, nco::hasIMAddress::resource(), Variable());
-    d.setFilter(Functions::not_.apply(Filter(e)));
-    builder.append(d);
+    {
+        Delete d;
+        Graph g(privateGraph);
+        Exists e;
+        Variable affiliation;
+        d.addData(affiliation, aValue, rdfs::Resource::resource());
+        g.addPattern(affiliation, aValue, nco::Affiliation::resource());
+        d.addRestriction(g);
+        e.addPattern(affiliation, nco::hasIMAddress::resource(), Variable());
+        d.setFilter(Functions::not_.apply(Filter(e)));
+        builder.append(d);
+    }
 
     /* Part 2. Delete hasAffiliation if linked resource does not exist anymore  */
-    d = Delete();
-    g = Graph(privateGraph);
-    e = Exists();
-    d.addData(imContactVar, nco::hasAffiliation::resource(), affiliation);
-    g.addPattern(imContactVar, nco::hasAffiliation::resource(), affiliation);
-    d.addRestriction(g);
-    e.addPattern(affiliation, aValue, rdfs::Resource::resource());
-    d.setFilter(Functions::not_.apply(Filter(e)));
-    builder.append(d);
+    {
+        Delete d;
+        Graph g(privateGraph);
+        Exists e;
+        Variable affiliation;
+        d.addData(imContactVar, nco::hasAffiliation::resource(), affiliation);
+        g.addPattern(imContactVar, nco::hasAffiliation::resource(), affiliation);
+        d.addRestriction(g);
+        e.addPattern(affiliation, aValue, rdfs::Resource::resource());
+        d.setFilter(Functions::not_.apply(Filter(e)));
+        builder.append(d);
+    }
 
     /* Each ContactInfo update leaks various resources in IMAddress graph. But
      * the IMAddress could even not exist anymore... so drop everything from
@@ -1230,9 +1237,9 @@ static CDTpQueryBuilder createGarbageCollectorBuilder()
 
     Q_FOREACH (const ValuePair &pair, contactInfoResources) {
         Variable graph;
-        d = Delete();
-        e = Exists();
-        g = Graph(graph);
+        Delete d;
+        Exists e;
+        Graph g(graph);
         Variable resource;
         d.addData(resource, aValue, rdfs::Resource::resource());
         g.addPattern(resource, aValue, pair.first);
