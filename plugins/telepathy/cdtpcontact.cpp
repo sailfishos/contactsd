@@ -41,6 +41,8 @@ public:
     Tp::Presence presence;
     int capabilities;
     QString avatarPath;
+    QString largeAvatarPath;
+    QString squareAvatarPath;
     Tp::Contact::PresenceState subscriptionState;
     Tp::Contact::PresenceState publishState;
     Tp::ContactInfoFieldList infoFields;
@@ -138,7 +140,13 @@ CDTpContact::Changes CDTpContact::Info::diff(const CDTpContact::Info &other) con
         changes |= CDTpContact::Capabilities;
 
     if (d->avatarPath != other.d->avatarPath)
-        changes |= CDTpContact::Avatar;
+        changes |= CDTpContact::DefaultAvatar;
+
+    if (d->largeAvatarPath != other.d->largeAvatarPath)
+        changes |= CDTpContact::LargeAvatar;
+
+    if (d->squareAvatarPath != other.d->squareAvatarPath)
+        changes |= CDTpContact::SquareAvatar;
 
     if (d->isSubscriptionStateKnown != other.d->isSubscriptionStateKnown
      || d->isPublishStateKnown != other.d->isPublishStateKnown
@@ -232,6 +240,18 @@ CDTpContact::Info CDTpContact::info() const
     return Info(this);
 }
 
+void CDTpContact::setLargeAvatarPath(const QString &path)
+{
+    mLargeAvatarPath = path;
+    emitChanged(LargeAvatar);
+}
+
+void CDTpContact::setSquareAvatarPath(const QString &path)
+{
+    mSquareAvatarPath = path;
+    emitChanged(SquareAvatar);
+}
+
 void CDTpContact::onContactAliasChanged()
 {
     emitChanged(Alias);
@@ -249,7 +269,7 @@ void CDTpContact::onContactCapabilitiesChanged()
 
 void CDTpContact::onContactAvatarDataChanged()
 {
-    emitChanged(Avatar);
+    emitChanged(DefaultAvatar);
 }
 
 void CDTpContact::onContactAuthorizationChanged()
@@ -336,6 +356,8 @@ QDataStream& operator<<(QDataStream &stream, const CDTpContact::Info &info)
     stream << info.d->presence;
     stream << info.d->capabilities;
     stream << info.d->avatarPath;
+    stream << info.d->largeAvatarPath;
+    stream << info.d->squareAvatarPath;
     stream << info.d->isSubscriptionStateKnown;
     stream << uint(info.d->subscriptionState);
     stream << info.d->isPublishStateKnown;
@@ -390,6 +412,8 @@ QDataStream& operator>>(QDataStream &stream, CDTpContact::Info &info)
     stream >> info.d->presence;
     stream >> info.d->capabilities;
     stream >> info.d->avatarPath;
+    stream >> info.d->largeAvatarPath;
+    stream >> info.d->squareAvatarPath;
     stream >> isSubscriptionStateKnown;
     stream >> info.d->subscriptionState;
     stream >> isPublishStateKnown;

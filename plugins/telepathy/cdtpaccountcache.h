@@ -30,7 +30,7 @@
 #include "base-plugin.h"
 
 namespace CDTpAccountCache {
-    static int Version = 0;
+    static int Version = 1;
 
     static QString cacheFilePath(const CDTpAccount *account) {
         return Contactsd::BasePlugin::cacheDir().absoluteFilePath(account->account()->objectPath().replace(QLatin1Char('/'), QLatin1Char('_')));

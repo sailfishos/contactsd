@@ -41,13 +41,18 @@ public:
         Alias         = (1 << 0),
         Presence      = (1 << 1),
         Capabilities  = (1 << 2),
-        Avatar        = (1 << 3),
+        DefaultAvatar = (1 << 3),
         Authorization = (1 << 4),
         Information   = (1 << 5),
         Blocked       = (1 << 6),
         Visibility    = (1 << 7),
-        All           = (1 << 8) -1,
+        LargeAvatar   = (1 << 8),
+        SquareAvatar  = (1 << 9),
+        All           = (1 << 10) - 1,
+
         // Special values
+        Avatar        = (DefaultAvatar | LargeAvatar | SquareAvatar),
+
         Added         = (1 << 20) - 1,
         Deleted       = (1 << 21)
     };
@@ -102,6 +107,12 @@ public:
 
     Info info() const;
 
+    void setLargeAvatarPath(const QString &path);
+    const QString & largeAvatarPath() const { return mLargeAvatarPath; }
+
+    void setSquareAvatarPath(const QString &path);
+    const QString & squareAvatarPath() const { return mSquareAvatarPath; }
+
 Q_SIGNALS:
     void changed(CDTpContactPtr contact, CDTpContact::Changes changes);
 
@@ -123,6 +134,8 @@ private:
     friend class CDTpAccount;
     Tp::ContactPtr mContact;
     QPointer<CDTpAccount> mAccountWrapper;
+    QString mLargeAvatarPath;
+    QString mSquareAvatarPath;
     bool mRemoved;
     bool mVisible;
     Changes mQueuedChanges;
