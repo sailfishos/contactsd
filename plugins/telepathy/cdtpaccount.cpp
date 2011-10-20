@@ -40,7 +40,6 @@ using namespace Contactsd;
 CDTpAccount::CDTpAccount(const Tp::AccountPtr &account, const QStringList &toAvoid, bool newAccount, QObject *parent)
     : QObject(parent),
       mAccount(account),
-      mCurrentConnection(account->connection()),
       mContactsToAvoid(toAvoid),
       mHasRoster(false),
       mNewAccount(newAccount),
