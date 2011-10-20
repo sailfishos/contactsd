@@ -49,7 +49,8 @@ HEADERS  = cdtpaccount.h \
     cdtpplugin.h \
     cdtpquery.h \
     cdtpstorage.h \
-    buddymanagementadaptor.h
+    buddymanagementadaptor.h \
+    cdtpavatarupdate.h
 
 SOURCES  = cdtpaccount.cpp \
     cdtpaccountcacheloader.cpp \
@@ -59,7 +60,8 @@ SOURCES  = cdtpaccount.cpp \
     cdtpplugin.cpp \
     cdtpquery.cpp \
     cdtpstorage.cpp \
-    buddymanagementadaptor.cpp
+    buddymanagementadaptor.cpp \
+    cdtpavatarupdate.cpp
 
 TARGET = telepathyplugin
 target.path = $$LIBDIR/contactsd-1.0/plugins

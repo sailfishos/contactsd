@@ -71,6 +71,7 @@ private:
 
 private:
     QHash<CDTpContactPtr, CDTpContact::Changes> mUpdateQueue;
+    QNetworkAccessManager mNetwork;
     QTimer mUpdateTimer;
     bool mUpdateRunning;
     bool mDirectGC;

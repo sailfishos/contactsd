@@ -34,6 +34,7 @@
 #include <importstateconst.h>
 
 #include "cdtpstorage.h"
+#include "cdtpavatarupdate.h"
 #include "debug.h"
 
 CUBI_USE_NAMESPACE_RESOURCES
@@ -990,8 +991,39 @@ static CDTpQueryBuilder syncNoRosterAccountsContactsBuilder(const QList<CDTpAcco
     return builder;
 }
 
-static CDTpQueryBuilder syncRosterAccountsContactsBuilder(const QList<CDTpAccountPtr> &accounts,
-        bool purgeContacts = false)
+static void updateFacebookAvatar(QNetworkAccessManager &network, CDTpContactPtr contactWrapper,
+                                 const QString &facebookId, const QString &avatarType)
+{
+    const QUrl avatarUrl(QLatin1String("http://graph.facebook.com/") % facebookId %
+                         QLatin1String("/picture?type=") % avatarType);
+
+    QObject *const update = new CDTpAvatarUpdate(network.get(QNetworkRequest(avatarUrl)),
+                                                 contactWrapper, avatarType, contactWrapper.data());
+
+    QObject::connect(update, SIGNAL(finished()), update, SLOT(deleteLater()));
+}
+
+static void updateSocialAvatars(QNetworkAccessManager &network, CDTpContactPtr contactWrapper)
+{
+    if (network.networkAccessible() == QNetworkAccessManager::NotAccessible) {
+        return;
+    }
+
+    QRegExp facebookIdPattern(QLatin1String("-(\\d+)@chat\\.facebook\\.com"));
+
+    if (not facebookIdPattern.exactMatch(contactWrapper->contact()->id())) {
+        return; // only supporting Facebook avatars right now
+    }
+
+    const QString socialId = facebookIdPattern.cap(1);
+
+    updateFacebookAvatar(network, contactWrapper, socialId, CDTpAvatarUpdate::Large);
+    updateFacebookAvatar(network, contactWrapper, socialId, CDTpAvatarUpdate::Square);
+}
+
+static CDTpQueryBuilder syncRosterAccountsContactsBuilder(QNetworkAccessManager &network,
+                                                          const QList<CDTpAccountPtr> &accounts,
+                                                          bool purgeContacts = false)
 {
     QList<CDTpContactPtr> allContacts;
     QHash<QString, CDTpContact::Changes> allChanges;
@@ -1033,6 +1065,14 @@ static CDTpQueryBuilder syncRosterAccountsContactsBuilder(const QList<CDTpAccoun
             // We always update contact presence since this method is called after
             // a presence change
             allChanges.insert(address, it.value() | CDTpContact::Presence);
+        }
+
+        foreach(CDTpContactPtr contactWrapper, accountWrapper->contacts()) {
+            const QString address = imAddress(accountPath, contactWrapper->contact()->id());
+
+            if (allChanges.value(address) & CDTpContact::DefaultAvatar) {
+                updateSocialAvatars(network, contactWrapper);
+            }
         }
     }
 
@@ -1348,7 +1388,7 @@ void CDTpStorage::syncAccounts(const QList<CDTpAccountPtr> &accounts)
         }
 
         if (!rosterAccounts.isEmpty()) {
-            builder.append(syncRosterAccountsContactsBuilder(rosterAccounts));
+            builder.append(syncRosterAccountsContactsBuilder(mNetwork, rosterAccounts));
         }
 
         if (!noRosterAccounts.isEmpty()) {
@@ -1472,7 +1512,7 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper)
 
     QList<CDTpAccountPtr> accounts = QList<CDTpAccountPtr>() << accountWrapper;
     if (accountWrapper->hasRoster()) {
-        builder = syncRosterAccountsContactsBuilder(accounts, true);
+        builder = syncRosterAccountsContactsBuilder(mNetwork, accounts, true);
         triggerGarbageCollector(builder, accountWrapper->contacts().count());
     } else {
         builder = syncNoRosterAccountsContactsBuilder(accounts);
@@ -1608,6 +1648,11 @@ void CDTpStorage::onUpdateQueueTimeout()
         }
         if (changes & CDTpContact::Information) {
             infoContacts << contactWrapper;
+        }
+
+        // Update social avatars if needed
+        if (changes & CDTpContact::DefaultAvatar) {
+            updateSocialAvatars(mNetwork, contactWrapper);
         }
 
         // Add IMAddress changes
