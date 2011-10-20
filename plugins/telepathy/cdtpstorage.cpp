@@ -268,18 +268,49 @@ static void addCapabilities(PatternGroup &g,
     }
 }
 
-static void addAvatar(PatternGroup &g,
-        const Value &imAddress,
-        const QString &fileName)
+static void addAvatars(PatternGroup &g, const Value &imAddress,
+                       const QString &defaultAvatarPath,
+                       const QString &largeAvatarPath)
 {
-    if (!fileName.isEmpty()) {
-        const QUrl url = QUrl::fromLocalFile(fileName);
-        const Value dataObject = ResourceValue(url);
-        g.addPattern(dataObject, aValue, nfo::FileDataObject::resource());
-        g.addPattern(dataObject, nie::url::resource(), LiteralValue(url));
-        g.addPattern(imAddress, nco::imAvatar::resource(), dataObject);
-    } else {
+    typedef QPair<QString, QString> PairOfStrings;
+    QList<PairOfStrings> avatarPaths;
+
+    if (not defaultAvatarPath.isEmpty()) {
+        static const QString label = QLatin1String("Default");
+        avatarPaths += qMakePair(defaultAvatarPath, label);
+    }
+
+    if (not largeAvatarPath.isEmpty()) {
+        static const QString label = QLatin1String("Large");
+        avatarPaths += qMakePair(largeAvatarPath, label);
+    }
+
+    if (avatarPaths.isEmpty()) {
         g.addPattern(imAddress, nco::imAvatar::resource(), NullValue());
+        return;
+    }
+
+    // use fixed IRI to reduce amount of leaked nfo:Image resources
+    ResourceValue img;
+
+    foreach(const PairOfStrings &p, avatarPaths) {
+        const QUrl url = QUrl::fromLocalFile(p.first);
+        const ResourceValue fdo(url);
+
+        g.addPattern(fdo, rdf::type::resource(), nfo::FileDataObject::resource());
+        g.addPattern(fdo, rdf::type::resource(), nfo::Image::resource());
+        g.addPattern(fdo, rdfs::label::resource(), LiteralValue(p.second));
+        g.addPattern(fdo, nie::url::resource(), LiteralValue(url));
+
+        if (not img.isValid()) {
+            // im address links to first avatar file,
+            // which then is used to link to all other avatar files
+            g.addPattern(imAddress, nco::imAvatar::resource(), img = fdo);
+        } else {
+            // first iteration of the loop initialize img
+            g.addPattern(img, nie::relatedTo::resource(), fdo);
+            g.addPattern(fdo, nie::isPartOf::resource(), img);
+        }
     }
 }
 
@@ -550,7 +581,7 @@ static void addAccountChanges(PatternGroup &g,
     }
     if (changes & CDTpAccount::Avatar) {
         debug() << "  avatar changed";
-        addAvatar(g, imAddress, saveAccountAvatar(accountWrapper));
+        addAvatars(g, imAddress, saveAccountAvatar(accountWrapper), QString());
     }
     if (changes & CDTpAccount::Nickname) {
         debug() << "  nickname changed";
@@ -569,9 +600,10 @@ static void addAccountChanges(PatternGroup &g,
 static void addContactChanges(PatternGroup &g,
         const Value &imAddress,
         CDTpContact::Changes changes,
-        Tp::ContactPtr contact)
+        CDTpContactPtr contactWrapper)
 {
     debug() << "Update contact" << imAddress.sparql();
+    Tp::ContactPtr contact = contactWrapper->contact();
 
     // Apply changes
     if (changes & CDTpContact::Alias) {
@@ -588,7 +620,14 @@ static void addContactChanges(PatternGroup &g,
     }
     if (changes & CDTpContact::Avatar) {
         debug() << "  avatar changed";
-        addAvatar(g, imAddress, contact->avatarData().fileName);
+
+        QString defaultAvatarPath = contact->avatarData().fileName;
+
+        if (defaultAvatarPath.isEmpty()) {
+            defaultAvatarPath = contactWrapper->squareAvatarPath();
+        }
+
+        addAvatars(g, imAddress, defaultAvatarPath, contactWrapper->largeAvatarPath());
     }
     if (changes & CDTpContact::Authorization) {
         debug() << "  authorization changed";
@@ -799,10 +838,7 @@ static CDTpQueryBuilder createContactsBuilder(const QList<CDTpContactPtr> &conta
         }
 
         // Add mutable properties except for ContactInfo
-        addContactChanges(g,
-                          imAddress,
-                          contactChanges,
-                          contactWrapper->contact());
+        addContactChanges(g, imAddress, contactChanges, contactWrapper);
     }
     i.addData(g);
 
@@ -1173,14 +1209,16 @@ static CDTpQueryBuilder createGarbageCollectorBuilder()
     /* Each avatar update leaks the previous nfo:FileDataObject in privateGraph */
     {
         Delete d;
-        Exists e;
+        Exists e1, e2;
         Graph g(privateGraph);
         Variable fdo, img;
         g.addPattern(fdo, aValue, nfo::FileDataObject::resource());
-        e.addPattern(imAddressVar, nco::imAvatar::resource(), fdo);
+        e1.addPattern(imAddressVar, nco::imAvatar::resource(), fdo);
+        e2.addPattern(imAddressVar, nco::imAvatar::resource(), img);
+        e2.addPattern(img, nie::relatedTo::resource(), fdo);
         d.addData(fdo, aValue, rdfs::Resource::resource());
         d.addRestriction(g);
-        d.setFilter(Functions::not_.apply(Filter(e)));
+        d.setFilter(Functions::not_.apply(Functions::or_.apply(Filter(e1), Filter(e2))));
         builder.append(d);
     }
 
@@ -1573,8 +1611,7 @@ void CDTpStorage::onUpdateQueueTimeout()
         }
 
         // Add IMAddress changes
-        addContactChanges(g, literalIMAddress(contactWrapper),
-                changes, contactWrapper->contact());
+        addContactChanges(g, literalIMAddress(contactWrapper), changes, contactWrapper);
     }
     mUpdateQueue.clear();
 
