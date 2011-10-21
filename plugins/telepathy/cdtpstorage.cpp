@@ -1535,8 +1535,6 @@ void CDTpStorage::onUpdateQueueTimeout()
 
     for (iter = mUpdateQueue.constBegin(); iter != mUpdateQueue.constEnd(); iter++) {
         CDTpContactPtr contactWrapper = iter.key();
-        CDTpContact::Changes changes = iter.value();
-        const QString address = imAddress(contactWrapper);
 
         // Skip the contact in case its account was deleted before this function
         // was invoked
@@ -1547,6 +1545,9 @@ void CDTpStorage::onUpdateQueueTimeout()
         if (!contactWrapper->isVisible()) {
             continue;
         }
+
+        const QString address = imAddress(contactWrapper);
+        CDTpContact::Changes changes = iter.value();
 
         if (contactChangedPresenceOrCapsOnly(changes)) {
             onlyPresenceChangedAddresses.append(address);
