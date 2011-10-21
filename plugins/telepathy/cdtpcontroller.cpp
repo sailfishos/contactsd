@@ -449,6 +449,14 @@ CDTpInvitationOperation::CDTpInvitationOperation(CDTpStorage *storage,
 {
     debug() << "CDTpInvitationOperation: start";
 
+    if (accountWrapper->account()->connection().isNull()) {
+        // If the connection is null, we make up an error and emit it
+        // setFinishedWithError takes care of going through the event loop
+        setFinishedWithError(QString::fromLatin1("nullConnection"),
+                             QString::fromLatin1("Account connection is null"));
+        return;
+    }
+
     Tp::ContactManagerPtr manager = accountWrapper->account()->connection()->contactManager();
     Tp::PendingContacts *call = manager->contactsForIdentifiers(mContactIds);
     connect(call,
