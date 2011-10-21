@@ -299,6 +299,24 @@ static Value ensureContactAffiliation(PatternGroup &g,
     return affiliations[affiliationLabel];
 }
 
+static const ResourceValue & genderInstance(const QString &gender)
+{
+    const QString lowerGender = gender.toLower();
+
+    if (lowerGender == QLatin1String("male") ||
+        lowerGender == QLatin1String("m")) {
+        return nco::gender_male::resource();
+    }
+
+    if (lowerGender == QLatin1String("female") ||
+        lowerGender == QLatin1String("f")) {
+        return nco::gender_female::resource();
+    }
+
+    // simply declaring all other strings to belong to gender_other
+    return nco::gender_other::resource();
+}
+
 static CDTpQueryBuilder createContactInfoBuilder(CDTpContactPtr contactWrapper)
 {
     if (!contactWrapper->isInformationKnown()) {
@@ -465,13 +483,9 @@ static CDTpQueryBuilder createContactInfoBuilder(CDTpContactPtr contactWrapper)
         }
 
         else if (!field.fieldName.compare(QLatin1String("x-gender"))) {
-            if (field.fieldValue[0] == QLatin1String("male")) {
-                g.addPattern(imContactVar, nco::gender::resource(), nco::gender_male::resource());
-            } else if (field.fieldValue[0] == QLatin1String("female")) {
-                g.addPattern(imContactVar, nco::gender::resource(), nco::gender_female::resource());
-            } else {
-                debug() << "Unsupported gender:" << field.fieldValue[0];
-            }
+            const QString gender = field.fieldValue.at(0);
+
+            g.addPattern(imContactVar, nco::gender::resource(), genderInstance(gender));
         }
 
         else {
