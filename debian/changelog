@@ -1,3 +1,10 @@
+contactsd (1.0.14-1) unstable; urgency=low
+
+  * Fixes: NB#286052 - Duplicate set of address details gets added to tp contact each start
+  * Fixes: NB#287331 - Contactsd crash when a new Skype service contact is added in device
+
+ -- Adrien Bustany <adrien.bustany@nokia.com>  Fri, 21 Oct 2011 16:22:28 +0300
+
 contactsd (1.0.13-1) unstable; urgency=low
 
   * Fixes: NB#286474 - Invalid accounts don't get added to the contact
