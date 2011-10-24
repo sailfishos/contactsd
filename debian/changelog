@@ -1,3 +1,10 @@
+contactsd (1.0.15-1) unstable; urgency=low
+
+  * Fixes: NB#287690 - Null dereference in onUpdateQueueTimeout
+  * Changes: Fetch social avatars from Facebook and store them in Tracker
+
+ -- Adrien Bustany <adrien.bustany@nokia.com>  Mon, 24 Oct 2011 17:24:11 +0300
+
 contactsd (1.0.14-1) unstable; urgency=low
 
   * Fixes: NB#286052 - Duplicate set of address details gets added to tp contact each start
