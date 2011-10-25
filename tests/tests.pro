@@ -23,7 +23,7 @@
 TEMPLATE = subdirs
 CONFIG += ordered
 
-SUBDIRS += libtelepathy ut_birthdayplugin ut_telepathyplugin
+SUBDIRS += libtelepathy ut_telepathyplugin
 
 UNIT_TESTS += ut_birthdayplugin ut_telepathyplugin
 
