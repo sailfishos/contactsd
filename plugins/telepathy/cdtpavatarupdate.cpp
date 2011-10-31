@@ -45,16 +45,23 @@ CDTpAvatarUpdate::CDTpAvatarUpdate(QNetworkReply *networkReply,
     setNetworkReply(networkReply);
 }
 
+CDTpAvatarUpdate::~CDTpAvatarUpdate()
+{
+    setNetworkReply(0);
+}
+
 void CDTpAvatarUpdate::setNetworkReply(QNetworkReply *networkReply)
 {
     if (mNetworkReply) {
+        mNetworkReply->disconnect(this);
         mNetworkReply->deleteLater();
     }
 
     mNetworkReply = networkReply;
-    mNetworkReply->setParent(this);
 
-    connect(mNetworkReply, SIGNAL(finished()), this, SLOT(onRequestFinished()));
+    if (mNetworkReply) {
+        connect(mNetworkReply, SIGNAL(finished()), this, SLOT(onRequestFinished()));
+    }
 }
 
 QString CDTpAvatarUpdate::writeAvatarFile(QFile &avatarFile)
@@ -94,8 +101,9 @@ static bool acceptFileSize(qint64 actualFileSize, qint64 expectedFileSize)
 
 void CDTpAvatarUpdate::onRequestFinished()
 {
-    if (mNetworkReply->error() != QNetworkReply::NoError) {
+    if (mNetworkReply.isNull() || mNetworkReply->error() != QNetworkReply::NoError) {
         mAvatarPath = QString();
+        setNetworkReply(0);
         emit finished();
         return;
     }
@@ -142,5 +150,6 @@ void CDTpAvatarUpdate::onRequestFinished()
 
     }
 
+    setNetworkReply(0);
     emit finished();
 }

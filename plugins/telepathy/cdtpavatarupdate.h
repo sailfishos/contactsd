@@ -39,7 +39,9 @@ public:
     explicit CDTpAvatarUpdate(QNetworkReply *networkReply,
                               CDTpContactPtr contactWrapper,
                               const QString &avatarType,
-                              QObject *parent);
+                              QObject *parent = 0);
+
+    virtual ~CDTpAvatarUpdate();
 
     const QString & avatarPath() const { return mAvatarPath; }
 
@@ -54,7 +56,7 @@ private:
     QString writeAvatarFile(QFile &avatarFile);
 
 private:
-    QNetworkReply *mNetworkReply;
+    QPointer<QNetworkReply> mNetworkReply;
     CDTpContactPtr mContactWrapper;
     const QString mAvatarType;
     const QDir mCacheDir;
