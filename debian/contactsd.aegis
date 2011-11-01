@@ -6,6 +6,7 @@
         <credential name="GRP::metadata-users" />
         <credential name="UID::user" />
         <credential name="GID::users" />
+        <credential name="GRP::calendar" />
         <for path="/usr/bin/contactsd" />
     </request>
 </aegis>
