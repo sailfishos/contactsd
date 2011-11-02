@@ -163,6 +163,8 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
     // Set the alarms on the event
     event->clearAlarms();
     KCalCore::Alarm::Ptr alarm = event->newAlarm();
+    alarm->setType(KCalCore::Alarm::Audio);
+    alarm->setEnabled(true);
     alarm->setDisplayAlarm(event->summary());
     alarm->setStartOffset(KCalCore::Duration(-1, KCalCore::Duration::Days));
 
