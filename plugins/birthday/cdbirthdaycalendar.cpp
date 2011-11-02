@@ -132,7 +132,6 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
         event->startUpdates();
         event->setUid(calendarEventId(contact.localId()));
         event->setAllDay(true);
-        event->setHasEndDate(false);
 
         // Ensure events appear as birthdays in the calendar, NB#259710.
         event->setCategories(QStringList() << QLatin1String("BIRTHDAY"));
@@ -152,6 +151,7 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
 
     // Event has only date information, no time.
     event->setDtStart(KDateTime(contactBirthday.date(), QTime(), KDateTime::ClockTime));
+    event->setDtEnd(KDateTime(contactBirthday.date().addDays(1), QTime(), KDateTime::ClockTime));
 
     // Must always set the recurrence as it depends on the event date.
     KCalCore::Recurrence * const rule = event->recurrence();
