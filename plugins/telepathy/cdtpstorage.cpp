@@ -352,7 +352,7 @@ static const ResourceValue & genderInstance(const QString &gender)
 static CDTpQueryBuilder createContactInfoBuilder(CDTpContactPtr contactWrapper)
 {
     if (!contactWrapper->isInformationKnown()) {
-        debug() << "contact information is unknown";
+        debug() << "contact information is unknown for contact" << contactWrapper->contact()->id();
         return CDTpQueryBuilder();
     }
 
