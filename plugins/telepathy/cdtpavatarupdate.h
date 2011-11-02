@@ -54,7 +54,6 @@ private slots:
 private:
     void setNetworkReply(QNetworkReply *networkReply);
     QString writeAvatarFile(QFile &avatarFile);
-    void onRequestSucceeded();
 
 private:
     QPointer<QNetworkReply> mNetworkReply;

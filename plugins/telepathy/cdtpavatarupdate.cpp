@@ -101,18 +101,13 @@ static bool acceptFileSize(qint64 actualFileSize, qint64 expectedFileSize)
 
 void CDTpAvatarUpdate::onRequestFinished()
 {
-    if (mNetworkReply && mNetworkReply->error() == QNetworkReply::NoError) {
-        onRequestSucceeded();
-    } else {
+    if (mNetworkReply.isNull() || mNetworkReply->error() != QNetworkReply::NoError) {
         mAvatarPath = QString();
+        setNetworkReply(0);
+        emit finished();
+        return;
     }
 
-    setNetworkReply(0);
-    emit finished();
-}
-
-void CDTpAvatarUpdate::onRequestSucceeded()
-{
     // Build filename from the image URL's SHA1 hash.
     const QUrl redirectionTarget = mNetworkReply->attribute(QNetworkRequest::RedirectionTargetAttribute).toUrl();
     const QString avatarUrl = (not redirectionTarget.isEmpty() ? mNetworkReply->url().resolved(redirectionTarget)
@@ -154,4 +149,7 @@ void CDTpAvatarUpdate::onRequestSucceeded()
         }
 
     }
+
+    setNetworkReply(0);
+    emit finished();
 }
