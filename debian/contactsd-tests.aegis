@@ -4,5 +4,6 @@
         <credential name="TrackerWriteAccess" />
         <credential name="GRP::metadata-users" />
         <for path="/usr/bin/ut_telepathyplugin" />
+        <for path="/usr/bin/ut_birthdayplugin" />
     </request>
 </aegis>

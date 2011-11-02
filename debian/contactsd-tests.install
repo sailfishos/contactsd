@@ -1,6 +1,9 @@
 usr/bin/ut_telepathyplugin
+usr/bin/ut_birthdayplugin
 usr/share/contactsd-tests/tests.xml
 usr/share/contactsd-tests/session.conf
 usr/share/contactsd-tests/with-session-bus.sh
 usr/share/contactsd-tests/ut_telepathyplugin/ut_telepathyplugin-wrapper.sh
 usr/share/contactsd-tests/ut_telepathyplugin/with-daemon.sh
+usr/share/contactsd-tests/ut_birthdayplugin/ut_birthdayplugin-wrapper.sh
+usr/share/contactsd-tests/ut_birthdayplugin/with-daemon.sh
