@@ -151,7 +151,7 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
     event->setSummary(displayName.label());
 
     // Event has only date information, no time.
-    event->setDtStart(KDateTime(contactBirthday.date(), KDateTime::ClockTime));
+    event->setDtStart(KDateTime(contactBirthday.date(), QTime(), KDateTime::ClockTime));
 
     // Must always set the recurrence as it depends on the event date.
     KCalCore::Recurrence * const rule = event->recurrence();
