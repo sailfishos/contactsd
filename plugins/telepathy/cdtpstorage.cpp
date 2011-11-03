@@ -1078,9 +1078,23 @@ static CDTpQueryBuilder syncRosterAccountsContactsBuilder(QNetworkAccessManager 
 
         foreach(CDTpContactPtr contactWrapper, accountWrapper->contacts()) {
             const QString address = imAddress(accountPath, contactWrapper->contact()->id());
+            QHash<QString, CDTpContact::Changes>::Iterator changes = allChanges.find(address);
 
-            if (allChanges.value(address) & CDTpContact::DefaultAvatar) {
-                updateSocialAvatars(network, contactWrapper);
+            // Should never happen
+            if (changes == allChanges.end()) {
+                continue;
+            }
+
+            // If we got a contact without avatar in the roster, and the original
+            // had an avatar, then ignore the avatar update (some contact managers
+            // send the initial roster with the avatar missing)
+            // Contact updates that have a null avatar will clear the avatar though
+            if (*changes & CDTpContact::DefaultAvatar) {
+                if (contactWrapper->contact()->avatarData().fileName.isEmpty()) {
+                    *changes ^= CDTpContact::DefaultAvatar;
+                } else {
+                    updateSocialAvatars(network, contactWrapper);
+                }
             }
         }
     }
