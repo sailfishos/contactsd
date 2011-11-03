@@ -42,6 +42,8 @@ static void loopWait(int ms)
     QTimer timer;
     timer.setInterval(ms);
 
+    qDebug() << "Waiting for" << (ms/1000) << "seconds";
+
     QEventLoop loop;
     QObject::connect(&timer, SIGNAL(timeout()), &loop, SLOT(quit()));
     timer.start();
