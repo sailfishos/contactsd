@@ -37,6 +37,8 @@
 // A random ID, from plugins/birthday/cdbirthdaycalendar.cpp.
 const QLatin1String calNotebookId("b1376da7-5555-1111-2222-227549c4e570");
 
+static const int calendarTimeout = 12000; // ms
+
 static void loopWait(int ms)
 {
     QTimer timer;
@@ -84,7 +86,7 @@ void TestBirthdayPlugin::testAddAndRemoveBirthday()
     QVERIFY2(mManager->saveContact(&contact), "Error saving contact to tracker");
 
     // Wait until calendar event gets to calendar.
-    loopWait(3000);
+    loopWait(calendarTimeout);
 
     // Open calendar database, which should have been created by the birthday plugin.
     mKCal::ExtendedCalendar::Ptr calendar =
@@ -103,7 +105,7 @@ void TestBirthdayPlugin::testAddAndRemoveBirthday()
     QVERIFY2(mManager->removeContact(contact.localId()), "Unable to delete test contact from tracker database");
 
     // Wait until calendar event gets to calendar.
-    loopWait(3000);
+    loopWait(calendarTimeout);
 
     // Search for any events in the calendar.
     QVERIFY2(storage->loadNotebookIncidences(calNotebookId), "Unable to load events from notebook");
@@ -130,7 +132,7 @@ void TestBirthdayPlugin::testChangeBirthday()
     QVERIFY2(mManager->saveContact(&contact), "Error saving contact to tracker");
 
     // Wait until calendar event gets to calendar.
-    loopWait(3000);
+    loopWait(calendarTimeout);
 
     // Open calendar database.
     mKCal::ExtendedCalendar::Ptr calendar =
@@ -151,7 +153,7 @@ void TestBirthdayPlugin::testChangeBirthday()
     QVERIFY2(mManager->saveContact(&contact), "Unable to update test contact in tracker");
 
     // Wait until calendar event gets to calendar.
-    loopWait(3000);
+    loopWait(calendarTimeout);
 
     // Search for any events in the calendar.
     QVERIFY2(storage->loadNotebookIncidences(calNotebookId), "Unable to load events from notebook");
@@ -178,7 +180,7 @@ void TestBirthdayPlugin::testChangeName()
     QVERIFY2(mManager->saveContact(&contact), "Error saving contact to tracker");
 
     // Wait until calendar event gets to calendar.
-    loopWait(3000);
+    loopWait(calendarTimeout);
 
     // Open calendar database.
     mKCal::ExtendedCalendar::Ptr calendar =
@@ -202,7 +204,7 @@ void TestBirthdayPlugin::testChangeName()
     QVERIFY2(mManager->saveContact(&contact), "Unable to update test contact in tracker");
 
     // Wait until calendar event gets to calendar.
-    loopWait(3000);
+    loopWait(calendarTimeout);
 
     // Search for any events in the calendar.
     QVERIFY2(storage->loadNotebookIncidences(calNotebookId), "Unable to load events from notebook");
