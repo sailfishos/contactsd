@@ -33,7 +33,7 @@ const QString CDTpAvatarUpdate::Large = QLatin1String("large");
 const QString CDTpAvatarUpdate::Square = QLatin1String("square");
 
 CDTpAvatarUpdate::CDTpAvatarUpdate(QNetworkReply *networkReply,
-                                   CDTpContactPtr contactWrapper,
+                                   CDTpContact *contactWrapper,
                                    const QString &avatarType,
                                    QObject *parent)
     : QObject(parent)
@@ -140,8 +140,8 @@ void CDTpAvatarUpdate::onRequestFinished()
         }
     }
 
-    // Update the contact wrapper if a new avatar is available.
-    if (not mAvatarPath.isEmpty()) {
+    // Update the contact if a new avatar is available.
+    if (not mAvatarPath.isEmpty() && not mContactWrapper.isNull()) {
         if (mAvatarType == Square) {
             mContactWrapper->setSquareAvatarPath(mAvatarPath);
         } else if (mAvatarType == Large) {

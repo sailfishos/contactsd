@@ -37,7 +37,7 @@ public:
     static const QString Square;
 
     explicit CDTpAvatarUpdate(QNetworkReply *networkReply,
-                              CDTpContactPtr contactWrapper,
+                              CDTpContact *contactWrapper,
                               const QString &avatarType,
                               QObject *parent = 0);
 
@@ -57,7 +57,7 @@ private:
 
 private:
     QPointer<QNetworkReply> mNetworkReply;
-    CDTpContactPtr mContactWrapper;
+    QPointer<CDTpContact> mContactWrapper;
     const QString mAvatarType;
     const QDir mCacheDir;
     QString mAvatarPath;
