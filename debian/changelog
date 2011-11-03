@@ -1,3 +1,9 @@
+contactsd (1.0.17-2) unstable; urgency=low
+
+  * Brown paper bag release to fix the changelog
+
+ -- Adrien Bustany <adrien.bustany@nokia.com>  Thu, 03 Nov 2011 10:08:52 +0200
+
 contactsd (1.0.17-1) unstable; urgency=low
 
   * Fixes: Avatars are lost for Facebook contacts when account is set online
