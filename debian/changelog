@@ -1,3 +1,9 @@
+contactsd (1.0.19-1) unstable; urgency=low
+
+  * Changes: Don't delete contact avatar if missing in roster
+
+ -- Adrien Bustany <adrien.bustany@nokia.com>  Thu, 03 Nov 2011 18:43:38 +0200
+
 contactsd (1.0.18-1) unstable; urgency=low
 
   * Fixes: Don't keep a strong ref to CDTpContact in CDTpAvatarUpdate
