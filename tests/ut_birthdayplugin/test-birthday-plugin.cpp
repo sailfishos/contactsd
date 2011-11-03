@@ -251,7 +251,7 @@ void TestBirthdayPlugin::testLocaleChange()
     // Change locale and check name again.
     store.setValue(QLatin1String("language"), QLatin1String("fi"));
 
-    loopWait(1000);
+    loopWait(calendarTimeout);
 
     const QString finnishLocaleCalendarName = qtTrId("qtn_caln_birthdays");
 
