@@ -1090,7 +1090,8 @@ static CDTpQueryBuilder syncRosterAccountsContactsBuilder(QNetworkAccessManager 
             // send the initial roster with the avatar missing)
             // Contact updates that have a null avatar will clear the avatar though
             if (*changes & CDTpContact::DefaultAvatar) {
-                if (contactWrapper->contact()->avatarData().fileName.isEmpty()) {
+                if (*changes != CDTpContact::Added
+                  && contactWrapper->contact()->avatarData().fileName.isEmpty()) {
                     *changes ^= CDTpContact::DefaultAvatar;
                 } else {
                     updateSocialAvatars(network, contactWrapper);
