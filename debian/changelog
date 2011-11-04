@@ -1,3 +1,9 @@
+contactsd (1.0.19.1-2) unstable; urgency=low
+
+  * Disable tests in staging
+
+ -- Adrien Bustany <adrien.bustany@nokia.com>  Fri, 04 Nov 2011 14:22:56 +0200
+
 contactsd (1.0.19.1-1) unstable; urgency=low
 
   * Another brownpaper bag release, for 1.0.19-1 this time
