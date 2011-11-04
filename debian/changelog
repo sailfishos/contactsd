@@ -1,3 +1,9 @@
+contactsd (1.0.19.1-1) unstable; urgency=low
+
+  * Another brownpaper bag release, for 1.0.19-1 this time
+
+ -- Adrien Bustany <adrien.bustany@nokia.com>  Fri, 04 Nov 2011 10:48:51 +0200
+
 contactsd (1.0.19-1) unstable; urgency=low
 
   * Changes: Don't delete contact avatar if missing in roster
