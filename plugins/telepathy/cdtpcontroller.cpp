@@ -217,10 +217,6 @@ CDTpAccountPtr CDTpController::insertAccount(const Tp::AccountPtr &account, bool
             SIGNAL(syncEnded(Tp::AccountPtr, int, int)),
             SLOT(onSyncEnded(Tp::AccountPtr, int, int)));
 
-    /* If sync already started at account construction, we couldn't catch signal */
-    if (accountWrapper->isImporting())
-        onSyncStarted(accountWrapper->account());
-
     return accountWrapper;
 }
 

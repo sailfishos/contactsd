@@ -62,7 +62,6 @@ public:
     bool hasRoster() const { return mHasRoster; };
     bool isNewAccount() const { return mNewAccount; };
     bool isEnabled() const { return mAccount->isEnabled(); };
-    bool isImporting() const { return mImporting; };
     QStringList contactsToAvoid() const { return mContactsToAvoid; }
     void setContactsToAvoid(const QStringList &contactIds);
 
