@@ -74,15 +74,7 @@ ContactsdPluginLoader::ContactsdPluginLoader()
 
 ContactsdPluginLoader::~ContactsdPluginLoader()
 {
-    PluginStore::const_iterator it = mPluginStore.constBegin();
-    PluginStore::const_iterator end = mPluginStore.constEnd();
-    while (it != end) {
-        QPluginLoader *loader = it.value();
-        loader->unload();
-        delete loader;
-        ++it;
-    }
-
+    qDeleteAll(mPluginStore.values());
     mPluginStore.clear();
 }
 
@@ -113,22 +105,18 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir, const QString
 
         MsgHandlerGuard guard(absFileName);
 
-        QPluginLoader *loader = new QPluginLoader(absFileName);
+        // We intentionally leak this object, and never unload the plugin
+        // When you load a plugin, you can't know what happens in the underlying
+        // loaded libraries, so unloading a plugin while being sure it will not
+        // have any unwanted side effect is just impossible. For ignored plugins,
+        // we just avoid calling the init() function.
+        QPluginLoader loader(absFileName);
 
-        if (!loader->load()) {
-            debug() << "Error loading plugin" << absFileName <<
-                "-" << loader->errorString();
-            delete loader;
-            continue;
-        }
-
-        QObject *pluginObject = loader->instance();
+        QObject *pluginObject = loader.instance();
         BasePlugin *basePlugin = qobject_cast<BasePlugin *>(pluginObject);
 
         if (!basePlugin) {
             debug() << "Error loading plugin" << absFileName << "- not a Contactd::BasePlugin";
-            loader->unload();
-            delete loader;
             continue;
         }
 
@@ -136,8 +124,6 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir, const QString
 
         if (!metaData.contains(BasePlugin::metaDataKeyName)) {
             warning() << "Error loading plugin" << absFileName << "- invalid plugin metadata";
-            loader->unload();
-            delete loader;
             continue;
         }
 
@@ -145,21 +131,17 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir, const QString
 
         if (!plugins.isEmpty() && !plugins.contains(pluginName)) {
             warning() << "Ignoring plugin" << absFileName;
-            loader->unload();
-            delete loader;
             continue;
         }
 
         if (mPluginStore.contains(pluginName)) {
             warning() << "Ignoring plugin" << absFileName <<
                 "- plugin with name" << pluginName << "already registered";
-            loader->unload();
-            delete loader;
             continue;
         }
 
         debug() << "Plugin" << pluginName << "loaded";
-        mPluginStore.insert(pluginName, loader);
+        mPluginStore.insert(pluginName, basePlugin);
 
         connect(basePlugin, SIGNAL(importStarted(const QString &, const QString &)),
                 this, SLOT(onPluginImportStarted(const QString &, const QString &)));

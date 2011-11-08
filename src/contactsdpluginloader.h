@@ -75,7 +75,7 @@ private:
     void stopCheckAliveTimer();
     QString pluginName(Contactsd::BasePlugin *plugin);
 
-    typedef QMap<QString, QPluginLoader *> PluginStore;
+    typedef QMap<QString, Contactsd::BasePlugin*> PluginStore;
     PluginStore mPluginStore;
     ImportState mImportState;
 
