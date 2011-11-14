@@ -171,12 +171,6 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
     event->setReadOnly(true);
     event->endUpdates();
 
-    // Commit calendar changes.
-    if (not mStorage->save()) {
-        warning() << Q_FUNC_INFO << "Failed to save event in calendar";
-        return;
-    }
-
     debug() << "Updated birthday event in calendar, local ID: " << contact.localId();
 }
 
@@ -191,12 +185,14 @@ void CDBirthdayCalendar::deleteBirthday(QContactLocalId contactId)
 
     mCalendar->deleteEvent(event);
 
-    if (not mStorage->save()) {
-        warning() << Q_FUNC_INFO << "Failed to delete event from calendar";
-        return;
-    }
-
     debug() << "Deleted birthday event in calendar, local ID: " << event->uid();
+}
+
+void CDBirthdayCalendar::save()
+{
+    if (not mStorage->save()) {
+        warning() << Q_FUNC_INFO << "Failed to update birthdays in calendar";
+    }
 }
 
 QDate CDBirthdayCalendar::birthdayDate(QContactLocalId contactId)

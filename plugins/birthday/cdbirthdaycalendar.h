@@ -53,6 +53,9 @@ public:
     //! Deletes \a contact birthday from calendar.
     void deleteBirthday(QContactLocalId contactId);
 
+    //! Actually save the events in the calendar database
+    void save();
+
     QDate birthdayDate(QContactLocalId contactId);
     QString summary(QContactLocalId contactId);
 

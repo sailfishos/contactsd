@@ -241,6 +241,12 @@ CDBirthdayController::processNotificationQueues()
     if (not birthdayChangedIds.isEmpty()) {
         fetchContacts(birthdayChangedIds.toList());
     }
+
+    // We save the calendar in processFetchRequest(), but if no contact needs
+    // to be fetched, then call save() now
+    if (not deletedContacts.isEmpty() && birthdayChangedIds.isEmpty()) {
+        mCalendar->save();
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -373,6 +379,10 @@ CDBirthdayController::processFetchRequest(QContactFetchRequest *const fetchReque
     default:
         return false;
     }
+
+    // Save the calendar in any case (success or not), since this "save" call
+    // also applies for the deleteBirthday() calls in processNotificationQueues()
+    mCalendar->save();
 
     // Provide hint we are done with this request.
     fetchRequest->deleteLater();
