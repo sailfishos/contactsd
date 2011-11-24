@@ -1,3 +1,9 @@
+contactsd (1.0.21-1) unstable; urgency=low
+
+  * Fixes: NB#290534 - Birthday calendar color should be pink
+
+ -- Adrien Bustany <adrien.bustany@nokia.com>  Thu, 24 Nov 2011 18:40:09 +0200
+
 contactsd (1.0.20-1) unstable; urgency=low
 
   * Fixes: NB#287170 - Import signals is emitted for SIP accounts
