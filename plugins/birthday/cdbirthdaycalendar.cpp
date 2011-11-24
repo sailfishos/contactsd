@@ -37,6 +37,7 @@ using namespace Contactsd;
 
 // A random ID.
 const QLatin1String calNotebookId("b1376da7-5555-1111-2222-227549c4e570");
+const QLatin1String calNotebookColor("#e00080"); // Pink
 
 CDBirthdayCalendar::CDBirthdayCalendar(SyncMode syncMode, QObject *parent) :
     QObject(parent),
@@ -95,7 +96,7 @@ mKCal::Notebook::Ptr CDBirthdayCalendar::createNotebook()
     return mKCal::Notebook::Ptr(new mKCal::Notebook(calNotebookId,
                                                     qtTrId("qtn_caln_birthdays"),
                                                     QLatin1String(""),
-                                                    QLatin1String("#ff0000"),
+                                                    calNotebookColor,
                                                     false, // Not shared.
                                                     true, // Is master.
                                                     false, // Not synced to Ovi.
