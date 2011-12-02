@@ -762,14 +762,14 @@ static CDTpQueryBuilder updateContactsInfoBuilder(const QList<CDTpContactPtr> &c
             contactChanges = CDTpContact::Added;
         }
 
-        // Contact info needs to be deleted for existing contacts that had it changed
-        if (contactChanges != CDTpContact::Added && (contactChanges & CDTpContact::Information)) {
-            deleteInfoAddresses.append(address);
-        }
-
-        // and it needs to be updated for new contacts, or existing contacts that had it changed (CDTpContact::Added
-        // sets CDTpContact::Information to 1)
+        // Changed contact info needs to be cleared and updated
+        // (CDTpContact::Added includes flag CDTpContact::Information)
         if (contactChanges & CDTpContact::Information) {
+            // Clear not just for existing contact info that was changed,
+            // but also for contact info tagged as Added, for the case that the cache file
+            // was missing, due to a system update or a file sync problem on shutdown (cmp. e.g. NB#289918)
+            deleteInfoAddresses.append(address);
+
             updateInfoContacts.append(contactWrapper);
         }
     }
