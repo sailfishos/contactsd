@@ -331,6 +331,9 @@ CDBirthdayController::fetchContacts(const QContactFilter &filter, const char *sl
     static const QStringList detailDefinitions = QStringList() << QContactBirthday::DefinitionName
                                                                << QContactDisplayLabel::DefinitionName;
     fetchHint.setDetailDefinitionsHint(detailDefinitions);
+    fetchHint.setOptimizationHints(QContactFetchHint::NoRelationships |
+                                   QContactFetchHint::NoActionPreferences |
+                                   QContactFetchHint::NoBinaryBlobs);
 
     QContactFetchRequest * const fetchRequest = new QContactFetchRequest(this);
     fetchRequest->setManager(mManager);
