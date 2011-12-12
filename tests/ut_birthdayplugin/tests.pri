@@ -33,6 +33,7 @@ wrapper.depends = $$PWD/ut_birthdayplugin-wrapper.sh.in
 wrapper.path = $$PREFIX/share/contactsd-tests/ut_birthdayplugin
 wrapper.commands = \
     sed -e \"s,@SCRIPTDIR@,$$PREFIX/share/contactsd-tests,g\" \
+        -e \"s,@OUT_SCRIPTDIR@,$$PREFIX/share/contactsd-tests,g\" \
         -e \"s,@BINDIR@,$$BINDIR,g\" \
         -e \"s,@WITH_DAEMON@,$$daemon.target,g\" \
     $< > $@ && chmod +x $@ || rm -f $@

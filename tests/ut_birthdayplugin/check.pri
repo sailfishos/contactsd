@@ -31,7 +31,8 @@ check_wrapper.target = check-ut_birthdayplugin-wrapper.sh
 check_wrapper.depends = $$PWD/ut_birthdayplugin-wrapper.sh.in
 check_wrapper.commands = \
     sed -e "s,@SCRIPTDIR@,$$PWD/..,g" \
-        -e "s,@BINDIR@,$$PWD,g" \
+        -e "s,@OUT_SCRIPTDIR@,$$OUT_PWD$$DESTDIR/..,g" \
+        -e "s,@BINDIR@,$$OUT_PWD$$DESTDIR,g" \
         -e "s,@WITH_DAEMON@,$$check_daemon.target,g" \
     $< > $@ && chmod +x $@ || rm -f $@
 

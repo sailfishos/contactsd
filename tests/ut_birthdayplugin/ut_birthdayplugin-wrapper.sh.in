@@ -36,4 +36,4 @@ Verbosity=3
 EOF
 
 @SCRIPTDIR@/with-session-bus.sh --config-file=@SCRIPTDIR@/session.conf -- \
-  @SCRIPTDIR@/ut_birthdayplugin/@WITH_DAEMON@ @BINDIR@/ut_birthdayplugin $@
+  @OUT_SCRIPTDIR@/ut_birthdayplugin/@WITH_DAEMON@ @BINDIR@/ut_birthdayplugin $@
