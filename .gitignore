@@ -28,6 +28,7 @@ tests/dbus-1/session.conf
 
 debian/contactsd-dbg
 debian/contactsd-dev
+debian/contactsd-plugin-birthday
 debian/contactsd-tests
 debian/contactsd
 
