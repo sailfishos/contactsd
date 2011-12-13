@@ -113,6 +113,12 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir, const QString
         QPluginLoader loader(absFileName);
 
         QObject *pluginObject = loader.instance();
+
+        if (!pluginObject) {
+            debug() << "Error loading plugin" << absFileName << "- " << loader.errorString();
+            continue;
+        }
+
         BasePlugin *basePlugin = qobject_cast<BasePlugin *>(pluginObject);
 
         if (!basePlugin) {
