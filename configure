@@ -98,7 +98,7 @@ done
 #coverage options
 
 if [ -z "$ENABLE_COVERAGE" ]
-then 
+then
     echo "Coverage not enabled"
     ENABLE_COVERAGE=nocoverage
 fi
@@ -108,6 +108,7 @@ CACHEFILE="$outpath/.qmake.cache"
 [ -f "$CACHEFILE" ] && rm -f "$CACHEFILE"
 
 cat >> "$CACHEFILE" << EOF
+CONFIGURED = \$\$quote(yes)
 VERSION = \$\$quote($VERSION)
 PREFIX = \$\$quote($PREFIX)
 BINDIR = \$\$quote($BINDIR)
