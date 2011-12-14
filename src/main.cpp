@@ -25,6 +25,7 @@
 #include <QDBusConnection>
 #include <QTimer>
 
+#include <errno.h>
 #include <signal.h>
 
 #include "contactsd.h"
@@ -33,10 +34,12 @@
 using namespace Contactsd;
 
 static QtMsgHandler defaultMsgHandler = 0;
+static QtMsgType messageThreshold = QtWarningMsg;
+static FILE *messageLog = NULL;
 
-static void nullMsgHandler(QtMsgType type, const char *msg)
+static void customMessageHandler(QtMsgType type, const char *msg)
 {
-    if (QtDebugMsg == type) {
+    if (type < messageThreshold) {
         return; // no debug messages please
     }
 
@@ -46,6 +49,19 @@ static void nullMsgHandler(QtMsgType type, const char *msg)
         defaultMsgHandler(type, msg);
     } else {
         fprintf(stderr, "%s\n", msg);
+    }
+
+    if (messageLog) {
+        if (fprintf(messageLog, "%s\n", msg) < 0 || fflush(messageLog) != 0) {
+            const int messageLogError = errno;
+            fclose(messageLog);
+            messageLog = NULL;
+
+            (warning().nospace()
+                    << "An error occured when writing to the log file: "
+                    << strerror(messageLogError) << " (" << messageLogError << "). "
+                    << "The log file is truncated.").space();
+        }
     }
 }
 
@@ -88,14 +104,15 @@ int main(int argc, char **argv)
     QCoreApplication app(argc, argv);
 
     QStringList plugins;
+    bool logConsole = !qgetenv("CONTACTSD_DEBUG").isEmpty();
+    QString logFileName;
+
     const QStringList args = app.arguments();
-    QString arg;
     int i = 1; // ignore argv[0]
 
-    bool logConsole = !qgetenv("CONTACTSD_DEBUG").isEmpty();
-
     while (i < args.count()) {
-        arg = args.at(i);
+        QString arg = args.at(i);
+
         if (arg == "--plugins") {
             if (++i == args.count()) {
                 usage();
@@ -113,6 +130,13 @@ int main(int argc, char **argv)
             return 0;
         } else if (arg == "--log-console") {
             logConsole = true;
+        } else if (arg == "--log-file") {
+            if (++i == args.count()) {
+                usage();
+                return -1;
+            }
+
+            logFileName = args.at(i);
         } else {
             qWarning() << "Invalid argument" << arg;
             usage();
@@ -121,9 +145,15 @@ int main(int argc, char **argv)
         ++i;
     }
 
-    if (not logConsole) {
-        defaultMsgHandler = qInstallMsgHandler(nullMsgHandler);
+    if (logConsole) {
+        messageThreshold = QtDebugMsg;
     }
+
+    if (not logFileName.isEmpty()) {
+        messageLog = fopen(qPrintable(logFileName), "w");
+    }
+
+    defaultMsgHandler = qInstallMsgHandler(customMessageHandler);
 
     enableDebug(logConsole);
     debug() << "contactsd version" << VERSION << "started";
@@ -131,5 +161,11 @@ int main(int argc, char **argv)
     ContactsDaemon *daemon = new ContactsDaemon(&app);
     daemon->loadPlugins(plugins);
 
-    return app.exec();
+    const int rc = app.exec();
+
+    if (messageLog) {
+        fclose (messageLog);
+    }
+
+    return rc;
 }
