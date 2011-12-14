@@ -598,10 +598,9 @@ static void addAccountChanges(PatternGroup &g,
     }
 }
 
-static void addContactChanges(PatternGroup &g,
-        const Value &imAddress,
-        CDTpContact::Changes changes,
-        CDTpContactPtr contactWrapper)
+static CDTpContact::Changes addContactChanges(PatternGroup &g, const Value &imAddress,
+                                              CDTpContact::Changes changes,
+                                              CDTpContactPtr contactWrapper)
 {
     debug() << "Update contact" << imAddress.sparql();
     Tp::ContactPtr contact = contactWrapper->contact();
@@ -614,6 +613,10 @@ static void addContactChanges(PatternGroup &g,
     if (changes & CDTpContact::Presence) {
         debug() << "  presence changed";
         addPresence(g, imAddress, contact->presence());
+        // Since we use static account capabilities as fallback, each presence also implies
+        // a capability change. This doesn't fit the pure school of Telepathy, but we really
+        // should not drop the static caps fallback at this stage.
+        changes |= CDTpContact::Capabilities;
     }
     if (changes & CDTpContact::Capabilities) {
         debug() << "  capabilities changed";
@@ -637,6 +640,8 @@ static void addContactChanges(PatternGroup &g,
         g.addPattern(imAddress, nco::imAddressAuthStatusTo::resource(),
                 presenceState(contact->publishState()));
     }
+
+    return changes;
 }
 
 /* "Tagging" the signal means that we insert the timestamp first in contactsd
@@ -791,14 +796,36 @@ static CDTpQueryBuilder updateContactsInfoBuilder(const QList<CDTpContactPtr> &c
     return builder;
 }
 
+static void dropCapabilities(CDTpQueryBuilder &builder, Variable imAddress, const QStringList &contactIris)
+{
+    if (contactIris.isEmpty()) {
+        return;
+    }
+
+    Delete d;
+    Variable caps;
+
+    d.addData(imAddress, nco::imCapability::resource(), caps);
+    d.addRestriction(imAddress, nco::imCapability::resource(), caps);
+
+    /* Comparing by string instead of IRI is a tracker specific optimization:
+     * When comparing IRIs, tracker generates an IRI lookup query for each
+     * element of the IRI list. When casting the imAddress IRI to a string,
+     * and comparing with string values, only one lookup is generated.
+     */
+    d.setFilter(Filter(Functions::in.apply(Functions::str.apply(imAddress),
+                                           LiteralValue(contactIris))));
+
+    builder.prepend(d);
+}
+
 static CDTpQueryBuilder createContactsBuilder(const QList<CDTpContactPtr> &contacts,
                                               const QHash<QString, CDTpContact::Changes> &changes = QHash<QString, CDTpContact::Changes>())
 {
     CDTpQueryBuilder builder;
 
-    // nco:imCapability is multi valued, so we have to explicitely delete before
-    // updating it (at least until we don't have null support in Tracker)
-    QStringList capsDeleteAddresses;
+    // nco:imCapability is multi-valued, so we have to explicitely delete before updating it
+    QStringList capsContactIris;
 
     QStringList allAddresses;
 
@@ -830,26 +857,20 @@ static CDTpQueryBuilder createContactsBuilder(const QList<CDTpContactPtr> &conta
 
             const Value imAccount = literalIMAccount(accountWrapper);
             g.addPattern(imAccount, nco::hasIMContact::resource(), imAddress);
-        } else {
-            // Else, if the capabilities changed we need to first delete the old one
-            // explicitly
-            if ((contactChanges & CDTpContact::Capabilities) && (contactChanges != CDTpContact::Added)) {
-                capsDeleteAddresses.append(contactAddress);
-            }
         }
 
         // Add mutable properties except for ContactInfo
-        addContactChanges(g, imAddress, contactChanges, contactWrapper);
+        contactChanges = addContactChanges(g, imAddress, contactChanges, contactWrapper);
+
+        // Delete old capabilities because they are stored by a multi-value property.
+        if (contactChanges & CDTpContact::Capabilities) {
+            capsContactIris += contactAddress;
+        }
     }
     i.addData(g);
 
     // Delete the nco:imCapability where needed
-    if (!capsDeleteAddresses.isEmpty()) {
-        Delete d;
-        deleteProperty(d, imAddressVar, nco::imCapability::resource());
-        d.setFilter(Functions::in.apply(imAddressVar, LiteralValue(capsDeleteAddresses)));
-        builder.append(d);
-    }
+    dropCapabilities(builder, imAddressVar, capsContactIris);
 
     builder.append(i);
 
@@ -1634,7 +1655,7 @@ void CDTpStorage::onUpdateQueueTimeout()
 
     QList<CDTpContactPtr> allContacts;
     QList<CDTpContactPtr> infoContacts;
-    QList<CDTpContactPtr> capsContacts;
+    QStringList capsContactIris;
 
     // Separate contacts for which we can emit a "tagged" signal and the others
     QStringList onlyPresenceChangedAddresses;
@@ -1666,10 +1687,6 @@ void CDTpStorage::onUpdateQueueTimeout()
 
         allContacts << contactWrapper;
 
-        // Special case for Capabilities and Information changes
-        if (changes & CDTpContact::Capabilities) {
-            capsContacts << contactWrapper;
-        }
         if (changes & CDTpContact::Information) {
             infoContacts << contactWrapper;
         }
@@ -1680,7 +1697,12 @@ void CDTpStorage::onUpdateQueueTimeout()
         }
 
         // Add IMAddress changes
-        addContactChanges(g, literalIMAddress(contactWrapper), changes, contactWrapper);
+        changes = addContactChanges(g, literalIMAddress(contactWrapper), changes, contactWrapper);
+
+        // Special case for Capabilities and Information changes
+        if (changes & CDTpContact::Capabilities) {
+            capsContactIris += contactWrapper->contact()->id();
+        }
     }
     mUpdateQueue.clear();
 
@@ -1694,14 +1716,7 @@ void CDTpStorage::onUpdateQueueTimeout()
     builder.append(i);
 
     // prepend delete nco:imCapability for contacts who's caps changed
-    if (!capsContacts.isEmpty()) {
-        Delete d;
-        Variable caps;
-        d.addData(imAddressVar, nco::imCapability::resource(), caps);
-        d.addRestriction(imAddressVar, nco::imCapability::resource(), caps);
-        d.setFilter(Filter(Functions::in.apply(Functions::str.apply(imAddressVar), literalIMAddressList(capsContacts))));
-        builder.prepend(d);
-    }
+    dropCapabilities(builder, imAddressVar, capsContactIris);
 
     // delete ContactInfo for contacts who's info changed
     if (!infoContacts.isEmpty()) {
@@ -1777,4 +1792,3 @@ void CDTpStorage::onSparqlQueryFinished(CDTpSparqlQuery *query)
         Q_EMIT error(code, e.message());
     }
 }
-
