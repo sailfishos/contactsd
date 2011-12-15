@@ -1,3 +1,9 @@
+contactsd (1.0.23~git1) UNRELEASED; urgency=low
+
+  * Automatic version bump after release
+
+ -- Mathias Hasselmann <mathias@openismus.com>  Thu, 15 Dec 2011 23:05:42 +0100
+
 contactsd (1.0.22-1) unstable; urgency=low
 
   * Fixes: NB#294188 - Facebook IM contacts have invalid capabilities after booting (like after SSU)
