@@ -1,3 +1,9 @@
+contactsd (1.0.22~git1_nb294188) unstable; urgency=low
+
+  * Fixes: NB#294188 - Facebook IM contacts have invalid capabilities after booting (like after SSU)
+
+ -- Mathias Hasselmann <mathias@openismus.com>  Thu, 15 Dec 2011 10:01:11 +0100
+
 contactsd (1.0.21-1) unstable; urgency=low
 
   * Fixes: NB#290534 - Birthday calendar color should be pink
