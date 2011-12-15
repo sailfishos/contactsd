@@ -1,4 +1,4 @@
-contactsd (1.0.22~git1_nb294188) unstable; urgency=low
+contactsd (1.0.22_git1_nb294188) unstable; urgency=low
 
   * Fixes: NB#294188 - Facebook IM contacts have invalid capabilities after booting (like after SSU)
 
