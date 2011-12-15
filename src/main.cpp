@@ -67,11 +67,17 @@ static void customMessageHandler(QtMsgType type, const char *msg)
 
 static void usage()
 {
-    qDebug() << "Usage: contactsd [OPTION]...\n";
-    qDebug() << "  --plugins PLUGINS    Comma separated list of plugins to load\n";
-    qDebug() << "  --log-console        Enable Console Logging \n";
-    qDebug() << "  --version            Output version information and exit";
-    qDebug() << "  --help               Display this help and exit";
+    QTextStream(stdout)
+            << "Usage: contactsd [OPTION]...\n"
+            << "\n"
+            << "Options:\n"
+            << "\n"
+            << "  --plugins PLUGINS    Comma separated list of plugins to load\n"
+            << "  --log-console        Enable console logging\n"
+            << "  --log-file FILENAME  Additional write logging information to FILENAME\n"
+            << "  --version            Output version information and exit\n"
+            << "  --help               Display this help and exit\n"
+            << "\n";
 }
 
 static void setupUnixSignalHandlers()
