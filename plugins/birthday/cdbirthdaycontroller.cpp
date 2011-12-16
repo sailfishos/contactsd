@@ -399,8 +399,7 @@ CDBirthdayController::updateBirthdays(const QList<QContact> &changedBirthdays)
     foreach (const QContact &contact, changedBirthdays) {
         const QContactBirthday contactBirthday = contact.detail<QContactBirthday>();
         const QContactDisplayLabel contactDisplayLabel = contact.detail<QContactDisplayLabel>();
-        const QDate calendarBirthday = mCalendar->birthdayDate(contact.localId());
-        const QString calendarSummary = mCalendar->summary(contact.localId());
+        const CalendarBirthday calendarBirthday = mCalendar->birthday(contact.localId());
 
         // Display label or birthdate was removed from the contact, so delete it from the calendar.
         if (contactDisplayLabel.label().isNull() || contactBirthday.date().isNull()) {
@@ -410,11 +409,11 @@ CDBirthdayController::updateBirthdays(const QList<QContact> &changedBirthdays)
 
             mCalendar->deleteBirthday(contact.localId());
         // Display label or birthdate was changed on the contact, so update the calendar.
-        } else if ((contactDisplayLabel.label() != calendarSummary) ||
-                   (contactBirthday.date() != calendarBirthday)) {
+        } else if ((contactDisplayLabel.label() != calendarBirthday.summary()) ||
+                   (contactBirthday.date() != calendarBirthday.date())) {
             if (isDebugEnabled()) {
                 debug() << "Contact with calendar birthday: " << contactBirthday.date()
-                        << " and calendar displayLabel: " << calendarSummary
+                        << " and calendar displayLabel: " << calendarBirthday.summary()
                         << " changed details to: " << contact << ", so update the calendar event";
             }
 

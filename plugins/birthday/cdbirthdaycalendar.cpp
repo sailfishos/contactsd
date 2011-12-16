@@ -236,26 +236,15 @@ void CDBirthdayCalendar::save()
     }
 }
 
-QDate CDBirthdayCalendar::birthdayDate(QContactLocalId contactId)
+CalendarBirthday CDBirthdayCalendar::birthday(QContactLocalId contactId)
 {
     KCalCore::Event::Ptr event = calendarEvent(contactId);
 
     if (event.isNull()) {
-        return QDate();
+        return CalendarBirthday();
     }
 
-    return event->dtStart().date();
-}
-
-QString CDBirthdayCalendar::summary(QContactLocalId contactId)
-{
-    KCalCore::Event::Ptr event = calendarEvent(contactId);
-
-    if (event.isNull()) {
-        return QString();
-    }
-
-    return event->summary();
+    return CalendarBirthday(event->dtStart().date(), event->summary());
 }
 
 QString CDBirthdayCalendar::calendarEventId(QContactLocalId contactId)

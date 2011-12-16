@@ -33,6 +33,23 @@
 
 QTM_USE_NAMESPACE
 
+class CalendarBirthday
+{
+public:
+    CalendarBirthday(const QDate &date, const QString &summary)
+    : mDate(date), mSummary(summary) {}
+    CalendarBirthday() {}
+
+public:
+    const QDate & date() const { return mDate; }
+    const QString & summary() const { return mSummary; }
+
+private:
+    QDate mDate;
+    QString mSummary;
+};
+
+
 class CDBirthdayCalendar : public QObject
 {
     Q_OBJECT
@@ -56,8 +73,7 @@ public:
     //! Actually save the events in the calendar database
     void save();
 
-    QDate birthdayDate(QContactLocalId contactId);
-    QString summary(QContactLocalId contactId);
+    CalendarBirthday birthday(QContactLocalId contactId);
 
 private:
     mKCal::Notebook::Ptr createNotebook();
