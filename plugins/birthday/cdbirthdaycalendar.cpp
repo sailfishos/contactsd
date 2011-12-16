@@ -155,11 +155,51 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
     event->setDtEnd(KDateTime(contactBirthday.addDays(1), QTime(), KDateTime::ClockTime));
 
     // Must always set the recurrence as it depends on the event date.
-    KCalCore::Recurrence * const rule = event->recurrence();
-    rule->setStartDateTime(event->dtStart());
+    KCalCore::Recurrence *const recurrence = event->recurrence();
 
-    // This is not a boolean, but the frequency of the recurrence: every 1 year.
-    rule->setYearly(1);
+    if (contactBirthday.month() != 2 || contactBirthday.day() < 29) {
+        // Simply setup yearly recurrence for trivial dates.
+        recurrence->setStartDateTime(event->dtStart());
+        recurrence->setYearly(1); /* every year */
+    } else {
+        // For birthdays on February 29th the event shall occur on the
+        // last day of February. This is February 29th in leap years,
+        // and February 28th in all other years.
+        //
+        // NOTE: Actually this recurrence pattern will fail badly for
+        // people born on February 29th of the years 2100, 2200, 2300,
+        // 2500, ... - but I seriously doubt we care.
+        //
+        // NOTE2: Using setByYearDays() instead of just setting proper
+        // start dates, since libmkcal fails to store the start dates
+        // of recurrence rules.
+        KCalCore::RecurrenceRule *rule;
+
+        // 1. Include February 29th in leap years.
+        rule = new KCalCore::RecurrenceRule;
+        rule->setStartDt(event->dtStart());
+        rule->setByYearDays(QList<int>() << 60); // Feb 29th
+        rule->setRecurrenceType(KCalCore::RecurrenceRule::rYearly);
+        rule->setFrequency(4); // every 4th year
+        recurrence->addRRule(rule);
+
+        // 2. Include February 28th starting from year after birth.
+        rule = new KCalCore::RecurrenceRule;
+        rule->setStartDt(event->dtStart());
+        rule->setByYearDays(QList<int>() << 59); // Feb 28th
+        rule->setRecurrenceType(KCalCore::RecurrenceRule::rYearly);
+        rule->setFrequency(1); // every year
+        recurrence->addRRule(rule);
+
+        // 3. Exclude February 28th in leap years.
+        rule = new KCalCore::RecurrenceRule;
+        rule->setStartDt(event->dtStart());
+        rule->setByYearDays(QList<int>() << 59); // Feb 28th
+        rule->setRecurrenceType(KCalCore::RecurrenceRule::rYearly);
+        rule->setFrequency(4); // every 4th year
+        recurrence->addExRule(rule);
+
+    }
 
     // Set the alarms on the event
     event->clearAlarms();
