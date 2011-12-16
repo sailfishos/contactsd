@@ -43,6 +43,11 @@ class CDBirthdayController : public QObject
 {
     Q_OBJECT
 
+    enum SyncMode {
+        Incremental,
+        FullSync
+    };
+
 public:
     explicit CDBirthdayController(QSparqlConnection &connection,
                                   QObject *parent = 0);
@@ -63,7 +68,8 @@ private:
     void updateAllBirthdays();
     void connectChangeNotifier();
     bool processFetchRequest(QContactFetchRequest * const fetchRequest,
-                             QContactAbstractRequest::State newState);
+                             QContactAbstractRequest::State newState,
+                             SyncMode syncMode = Incremental);
     void processNotificationQueues();
     void processNotifications(QList<TrackerChangeNotifier::Quad> &notifications,
                               QSet<QContactLocalId> &propertyChanges,
@@ -71,6 +77,7 @@ private:
     void fetchContacts(const QList<QContactLocalId> &contactIds);
     void fetchContacts(const QContactFilter &filter, const char *slot);
     void updateBirthdays(const QList<QContact> &changedBirthdays);
+    void syncBirthdays(const QList<QContact> &birthdayContacts);
 
 private:
     enum {

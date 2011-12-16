@@ -56,8 +56,8 @@ class CDBirthdayCalendar : public QObject
 
 public:
     enum SyncMode {
-        Incremental,
-        FullSync
+        KeepOldDB,
+        DropOldDB
     };
 
     //! Constructor.
@@ -74,11 +74,14 @@ public:
     void save();
 
     CalendarBirthday birthday(QContactLocalId contactId);
+    QHash<QContactLocalId, CalendarBirthday> birthdays();
 
 private:
     mKCal::Notebook::Ptr createNotebook();
 
-    QString calendarEventId(QContactLocalId contactId);
+    static QContactLocalId localContactId(const QString &calendarEventId);
+    static QString calendarEventId(QContactLocalId contactId);
+
     KCalCore::Event::Ptr calendarEvent(QContactLocalId contactId);
 
 private Q_SLOTS:

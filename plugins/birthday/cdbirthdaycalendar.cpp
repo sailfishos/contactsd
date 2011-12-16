@@ -38,6 +38,8 @@ using namespace Contactsd;
 // A random ID.
 const QLatin1String calNotebookId("b1376da7-5555-1111-2222-227549c4e570");
 const QLatin1String calNotebookColor("#e00080"); // Pink
+const QString calIdExtension = QLatin1String("com.nokia.birthday/");
+
 
 CDBirthdayCalendar::CDBirthdayCalendar(SyncMode syncMode, QObject *parent) :
     QObject(parent),
@@ -68,12 +70,12 @@ CDBirthdayCalendar::CDBirthdayCalendar(SyncMode syncMode, QObject *parent) :
     } else {
         // Clear the calendar database if and only if restoring from a backup.
         switch(syncMode) {
-        case Incremental:
+        case KeepOldDB:
             // Force calendar name update, if a locale change happened while contactsd was not running.
             onLocaleChanged();
             break;
 
-        case FullSync:
+        case DropOldDB:
             mStorage->deleteNotebook(notebook);
             notebook = createNotebook();
             mStorage->addNotebook(notebook);
@@ -105,6 +107,30 @@ mKCal::Notebook::Ptr CDBirthdayCalendar::createNotebook()
                                                     QLatin1String("Birthday-Nokia"),
                                                     QLatin1String(""),
                                                     0));
+}
+
+QHash<QContactLocalId, CalendarBirthday>
+CDBirthdayCalendar::birthdays()
+{
+    if (not mStorage->loadNotebookIncidences(calNotebookId)) {
+        warning() << Q_FUNC_INFO << "Failed to load all incidences";
+        return QHash<QContactLocalId, CalendarBirthday>();
+    }
+
+    QHash<QContactLocalId, CalendarBirthday> result;
+
+    foreach(const KCalCore::Event::Ptr event, mCalendar->events()) {
+        const QString eventUid = event->uid();
+        const QContactLocalId contactId = localContactId(eventUid);
+
+        if (0 != contactId) {
+            result.insert(contactId, CalendarBirthday(event->dtStart().date(), event->summary()));
+        } else {
+            warning() << Q_FUNC_INFO << "Birthday event with a bad uid: " << eventUid;
+        }
+    }
+
+    return result;
 }
 
 void CDBirthdayCalendar::updateBirthday(const QContact &contact)
@@ -247,9 +273,17 @@ CalendarBirthday CDBirthdayCalendar::birthday(QContactLocalId contactId)
     return CalendarBirthday(event->dtStart().date(), event->summary());
 }
 
+QContactLocalId CDBirthdayCalendar::localContactId(const QString &calendarEventId)
+{
+    if (calendarEventId.startsWith(calIdExtension)) {
+        return calendarEventId.mid(calIdExtension.length()).toUInt();
+    }
+
+    return 0;
+}
+
 QString CDBirthdayCalendar::calendarEventId(QContactLocalId contactId)
 {
-    static const QLatin1String calIdExtension("com.nokia.birthday/");
     return calIdExtension + QString::number(contactId);
 }
 
