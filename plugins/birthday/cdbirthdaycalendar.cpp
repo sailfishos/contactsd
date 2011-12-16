@@ -111,9 +111,9 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
 {
     // Retrieve contact details.
     const QContactDisplayLabel displayName = contact.detail<QContactDisplayLabel>();
-    const QContactBirthday contactBirthday = contact.detail<QContactBirthday>();
+    const QDate contactBirthday = contact.detail<QContactBirthday>().date();
 
-    if (displayName.isEmpty() || contactBirthday.isEmpty()) {
+    if (displayName.isEmpty() || contactBirthday.isNull()) {
         warning() << Q_FUNC_INFO << "Contact without name or birthday, local ID: "
                   << contact.localId();
         return;
@@ -151,8 +151,8 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
     event->setSummary(displayName.label());
 
     // Event has only date information, no time.
-    event->setDtStart(KDateTime(contactBirthday.date(), QTime(), KDateTime::ClockTime));
-    event->setDtEnd(KDateTime(contactBirthday.date().addDays(1), QTime(), KDateTime::ClockTime));
+    event->setDtStart(KDateTime(contactBirthday, QTime(), KDateTime::ClockTime));
+    event->setDtEnd(KDateTime(contactBirthday.addDays(1), QTime(), KDateTime::ClockTime));
 
     // Must always set the recurrence as it depends on the event date.
     KCalCore::Recurrence * const rule = event->recurrence();
