@@ -262,6 +262,62 @@ void TestBirthdayPlugin::testLocaleChange()
     QVERIFY2(storage->close(), "Error closing the calendar");
 }
 
+void TestBirthdayPlugin::testLeapYears_data()
+{
+    QTest::addColumn<QDate>("contactBirthDate");
+    QTest::newRow("leap-day") << QDate(2008, 2, 29);
+    QTest::newRow("regular-day") << QDate(2008, 2, 1);
+}
+
+void TestBirthdayPlugin::testLeapYears()
+{
+    const QString contactID = QUuid::createUuid().toString();
+    QFETCH(QDate, contactBirthDate);
+
+    // Add contact with birthday to tracker.
+    QContactName contactName;
+    contactName.setCustomLabel(contactID);
+    QContactBirthday contactBirthday;
+    contactBirthday.setDate(contactBirthDate);
+    QContact contact;
+    QVERIFY(contact.saveDetail(&contactName));
+    QVERIFY(contact.saveDetail(&contactBirthday));
+    QVERIFY(saveContact(contact));
+
+    // Wait until calendar event gets to calendar.
+    loopWait(calendarTimeout);
+
+    // Open calendar database.
+    mKCal::ExtendedCalendar::Ptr calendar =
+        mKCal::ExtendedCalendar::Ptr(new mKCal::ExtendedCalendar(KDateTime::Spec::LocalZone()));
+    mKCal::ExtendedStorage::Ptr storage =
+        mKCal::ExtendedCalendar::defaultStorage(calendar);
+
+    QVERIFY(storage->open());
+    QVERIFY(not storage->notebook(calNotebookId).isNull());
+
+    // Check calendar database for contact.
+    QVERIFY(storage->loadNotebookIncidences(calNotebookId));
+    const KCalCore::Event::List eventList = findCalendarEvents(calendar->events(), contact);
+    QCOMPARE(eventList.count(), 1);
+
+    const KCalCore::Event::Ptr event = eventList.first();
+    QCOMPARE(event->summary(), contactID);
+    QCOMPARE(event->dtStart().date(), contactBirthDate);
+    QCOMPARE(event->allDay(), true);
+
+    // Check number of recurrences and their values.
+    const KDateTime first(QDate(2000, 1, 1), QTime(), KDateTime::ClockTime);
+    const KDateTime last(QDate(2020, 12, 31), QTime(), KDateTime::ClockTime);
+    const KCalCore::DateTimeList instances = event->recurrence()->timesInInterval(first, last);
+
+    QCOMPARE(instances.length(), 13);
+
+    for(int i = 0; i < instances.length(); ++i) {
+        QCOMPARE(instances.at(i).date(), contactBirthDate.addYears(i));
+    }
+}
+
 void TestBirthdayPlugin::cleanupTestCase()
 {
 }

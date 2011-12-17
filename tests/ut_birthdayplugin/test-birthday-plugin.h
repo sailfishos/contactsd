@@ -50,6 +50,9 @@ private Q_SLOTS:
     void testChangeName();
     void testLocaleChange();
 
+    void testLeapYears_data();
+    void testLeapYears();
+
     void cleanupTestCase();
     void cleanup();
 
