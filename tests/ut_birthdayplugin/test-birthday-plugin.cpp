@@ -282,16 +282,23 @@ void TestBirthdayPlugin::cleanup()
 int TestBirthdayPlugin::countCalendarEvents(const KCalCore::Event::List &eventList,
                                             const QContact &contact) const
 {
-    int found = 0;
-    Q_FOREACH(const QSharedPointer<KCalCore::Event> event, eventList) {
+    return findCalendarEvents(eventList, contact).count();
+}
+
+KCalCore::Event::List TestBirthdayPlugin::findCalendarEvents(const KCalCore::Event::List &eventList,
+                                                             const QContact &contact) const
+{
+    KCalCore::Event::List matches;
+
+    Q_FOREACH(const KCalCore::Event::Ptr event, eventList) {
         if(event->dtStart().date() == contact.detail<QContactBirthday>().date()) {
             if(event->summary() == contact.detail<QContactDisplayLabel>().label()) {
-                found++;
+                matches += event;
             }
         }
     }
 
-    return found;
+    return matches;
 }
 
 bool TestBirthdayPlugin::saveContact(QContact &contact)

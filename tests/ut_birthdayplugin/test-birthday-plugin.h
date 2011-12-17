@@ -56,6 +56,8 @@ private Q_SLOTS:
 private:
     int countCalendarEvents(const KCalCore::Event::List &eventList,
                             const QContact &contact) const;
+    KCalCore::Event::List findCalendarEvents(const KCalCore::Event::List &eventList,
+                                             const QContact &contact) const;
     bool saveContact(QContact &contact);
 
 private:
