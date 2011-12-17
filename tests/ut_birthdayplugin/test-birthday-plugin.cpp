@@ -296,9 +296,13 @@ int TestBirthdayPlugin::countCalendarEvents(const KCalCore::Event::List &eventLi
 
 bool TestBirthdayPlugin::saveContact(QContact &contact)
 {
-    mContactLocalIDs.insert(contact.localId());
+    const bool success = mManager->saveContact(&contact);
 
-    return mManager->saveContact(&contact);
+    if (success) {
+        mContactLocalIDs.insert(contact.localId());
+    }
+
+    return success;
 }
 
 CONTACTSD_TEST_MAIN(TestBirthdayPlugin)
