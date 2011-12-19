@@ -224,9 +224,7 @@ CDBirthdayController::processNotificationQueues()
     processNotifications(mDeleteNotifications, birthdayChangedIds, deletedContacts);
     processNotifications(mInsertNotifications, birthdayChangedIds, insertedContacts);
 
-    if (isDebugEnabled()) {
-        debug() << "changed birthdates: " << birthdayChangedIds.count() << birthdayChangedIds;
-    }
+    debug() << "changed birthdates: " << birthdayChangedIds.count() << birthdayChangedIds;
 
     // Remove the birthdays for contacts that are not there anymore
     foreach (QContactLocalId id, deletedContacts) {
@@ -406,19 +404,15 @@ CDBirthdayController::updateBirthdays(const QList<QContact> &changedBirthdays)
 
         // Display label or birthdate was removed from the contact, so delete it from the calendar.
         if (contactDisplayLabel.label().isNull() || contactBirthday.date().isNull()) {
-            if (isDebugEnabled()) {
-                debug() << "Contact: " << contact << " removed birthday or displayLabel, so delete the calendar event";
-            }
+            debug() << "Contact: " << contact << " removed birthday or displayLabel, so delete the calendar event";
 
             mCalendar->deleteBirthday(contact.localId());
         // Display label or birthdate was changed on the contact, so update the calendar.
         } else if ((contactDisplayLabel.label() != calendarBirthday.summary()) ||
                    (contactBirthday.date() != calendarBirthday.date())) {
-            if (isDebugEnabled()) {
-                debug() << "Contact with calendar birthday: " << contactBirthday.date()
-                        << " and calendar displayLabel: " << calendarBirthday.summary()
-                        << " changed details to: " << contact << ", so update the calendar event";
-            }
+            debug() << "Contact with calendar birthday: " << contactBirthday.date()
+                    << " and calendar displayLabel: " << calendarBirthday.summary()
+                    << " changed details to: " << contact << ", so update the calendar event";
 
             mCalendar->updateBirthday(contact);
         }
@@ -435,26 +429,22 @@ CDBirthdayController::syncBirthdays(const QList<QContact> &birthdayContacts)
         const QContactDisplayLabel contactDisplayLabel = contact.detail<QContactDisplayLabel>();
 
         if (contactDisplayLabel.label().isNull()) {
-            if (isDebugEnabled()) {
-                debug() << "Contact: " << contact << " has no displayLabel, so not syncing to calendar";
-            }
+            debug() << "Contact: " << contact << " has no displayLabel, so not syncing to calendar";
             continue;
         }
 
-        const QContactBirthday contactBirthday = contact.detail<QContactBirthday>();
-        QHash<QContactLocalId, CalendarBirthday>::Iterator it =
-            oldBirthdays.find(contact.localId());
+        QHash<QContactLocalId, CalendarBirthday>::Iterator it = oldBirthdays.find(contact.localId());
+
         if (oldBirthdays.end() != it) {
+            const QContactBirthday contactBirthday = contact.detail<QContactBirthday>();
             const CalendarBirthday &calendarBirthday = *it;
 
             // Display label or birthdate was changed on the contact, so update the calendar.
             if ((contactDisplayLabel.label() != calendarBirthday.summary()) ||
                 (contactBirthday.date() != calendarBirthday.date())) {
-                if (isDebugEnabled()) {
-                    debug() << "Contact with calendar birthday: " << contactBirthday.date()
-                            << " and calendar displayLabel: " << calendarBirthday.summary()
-                            << " changed details to: " << contact << ", so update the calendar event";
-                }
+                debug() << "Contact with calendar birthday: " << contactBirthday.date()
+                        << " and calendar displayLabel: " << calendarBirthday.summary()
+                        << " changed details to: " << contact << ", so update the calendar event";
 
                 mCalendar->updateBirthday(contact);
             }
@@ -469,9 +459,7 @@ CDBirthdayController::syncBirthdays(const QList<QContact> &birthdayContacts)
 
     // Remaining old birthdays in the calendar db do not did not match any contact, so remove them.
     foreach(QContactLocalId id, oldBirthdays.keys()) {
-        if (isDebugEnabled()) {
-            debug() << "Birthday with contact id" << id << "no longer has a matching contact, trashing it";
-        }
+        debug() << "Birthday with contact id" << id << "no longer has a matching contact, trashing it";
         mCalendar->deleteBirthday(id);
     }
 }
