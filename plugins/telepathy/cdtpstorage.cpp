@@ -234,17 +234,34 @@ static LiteralValue literalContactInfo(const Tp::ContactInfoField &field, int i)
 }
 
 static void addPresence(PatternGroup &g,
-        const Value &imAddress,
-        const Tp::Presence &presence)
+                        const Value &imAddress,
+                        const Tp::Presence &presence)
 {
     g.addPattern(imAddress, nco::imPresence::resource(), presenceType(presence.type()));
     g.addPattern(imAddress, nco::presenceLastModified::resource(), literalTimeStamp());
     g.addPattern(imAddress, nco::imStatusMessage::resource(), LiteralValue(presence.statusMessage()));
 }
 
+static bool isOnlinePresence(const Tp::Presence &presence)
+{
+    switch(presence.type()) {
+    case Tp::ConnectionPresenceTypeUnset:
+    case Tp::ConnectionPresenceTypeOffline:
+    case Tp::ConnectionPresenceTypeUnknown:
+    case Tp::ConnectionPresenceTypeError:
+        return false;
+
+    default:
+        break;
+    }
+
+    return true;
+}
+
 static void addCapabilities(PatternGroup &g,
-        const Value &imAddress,
-        Tp::CapabilitiesBase capabilities)
+                            const Value &imAddress,
+                            const Tp::CapabilitiesBase &capabilities,
+                            const Tp::Presence &presence)
 {
     /* FIXME: We could also add im_capability_stream_tubes and
      * im_capability_dbus_tubes */
@@ -252,20 +269,23 @@ static void addCapabilities(PatternGroup &g,
     if (capabilities.textChats()) {
         g.addPattern(imAddress, nco::imCapability::resource(), nco::im_capability_text_chat::resource());
     }
-    if (capabilities.streamedMediaCalls()) {
-        g.addPattern(imAddress, nco::imCapability::resource(), nco::im_capability_media_calls::resource());
-    }
-    if (capabilities.streamedMediaAudioCalls()) {
-        g.addPattern(imAddress, nco::imCapability::resource(), nco::im_capability_audio_calls::resource());
-    }
-    if (capabilities.streamedMediaVideoCalls()) {
-        g.addPattern(imAddress, nco::imCapability::resource(), nco::im_capability_video_calls::resource());
-    }
-    if (capabilities.upgradingStreamedMediaCalls()) {
-        g.addPattern(imAddress, nco::imCapability::resource(), nco::im_capability_upgrading_calls::resource());
-    }
-    if (capabilities.fileTransfers()) {
-        g.addPattern(imAddress, nco::imCapability::resource(), nco::im_capability_file_transfers::resource());
+
+    if (isOnlinePresence(presence)) {
+        if (capabilities.streamedMediaCalls()) {
+            g.addPattern(imAddress, nco::imCapability::resource(), nco::im_capability_media_calls::resource());
+        }
+        if (capabilities.streamedMediaAudioCalls()) {
+            g.addPattern(imAddress, nco::imCapability::resource(), nco::im_capability_audio_calls::resource());
+        }
+        if (capabilities.streamedMediaVideoCalls()) {
+            g.addPattern(imAddress, nco::imCapability::resource(), nco::im_capability_video_calls::resource());
+        }
+        if (capabilities.upgradingStreamedMediaCalls()) {
+            g.addPattern(imAddress, nco::imCapability::resource(), nco::im_capability_upgrading_calls::resource());
+        }
+        if (capabilities.fileTransfers()) {
+            g.addPattern(imAddress, nco::imCapability::resource(), nco::im_capability_file_transfers::resource());
+        }
     }
 }
 
@@ -620,7 +640,7 @@ static CDTpContact::Changes addContactChanges(PatternGroup &g, const Value &imAd
     }
     if (changes & CDTpContact::Capabilities) {
         debug() << "  capabilities changed";
-        addCapabilities(g, imAddress, contact->capabilities());
+        addCapabilities(g, imAddress, contact->capabilities(), contact->presence());
     }
     if (changes & CDTpContact::Avatar) {
         debug() << "  avatar changed";
@@ -794,6 +814,17 @@ static CDTpQueryBuilder updateContactsInfoBuilder(const QList<CDTpContactPtr> &c
     }
 
     return builder;
+}
+
+static void dropCapabilities(CDTpQueryBuilder &builder, Variable imAddress)
+{
+    Delete d;
+    Variable caps;
+
+    d.addData(imAddress, nco::imCapability::resource(), caps);
+    d.addRestriction(imAddress, nco::imCapability::resource(), caps);
+
+    builder.prepend(d);
 }
 
 static void dropCapabilities(CDTpQueryBuilder &builder, Variable imAddress, const QStringList &contactIris)
@@ -1001,9 +1032,14 @@ static CDTpQueryBuilder syncNoRosterAccountsContactsBuilder(const QList<CDTpAcco
 
     // Add capabilities on all contacts for each account
     Q_FOREACH (const CDTpAccountPtr &accountWrapper, accounts) {
+        dropCapabilities(builder, imAddressVar);
+
         Insert i;
         Graph g(privateGraph);
-        addCapabilities(g, imAddressVar, accountWrapper->account()->capabilities());
+
+        addCapabilities(g, imAddressVar,
+                        accountWrapper->account()->capabilities(),
+                        accountWrapper->account()->currentPresence());
         i.addData(g);
         i.addRestriction(literalIMAccount(accountWrapper), nco::hasIMContact::resource(), imAddressVar);
         builder.append(i);
