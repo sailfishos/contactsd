@@ -1,3 +1,9 @@
+contactsd (1.0.24~git1) UNRELEASED; urgency=low
+
+  * Automatic version bump after release
+
+ -- Mathias Hasselmann <mathias@openismus.com>  Wed, 21 Dec 2011 10:52:08 +0100
+
 contactsd (1.0.23-1) unstable; urgency=low
 
   * Fixes: NB#295077 - Birthday plugin only creates events for February 29th in leap years
