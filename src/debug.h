@@ -118,8 +118,8 @@ inline Debug warning()
     return enabledWarning();
 }
 
-#define debug() ((enabledDebug().nospace() << __func__ << ", line" << __LINE__ << ":").space())
-#define warning() ((enabledWarning().nospace() << __func__ << ", line" << __LINE__ << ":").space())
+#define debug() ((enabledDebug().nospace() << __func__ << ", line " << __LINE__ << ":").space())
+#define warning() ((enabledWarning().nospace() << __func__ << ", line " << __LINE__ << ":").space())
 
 #else /* #ifdef ENABLE_DEBUG */
 
