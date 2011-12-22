@@ -1737,7 +1737,7 @@ void CDTpStorage::onUpdateQueueTimeout()
 
         // Special case for Capabilities and Information changes
         if (changes & CDTpContact::Capabilities) {
-            capsContactIris += contactWrapper->contact()->id();
+            capsContactIris += imAddress(contactWrapper);
         }
     }
     mUpdateQueue.clear();
