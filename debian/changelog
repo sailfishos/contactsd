@@ -1,8 +1,9 @@
-contactsd (1.0.23~git1) UNRELEASED; urgency=low
+contactsd (1.0.22.1-1) unstable; urgency=low
 
-  * Automatic version bump after release
+  * Changes: Never anounce streaming caps for offline accounts, addresses NB#294188
+  * Fixes: Really drop old caps when buddy presence changes, addresses NB#294188
 
- -- Mathias Hasselmann <mathias@openismus.com>  Thu, 15 Dec 2011 23:05:42 +0100
+ -- Mathias Hasselmann <mathias@openismus.com>  Thu, 22 Dec 2011 10:32:23 +0100
 
 contactsd (1.0.22-1) unstable; urgency=low
 
