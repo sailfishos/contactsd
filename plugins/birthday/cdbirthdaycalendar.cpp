@@ -136,10 +136,10 @@ CDBirthdayCalendar::birthdays()
 void CDBirthdayCalendar::updateBirthday(const QContact &contact)
 {
     // Retrieve contact details.
-    const QContactDisplayLabel displayName = contact.detail<QContactDisplayLabel>();
+    const QString displayLabel = contact.displayLabel();
     const QDate contactBirthday = contact.detail<QContactBirthday>().date();
 
-    if (displayName.isEmpty() || contactBirthday.isNull()) {
+    if (displayLabel.isEmpty() || contactBirthday.isNull()) {
         warning() << Q_FUNC_INFO << "Contact without name or birthday, local ID: "
                   << contact.localId();
         return;
@@ -174,7 +174,7 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
     }
 
     // Transfer birthday details from contact to calendar event.
-    event->setSummary(displayName.label());
+    event->setSummary(displayLabel);
 
     // Event has only date information, no time.
     event->setDtStart(KDateTime(contactBirthday, QTime(), KDateTime::ClockTime));

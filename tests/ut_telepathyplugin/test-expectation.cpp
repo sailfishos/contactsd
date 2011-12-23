@@ -203,7 +203,7 @@ void TestExpectationContact::verify(QContact contact)
     }
 
     if (mFlags & VerifyAlias) {
-        QString label = contact.detail<QContactDisplayLabel>().label();
+        QString label = contact.displayLabel();
         QCOMPARE(label, mAlias);
     }
 

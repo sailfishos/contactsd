@@ -34,7 +34,6 @@
 
 #include <QContactBirthday>
 #include <QContactDetailFilter>
-#include <QContactDisplayLabel>
 #include <QContactFetchRequest>
 #include <QContactLocalIdFilter>
 
@@ -399,16 +398,16 @@ CDBirthdayController::updateBirthdays(const QList<QContact> &changedBirthdays)
 {
     foreach (const QContact &contact, changedBirthdays) {
         const QContactBirthday contactBirthday = contact.detail<QContactBirthday>();
-        const QContactDisplayLabel contactDisplayLabel = contact.detail<QContactDisplayLabel>();
+        const QString contactDisplayLabel = contact.displayLabel();
         const CalendarBirthday calendarBirthday = mCalendar->birthday(contact.localId());
 
         // Display label or birthdate was removed from the contact, so delete it from the calendar.
-        if (contactDisplayLabel.label().isNull() || contactBirthday.date().isNull()) {
+        if (contactDisplayLabel.isEmpty() || contactBirthday.date().isNull()) {
             debug() << "Contact: " << contact << " removed birthday or displayLabel, so delete the calendar event";
 
             mCalendar->deleteBirthday(contact.localId());
         // Display label or birthdate was changed on the contact, so update the calendar.
-        } else if ((contactDisplayLabel.label() != calendarBirthday.summary()) ||
+        } else if ((contactDisplayLabel != calendarBirthday.summary()) ||
                    (contactBirthday.date() != calendarBirthday.date())) {
             debug() << "Contact with calendar birthday: " << contactBirthday.date()
                     << " and calendar displayLabel: " << calendarBirthday.summary()
@@ -426,9 +425,9 @@ CDBirthdayController::syncBirthdays(const QList<QContact> &birthdayContacts)
 
     // Check all birthdays from the contacts if the stored calendar item is up-to-date
     foreach (const QContact &contact, birthdayContacts) {
-        const QContactDisplayLabel contactDisplayLabel = contact.detail<QContactDisplayLabel>();
+        const QString contactDisplayLabel = contact.displayLabel();
 
-        if (contactDisplayLabel.label().isNull()) {
+        if (contactDisplayLabel.isNull()) {
             debug() << "Contact: " << contact << " has no displayLabel, so not syncing to calendar";
             continue;
         }
@@ -440,7 +439,7 @@ CDBirthdayController::syncBirthdays(const QList<QContact> &birthdayContacts)
             const CalendarBirthday &calendarBirthday = *it;
 
             // Display label or birthdate was changed on the contact, so update the calendar.
-            if ((contactDisplayLabel.label() != calendarBirthday.summary()) ||
+            if ((contactDisplayLabel != calendarBirthday.summary()) ||
                 (contactBirthday.date() != calendarBirthday.date())) {
                 debug() << "Contact with calendar birthday: " << contactBirthday.date()
                         << " and calendar displayLabel: " << calendarBirthday.summary()

@@ -348,7 +348,7 @@ KCalCore::Event::List TestBirthdayPlugin::findCalendarEvents(const KCalCore::Eve
 
     Q_FOREACH(const KCalCore::Event::Ptr event, eventList) {
         if(event->dtStart().date() == contact.detail<QContactBirthday>().date()) {
-            if(event->summary() == contact.detail<QContactDisplayLabel>().label()) {
+            if(event->summary() == contact.displayLabel()) {
                 matches += event;
             }
         }
