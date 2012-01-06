@@ -242,11 +242,14 @@ static void addPresence(PatternGroup &g,
     g.addPattern(imAddress, nco::imStatusMessage::resource(), LiteralValue(presence.statusMessage()));
 }
 
-static bool isOnlinePresence(const Tp::Presence &presence)
+static bool isOnlinePresence(const Tp::Presence &presence,
+                             Tp::AccountPtr account)
 {
     switch(presence.type()) {
-    case Tp::ConnectionPresenceTypeUnset:
     case Tp::ConnectionPresenceTypeOffline:
+        return account->protocolName() == QLatin1String("skype");
+
+    case Tp::ConnectionPresenceTypeUnset:
     case Tp::ConnectionPresenceTypeUnknown:
     case Tp::ConnectionPresenceTypeError:
         return false;
@@ -261,7 +264,8 @@ static bool isOnlinePresence(const Tp::Presence &presence)
 static void addCapabilities(PatternGroup &g,
                             const Value &imAddress,
                             const Tp::CapabilitiesBase &capabilities,
-                            const Tp::Presence &presence)
+                            const Tp::Presence &presence,
+                            Tp::AccountPtr account)
 {
     /* FIXME: We could also add im_capability_stream_tubes and
      * im_capability_dbus_tubes */
@@ -270,7 +274,7 @@ static void addCapabilities(PatternGroup &g,
         g.addPattern(imAddress, nco::imCapability::resource(), nco::im_capability_text_chat::resource());
     }
 
-    if (isOnlinePresence(presence)) {
+    if (isOnlinePresence(presence, account)) {
         if (capabilities.streamedMediaCalls()) {
             g.addPattern(imAddress, nco::imCapability::resource(), nco::im_capability_media_calls::resource());
         }
@@ -640,7 +644,8 @@ static CDTpContact::Changes addContactChanges(PatternGroup &g, const Value &imAd
     }
     if (changes & CDTpContact::Capabilities) {
         debug() << "  capabilities changed";
-        addCapabilities(g, imAddress, contact->capabilities(), contact->presence());
+        addCapabilities(g, imAddress, contact->capabilities(), contact->presence(),
+                        contactWrapper->accountWrapper()->account());
     }
     if (changes & CDTpContact::Avatar) {
         debug() << "  avatar changed";
@@ -1039,7 +1044,8 @@ static CDTpQueryBuilder syncNoRosterAccountsContactsBuilder(const QList<CDTpAcco
 
         addCapabilities(g, imAddressVar,
                         accountWrapper->account()->capabilities(),
-                        accountWrapper->account()->currentPresence());
+                        accountWrapper->account()->currentPresence(),
+                        accountWrapper->account());
         i.addData(g);
         i.addRestriction(literalIMAccount(accountWrapper), nco::hasIMContact::resource(), imAddressVar);
         builder.append(i);
