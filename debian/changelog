@@ -1,8 +1,8 @@
-contactsd (1.0.23~git1) UNRELEASED; urgency=low
+contactsd (1.1.0-1) unstable; urgency=low
 
-  * Automatic version bump after release
+  * Fixes: NB#297132 - Unable to initiate VOIP call to offline skype contact from contact picker
 
- -- Mathias Hasselmann <mathias@openismus.com>  Wed, 18 Jan 2012 10:11:21 +0100
+ -- Mathias Hasselmann <mathias@openismus.com>  Wed, 18 Jan 2012 14:47:38 +0100
 
 contactsd (1.0.22.2-2) unstable; urgency=low
 
