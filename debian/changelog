@@ -1,3 +1,9 @@
+contactsd (1.0.23~git1) UNRELEASED; urgency=low
+
+  * Automatic version bump after release
+
+ -- Mathias Hasselmann <mathias@openismus.com>  Wed, 18 Jan 2012 10:11:21 +0100
+
 contactsd (1.0.22.2-2) unstable; urgency=low
 
   * Fix bug-ref in previous record.
