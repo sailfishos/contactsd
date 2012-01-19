@@ -1,3 +1,9 @@
+contactsd (1.0.23~git1) UNRELEASED; urgency=low
+
+  * Automatic version bump after release
+
+ -- Mathias Hasselmann <mathias@openismus.com>  Thu, 19 Jan 2012 16:01:28 +0100
+
 contactsd (1.0.22.3-1) unstable; urgency=low
 
   * Fixes: NB#297155 - Reg: Unable to initiate skype call to skype contacts pending for authorization
