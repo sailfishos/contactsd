@@ -242,15 +242,14 @@ static void addPresence(PatternGroup &g,
     g.addPattern(imAddress, nco::imStatusMessage::resource(), LiteralValue(presence.statusMessage()));
 }
 
-static bool isOnlinePresence(const Tp::Presence &presence,
-                             Tp::AccountPtr account)
+static bool maybeCallablePresence(const Tp::Presence &presence,
+                                  Tp::AccountPtr account)
 {
     switch(presence.type()) {
     case Tp::ConnectionPresenceTypeOffline:
         return account->protocolName() == QLatin1String("skype");
 
     case Tp::ConnectionPresenceTypeUnset:
-    case Tp::ConnectionPresenceTypeUnknown:
     case Tp::ConnectionPresenceTypeError:
         return false;
 
@@ -274,7 +273,7 @@ static void addCapabilities(PatternGroup &g,
         g.addPattern(imAddress, nco::imCapability::resource(), nco::im_capability_text_chat::resource());
     }
 
-    if (isOnlinePresence(presence, account)) {
+    if (maybeCallablePresence(presence, account)) {
         if (capabilities.streamedMediaCalls()) {
             g.addPattern(imAddress, nco::imCapability::resource(), nco::im_capability_media_calls::resource());
         }
