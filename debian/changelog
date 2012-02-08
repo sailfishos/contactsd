@@ -1,8 +1,9 @@
-contactsd (1.0.23~git1) UNRELEASED; urgency=low
+contactsd (1.0.22.4-1) unstable; urgency=low
 
-  * Automatic version bump after release
+  * New: hotfixes plugin - move the queries from postinst script of qtcontacts-tracker here to avoid SSU taking hours. Addresses NB#297371.
+  * Revert NB#297155 - Reg: Unable to initiate skype call to skype contacts pending for authorization
 
- -- Mathias Hasselmann <mathias@openismus.com>  Thu, 19 Jan 2012 16:01:28 +0100
+ -- Mathias Hasselmann <mathias@openismus.com>  Wed, 08 Feb 2012 08:38:20 +0100
 
 contactsd (1.0.22.3-1) unstable; urgency=low
 
