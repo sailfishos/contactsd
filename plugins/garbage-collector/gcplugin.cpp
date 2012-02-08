@@ -37,11 +37,6 @@ const QLatin1String DBusObjectPath("/com/nokia/contacts/GarbageCollector1");
 
 GcPlugin::GcPlugin()
 {
-    if (registerDBusObject()) {
-        (void) new GarbageCollectorAdaptor(this);
-    }
-
-    loadSavedQueries();
 }
 
 GcPlugin::~GcPlugin()
@@ -52,6 +47,12 @@ GcPlugin::~GcPlugin()
 void GcPlugin::init()
 {
     debug() << "Initializing contactsd GarbageCollector plugin";
+
+    if (registerDBusObject()) {
+        new GarbageCollectorAdaptor(this);
+    }
+
+    loadSavedQueries();
 }
 
 bool GcPlugin::registerDBusObject()
