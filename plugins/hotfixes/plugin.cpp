@@ -38,31 +38,6 @@ public:
     HotFixesPlugin()
         : m_heartbeat(0)
         , m_timer(0)
-
-        , m_checkupQuery(QLatin1String
-          ("ASK {\n"
-           "  ?contact a nco:Contact\n"
-           "  GRAPH <urn:uuid:08070f5c-a334-4d19-a8b0-12a3071bfab9> {\n"
-           "    ?contact dc:date ?date\n"
-           "  }\n"
-           "  FILTER(!EXISTS { ?contact nie:contentLastModified ?date }\n"
-           "      && !EXISTS { ?contact nie:contentAccessed ?date }\n"
-           "      && !EXISTS { ?contact nie:contentCreated ?date })\n"
-           "}"), QSparqlQuery::AskStatement)
-
-        , m_cleanupQuery(QLatin1String
-          ("DELETE {\n"
-           "  ?contact nie:informationElementDate ?date ; dc:date ?date\n"
-           "} WHERE {\n"
-           "  SELECT ?contact ?date {\n"
-           "    GRAPH <urn:uuid:08070f5c-a334-4d19-a8b0-12a3071bfab9> {\n"
-           "      ?contact dc:date ?date\n"
-           "    }\n"
-           "    FILTER(!EXISTS { ?contact nie:contentLastModified ?date }\n"
-           "        && !EXISTS { ?contact nie:contentAccessed ?date }\n"
-           "        && !EXISTS { ?contact nie:contentCreated ?date })\n"
-           "  } LIMIT 500\n"
-           "}"), QSparqlQuery::DeleteStatement)
     {
     }
 
@@ -125,6 +100,8 @@ private:
 
     bool runQuery(const QSparqlQuery &query, const char *slot)
     {
+        QSparqlQueryOptions options;
+        options.setPriority(QSparqlQueryOptions::LowPriority);
         QSparqlResult *const result = sparqlConnection().exec(query);
 
         if (result->hasError()) {
@@ -137,22 +114,76 @@ private:
         return true;
     }
 
-    bool runCleanupQuery()
+    bool runLookupQuery()
     {
-        debug() << "hotfixes - running cleanup query";
-        return runQuery(m_cleanupQuery, SLOT(onCleanupQueryFinished()));
+        debug() << "hotfixes - running lookup query";
+
+        m_garbageTuples.clear();
+
+        static const QLatin1String queryString
+                ("SELECT ?contact ?date {\n"
+                 "  ?contact a nco:Contact\n"
+                 "  GRAPH <urn:uuid:08070f5c-a334-4d19-a8b0-12a3071bfab9> {\n"
+                 "    ?contact dc:date ?date\n"
+                 "  }\n"
+                 "  FILTER(!EXISTS { ?contact nie:contentLastModified ?date }\n"
+                 "      && !EXISTS { ?contact nie:contentAccessed ?date }\n"
+                 "      && !EXISTS { ?contact nie:contentCreated ?date })\n"
+                 "} LIMIT 1500");
+
+        const QSparqlQuery query(queryString, QSparqlQuery::SelectStatement);
+        return runQuery(query, SLOT(onLookupQueryFinished()));
     }
 
-    bool runCheckupQuery()
+    bool runCleanupQuery()
     {
-        debug() << "hotfixes - running checkup query";
-        return runQuery(m_checkupQuery, SLOT(onCheckupQueryFinished()));
+        if (m_garbageTuples.isEmpty()) {
+            return false;
+        }
+
+        debug() << "hotfixes - running cleanup query";
+
+        QStringList queryTokens;
+
+        queryTokens += QLatin1String("DELETE {");
+
+        for(int i = 0; i < 150 && not m_garbageTuples.isEmpty(); ++i) {
+            const GarbageTuple tuple = m_garbageTuples.takeFirst();
+
+            queryTokens += QString::fromLatin1
+                    ("  <%1> nie:informationElementDate \"%2\" ; dc:date \"%2\" .").
+                    arg(tuple.first, tuple.second);
+        }
+
+        queryTokens += QLatin1String("}");
+
+        const QSparqlQuery query(queryTokens.join(QLatin1String("\n")),
+                                 QSparqlQuery::DeleteStatement);
+        return runQuery(query, SLOT(onCleanupQueryFinished()));
     }
 
 private slots:
     void onWakeUp()
     {
+        if (not runLookupQuery()) {
+            // sleep if no lookup was possible
+            scheduleWakeUp();
+        }
+    }
+
+    void onLookupQueryFinished()
+    {
+        QSparqlResult *const result = qobject_cast<QSparqlResult *>(sender());
+
+        while(result->next()) {
+            m_garbageTuples += qMakePair(result->stringValue(0),
+                                         result->stringValue(1));
+        }
+
+        result->deleteLater();
+
         if (not runCleanupQuery()) {
+            // sleep if no cleanup was needed (or possible)
             scheduleWakeUp();
         }
     }
@@ -161,33 +192,20 @@ private slots:
     {
         sender()->deleteLater();
 
-        if (not runCheckupQuery()) {
-            scheduleWakeUp();
+        if (not runCleanupQuery()) {
+            // sleep if no further cleanup was needed (or possible)
+            scheduleWakeUp(QmHeartbeat::WAKEUP_SLOT_30_SEC);
         }
     }
-
-    void onCheckupQueryFinished()
-    {
-        QSparqlResult *const result = qobject_cast<QSparqlResult *>(sender());
-        bool cleanupNeeded = false;
-
-        while(result->next()) {
-            cleanupNeeded = result->value(0).toBool();
-        }
-
-        result->deleteLater();
-
-        scheduleWakeUp(cleanupNeeded ? QmHeartbeat::WAKEUP_SLOT_30_SEC
-                                     : QmHeartbeat::WAKEUP_SLOT_10_HOURS);
-    }
-
 
 private:
+    typedef QPair<QString, QString> GarbageTuple;
+
     QmHeartbeat *m_heartbeat;
     QTimer *m_timer;
 
     QSparqlQuery m_checkupQuery;
-    QSparqlQuery m_cleanupQuery;
+    QList<GarbageTuple> m_garbageTuples;
 };
 
 } // namespace Contactsd
