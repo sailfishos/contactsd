@@ -1,8 +1,8 @@
-contactsd (1.0.23~git1) UNRELEASED; urgency=low
+contactsd (1.0.22.5-2) unstable; urgency=low
 
-  * Automatic version bump after release
+  * Actually really package the hotfixes plugin.
 
- -- Mathias Hasselmann <mathias@openismus.com>  Wed, 08 Feb 2012 13:09:12 +0100
+ -- Mathias Hasselmann <mathias@openismus.com>  Wed, 08 Feb 2012 18:10:10 +0100
 
 contactsd (1.0.22.5-1) unstable; urgency=low
 
