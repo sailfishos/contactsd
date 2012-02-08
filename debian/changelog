@@ -1,3 +1,9 @@
+contactsd (1.0.23~git1) UNRELEASED; urgency=low
+
+  * Automatic version bump after release
+
+ -- Mathias Hasselmann <mathias@openismus.com>  Wed, 08 Feb 2012 08:47:35 +0100
+
 contactsd (1.0.22.4-1) unstable; urgency=low
 
   * New: hotfixes plugin - move the queries from postinst script of qtcontacts-tracker here to avoid SSU taking hours. Addresses NB#297371.
