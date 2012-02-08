@@ -1,3 +1,9 @@
+contactsd (1.0.23~git1) UNRELEASED; urgency=low
+
+  * Automatic version bump after release
+
+ -- Mathias Hasselmann <mathias@openismus.com>  Wed, 08 Feb 2012 10:06:34 +0100
+
 contactsd (1.0.22.4-3) unstable; urgency=low
 
   * Mask reverted NB#297155 in 1.0.22.3-1 entry. Can we please have a "Reverts:" tag for BIFH?
