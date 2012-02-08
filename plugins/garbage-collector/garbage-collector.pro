@@ -29,6 +29,8 @@ system(qdbusxml2cpp -c GarbageCollectorAdaptor -a garbagecollectoradaptor.h:garb
 CONFIG += plugin qtsparql
 
 INCLUDEPATH += $$TOP_SOURCEDIR/src
+DEPENDPATH += $$TOP_SOURCEDIR/src
+
 DEFINES += ENABLE_DEBUG
 
 HEADERS  = \
