@@ -16,7 +16,8 @@ Build-Depends: debhelper (>= 7.2.3),
                libtracker-sparql-dev,
                libqtsparql-tracker-extensions-dev (>= 0.0.3),
                libmkcal-dev,
-               libmeegotouch-dev
+               libmeegotouch-dev,
+               libqmsystem2-dev
 Standards-Version: 3.8.1
 
 Package: contactsd
