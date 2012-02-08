@@ -1,8 +1,8 @@
-contactsd (1.0.23~git1) UNRELEASED; urgency=low
+contactsd (1.0.22.4-3) unstable; urgency=low
 
-  * Automatic version bump after release
+  * Mask reverted NB#297155 in 1.0.22.3-1 entry. Can we please have a "Reverts:" tag for BIFH?
 
- -- Mathias Hasselmann <mathias@openismus.com>  Wed, 08 Feb 2012 09:55:51 +0100
+ -- Mathias Hasselmann <mathias@openismus.com>  Wed, 08 Feb 2012 10:06:12 +0100
 
 contactsd (1.0.22.4-2) unstable; urgency=low
 
@@ -19,7 +19,7 @@ contactsd (1.0.22.4-1) unstable; urgency=low
 
 contactsd (1.0.22.3-1) unstable; urgency=low
 
-  * Fixes: NB#297155 - Reg: Unable to initiate skype call to skype contacts pending for authorization
+  * XXXXX: NB#297155 - Reg: Unable to initiate skype call to skype contacts pending for authorization
 
  -- Mathias Hasselmann <mathias@openismus.com>  Thu, 19 Jan 2012 16:01:14 +0100
 
