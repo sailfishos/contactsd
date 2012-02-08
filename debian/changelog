@@ -1,3 +1,9 @@
+contactsd (1.0.23~git1) UNRELEASED; urgency=low
+
+  * Automatic version bump after release
+
+ -- Mathias Hasselmann <mathias@openismus.com>  Wed, 08 Feb 2012 13:09:12 +0100
+
 contactsd (1.0.22.5-1) unstable; urgency=low
 
   * Use more efficient hotfix query. Addresses NB#297371.
