@@ -1,14 +1,8 @@
-contactsd (1.0.24~git1) UNRELEASED; urgency=low
+contactsd (1.0.22.6-1) unstable; urgency=low
 
-  * Automatic version bump after release
+  * Fixes: Adjust query sizes and timeouts
 
- -- Mathias Hasselmann <mathias@openismus.com>  Wed, 08 Feb 2012 18:13:59 +0100
-
-contactsd (1.0.23~git1) UNRELEASED; urgency=low
-
-  * Automatic version bump after release
-
- -- Mathias Hasselmann <mathias@openismus.com>  Wed, 08 Feb 2012 18:11:10 +0100
+ -- Mathias Hasselmann <mathias@openismus.com>  Thu, 09 Feb 2012 11:51:02 +0100
 
 contactsd (1.0.22.5-2) unstable; urgency=low
 
