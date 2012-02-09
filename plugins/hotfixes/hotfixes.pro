@@ -17,5 +17,12 @@ DEFINES += ENABLE_DEBUG QT_ASCII_CAST_WARNINGS
 
 target.path = $$LIBDIR/contactsd-1.0/plugins
 
-SOURCES += plugin.cpp
+SOURCES += \
+    hotfixes.cpp \
+    plugin.cpp
+
+HEADERS += \
+    hotfixes.h
+
 INSTALLS += target
+
