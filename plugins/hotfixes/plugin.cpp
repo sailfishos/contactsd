@@ -70,7 +70,7 @@ public:
             connect(m_timer, SIGNAL(timeout()), this, SLOT(onWakeUp()));
         }
 
-        scheduleWakeUp(0);
+        scheduleWakeUp(0, QmHeartbeat::WAKEUP_SLOT_2_5_MINS);
     }
 
     QMap<QString, QVariant> metaData()
@@ -83,17 +83,17 @@ public:
     }
 
 private:
-    void scheduleWakeUp(unsigned short wakeupSlot = QmHeartbeat::WAKEUP_SLOT_10_HOURS)
+    void scheduleWakeUp(unsigned short minimumDelay = QmHeartbeat::WAKEUP_SLOT_10_HOURS,
+                        unsigned short maximumDelay = QmHeartbeat::WAKEUP_SLOT_10_HOURS)
     {
-        debug() << "hotfixes - scheduling wakeup within" << wakeupSlot << "seconds";
+        debug() << "hotfixes - scheduling wakeup within" << minimumDelay << "seconds";
 
         if (m_heartbeat) {
-            m_heartbeat->wait(wakeupSlot,
-                              QmHeartbeat::WAKEUP_SLOT_10_HOURS,
+            m_heartbeat->wait(minimumDelay, maximumDelay,
                               QmHeartbeat::DoNotWaitHeartbeat);
         } else if (m_timer) {
             // seems "wakeup slots" are just a delay in seconds
-            m_timer->setInterval(wakeupSlot * 1000);
+            m_timer->setInterval((minimumDelay + maximumDelay) * 1000 / 2);
             m_timer->start();
         }
     }
