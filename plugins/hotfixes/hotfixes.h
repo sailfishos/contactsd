@@ -26,9 +26,7 @@
 #ifndef CONTACTSD_HOTFIXES_H
 #define CONTACTSD_HOTFIXES_H
 
-#include <QtCore>
 #include <QtSparql>
-#include <qmheartbeat.h>
 
 namespace Contactsd {
 
@@ -49,8 +47,8 @@ private slots:
     void onCleanupQueryFinished();
 
 private:
-    void scheduleWakeUp(unsigned short minimumDelay = MeeGo::QmHeartbeat::WAKEUP_SLOT_10_HOURS,
-                        unsigned short maximumDelay = MeeGo::QmHeartbeat::WAKEUP_SLOT_10_HOURS);
+    void scheduleWakeUp();
+    void scheduleWakeUp(ushort minimumDelay, ushort maximumDelay);
     bool runQuery(const QSparqlQuery &query, const char *slot);
     bool runLookupQuery();
     bool runCleanupQuery();

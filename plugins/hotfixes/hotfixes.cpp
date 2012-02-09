@@ -26,6 +26,9 @@
 #include "hotfixes.h"
 #include "debug.h"
 
+#include <QtCore>
+#include <qmheartbeat.h>
+
 namespace Contactsd {
 
 using MeeGo::QmHeartbeat;
@@ -88,7 +91,13 @@ HotFixes::~HotFixes()
     delete d;
 }
 
-void HotFixes::scheduleWakeUp(unsigned short minimumDelay, unsigned short maximumDelay)
+void HotFixes::scheduleWakeUp()
+{
+    scheduleWakeUp(MeeGo::QmHeartbeat::WAKEUP_SLOT_10_HOURS,
+                   MeeGo::QmHeartbeat::WAKEUP_SLOT_10_HOURS);
+}
+
+void HotFixes::scheduleWakeUp(ushort minimumDelay, ushort maximumDelay)
 {
     debug() << "hotfixes - scheduling wakeup within" << minimumDelay << "seconds";
 
@@ -133,7 +142,7 @@ bool HotFixes::runLookupQuery()
              "  FILTER(!EXISTS { ?contact nie:contentLastModified ?date }\n"
              "      && !EXISTS { ?contact nie:contentAccessed ?date }\n"
              "      && !EXISTS { ?contact nie:contentCreated ?date })\n"
-             "} LIMIT 1500");
+             "} LIMIT 200");
 
     const QSparqlQuery query(queryString, QSparqlQuery::SelectStatement);
     return runQuery(query, SLOT(onLookupQueryFinished()));
@@ -151,7 +160,7 @@ bool HotFixes::runCleanupQuery()
 
     queryTokens += QLatin1String("DELETE {");
 
-    for(int i = 0; i < 150 && not d->garbageTuples.isEmpty(); ++i) {
+    for(int i = 0; i < 40 && not d->garbageTuples.isEmpty(); ++i) {
         const GarbageTuple tuple = d->garbageTuples.takeFirst();
 
         queryTokens += QString::fromLatin1
@@ -169,7 +178,7 @@ bool HotFixes::runCleanupQuery()
 void HotFixes::onWakeUp()
 {
     if (not runLookupQuery()) {
-        // sleep if no lookup was possible
+        // sleep long if no lookup was possible
         scheduleWakeUp();
     }
 }
@@ -186,7 +195,7 @@ void HotFixes::onLookupQueryFinished()
     result->deleteLater();
 
     if (not runCleanupQuery()) {
-        // sleep if no cleanup was needed (or possible)
+        // sleep long if no cleanup was needed (or possible)
         scheduleWakeUp();
     }
 }
@@ -196,8 +205,9 @@ void HotFixes::onCleanupQueryFinished()
     sender()->deleteLater();
 
     if (not runCleanupQuery()) {
-        // sleep if no further cleanup was needed (or possible)
-        scheduleWakeUp(QmHeartbeat::WAKEUP_SLOT_30_SEC);
+        // sleep short if current batch of tuples has been processed
+        scheduleWakeUp(QmHeartbeat::WAKEUP_SLOT_30_SEC,
+                       QmHeartbeat::WAKEUP_SLOT_2_5_MINS);
     }
 }
 
