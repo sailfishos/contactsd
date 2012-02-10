@@ -685,8 +685,19 @@ enum UpdateTimestampMode {
 
 static void updateTimestamp(Insert &i, const Value &subject, UpdateTimestampMode mode = UntaggedSignalUpdate)
 {
-    Graph g(mode == TaggedSignalUpdate ? privateGraph : defaultGraph);
-    g.addPattern(subject, nie::contentLastModified::resource(), literalTimeStamp());
+    const Value timestamp = literalTimeStamp();
+
+    Graph g(defaultGraph);
+
+    if (mode == TaggedSignalUpdate) {
+        g = Graph(privateGraph);
+        g.addPattern(subject, nie::contentLastModified::resource(), timestamp);
+        i.addData(g);
+
+        g = Graph(defaultGraph);
+    }
+
+    g.addPattern(subject, nie::contentLastModified::resource(), timestamp);
     i.addData(g);
 }
 
