@@ -22,4 +22,4 @@
 
 TEMPLATE = subdirs
 
-SUBDIRS += telepathy garbage-collector birthday hotfixes
+SUBDIRS += telepathy garbage-collector birthday
