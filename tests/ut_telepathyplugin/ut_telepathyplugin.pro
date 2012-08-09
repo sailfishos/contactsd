@@ -23,7 +23,7 @@
 PRE_TARGETDEPS += ../libtelepathy/libtelepathy.a
 
 TARGET = ut_telepathyplugin
-target.path = $$BINDIR
+target.path = /opt/tests/contactsd
 
 include(check.pri)
 include(tests.pri)

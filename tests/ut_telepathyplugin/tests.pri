@@ -22,7 +22,7 @@
 
 daemon.target = with-daemon.sh
 daemon.depends = $$PWD/with-daemon.sh.in
-daemon.path = $$PREFIX/share/contactsd-tests
+daemon.path = /opt/tests/contactsd
 daemon.commands = \
     sed -e \"s,@BINDIR@,$$BINDIR,g\" \
         -e \"s,@PLUGINDIR@,$$LIBDIR/contactsd-1.0/plugins,g\" \
@@ -30,15 +30,15 @@ daemon.commands = \
 
 wrapper.target = ut_telepathyplugin-wrapper.sh
 wrapper.depends = $$PWD/ut_telepathyplugin-wrapper.sh.in
-wrapper.path = $$PREFIX/share/contactsd-tests/ut_telepathyplugin
+wrapper.path = /opt/tests/contactsd/ut_telepathyplugin
 wrapper.commands = \
-    sed -e \"s,@SCRIPTDIR@,$$PREFIX/share/contactsd-tests,g\" \
+    sed -e \"s,@SCRIPTDIR@,/opt/tests/contactsd,g\" \
         -e \"s,@BINDIR@,$$BINDIR,g\" \
         -e \"s,@WITH_DAEMON@,$$daemon.target,g\" \
     $< > $@ && chmod +x $@ || rm -f $@
 
 install_extrascripts.files = $$wrapper.target $$daemon.target
-install_extrascripts.path = $$PREFIX/share/contactsd-tests/ut_telepathyplugin
+install_extrascripts.path = /opt/tests/contactsd/ut_telepathyplugin
 install_extrascripts.depends = daemon wrapper
 install_extrascripts.CONFIG = no_check_exist
 

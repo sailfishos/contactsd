@@ -21,7 +21,7 @@
 # conditions contained in a signed written agreement between you and Nokia.
 
 TARGET = ut_birthdayplugin
-target.path = $$BINDIR
+target.path = /opt/tests/contactsd
 
 include(check.pri)
 include(tests.pri)

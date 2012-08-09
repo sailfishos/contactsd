@@ -32,12 +32,12 @@ testxml.commands = sh $$PWD/mktests.sh $$UNIT_TESTS >$@ || rm -f $@
 testxml.depends = $$UNIT_TESTS
 
 install_testxml.files = $$testxml.target
-install_testxml.path = $$PREFIX/share/contactsd-tests
+install_testxml.path = /opt/tests/contactsd/test-definition/
 install_testxml.depends = $$testxml.target
 install_testxml.CONFIG = no_check_exist
 
 install_extrascripts.files = with-session-bus.sh session.conf
-install_extrascripts.path = $$PREFIX/share/contactsd-tests
+install_extrascripts.path = /opt/tests/contactsd/
 install_extrascripts.depends = $$UNIT_TESTS
 install_extrascripts.CONFIG = no_check_exist
 
