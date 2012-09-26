@@ -34,6 +34,7 @@
 #include "debug.h"
 
 using namespace Contactsd;
+using namespace ML10N;
 
 // A random ID.
 const QLatin1String calNotebookId("b1376da7-5555-1111-2222-227549c4e570");

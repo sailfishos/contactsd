@@ -23,7 +23,12 @@
 TEMPLATE = lib
 QT -= gui
 
-CONFIG += plugin qtsparql qtsparql-tracker-extensions qtcontacts_extensions_tracker cubi-0.1-tracker-0.10-ontologies meegotouch mkcal
+# Hack: mkcal adds /usr/include/meegotouch to include path, and alphabetic CONFIG
+# always puts that before mlocale, resulting in link errors. Force mlocale to be
+# first.
+INCLUDEPATH += /usr/include/mlocale
+
+CONFIG += plugin qtsparql qtsparql-tracker-extensions qtcontacts_extensions_tracker cubi-0.1-tracker-0.10-ontologies mlocale mkcal
 
 CONFIG(coverage):{
 QMAKE_CXXFLAGS += -c -g  --coverage -ftest-coverage -fprofile-arcs
