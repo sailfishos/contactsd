@@ -29,7 +29,7 @@
 #include <QContactManager>
 #include <QContact>
 
-#include <TelepathyQt4/SharedPtr>
+#include <TelepathyQt/SharedPtr>
 
 #include <telepathy-glib/telepathy-glib.h>
 #include "libtelepathy/contacts-conn.h"

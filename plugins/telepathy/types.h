@@ -24,7 +24,7 @@
 #ifndef TYPES_H
 #define TYPES_H
 
-#include <TelepathyQt4/SharedPtr>
+#include <TelepathyQt/SharedPtr>
 
 class CDTpAccount;
 class CDTpContact;

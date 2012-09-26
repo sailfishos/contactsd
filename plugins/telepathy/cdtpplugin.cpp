@@ -21,7 +21,7 @@
  ** conditions contained in a signed written agreement between you and Nokia.
  **/
 
-#include <TelepathyQt4/Debug>
+#include <TelepathyQt/Debug>
 
 #include "cdtpcontroller.h"
 #include "cdtpplugin.h"

@@ -21,11 +21,11 @@
  ** conditions contained in a signed written agreement between you and Nokia.
  **/
 
-#include <TelepathyQt4/ContactManager>
-#include <TelepathyQt4/PendingContacts>
-#include <TelepathyQt4/PendingOperation>
-#include <TelepathyQt4/PendingReady>
-#include <TelepathyQt4/Profile>
+#include <TelepathyQt/ContactManager>
+#include <TelepathyQt/PendingContacts>
+#include <TelepathyQt/PendingOperation>
+#include <TelepathyQt/PendingReady>
+#include <TelepathyQt/Profile>
 
 #include "cdtpaccount.h"
 #include "cdtpaccountcacheloader.h"

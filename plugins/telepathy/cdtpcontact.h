@@ -26,9 +26,9 @@
 
 #include <QObject>
 
-#include <TelepathyQt4/Contact>
-#include <TelepathyQt4/Presence>
-#include <TelepathyQt4/Types>
+#include <TelepathyQt/Contact>
+#include <TelepathyQt/Presence>
+#include <TelepathyQt/Types>
 
 #include "types.h"
 

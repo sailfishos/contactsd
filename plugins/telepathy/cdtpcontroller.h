@@ -28,7 +28,7 @@
 #include "cdtpcontact.h"
 #include "cdtpstorage.h"
 
-#include <TelepathyQt4/Types>
+#include <TelepathyQt/Types>
 
 #include <QList>
 #include <QObject>

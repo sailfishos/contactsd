@@ -21,15 +21,15 @@
  ** conditions contained in a signed written agreement between you and Nokia.
  **/
 
-#include <TelepathyQt4/Account>
-#include <TelepathyQt4/AccountPropertyFilter>
-#include <TelepathyQt4/AndFilter>
-#include <TelepathyQt4/NotFilter>
-#include <TelepathyQt4/AccountSet>
-#include <TelepathyQt4/AccountManager>
-#include <TelepathyQt4/PendingReady>
-#include <TelepathyQt4/ContactManager>
-#include <TelepathyQt4/PendingContacts>
+#include <TelepathyQt/Account>
+#include <TelepathyQt/AccountPropertyFilter>
+#include <TelepathyQt/AndFilter>
+#include <TelepathyQt/NotFilter>
+#include <TelepathyQt/AccountSet>
+#include <TelepathyQt/AccountManager>
+#include <TelepathyQt/PendingReady>
+#include <TelepathyQt/ContactManager>
+#include <TelepathyQt/PendingContacts>
 
 #include "buddymanagementadaptor.h"
 #include "cdtpcontroller.h"

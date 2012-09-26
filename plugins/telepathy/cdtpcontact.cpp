@@ -21,8 +21,8 @@
  ** conditions contained in a signed written agreement between you and Nokia.
  **/
 
-#include <TelepathyQt4/AvatarData>
-#include <TelepathyQt4/ContactCapabilities>
+#include <TelepathyQt/AvatarData>
+#include <TelepathyQt/ContactCapabilities>
 
 #include "cdtpaccount.h"
 #include "cdtpcontact.h"

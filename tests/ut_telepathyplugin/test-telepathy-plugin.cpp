@@ -35,7 +35,7 @@
 
 #include <qtcontacts-tracker/contactmergerequest.h>
 
-#include <TelepathyQt4/Debug>
+#include <TelepathyQt/Debug>
 
 #include "libtelepathy/util.h"
 #include "libtelepathy/debug.h"

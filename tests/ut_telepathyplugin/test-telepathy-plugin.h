@@ -32,7 +32,7 @@
 #include <QContactAbstractRequest>
 
 #include <telepathy-glib/telepathy-glib.h>
-#include <TelepathyQt4/Contact>
+#include <TelepathyQt/Contact>
 
 #include "libtelepathy/contacts-conn.h"
 #include "libtelepathy/contact-list-manager.h"

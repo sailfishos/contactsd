@@ -23,10 +23,10 @@
 
 #include <tracker-sparql.h>
 
-#include <TelepathyQt4/AvatarData>
-#include <TelepathyQt4/ContactCapabilities>
-#include <TelepathyQt4/ContactManager>
-#include <TelepathyQt4/ConnectionCapabilities>
+#include <TelepathyQt/AvatarData>
+#include <TelepathyQt/ContactCapabilities>
+#include <TelepathyQt/ContactManager>
+#include <TelepathyQt/ConnectionCapabilities>
 #include <qtcontacts-tracker/phoneutils.h>
 #include <qtcontacts-tracker/garbagecollector.h>
 #include <ontologies.h>

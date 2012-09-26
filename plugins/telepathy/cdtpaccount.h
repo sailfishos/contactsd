@@ -26,11 +26,11 @@
 
 #include <QObject>
 
-#include <TelepathyQt4/Account>
-#include <TelepathyQt4/Constants>
-#include <TelepathyQt4/Contact>
-#include <TelepathyQt4/Types>
-#include <TelepathyQt4/PendingOperation>
+#include <TelepathyQt/Account>
+#include <TelepathyQt/Constants>
+#include <TelepathyQt/Contact>
+#include <TelepathyQt/Types>
+#include <TelepathyQt/PendingOperation>
 
 #include "types.h"
 #include "cdtpcontact.h"
