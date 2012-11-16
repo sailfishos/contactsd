@@ -28,11 +28,13 @@
 #include <extendedstorage.h>
 #include <extendedcalendar.h>
 
-#include <MGConfDataStore>
+#include <MGConfItem>
 #include <MLocale>
 
 #include <QContactBirthday>
 #include <QContactName>
+
+using namespace ML10N;
 
 // A random ID, from plugins/birthday/cdbirthdaycalendar.cpp.
 const QLatin1String calNotebookId("b1376da7-5555-1111-2222-227549c4e570");
@@ -217,9 +219,8 @@ void TestBirthdayPlugin::testChangeName()
 
 void TestBirthdayPlugin::testLocaleChange()
 {
-    MGConfDataStore store(QLatin1String("/meegotouch/i18n"));
-
-    store.setValue(QLatin1String("language"), QLatin1String("en"));
+    MGConfItem store(QLatin1String("/meegotouch/i18n/language"));
+    store.set(QLatin1String("en"));
 
     // Leave the time to react to locale change
     loopWait(1000);
@@ -249,7 +250,7 @@ void TestBirthdayPlugin::testLocaleChange()
     QCOMPARE(storage->notebook(calNotebookId)->name(), cLocaleCalendarName);
 
     // Change locale and check name again.
-    store.setValue(QLatin1String("language"), QLatin1String("fi"));
+    store.set(QLatin1String("fi"));
 
     loopWait(calendarTimeout);
 

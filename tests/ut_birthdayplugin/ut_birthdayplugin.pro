@@ -27,7 +27,8 @@ include(check.pri)
 include(tests.pri)
 include(../common/test-common.pri)
 
-CONFIG += test qtsparql mobility mkcal meegotouch
+CONFIG += test qtsparql mobility mlocale mkcal link_pkgconfig
+PKGCONFIG += mlite
 
 QT -= gui
 QT += testlib
