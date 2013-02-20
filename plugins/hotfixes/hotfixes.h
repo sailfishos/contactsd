@@ -1,6 +1,7 @@
-/** This file is part of Contacts daemon
+/*********************************************************************************
+ ** This file is part of QtContacts tracker storage plugin
  **
- ** Copyright (c) 2010-2012 Nokia Corporation and/or its subsidiary(-ies).
+ ** Copyright (c) 2011 Nokia Corporation and/or its subsidiary(-ies).
  **
  ** Contact:  Nokia Corporation (info@qt.nokia.com)
  **
@@ -19,43 +20,43 @@
  ** Other Usage
  ** Alternatively, this file may be used in accordance with the terms and
  ** conditions contained in a signed written agreement between you and Nokia.
- **/
+ *********************************************************************************/
 
-#include "base-plugin.h"
-#include "hotfixes.h"
+
+#ifndef CONTACTSD_HOTFIXES_H
+#define CONTACTSD_HOTFIXES_H
+
+#include <QtSparql>
 
 namespace Contactsd {
 
-class HotFixesPlugin : public BasePlugin
+class HotFixesPrivate;
+class HotFixes : public QObject
 {
     Q_OBJECT
 
 public:
-    HotFixesPlugin()
-        : m_hotfixes(0)
-    {
-    }
+    explicit HotFixes(QSparqlConnection &connection, QObject *parent = 0);
+    virtual ~HotFixes();
 
-    void init()
-    {
-        m_hotfixes = new HotFixes(sparqlConnection(), this);
-    }
+public slots:
+    void onWakeUp();
 
-    QMap<QString, QVariant> metaData()
-    {
-        MetaData data;
-        data[metaDataKeyName]    = QVariant(QString::fromLatin1("contacts-hotfixes"));
-        data[metaDataKeyVersion] = QVariant(QString::fromLatin1("1"));
-        data[metaDataKeyComment] = QVariant(QString::fromLatin1("Hotfixes for the contacts framework"));
-        return data;
-    }
+private slots:
+    void onLookupQueryFinished();
+    void onCleanupQueryFinished();
 
 private:
-    HotFixes *m_hotfixes;
+    void scheduleWakeUp();
+    void scheduleWakeUp(ushort minimumDelay, ushort maximumDelay);
+    bool runQuery(const QSparqlQuery &query, const char *slot);
+    bool runLookupQuery();
+    bool runCleanupQuery();
+
+private:
+    HotFixesPrivate *const d;
 };
 
 } // namespace Contactsd
 
-Q_EXPORT_PLUGIN2(garbagecollectorplugin, Contactsd::HotFixesPlugin)
-
-#include "plugin.moc"
+#endif // CONTACTSD_HOTFIXES_H
