@@ -33,7 +33,7 @@ LIBS += -lgcov
 }
 
 CONFIG += link_pkgconfig
-PKGCONFIG += TelepathyQt4 tracker-sparql-0.10
+PKGCONFIG += TelepathyQt4 tracker-sparql-0.14
 DEFINES += QT_NO_CAST_TO_ASCII QT_NO_CAST_FROM_ASCII
 
 INCLUDEPATH += $$TOP_SOURCEDIR/src
