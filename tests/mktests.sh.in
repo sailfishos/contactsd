@@ -65,7 +65,7 @@ EOF
 cat <<EOF
       <case $attributes>
         <description>$description</description>
-        <step>su -l user -c "CONTACTSD_DEBUG=1 $command $test"</step>
+        <step>CONTACTSD_DEBUG=1 $command $test</step>
       </case>
 EOF
     done
