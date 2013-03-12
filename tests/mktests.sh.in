@@ -46,9 +46,7 @@ do
 cat <<EOF
     <set name="$suite">
       <pre_steps>
-        <step>initctl stop xsession/tracker-writeback</step>
-        <step>initctl stop xsession/tracker-miner</step>
-        <step>initctl start xsession/tracker-stop</step>
+        <step>while tracker-control -p |grep -q '^Found process ID '; do tracker-control -t; sleep 1; done</step>
       </pre_steps>
 EOF
 
