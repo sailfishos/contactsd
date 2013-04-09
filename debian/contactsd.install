@@ -1,5 +1,0 @@
-usr/bin/contactsd
-usr/lib/contactsd-1.0/plugins/libcontactshotfixesplugin.so
-usr/lib/contactsd-1.0/plugins/libgarbagecollectorplugin.so
-usr/lib/contactsd-1.0/plugins/libtelepathyplugin.so
-usr/share/backup-framework/applications/
