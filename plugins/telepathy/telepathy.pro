@@ -48,7 +48,6 @@ HEADERS  = cdtpaccount.h \
     cdtpcontroller.h \
     cdtpplugin.h \
     cdtpquery.h \
-    cdtpstorage.h \
     buddymanagementadaptor.h \
     cdtpavatarupdate.h
 
@@ -59,9 +58,18 @@ SOURCES  = cdtpaccount.cpp \
     cdtpcontroller.cpp \
     cdtpplugin.cpp \
     cdtpquery.cpp \
-    cdtpstorage.cpp \
     buddymanagementadaptor.cpp \
     cdtpavatarupdate.cpp
+
+DEFINES *= CONTACTSD_QTCONTACTS_UPDATE_API
+contains(DEFINES, CONTACTSD_SPARQL_UPDATE_API) {
+    HEADERS  += cdtpstorage-sparql.h
+    SOURCES  += cdtpstorage-sparql.cpp
+}
+contains(DEFINES, CONTACTSD_QTCONTACTS_UPDATE_API) {
+    HEADERS  += cdtpstorage-qtcontacts.h
+    SOURCES  += cdtpstorage-qtcontacts.cpp
+}
 
 TARGET = telepathyplugin
 target.path = $$LIBDIR/contactsd-1.0/plugins

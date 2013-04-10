@@ -33,7 +33,7 @@
 
 #include <importstateconst.h>
 
-#include "cdtpstorage.h"
+#include "cdtpstorage-sparql.h"
 #include "cdtpavatarupdate.h"
 #include "debug.h"
 

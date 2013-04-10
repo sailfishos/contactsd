@@ -33,7 +33,6 @@
 
 #include "buddymanagementadaptor.h"
 #include "cdtpcontroller.h"
-#include "cdtpstorage.h"
 #include "debug.h"
 
 using namespace Contactsd;
