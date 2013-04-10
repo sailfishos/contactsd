@@ -56,8 +56,8 @@ public Q_SLOTS:
     void updateContact(CDTpContactPtr contactWrapper, CDTpContact::Changes changes);
 
 public:
-    void createAccountContacts(const QString &accountPath, const QStringList &imIds, uint localId);
-    void removeAccountContacts(const QString &accountPath, const QStringList &contactIds);
+    void createAccountContacts(CDTpAccountPtr accountWrapper, const QStringList &imIds, uint localId);
+    void removeAccountContacts(CDTpAccountPtr accountWrapper, const QStringList &contactIds);
 
 private Q_SLOTS:
     void onSyncOperationEnded(CDTpSparqlQuery *query);

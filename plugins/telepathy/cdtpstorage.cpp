@@ -1640,8 +1640,10 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper,
             SLOT(onSparqlQueryFinished(CDTpSparqlQuery *)));
 }
 
-void CDTpStorage::createAccountContacts(const QString &accountPath, const QStringList &imIds, uint localId)
+void CDTpStorage::createAccountContacts(CDTpAccountPtr accountWrapper, const QStringList &imIds, uint localId)
 {
+    const QString accountPath(accountWrapper->account()->objectPath());
+
     CDTpSparqlQuery *query = new CDTpSparqlQuery(createIMAddressBuilder(accountPath, imIds, localId),
                                                  this);
     connect(query,
@@ -1650,8 +1652,10 @@ void CDTpStorage::createAccountContacts(const QString &accountPath, const QStrin
 }
 
 /* Use this only in offline mode - use syncAccountContacts in online mode */
-void CDTpStorage::removeAccountContacts(const QString &accountPath, const QStringList &contactIds)
+void CDTpStorage::removeAccountContacts(CDTpAccountPtr accountWrapper, const QStringList &contactIds)
 {
+    const QString accountPath(accountWrapper->account()->objectPath());
+
     CDTpQueryBuilder builder;
 
     builder = removeContactsBuilder(accountPath, contactIds);
