@@ -31,6 +31,7 @@
 #include <QContactDetail>
 #include <QContactDetailFilter>
 #include <QContactIntersectionFilter>
+#include <QContactRelationshipFilter>
 
 #include <QContactAddress>
 #include <QContactAvatar>
@@ -45,6 +46,7 @@
 #include <QContactPhoneNumber>
 #include <QContactPresence>
 #include <QContactSyncTarget>
+#include <QContactRelationship>
 #include <QContactUrl>
 
 #include <qtcontacts-tracker/phoneutils.h>
@@ -195,29 +197,71 @@ QContactManager *manager()
     return manager;
 }
 
+QContactDetailFilter matchTelepathyFilter()
+{
+    QContactDetailFilter filter;
+    filter.setDetailDefinitionName(QContactSyncTarget::DefinitionName, QContactSyncTarget::FieldSyncTarget);
+    filter.setValue(QLatin1String("telepathy"));
+    filter.setMatchFlags(QContactFilter::MatchExactly);
+    return filter;
+}
+
 QContact selfContact()
 {
     QContactManager *mgr(manager());
 
     // Check that there is a self contact
-    int selfId = mgr->selfContactId();
-    if (!selfId) {
-        debug() << "Creating self contact";
-        QContact self;
-        if (!mgr->saveContact(&self)) {
+    QContactLocalId selfLocalId = mgr->selfContactId();
+
+    QContactId selfId;
+    selfId.setLocalId(selfLocalId);
+
+    // Find the telepathy contact aggregated by the real self contact
+    QContactRelationshipFilter relationshipFilter;
+    relationshipFilter.setRelationshipType(QContactRelationship::Aggregates);
+    relationshipFilter.setRelatedContactId(selfId);
+    relationshipFilter.setRelatedContactRole(QContactRelationship::First);
+
+    QContactIntersectionFilter selfFilter;
+    selfFilter << matchTelepathyFilter();
+    selfFilter << relationshipFilter;
+
+    QList<QContact> selfContacts = mgr->contacts(selfFilter);
+    if (selfContacts.count() > 0) {
+        if (selfContacts.count() > 1) {
+            warning() << "Invalid number of telepathy self contacts!" << selfContacts.count();
+        }
+        return selfContacts.first();
+    }
+
+    // Create a new self contact for telepathy
+    debug() << "Creating self contact";
+    QContact tpSelf;
+
+    QContactSyncTarget syncTarget;
+    syncTarget.setSyncTarget(QLatin1String("telepathy"));
+
+    if (!tpSelf.saveDetail(&syncTarget)) {
+        warning() << SRC_LOC << "Unable to add sync target to self contact";
+    } else {
+        if (!mgr->saveContact(&tpSelf)) {
             warning() << "Unable to save empty contact as self contact - error:" << mgr->error();
-            return QContact();
         } else {
-            selfId = self.localId();
-            if (!mgr->setSelfContactId(selfId)) {
-                warning() << "Unable to set contact ID as self contact ID - error:" << mgr->error();
-                return QContact();
+            // Connect this contact to the real self contact
+            QContactRelationship relationship;
+            relationship.setRelationshipType(QContactRelationship::Aggregates);
+            relationship.setFirst(selfId);
+            relationship.setSecond(tpSelf.id());
+
+            if (!mgr->saveRelationship(&relationship)) {
+                warning() << "Unable to save relationship for self contact - error:" << mgr->error();
+            } else {
+                return tpSelf;
             }
         }
     }
 
-    // Retrieve the self contact
-    return mgr->contact(selfId);
+    return QContact();
 }
 
 template<typename Debug>
@@ -315,15 +359,6 @@ bool storeContact(QContact &contact, const QString &location, CDTpContact::Chang
     }
 #endif
     return true;
-}
-
-QContactDetailFilter matchTelepathyFilter()
-{
-    QContactDetailFilter filter;
-    filter.setDetailDefinitionName(QContactSyncTarget::DefinitionName, QContactSyncTarget::FieldSyncTarget);
-    filter.setValue(QLatin1String("telepathy"));
-    filter.setMatchFlags(QContactFilter::MatchExactly);
-    return filter;
 }
 
 QList<QContactLocalId> findContactIdsForAccount(const QString &accountPath)
