@@ -245,7 +245,29 @@ QContact selfContact()
         if (!mgr->saveContact(&tpSelf)) {
             warning() << "Unable to save empty contact as self contact - error:" << mgr->error();
         } else {
-            // Connect this contact to the real self contact
+            // Find the aggregate contact created by saving our self contact
+            relationshipFilter.setRelationshipType(QContactRelationship::Aggregates);
+            relationshipFilter.setRelatedContactId(tpSelf.id());
+            relationshipFilter.setRelatedContactRole(QContactRelationship::Second);
+
+            foreach (const QContact &aggregator, mgr->contacts(relationshipFilter)) {
+                // Remove the relationship between these contacts
+                QContactRelationship relationship;
+                relationship.setRelationshipType(QContactRelationship::Aggregates);
+                relationship.setFirst(aggregator.id());
+                relationship.setSecond(tpSelf.id());
+
+                if (!mgr->removeRelationship(relationship)) {
+                    warning() << "Unable to remove relationship for self contact - error:" << mgr->error();
+                } else {
+                    // Remove this contact
+                    if (!mgr->removeContact(aggregator.localId())) {
+                        warning() << "Unable to remove unwanted aggregate of self contact - error:" << mgr->error();
+                    }
+                }
+            }
+
+            // Now connect our contact to the real self contact
             QContactRelationship relationship;
             relationship.setRelationshipType(QContactRelationship::Aggregates);
             relationship.setFirst(selfId);
