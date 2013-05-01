@@ -176,8 +176,6 @@ const QLatin1String QContactOnlineAccount__FieldAccountPath("AccountPath");
 const QLatin1String QContactOnlineAccount__FieldAccountIconPath("AccountIconPath");
 const QLatin1String QContactOnlineAccount__FieldEnabled("Enabled");
 
-const QLatin1String QContactPhoneNumber__FieldNormalizedNumber("NormalizedNumber");
-
 QContactManager *createManager()
 {
     debug() << SRC_LOC << QContactManager::availableManagers();
@@ -909,7 +907,6 @@ void updateContactDetails(QNetworkAccessManager &network, QContact &existingCont
                         QContactPhoneNumber phoneNumberDetail;
                         phoneNumberDetail.setContexts(detailContext.isNull() ? defaultContext : detailContext);
                         phoneNumberDetail.setNumber(asString(field, 0));
-                        phoneNumberDetail.setValue(QContactPhoneNumber__FieldNormalizedNumber, qctMakeLocalPhoneNumber(asString(field, 0)));
                         phoneNumberDetail.setSubTypes(subTypes);
 
                         if (!storeContactDetail(existingContact, phoneNumberDetail, SRC_LOC)) {
