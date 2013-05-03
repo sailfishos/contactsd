@@ -1016,19 +1016,31 @@ void updateContactDetails(QNetworkAccessManager &network, QContact &existingCont
                         nameDetail.setPrefix(asString(field, 3));
                         nameDetail.setSuffix(asString(field, 4));
                     } else if (field.fieldName == QLatin1String("fn")) {
-                        if (!detailContext.isNull()) {
-                            nameDetail.setContexts(detailContext);
+                        const QString fn(asString(field, 0));
+                        if (!fn.isEmpty()) {
+                            if (!detailContext.isNull()) {
+                                nameDetail.setContexts(detailContext);
+                            }
+                            nameDetail.setCustomLabel(fn);
+                            qDebug() << existingContact.localId() << "Set customLabel from fn:" << fn;
                         }
-                        nameDetail.setCustomLabel(asString(field, 0));
                     } else if (field.fieldName == QLatin1String("nickname")) {
-                        QContactNickname nicknameDetail;
-                        nicknameDetail.setNickname(asString(field, 0));
-                        if (!detailContext.isNull()) {
-                            nicknameDetail.setContexts(detailContext);
-                        }
+                        const QString nickname(asString(field, 0));
+                        if (!nickname.isEmpty()) {
+                            QContactNickname nicknameDetail;
+                            nicknameDetail.setNickname(nickname);
+                            if (!detailContext.isNull()) {
+                                nicknameDetail.setContexts(detailContext);
+                            }
 
-                        if (!storeContactDetail(existingContact, nicknameDetail, SRC_LOC)) {
-                            warning() << SRC_LOC << "Unable to save nickname to contact";
+                            if (!storeContactDetail(existingContact, nicknameDetail, SRC_LOC)) {
+                                warning() << SRC_LOC << "Unable to save nickname to contact";
+                            }
+
+                            // Use the nickname as the customLabel if we have no 'fn' data
+                            if (nameDetail.customLabel().isEmpty()) {
+                                nameDetail.setCustomLabel(nickname);
+                            }
                         }
                     } else if (field.fieldName == QLatin1String("note") ||
                              field.fieldName == QLatin1String("desc")) {
