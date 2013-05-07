@@ -1457,6 +1457,7 @@ void CDTpStorage::syncAccounts(const QList<CDTpAccountPtr> &accounts)
     QStringList accountPaths = forEachItem(accounts, extractAccountPath);
     
     QSet<int> existingIndices;
+    QSet<QString> removalPaths;
 
     foreach (QContactOnlineAccount existingAccount, self.details<QContactOnlineAccount>()) {
         const QString existingPath(existingAccount.value(QContactOnlineAccount__FieldAccountPath));
@@ -1473,6 +1474,17 @@ void CDTpStorage::syncAccounts(const QList<CDTpAccountPtr> &accounts)
             debug() << SRC_LOC << "Remove obsolete account:" << existingPath;
 
             // This account is no longer valid
+            removalPaths.insert(existingPath);
+        }
+    }
+
+    // Reload the contact in case we updated it
+    self = selfContact();
+
+    // Remove invalid accounts
+    foreach (QContactOnlineAccount existingAccount, self.details<QContactOnlineAccount>()) {
+        const QString existingPath(existingAccount.value(QContactOnlineAccount__FieldAccountPath));
+        if (removalPaths.contains(existingPath)) {
             removeExistingAccount(self, existingAccount);
         }
     }
@@ -1539,10 +1551,6 @@ void CDTpStorage::updateAccount(CDTpAccountPtr accountWrapper, CDTpAccount::Chan
         const QString existingPath(existingAccount.value(QContactOnlineAccount__FieldAccountPath));
         if (existingPath == accountPath) {
             updateAccountChanges(existingAccount, accountWrapper, changes);
-
-            if (!storeContact(self, SRC_LOC)) {
-                warning() << SRC_LOC << "Unable to save self contact";
-            }
             return;
         }
     }
@@ -1596,10 +1604,6 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper)
         const QString existingPath(existingAccount.value(QContactOnlineAccount__FieldAccountPath));
         if (existingPath == accountPath) {
             updateAccountChanges(existingAccount, accountWrapper, CDTpAccount::Enabled);
-
-            if (!storeContact(self, SRC_LOC)) {
-                warning() << SRC_LOC << "Unable to save self contact";
-            }
             return;
         }
     }
