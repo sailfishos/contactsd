@@ -75,7 +75,8 @@ private:
 
     void updateAccountChanges(QContactOnlineAccount &qcoa, CDTpAccountPtr accountWrapper, CDTpAccount::Changes changes);
 
-    bool addNewContact(QContact &newContact, CDTpAccountPtr accountWrapper, const QString &contactId);
+    bool initializeNewContact(QContact &newContact, CDTpAccountPtr accountWrapper, const QString &contactId);
+    void updateContactChanges(CDTpContactPtr contactWrapper, CDTpContact::Changes changes, QContact &existing, QList<QContact> *saveList, QList<QContactLocalId> *removeList);
     void updateContactChanges(CDTpContactPtr contactWrapper, CDTpContact::Changes changes);
 
 private:

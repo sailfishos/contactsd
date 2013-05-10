@@ -31,7 +31,9 @@
 #include <QContactDetail>
 #include <QContactDetailFilter>
 #include <QContactIntersectionFilter>
+#include <QContactLocalIdFilter>
 #include <QContactRelationshipFilter>
+#include <QContactUnionFilter>
 
 #include <QContactAddress>
 #include <QContactAvatar>
@@ -55,10 +57,16 @@
 #include "cdtpavatarupdate.h"
 #include "debug.h"
 
+#include <QElapsedTimer>
+
 using namespace Contactsd;
 
 // Uncomment for masses of debug output:
 //#define DEBUG_OVERLOAD
+
+// Should we batch up contact stores, or keep them separate?
+//#define BATCH_STORES
+//#define BATCH_REMOVES
 
 namespace {
 
@@ -358,27 +366,112 @@ bool storeContact(QContact &contact, const QString &location, CDTpContact::Chang
     output(debug(), contact);
     if (minimizedUpdate) {
         debug() << "Updating:" << updates;
-        return manager()->saveContacts(&contacts, contactChangesList(changes));
+        if (!manager()->saveContacts(&contacts, contactChangesList(changes))) {
+            warning() << location << "Unable to store contact - error:" << manager()->error();
+            return false;
+        }
     } else {
-        return manager()->saveContact(&contact);
+        if (!manager()->saveContact(&contact)) {
+            warning() << location << "Unable to store contact - error:" << manager()->error();
+            return false;
+        }
     }
 #else
     if (minimizedUpdate) {
         if (!manager()->saveContacts(&contacts, contactChangesList(changes))) {
-            debug() << "Failed minimized storing contact" << contact.localId() << "from:" << location;
+            warning() << "Failed minimized storing contact" << contact.localId() << "from:" << location << "error:" << manager()->error();
             output(debug(), contact);
             debug() << "Updates" << updates;
             return false;
         }
     } else {
         if (!manager()->saveContact(&contact)) {
-            debug() << "Failed storing contact" << contact.localId() << "from:" << location;
+            warning() << "Failed storing contact" << contact.localId() << "from:" << location;
             output(debug(), contact);
             return false;
         }
     }
 #endif
     return true;
+}
+
+void updateContacts(const QString &location, QList<QContact> *saveList, QList<QContactLocalId> *removeList)
+{
+    if (saveList && !saveList->isEmpty()) {
+        QElapsedTimer t;
+        t.start();
+
+#ifdef BATCH_STORES
+        // Try to store all contacts in a single transaction
+        do {
+            QMap<int, QContactManager::Error> errorMap;
+            if (manager()->saveContacts(saveList, &errorMap)) {
+                break;
+            }
+
+            const int errorCount = errorMap.count();
+            if (!errorCount) {
+                break;
+            }
+
+            // Remove the problematic contacts
+            QList<int> indices = errorMap.keys();
+            QList<int>::const_iterator begin = indices.begin(), it = begin + errorCount;
+            do {
+                int errorIndex = (*--it);
+                const QContact &badContact(saveList->at(errorIndex));
+                warning() << "Failed storing contact" << badContact.localId() << "from:" << location;
+                output(debug(), badContact);
+                saveList->removeAt(errorIndex);
+            } while (it != begin);
+        } while (true);
+        debug() << "Updated" << saveList->count() << "batch contacts - elapsed:" << t.elapsed();
+#else
+        QList<QContact>::iterator it = saveList->begin(), end = saveList->end();
+        for ( ; it != end; ++it) {
+            storeContact(*it, location);
+        }
+        debug() << "Updated" << saveList->count() << "individual contacts - elapsed:" << t.elapsed();
+#endif
+    }
+
+    if (removeList && !removeList->isEmpty()) {
+        QElapsedTimer t;
+        t.start();
+
+#ifdef BATCH_REMOVES
+        do {
+            QMap<int, QContactManager::Error> errorMap;
+            if (manager()->removeContacts(*removeList, &errorMap)) {
+                break;
+            }
+
+            const int errorCount = errorMap.count();
+            if (!errorCount) {
+                break;
+            }
+
+            // Remove the problematic contacts
+            QList<int> indices = errorMap.keys();
+            QList<int>::const_iterator begin = indices.begin(), it = begin + errorCount;
+            do {
+                int errorIndex = (*--it);
+                const QContactLocalId &badId(removeList->at(errorIndex));
+                warning() << "Failed removing contact" << badId << "from:" << location;
+                removeList->removeAt(errorIndex);
+            } while (it != begin);
+        } while (true);
+        debug() << "Removed" << removeList->count() << "batch contacts - elapsed:" << t.elapsed();
+#else
+        QList<QContactLocalId>::iterator it = removeList->begin(), end = removeList->end();
+        for ( ; it != end; ++it) {
+            if (!manager()->removeContact(*it)) {
+                warning() << "Unable to remove contact";
+            }
+        }
+        debug() << "Removed" << removeList->count() << "individual contacts - elapsed:" << t.elapsed();
+#endif
+    }
 }
 
 QList<QContactLocalId> findContactIdsForAccount(const QString &accountPath)
@@ -389,17 +482,71 @@ QList<QContactLocalId> findContactIdsForAccount(const QString &accountPath)
     return manager()->contactIds(filter);
 }
 
+QHash<QString, QContact> findExistingContacts(const QStringList &contactAddresses)
+{
+    QHash<QString, QContact> rv;
+
+    // Relationships are slow and unnecessary here:
+    QContactFetchHint hint;
+    hint.setOptimizationHints(QContactFetchHint::NoRelationships);
+
+    // If there is a large number of contacts, do a two-step fetch
+    const int maxDirectMatches = 10;
+    if (contactAddresses.count() > maxDirectMatches) {
+        QList<QContactLocalId> ids;
+        QSet<QString> addressSet(contactAddresses.toSet());
+
+        // First fetch all telepathy contacts, ID data only
+        hint.setDetailDefinitionsHint(QStringList() << QContactTpMetadata::DefinitionName);
+
+        foreach (const QContact &contact, manager()->contacts(matchTelepathyFilter(), QList<QContactSortOrder>(), hint)) {
+            const QString &address = contact.detail<QContactTpMetadata>().value(QContactTpMetadata::FieldContactId);
+            if (addressSet.contains(address)) {
+                ids.append(contact.localId());
+            }
+        }
+
+        hint.setDetailDefinitionsHint(QStringList());
+
+        // Now fetch the details of the required contacts by ID
+        foreach (const QContact &contact, manager()->contacts(ids, hint)) {
+            rv.insert(contact.detail<QContactTpMetadata>().value(QContactTpMetadata::FieldContactId), contact);
+        }
+    } else {
+        // Just query the ones we need
+        QContactIntersectionFilter filter;
+        filter << matchTelepathyFilter();
+
+        QContactUnionFilter addressFilter;
+        foreach (const QString &address, contactAddresses) {
+            addressFilter << QContactTpMetadata::matchContactId(address);
+        }
+        filter << addressFilter;
+
+        foreach (const QContact &contact, manager()->contacts(filter, QList<QContactSortOrder>(), hint)) {
+            rv.insert(contact.detail<QContactTpMetadata>().value(QContactTpMetadata::FieldContactId), contact);
+        }
+    }
+
+    return rv;
+}
+
 QContact findExistingContact(const QString &contactAddress)
 {
     QContactIntersectionFilter filter;
     filter << QContactTpMetadata::matchContactId(contactAddress);
     filter << matchTelepathyFilter();
 
-    foreach (const QContact &contact, manager()->contacts(filter)) {
+    // Relationships are slow and unnecessary here:
+    QContactFetchHint hint;
+    hint.setOptimizationHints(QContactFetchHint::NoRelationships);
+
+    foreach (const QContact &contact, manager()->contacts(filter, QList<QContactSortOrder>(), hint)) {
         // Return the first match we find (there should be only one)
         return contact;
     }
 
+    debug() << "No matching contact:" << contactAddress;
     return QContact();
 }
 
@@ -622,6 +769,7 @@ QString saveAccountAvatar(CDTpAccountPtr accountWrapper)
         return QString();
     }
 
+    // TODO: create dir if nonexistent
     static const QString tmpl = QString::fromLatin1("%1/.contacts/avatars/%2");
     QString fileName = tmpl.arg(QDir::homePath())
         .arg(QLatin1String(QCryptographicHash::hash(avatar.avatarData, QCryptographicHash::Sha1).toHex()));
@@ -750,10 +898,10 @@ CDTpContact::Changes updateAccountDetails(QContact &self, QContactOnlineAccount 
 }
 
 template<typename DetailType>
-void deleteContactDetails(QContact &existingContact)
+void deleteContactDetails(QContact &existing)
 {
-    foreach (DetailType detail, existingContact.details<DetailType>()) {
-        if (!existingContact.removeDetail(&detail)) {
+    foreach (DetailType detail, existing.details<DetailType>()) {
+        if (!existing.removeDetail(&detail)) {
             warning() << SRC_LOC << "Unable to remove obsolete detail:" << detail.detailUri();
         }
     }
@@ -822,7 +970,7 @@ const Dictionary &genderTypes()
     return types;
 }
 
-void updateContactDetails(QNetworkAccessManager &network, QContact &existingContact, CDTpContactPtr contactWrapper, CDTpContact::Changes changes)
+void updateContactDetails(QNetworkAccessManager &network, QContact &existing, CDTpContactPtr contactWrapper, CDTpContact::Changes changes)
 {
     const QString contactAddress(imAddress(contactWrapper));
     debug() << "Update contact" << contactAddress;
@@ -831,10 +979,10 @@ void updateContactDetails(QNetworkAccessManager &network, QContact &existingCont
 
     // Apply changes
     if (changes & CDTpContact::Alias) {
-        QContactNickname nickname = existingContact.detail<QContactNickname>();
+        QContactNickname nickname = existing.detail<QContactNickname>();
         nickname.setNickname(contact->alias().trimmed());
 
-        if (!storeContactDetail(existingContact, nickname, SRC_LOC)) {
+        if (!storeContactDetail(existing, nickname, SRC_LOC)) {
             warning() << SRC_LOC << "Unable to save alias to contact for:" << contactAddress;
         }
 
@@ -844,13 +992,13 @@ void updateContactDetails(QNetworkAccessManager &network, QContact &existingCont
     if (changes & CDTpContact::Presence) {
         Tp::Presence tpPresence(contact->presence());
 
-        QContactPresence presence = existingContact.detail<QContactPresence>();
+        QContactPresence presence = existing.detail<QContactPresence>();
         presence.setPresenceState(qContactPresenceState(tpPresence.type()));
         presence.setTimestamp(QDateTime::currentDateTime());
         presence.setCustomMessage(tpPresence.statusMessage());
         presence.setNickname(contact->alias().trimmed());
 
-        if (!storeContactDetail(existingContact, presence, SRC_LOC)) {
+        if (!storeContactDetail(existing, presence, SRC_LOC)) {
             warning() << SRC_LOC << "Unable to save presence to contact for:" << contactAddress;
         }
 
@@ -860,26 +1008,26 @@ void updateContactDetails(QNetworkAccessManager &network, QContact &existingCont
         changes |= CDTpContact::Capabilities;
     }
     if (changes & CDTpContact::Capabilities) {
-        QContactOnlineAccount qcoa = existingContact.detail<QContactOnlineAccount>();
+        QContactOnlineAccount qcoa = existing.detail<QContactOnlineAccount>();
         qcoa.setCapabilities(currentCapabilites(contact->capabilities(), contact->presence().type(), contactWrapper->accountWrapper()->account()));
 
-        if (!storeContactDetail(existingContact, qcoa, SRC_LOC)) {
+        if (!storeContactDetail(existing, qcoa, SRC_LOC)) {
             warning() << SRC_LOC << "Unable to save capabilities to contact for:" << contactAddress;
         }
     }
     if (changes & CDTpContact::Information) {
         if (contactWrapper->isInformationKnown()) {
             // Delete any existing info we have for this contact
-            deleteContactDetails<QContactAddress>(existingContact);
-            deleteContactDetails<QContactBirthday>(existingContact);
-            deleteContactDetails<QContactEmailAddress>(existingContact);
-            deleteContactDetails<QContactGender>(existingContact);
-            deleteContactDetails<QContactName>(existingContact);
-            deleteContactDetails<QContactNickname>(existingContact);
-            deleteContactDetails<QContactNote>(existingContact);
-            deleteContactDetails<QContactOrganization>(existingContact);
-            deleteContactDetails<QContactPhoneNumber>(existingContact);
-            deleteContactDetails<QContactUrl>(existingContact);
+            deleteContactDetails<QContactAddress>(existing);
+            deleteContactDetails<QContactBirthday>(existing);
+            deleteContactDetails<QContactEmailAddress>(existing);
+            deleteContactDetails<QContactGender>(existing);
+            deleteContactDetails<QContactName>(existing);
+            deleteContactDetails<QContactNickname>(existing);
+            deleteContactDetails<QContactNote>(existing);
+            deleteContactDetails<QContactOrganization>(existing);
+            deleteContactDetails<QContactPhoneNumber>(existing);
+            deleteContactDetails<QContactUrl>(existing);
 
             Tp::ContactInfoFieldList listContactInfo = contact->infoFields().allFields();
             if (listContactInfo.count() != 0) {
@@ -931,7 +1079,7 @@ void updateContactDetails(QNetworkAccessManager &network, QContact &existingCont
                         phoneNumberDetail.setNumber(asString(field, 0));
                         phoneNumberDetail.setSubTypes(subTypes);
 
-                        if (!storeContactDetail(existingContact, phoneNumberDetail, SRC_LOC)) {
+                        if (!storeContactDetail(existing, phoneNumberDetail, SRC_LOC)) {
                             warning() << SRC_LOC << "Unable to save phone number to contact";
                         }
                     } else if (field.fieldName == QLatin1String("adr")) {
@@ -960,7 +1108,7 @@ void updateContactDetails(QNetworkAccessManager &network, QContact &existingCont
                         addressDetail.setPostcode(asString(field, 5));
                         addressDetail.setCountry(asString(field, 6));
 
-                        if (!storeContactDetail(existingContact, addressDetail, SRC_LOC)) {
+                        if (!storeContactDetail(existing, addressDetail, SRC_LOC)) {
                             warning() << SRC_LOC << "Unable to save address to contact";
                         }
                     } else if (field.fieldName == QLatin1String("email")) {
@@ -970,7 +1118,7 @@ void updateContactDetails(QNetworkAccessManager &network, QContact &existingCont
                         }
                         emailDetail.setEmailAddress(asString(field, 0));
 
-                        if (!storeContactDetail(existingContact, emailDetail, SRC_LOC)) {
+                        if (!storeContactDetail(existing, emailDetail, SRC_LOC)) {
                             warning() << SRC_LOC << "Unable to save email address to contact";
                         }
                     } else if (field.fieldName == QLatin1String("url")) {
@@ -980,7 +1128,7 @@ void updateContactDetails(QNetworkAccessManager &network, QContact &existingCont
                         }
                         urlDetail.setUrl(asString(field, 0));
 
-                        if (!storeContactDetail(existingContact, urlDetail, SRC_LOC)) {
+                        if (!storeContactDetail(existing, urlDetail, SRC_LOC)) {
                             warning() << SRC_LOC << "Unable to save URL to contact";
                         }
                     } else if (field.fieldName == QLatin1String("title")) {
@@ -1000,7 +1148,7 @@ void updateContactDetails(QNetworkAccessManager &network, QContact &existingCont
                             organizationDetail.setContexts(detailContext);
                         }
 
-                        if (!storeContactDetail(existingContact, organizationDetail, SRC_LOC)) {
+                        if (!storeContactDetail(existing, organizationDetail, SRC_LOC)) {
                             warning() << SRC_LOC << "Unable to save organization to contact";
                         }
 
@@ -1022,7 +1170,6 @@ void updateContactDetails(QNetworkAccessManager &network, QContact &existingCont
                                 nameDetail.setContexts(detailContext);
                             }
                             nameDetail.setCustomLabel(fn);
-                            qDebug() << existingContact.localId() << "Set customLabel from fn:" << fn;
                         }
                     } else if (field.fieldName == QLatin1String("nickname")) {
                         const QString nickname(asString(field, 0));
@@ -1033,7 +1180,7 @@ void updateContactDetails(QNetworkAccessManager &network, QContact &existingCont
                                 nicknameDetail.setContexts(detailContext);
                             }
 
-                            if (!storeContactDetail(existingContact, nicknameDetail, SRC_LOC)) {
+                            if (!storeContactDetail(existing, nicknameDetail, SRC_LOC)) {
                                 warning() << SRC_LOC << "Unable to save nickname to contact";
                             }
 
@@ -1050,7 +1197,7 @@ void updateContactDetails(QNetworkAccessManager &network, QContact &existingCont
                         }
                         noteDetail.setNote(asString(field, 0));
 
-                        if (!storeContactDetail(existingContact, noteDetail, SRC_LOC)) {
+                        if (!storeContactDetail(existing, noteDetail, SRC_LOC)) {
                             warning() << SRC_LOC << "Unable to save note to contact";
                         }
                     } else if (field.fieldName == QLatin1String("bday")) {
@@ -1069,7 +1216,7 @@ void updateContactDetails(QNetworkAccessManager &network, QContact &existingCont
                             QContactBirthday birthdayDetail;
                             birthdayDetail.setDate(date);
 
-                            if (!storeContactDetail(existingContact, birthdayDetail, SRC_LOC)) {
+                            if (!storeContactDetail(existing, birthdayDetail, SRC_LOC)) {
                                 warning() << SRC_LOC << "Unable to save birthday to contact";
                             }
                         } else {
@@ -1083,7 +1230,7 @@ void updateContactDetails(QNetworkAccessManager &network, QContact &existingCont
                             QContactGender genderDetail;
                             genderDetail.setGender(*it);
 
-                            if (!storeContactDetail(existingContact, genderDetail, SRC_LOC)) {
+                            if (!storeContactDetail(existing, genderDetail, SRC_LOC)) {
                                 warning() << SRC_LOC << "Unable to save gender to contact";
                             }
                         } else {
@@ -1095,7 +1242,7 @@ void updateContactDetails(QNetworkAccessManager &network, QContact &existingCont
                 }
 
                 if (!nameDetail.isEmpty()) {
-                    if (!storeContactDetail(existingContact, nameDetail, SRC_LOC)) {
+                    if (!storeContactDetail(existing, nameDetail, SRC_LOC)) {
                         warning() << SRC_LOC << "Unable to save name details to contact";
                     }
                 }
@@ -1108,8 +1255,8 @@ void updateContactDetails(QNetworkAccessManager &network, QContact &existingCont
             defaultAvatarPath = contactWrapper->squareAvatarPath();
         }
 
-        QContactOnlineAccount qcoa = existingContact.detail<QContactOnlineAccount>();
-        updateContactAvatars(existingContact, defaultAvatarPath, contactWrapper->largeAvatarPath(), qcoa);
+        QContactOnlineAccount qcoa = existing.detail<QContactOnlineAccount>();
+        updateContactAvatars(existing, defaultAvatarPath, contactWrapper->largeAvatarPath(), qcoa);
     }
     if (changes & CDTpContact::DefaultAvatar) {
         updateSocialAvatars(network, contactWrapper);
@@ -1214,9 +1361,7 @@ void CDTpStorage::addNewAccount(QContact &self, CDTpAccountPtr accountWrapper)
     // Store any information from the account
     CDTpContact::Changes selfChanges = updateAccountDetails(self, newAccount, presence, accountWrapper, CDTpAccount::All);
 
-    if (!storeContact(self, SRC_LOC, selfChanges)) {
-        warning() << SRC_LOC << "Unable to save self contact - error:" << manager()->error();
-    }
+    storeContact(self, SRC_LOC, selfChanges);
 }
 
 void CDTpStorage::removeExistingAccount(QContact &self, QContactOnlineAccount &existing)
@@ -1247,7 +1392,7 @@ void CDTpStorage::removeExistingAccount(QContact &self, QContactOnlineAccount &e
     }
 }
 
-bool CDTpStorage::addNewContact(QContact &newContact, CDTpAccountPtr accountWrapper, const QString &contactId)
+bool CDTpStorage::initializeNewContact(QContact &newContact, CDTpAccountPtr accountWrapper, const QString &contactId)
 {
     Tp::AccountPtr account = accountWrapper->account();
 
@@ -1306,43 +1451,41 @@ bool CDTpStorage::addNewContact(QContact &newContact, CDTpAccountPtr accountWrap
         warning() << SRC_LOC << "Unable to save presence to contact for:" << contactAddress;
         return false;
     }
-
-    if (!storeContact(newContact, SRC_LOC)) {
-        warning() << SRC_LOC << "Unable to save contact:" << contactAddress << "- error:" << manager()->error();
-        return false;
-    }
-
     return true;
 }
 
 void CDTpStorage::updateContactChanges(CDTpContactPtr contactWrapper, CDTpContact::Changes changes)
 {
+    QList<QContact> saveList;
+    QList<QContactLocalId> removeList;
+
+    QContact existing = findExistingContact(imAddress(contactWrapper));
+    updateContactChanges(contactWrapper, changes, existing, &saveList, &removeList);
+
+    updateContacts(SRC_LOC, &saveList, &removeList);
+}
+
+void CDTpStorage::updateContactChanges(CDTpContactPtr contactWrapper, CDTpContact::Changes changes, QContact &existing, QList<QContact> *saveList, QList<QContactLocalId> *removeList)
+{
     const QString accountPath(imAccount(contactWrapper));
     const QString contactAddress(imAddress(contactWrapper));
-    const QString contactPresence(imPresence(contactWrapper));
-
-    QContact existingContact = findExistingContact(contactAddress);
 
     if (changes & CDTpContact::Deleted) {
         // This contact has been deleted
-        if (!existingContact.isEmpty()) {
-            if (!manager()->removeContact(existingContact.localId())) {
-                warning() << SRC_LOC << "Unable to remove deleted contact for account:" << accountPath << "- error:" << manager()->error();
-            }
+        if (!existing.isEmpty()) {
+            removeList->append(existing.localId());
         }
     } else {
-        if (existingContact.isEmpty()) {
-            if (!addNewContact(existingContact, contactWrapper->accountWrapper(), contactWrapper->contact()->id())) {
+        if (existing.isEmpty()) {
+            if (!initializeNewContact(existing, contactWrapper->accountWrapper(), contactWrapper->contact()->id())) {
                 warning() << SRC_LOC << "Unable to create contact for account:" << accountPath << contactAddress;
                 return;
             }
         }
 
-        updateContactDetails(mNetwork, existingContact, contactWrapper, changes);
+        updateContactDetails(mNetwork, existing, contactWrapper, changes);
 
-        if (!storeContact(existingContact, SRC_LOC, changes)) {
-            warning() << SRC_LOC << "Unable to save new contact for:" << contactAddress << "- error:" << manager()->error();
-        }
+        saveList->append(existing);
     }
 }
 
@@ -1384,11 +1527,28 @@ void CDTpStorage::updateAccountChanges(QContactOnlineAccount &qcoa, CDTpAccountP
             allChanges.insert(address, it.value() | CDTpContact::Presence);
         }
 
+        QStringList contactAddresses;
         foreach (CDTpContactPtr contactWrapper, accountWrapper->contacts()) {
             const QString address = imAddress(accountPath, contactWrapper->contact()->id());
-            QHash<QString, CDTpContact::Changes>::Iterator changes = allChanges.find(address);
+            contactAddresses.append(address);
+        }
 
-            // Should never happen
+        // Retrieve the existing contacts in a single batch
+        QHash<QString, QContact> existingContacts = findExistingContacts(contactAddresses);
+
+        QList<QContact> saveList;
+        QList<QContactLocalId> removeList;
+
+        foreach (CDTpContactPtr contactWrapper, accountWrapper->contacts()) {
+            const QString address = imAddress(accountPath, contactWrapper->contact()->id());
+
+            QHash<QString, QContact>::Iterator existing = existingContacts.find(address);
+            if (existing == existingContacts.end()) {
+                warning() << SRC_LOC << "No contact found for address:" << address;
+                existing = existingContacts.insert(address, QContact());
+            }
+
+            QHash<QString, CDTpContact::Changes>::Iterator changes = allChanges.find(address);
             if (changes == allChanges.end()) {
                 warning() << SRC_LOC << "No changes found for contact:" << address;
                 continue;
@@ -1405,42 +1565,42 @@ void CDTpStorage::updateAccountChanges(QContactOnlineAccount &qcoa, CDTpAccountP
                 }
             }
 
-            updateContactChanges(contactWrapper, *changes);
+            updateContactChanges(contactWrapper, *changes, *existing, &saveList, &removeList);
         }
+
+        updateContacts(SRC_LOC, &saveList, &removeList);
     } else {
         // Set presence to unknown for all contacts of this account
         foreach (const QContactLocalId &contactId, findContactIdsForAccount(accountPath)) {
-            QContact existingContact = manager()->contact(contactId);
+            QContact existing = manager()->contact(contactId);
 
-            QContactPresence presence = existingContact.detail<QContactPresence>();
+            QContactPresence presence = existing.detail<QContactPresence>();
             presence.setPresenceState(qContactPresenceState(Tp::ConnectionPresenceTypeUnknown));
             presence.setTimestamp(QDateTime::currentDateTime());
 
-            if (!storeContactDetail(existingContact, presence, SRC_LOC)) {
+            if (!storeContactDetail(existing, presence, SRC_LOC)) {
                 warning() << SRC_LOC << "Unable to save unknown presence to contact for:" << contactId;
             }
 
             // Also reset the capabilities
-            QContactOnlineAccount qcoa = existingContact.detail<QContactOnlineAccount>();
+            QContactOnlineAccount qcoa = existing.detail<QContactOnlineAccount>();
             qcoa.setCapabilities(currentCapabilites(account->capabilities(), Tp::ConnectionPresenceTypeUnknown, account));
 
-            if (!storeContactDetail(existingContact, qcoa, SRC_LOC)) {
+            if (!storeContactDetail(existing, qcoa, SRC_LOC)) {
                 warning() << SRC_LOC << "Unable to save capabilities to contact for:" << contactId;
             }
 
             if (!account->isEnabled()) {
                 // Mark the contact as un-enabled also
-                QContactTpMetadata metadata = existingContact.detail<QContactTpMetadata>();
+                QContactTpMetadata metadata = existing.detail<QContactTpMetadata>();
                 metadata.setAccountEnabled(false);
 
-                if (!storeContactDetail(existingContact, metadata, SRC_LOC)) {
+                if (!storeContactDetail(existing, metadata, SRC_LOC)) {
                     warning() << SRC_LOC << "Unable to un-enable contact for:" << contactId;
                 }
             }
 
-            if (!storeContact(existingContact, SRC_LOC, CDTpContact::Presence | CDTpContact::Capabilities)) {
-                warning() << SRC_LOC << "Unable to save account contact - error:" << manager()->error();
-            }
+            storeContact(existing, SRC_LOC, CDTpContact::Presence | CDTpContact::Capabilities);
         }
     }
 }
@@ -1496,9 +1656,7 @@ void CDTpStorage::syncAccounts(const QList<CDTpAccountPtr> &accounts)
         }
     }
 
-    if (!storeContact(self, SRC_LOC)) {
-        warning() << SRC_LOC << "Unable to save self contact";
-    }
+    storeContact(self, SRC_LOC);
 }
 
 void CDTpStorage::createAccount(CDTpAccountPtr accountWrapper)
@@ -1525,14 +1683,32 @@ void CDTpStorage::createAccount(CDTpAccountPtr accountWrapper)
     // Add any previously unknown accounts
     addNewAccount(self, accountWrapper);
 
-    // Add any contacts already present for this account
+    QStringList contactAddresses;
     foreach (CDTpContactPtr contactWrapper, accountWrapper->contacts()) {
-        updateContactChanges(contactWrapper, CDTpContact::All);
+        const QString address = imAddress(accountPath, contactWrapper->contact()->id());
+        contactAddresses.append(address);
     }
 
-    if (!storeContact(self, SRC_LOC)) {
-        warning() << SRC_LOC << "Unable to save self contact";
+    // Retrieve the existing contacts in a single batch
+    QHash<QString, QContact> existingContacts = findExistingContacts(contactAddresses);
+
+    QList<QContact> saveList;
+    QList<QContactLocalId> removeList;
+
+    // Add any contacts already present for this account
+    foreach (CDTpContactPtr contactWrapper, accountWrapper->contacts()) {
+        const QString address = imAddress(accountPath, contactWrapper->contact()->id());
+
+        QHash<QString, QContact>::Iterator existing = existingContacts.find(address);
+        if (existing == existingContacts.end()) {
+            warning() << SRC_LOC << "No contact found for address:" << address;
+            continue;
+        }
+
+        updateContactChanges(contactWrapper, CDTpContact::All, *existing, &saveList, &removeList);
     }
+
+    updateContacts(SRC_LOC, &saveList, &removeList);
 }
 
 void CDTpStorage::updateAccount(CDTpAccountPtr accountWrapper, CDTpAccount::Changes changes)
@@ -1577,9 +1753,7 @@ void CDTpStorage::removeAccount(CDTpAccountPtr accountWrapper)
         if (existingPath == accountPath) {
             removeExistingAccount(self, existingAccount);
 
-            if (!storeContact(self, SRC_LOC)) {
-                warning() << SRC_LOC << "Unable to save self contact";
-            }
+            storeContact(self, SRC_LOC);
             return;
         }
     }
@@ -1615,25 +1789,57 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper, const QList
 {
     const QString accountPath(imAccount(accountWrapper));
 
+    QStringList contactAddresses;
     foreach (const CDTpContactPtr &contactWrapper, contactsAdded) {
-        // This contact should be for the specified account
+        // This contact must be for the specified account
         if (imAccount(contactWrapper) != accountPath) {
             warning() << SRC_LOC << "Unable to add contact from wrong account:" << imAccount(contactWrapper) << accountPath;
             continue;
         }
 
-        updateContactChanges(contactWrapper, CDTpContact::Added | CDTpContact::Information);
+        const QString address = imAddress(accountPath, contactWrapper->contact()->id());
+        contactAddresses.append(address);
     }
-
     foreach (const CDTpContactPtr &contactWrapper, contactsRemoved) {
-        // This contact should be for the specified account
         if (imAccount(contactWrapper) != accountPath) {
             warning() << SRC_LOC << "Unable to remove contact from wrong account:" << imAccount(contactWrapper) << accountPath;
             continue;
         }
 
-        updateContactChanges(contactWrapper, CDTpContact::Deleted);
+        const QString address = imAddress(accountPath, contactWrapper->contact()->id());
+        contactAddresses.append(address);
     }
+
+    // Retrieve the existing contacts in a single batch
+    QHash<QString, QContact> existingContacts = findExistingContacts(contactAddresses);
+
+    QList<QContact> saveList;
+    QList<QContactLocalId> removeList;
+
+    foreach (const CDTpContactPtr &contactWrapper, contactsAdded) {
+        const QString address = imAddress(accountPath, contactWrapper->contact()->id());
+
+        QHash<QString, QContact>::Iterator existing = existingContacts.find(address);
+        if (existing == existingContacts.end()) {
+            warning() << SRC_LOC << "No contact found for address:" << address;
+            continue;
+        }
+
+        updateContactChanges(contactWrapper, CDTpContact::Added | CDTpContact::Information, *existing, &saveList, &removeList);
+    }
+    foreach (const CDTpContactPtr &contactWrapper, contactsRemoved) {
+        const QString address = imAddress(accountPath, contactWrapper->contact()->id());
+
+        QHash<QString, QContact>::Iterator existing = existingContacts.find(address);
+        if (existing == existingContacts.end()) {
+            warning() << SRC_LOC << "No contact found for address:" << address;
+            continue;
+        }
+
+        updateContactChanges(contactWrapper, CDTpContact::Deleted, *existing, &saveList, &removeList);
+    }
+
+    updateContacts(SRC_LOC, &saveList, &removeList);
 }
 
 void CDTpStorage::createAccountContacts(CDTpAccountPtr accountWrapper, const QStringList &imIds, uint localId)
@@ -1644,13 +1850,18 @@ void CDTpStorage::createAccountContacts(CDTpAccountPtr accountWrapper, const QSt
 
     debug() << SRC_LOC << "Create contacts account:" << accountPath;
 
-    QStringList imAddressList;
+    QList<QContact> saveList;
+
     foreach (const QString &id, imIds) {
         QContact newContact;
-        if (!addNewContact(newContact, accountWrapper, id)) {
+        if (!initializeNewContact(newContact, accountWrapper, id)) {
             warning() << SRC_LOC << "Unable to create contact for account:" << accountPath << id;
+        } else {
+            saveList.append(newContact);
         }
     }
+
+    updateContacts(SRC_LOC, &saveList, 0);
 }
 
 /* Use this only in offline mode - use syncAccountContacts in online mode */
@@ -1668,10 +1879,10 @@ void CDTpStorage::removeAccountContacts(CDTpAccountPtr accountWrapper, const QSt
     QList<QContactLocalId> removeIds;
 
     // Find any contacts matching the supplied ID list
-    foreach (const QContact &existingContact, manager()->contacts(findContactIdsForAccount(accountPath))) {
-        QContactTpMetadata metadata = existingContact.detail<QContactTpMetadata>();
+    foreach (const QContact &existing, manager()->contacts(findContactIdsForAccount(accountPath))) {
+        QContactTpMetadata metadata = existing.detail<QContactTpMetadata>();
         if (imAddressList.contains(metadata.contactId())) {
-            removeIds.append(existingContact.localId());
+            removeIds.append(existing.localId());
         }
     }
 
@@ -1698,8 +1909,21 @@ void CDTpStorage::onUpdateQueueTimeout()
 {
     debug() << "Update" << mUpdateQueue.count() << "contacts";
 
+    QStringList contactAddresses;
+
     QHash<CDTpContactPtr, CDTpContact::Changes>::const_iterator it = mUpdateQueue.constBegin(), end = mUpdateQueue.constEnd();
     for ( ; it != end; ++it) {
+        CDTpContactPtr contactWrapper = it.key();
+        contactAddresses.append(imAddress(contactWrapper));
+    }
+
+    // Retrieve the existing contacts in a single batch
+    QHash<QString, QContact> existingContacts = findExistingContacts(contactAddresses);
+
+    QList<QContact> saveList;
+    QList<QContactLocalId> removeList;
+
+    for (it = mUpdateQueue.constBegin(); it != end; ++it) {
         CDTpContactPtr contactWrapper = it.key();
 
         // Skip the contact in case its account was deleted before this function
@@ -1711,10 +1935,19 @@ void CDTpStorage::onUpdateQueueTimeout()
             continue;
         }
 
-        updateContactChanges(contactWrapper, it.value());
+        const QString address(imAddress(contactWrapper));
+        QHash<QString, QContact>::Iterator existing = existingContacts.find(address);
+        if (existing == existingContacts.end()) {
+            warning() << SRC_LOC << "No contact found for address:" << address;
+            continue;
+        }
+
+        updateContactChanges(contactWrapper, it.value(), *existing, &saveList, &removeList);
     }
 
     mUpdateQueue.clear();
+
+    updateContacts(SRC_LOC, &saveList, &removeList);
 }
 
 void CDTpStorage::cancelQueuedUpdates(const QList<CDTpContactPtr> &contacts)
