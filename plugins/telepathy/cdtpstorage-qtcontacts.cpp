@@ -65,7 +65,13 @@ using namespace Contactsd;
 //#define DEBUG_OVERLOAD
 
 // Should we batch up contact stores, or keep them separate?
-//#define BATCH_STORES
+// The longer a single batch takes to write, the longer we are locking out other
+// writers (readers should be unaffected).  Using a semaphore write mutex, we should
+// at least have FIFO semantics on lock release.
+#define BATCH_STORES
+#define BATCH_STORE_SIZE 5
+
+// Batch removal is probably rare enough that we don't need to optimize it
 //#define BATCH_REMOVES
 
 namespace {
@@ -402,30 +408,37 @@ void updateContacts(const QString &location, QList<QContact> *saveList, QList<QC
         t.start();
 
 #ifdef BATCH_STORES
-        // Try to store all contacts in a single transaction
-        do {
-            QMap<int, QContactManager::Error> errorMap;
-            if (manager()->saveContacts(saveList, &errorMap)) {
-                break;
-            }
+        // Try to store contacts in batches
+        int storedCount = 0;
+        while (storedCount < saveList->count()) {
+            QList<QContact> batch(saveList->mid(storedCount, BATCH_STORE_SIZE));
+            storedCount += BATCH_STORE_SIZE;
 
-            const int errorCount = errorMap.count();
-            if (!errorCount) {
-                break;
-            }
-
-            // Remove the problematic contacts
-            QList<int> indices = errorMap.keys();
-            QList<int>::const_iterator begin = indices.begin(), it = begin + errorCount;
             do {
-                int errorIndex = (*--it);
-                const QContact &badContact(saveList->at(errorIndex));
-                warning() << "Failed storing contact" << badContact.localId() << "from:" << location;
-                output(debug(), badContact);
-                saveList->removeAt(errorIndex);
-            } while (it != begin);
-        } while (true);
-        debug() << "Updated" << saveList->count() << "batch contacts - elapsed:" << t.elapsed();
+                QMap<int, QContactManager::Error> errorMap;
+                if (manager()->saveContacts(&batch, &errorMap)) {
+                    // We could copy the updated contacts back into saveList here, but it doesn't seem warranted
+                    break;
+                }
+
+                const int errorCount = errorMap.count();
+                if (!errorCount) {
+                    break;
+                }
+
+                // Remove the problematic contacts
+                QList<int> indices = errorMap.keys();
+                QList<int>::const_iterator begin = indices.begin(), it = begin + errorCount;
+                do {
+                    int errorIndex = (*--it);
+                    const QContact &badContact(batch.at(errorIndex));
+                    warning() << "Failed storing contact" << badContact.localId() << "from:" << location;
+                    output(debug(), badContact);
+                    batch.removeAt(errorIndex);
+                } while (it != begin);
+            } while (true);
+        }
+        debug() << "Updated" << saveList->count() << "batched contacts - elapsed:" << t.elapsed();
 #else
         QList<QContact>::iterator it = saveList->begin(), end = saveList->end();
         for ( ; it != end; ++it) {
