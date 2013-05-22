@@ -336,15 +336,16 @@ bool storeContactDetail(QContact &contact, QContactDetail &detail, const QString
 #ifdef DEBUG_OVERLOAD
     debug() << "  Storing" << detail.definitionName() << "from:" << location;
     output(debug(), detail);
-    return contact.saveDetail(&detail);
-#else
+#endif
+
     if (!contact.saveDetail(&detail)) {
         debug() << "  Failed storing" << detail.definitionName() << "from:" << location;
+#ifndef DEBUG_OVERLOAD
         output(debug(), detail);
+#endif
         return false;
     }
     return true;
-#endif
 }
 
 QStringList contactChangesList(CDTpContact::Changes changes)
@@ -381,34 +382,26 @@ bool storeContact(QContact &contact, const QString &location, CDTpContact::Chang
 #ifdef DEBUG_OVERLOAD
     debug() << "Storing contact" << contact.localId() << "from:" << location;
     output(debug(), contact);
-    if (minimizedUpdate) {
-        debug() << "Updating:" << updates;
-        if (!manager()->saveContacts(&contacts, contactChangesList(changes))) {
-            warning() << location << "Unable to store contact - error:" << manager()->error();
-            return false;
-        }
-    } else {
-        if (!manager()->saveContact(&contact)) {
-            warning() << location << "Unable to store contact - error:" << manager()->error();
-            return false;
-        }
-    }
-#else
+#endif
+
     if (minimizedUpdate) {
         if (!manager()->saveContacts(&contacts, contactChangesList(changes))) {
             warning() << "Failed minimized storing contact" << contact.localId() << "from:" << location << "error:" << manager()->error();
+#ifndef DEBUG_OVERLOAD
             output(debug(), contact);
+#endif
             debug() << "Updates" << updates;
             return false;
         }
     } else {
         if (!manager()->saveContact(&contact)) {
             warning() << "Failed storing contact" << contact.localId() << "from:" << location;
+#ifndef DEBUG_OVERLOAD
             output(debug(), contact);
+#endif
             return false;
         }
     }
-#endif
     return true;
 }
 
