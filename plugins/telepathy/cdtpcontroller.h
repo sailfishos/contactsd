@@ -26,14 +26,7 @@
 
 #include "cdtpaccount.h"
 #include "cdtpcontact.h"
-
-#if defined(CONTACTSD_SPARQL_UPDATE_API)
-#include "cdtpstorage-sparql.h"
-#elif defined(CONTACTSD_QTCONTACTS_UPDATE_API)
-#include "cdtpstorage-qtcontacts.h"
-#else
-#error "No CDTpStorage implementation has been selected!"
-#endif
+#include "cdtpstorage.h"
 
 #include <TelepathyQt/Types>
 

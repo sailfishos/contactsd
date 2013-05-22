@@ -53,7 +53,7 @@
 
 #include <qtcontacts-tracker/phoneutils.h>
 
-#include "cdtpstorage-qtcontacts.h"
+#include "cdtpstorage.h"
 #include "cdtpavatarupdate.h"
 #include "debug.h"
 
