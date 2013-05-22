@@ -64,11 +64,9 @@ using namespace Contactsd;
 // Uncomment for masses of debug output:
 //#define DEBUG_OVERLOAD
 
-// Should we batch up contact stores, or keep them separate?
 // The longer a single batch takes to write, the longer we are locking out other
 // writers (readers should be unaffected).  Using a semaphore write mutex, we should
 // at least have FIFO semantics on lock release.
-#define BATCH_STORES
 #define BATCH_STORE_SIZE 5
 
 namespace {
@@ -411,7 +409,6 @@ void updateContacts(const QString &location, QList<QContact> *saveList, QList<QC
         QElapsedTimer t;
         t.start();
 
-#ifdef BATCH_STORES
         // Try to store contacts in batches
         int storedCount = 0;
         while (storedCount < saveList->count()) {
@@ -443,13 +440,6 @@ void updateContacts(const QString &location, QList<QContact> *saveList, QList<QC
             } while (true);
         }
         debug() << "Updated" << saveList->count() << "batched contacts - elapsed:" << t.elapsed();
-#else
-        QList<QContact>::iterator it = saveList->begin(), end = saveList->end();
-        for ( ; it != end; ++it) {
-            storeContact(*it, location);
-        }
-        debug() << "Updated" << saveList->count() << "individual contacts - elapsed:" << t.elapsed();
-#endif
     }
 
     if (removeList && !removeList->isEmpty()) {
