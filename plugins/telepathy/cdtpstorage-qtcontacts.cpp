@@ -187,22 +187,9 @@ const QLatin1String QContactOnlineAccount__FieldAccountPath("AccountPath");
 const QLatin1String QContactOnlineAccount__FieldAccountIconPath("AccountIconPath");
 const QLatin1String QContactOnlineAccount__FieldEnabled("Enabled");
 
-QContactManager *createManager()
-{
-    debug() << SRC_LOC << QContactManager::availableManagers();
-
-    QString envspec(QLatin1String(qgetenv("NEMO_CONTACT_MANAGER")));
-    if (!envspec.isEmpty()) {
-        debug() << "Using contact manager:" << envspec;
-        return new QContactManager(envspec);
-    }
-
-    return new QContactManager;
-}
-
 QContactManager *manager()
 {
-    static QContactManager *manager = createManager();
+    static QContactManager *manager = new QContactManager;
     return manager;
 }
 
