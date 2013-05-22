@@ -71,9 +71,6 @@ using namespace Contactsd;
 #define BATCH_STORES
 #define BATCH_STORE_SIZE 5
 
-// Batch removal is probably rare enough that we don't need to optimize it
-//#define BATCH_REMOVES
-
 namespace {
 
 template<int N>
@@ -452,30 +449,6 @@ void updateContacts(const QString &location, QList<QContact> *saveList, QList<QC
         QElapsedTimer t;
         t.start();
 
-#ifdef BATCH_REMOVES
-        do {
-            QMap<int, QContactManager::Error> errorMap;
-            if (manager()->removeContacts(*removeList, &errorMap)) {
-                break;
-            }
-
-            const int errorCount = errorMap.count();
-            if (!errorCount) {
-                break;
-            }
-
-            // Remove the problematic contacts
-            QList<int> indices = errorMap.keys();
-            QList<int>::const_iterator begin = indices.begin(), it = begin + errorCount;
-            do {
-                int errorIndex = (*--it);
-                const QContactLocalId &badId(removeList->at(errorIndex));
-                warning() << "Failed removing contact" << badId << "from:" << location;
-                removeList->removeAt(errorIndex);
-            } while (it != begin);
-        } while (true);
-        debug() << "Removed" << removeList->count() << "batch contacts - elapsed:" << t.elapsed();
-#else
         QList<QContactLocalId>::iterator it = removeList->begin(), end = removeList->end();
         for ( ; it != end; ++it) {
             if (!manager()->removeContact(*it)) {
@@ -483,7 +456,6 @@ void updateContacts(const QString &location, QList<QContact> *saveList, QList<QC
             }
         }
         debug() << "Removed" << removeList->count() << "individual contacts - elapsed:" << t.elapsed();
-#endif
     }
 }
 
