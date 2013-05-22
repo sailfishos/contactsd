@@ -202,7 +202,26 @@ QContactDetailFilter matchTelepathyFilter()
     return filter;
 }
 
-QContact selfContact()
+QContactFetchHint contactFetchHint(bool selfContact = false)
+{
+    QContactFetchHint hint;
+
+    // Relationships are slow and unnecessary here:
+    hint.setOptimizationHints(QContactFetchHint::NoRelationships |
+                              QContactFetchHint::NoActionPreferences |
+                              QContactFetchHint::NoBinaryBlobs);
+
+    if (selfContact) {
+        // For the self contact, we only care about accounts/presence/avatars
+        hint.setDetailDefinitionsHint(QStringList() << QContactOnlineAccount::DefinitionName
+                                                    << QContactPresence::DefinitionName
+                                                    << QContactAvatar::DefinitionName);
+    }
+
+    return hint;
+}
+
+QContactLocalId selfContactLocalId()
 {
     QContactManager *mgr(manager());
 
@@ -222,12 +241,12 @@ QContact selfContact()
     selfFilter << matchTelepathyFilter();
     selfFilter << relationshipFilter;
 
-    QList<QContact> selfContacts = mgr->contacts(selfFilter);
-    if (selfContacts.count() > 0) {
-        if (selfContacts.count() > 1) {
-            warning() << "Invalid number of telepathy self contacts!" << selfContacts.count();
+    QList<QContactLocalId> selfContactIds = mgr->contactIds(selfFilter);
+    if (selfContactIds.count() > 0) {
+        if (selfContactIds.count() > 1) {
+            warning() << "Invalid number of telepathy self contacts!" << selfContactIds.count();
         }
-        return selfContacts.first();
+        return selfContactIds.first();
     }
 
     // Create a new self contact for telepathy
@@ -274,12 +293,20 @@ QContact selfContact()
             if (!mgr->saveRelationship(&relationship)) {
                 warning() << "Unable to save relationship for self contact - error:" << mgr->error();
             } else {
-                return tpSelf;
+                return tpSelf.localId();
             }
         }
     }
 
-    return QContact();
+    return QContactLocalId();
+}
+
+QContact selfContact()
+{
+    static QContactLocalId selfLocalId(selfContactLocalId());
+    static QContactFetchHint hint(contactFetchHint(true));
+
+    return manager()->contact(selfLocalId, hint);
 }
 
 template<typename Debug>
@@ -456,11 +483,9 @@ QList<QContactLocalId> findContactIdsForAccount(const QString &accountPath)
 
 QHash<QString, QContact> findExistingContacts(const QStringList &contactAddresses)
 {
-    QHash<QString, QContact> rv;
+    static QContactFetchHint hint(contactFetchHint());
 
-    // Relationships are slow and unnecessary here:
-    QContactFetchHint hint;
-    hint.setOptimizationHints(QContactFetchHint::NoRelationships);
+    QHash<QString, QContact> rv;
 
     // If there is a large number of contacts, do a two-step fetch
     const int maxDirectMatches = 10;
@@ -505,13 +530,11 @@ QHash<QString, QContact> findExistingContacts(const QStringList &contactAddresse
 
 QContact findExistingContact(const QString &contactAddress)
 {
+    static QContactFetchHint hint(contactFetchHint());
+
     QContactIntersectionFilter filter;
     filter << QContactTpMetadata::matchContactId(contactAddress);
     filter << matchTelepathyFilter();
-
-    // Relationships are slow and unnecessary here:
-    QContactFetchHint hint;
-    hint.setOptimizationHints(QContactFetchHint::NoRelationships);
 
     foreach (const QContact &contact, manager()->contacts(filter, QList<QContactSortOrder>(), hint)) {
         // Return the first match we find (there should be only one)
