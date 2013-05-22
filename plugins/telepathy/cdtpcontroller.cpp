@@ -316,6 +316,9 @@ void CDTpController::removeBuddies(const QString &accountPath, const QStringList
 {
     debug() << "RemoveBuddies:" << accountPath << imIds.join(QLatin1String(", "));
 
+    // Add ids to offlineRemovals, in case it does not get removed right now from server
+    QStringList currentList = updateOfflineRosterBuffer(offlineRemovals, accountPath, imIds, QStringList());
+
     CDTpAccountPtr accountWrapper = mAccounts[accountPath];
     if (!accountWrapper) {
         debug() << "Account not found";
@@ -324,9 +327,6 @@ void CDTpController::removeBuddies(const QString &accountPath, const QStringList
 
     // Remove ids from storage
     mStorage->removeAccountContacts(accountWrapper, imIds);
-
-    // Add ids to offlineRemovals, in case it does not get removed right now from server
-    QStringList currentList = updateOfflineRosterBuffer(offlineRemovals, accountPath, imIds, QStringList());
 
     // Add contact to account's avoid list
     accountWrapper->setContactsToAvoid(currentList);
