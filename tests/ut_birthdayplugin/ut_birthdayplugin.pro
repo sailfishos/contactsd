@@ -27,6 +27,11 @@ include(check.pri)
 include(tests.pri)
 include(../common/test-common.pri)
 
+# Hack: mkcal adds /usr/include/meegotouch to include path, and alphabetic CONFIG
+# always puts that before mlocale, resulting in link errors. Force mlocale to be
+# first.
+INCLUDEPATH += /usr/include/mlocale
+
 CONFIG += test qtsparql mobility mlocale mkcal link_pkgconfig
 PKGCONFIG += mlite
 
