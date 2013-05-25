@@ -32,7 +32,7 @@ include(../common/test-common.pri)
 # first.
 INCLUDEPATH += /usr/include/mlocale
 
-CONFIG += test qtsparql mobility mlocale mkcal link_pkgconfig
+CONFIG += test mobility mlocale mkcal link_pkgconfig
 PKGCONFIG += mlite
 
 QT -= gui

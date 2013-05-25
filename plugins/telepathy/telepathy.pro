@@ -24,7 +24,7 @@ TEMPLATE = lib
 QT -= gui
 QT += dbus network
 
-CONFIG += plugin qtsparql mobility
+CONFIG += plugin mobility
 MOBILITY += contacts
 
 system(qdbusxml2cpp -c BuddyManagementAdaptor -a buddymanagementadaptor.h:buddymanagementadaptor.cpp com.nokia.contacts.buddymanagement.xml)
@@ -35,7 +35,7 @@ LIBS += -lgcov
 }
 
 CONFIG += link_pkgconfig
-PKGCONFIG += TelepathyQt4 tracker-sparql-0.14
+PKGCONFIG += TelepathyQt4 
 DEFINES += QT_NO_CAST_TO_ASCII QT_NO_CAST_FROM_ASCII
 
 INCLUDEPATH += $$TOP_SOURCEDIR/src

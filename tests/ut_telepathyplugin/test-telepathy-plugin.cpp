@@ -31,8 +31,6 @@
 #include <QContactLocalIdFilter>
 #include <QContactOnlineAccount>
 
-#include <QtSparql>
-
 #include <TelepathyQt/Debug>
 
 #include "libtelepathy/util.h"

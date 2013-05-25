@@ -9,9 +9,6 @@ Source0: %{name}-%{version}.tar.bz2
 Source1: contactsd.desktop
 Source2: contactsd.service
 BuildRequires: pkgconfig(QtCore)
-BuildRequires: pkgconfig(QtSparql)
-BuildRequires: pkgconfig(QtSparqlTrackerExtensions)
-BuildRequires: pkgconfig(tracker-sparql-0.14)
 BuildRequires: pkgconfig(TelepathyQt4)
 BuildRequires: pkgconfig(QtContacts)
 # mlite required only for tests
