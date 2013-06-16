@@ -15,7 +15,10 @@ pkgconfig.files=$${PKGCONFIG_FILE}
 backupconf.path=$$PREFIX/share/backup-framework/applications/
 backupconf.files=$${PACKAGENAME}.conf
 
-INSTALLS += pkgconfig backupconf
+systemdservice.path=$$LIBDIR/systemd/user/
+systemdservice.files=$${PACKAGENAME}.service
+
+INSTALLS += pkgconfig backupconf systemdservice
 
 check.target = check
 check.CONFIG = recursive

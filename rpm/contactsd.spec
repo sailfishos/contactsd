@@ -6,7 +6,6 @@ Group: System/Libraries
 URL: https://github.com/nemomobile/contactsd
 License: LGPLv2
 Source0: %{name}-%{version}.tar.bz2
-Source2: contactsd.service
 BuildRequires: pkgconfig(QtCore)
 BuildRequires: pkgconfig(TelepathyQt4)
 BuildRequires: pkgconfig(QtContacts)
@@ -69,6 +68,4 @@ make %{?_smp_mflags}
 
 %install
 make INSTALL_ROOT=%{buildroot} install
-mkdir -p %{buildroot}/%{_libdir}/systemd/user/
-cp %{SOURCE2} %{buildroot}/%{_libdir}/systemd/user/
 
