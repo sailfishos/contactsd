@@ -6,7 +6,6 @@ Group: System/Libraries
 URL: https://github.com/nemomobile/contactsd
 License: LGPLv2
 Source0: %{name}-%{version}.tar.bz2
-Source1: contactsd-qt5.desktop
 Source2: contactsd-qt5.service
 BuildRequires: pkgconfig(Qt5Core)
 BuildRequires: pkgconfig(TelepathyQt5)
@@ -27,7 +26,6 @@ information), and store it to QtContacts.
 
 %files
 %defattr(-,root,root,-)
-%config %{_sysconfdir}/xdg/autostart/contactsd-qt5.desktop
 %{_libdir}/systemd/user/contactsd-qt5.service
 %{_bindir}/contactsd-qt5
 %{_libdir}/contactsd-qt5-1.0/plugins/*.so
@@ -76,8 +74,6 @@ make %{?_smp_mflags}
 
 %install
 make INSTALL_ROOT=%{buildroot} install
-mkdir -p %{buildroot}/%{_sysconfdir}/xdg/autostart
-cp %{SOURCE1} %{buildroot}/%{_sysconfdir}/xdg/autostart/
 mkdir -p %{buildroot}/%{_libdir}/systemd/user/
 cp %{SOURCE2} %{buildroot}/%{_libdir}/systemd/user/
 
