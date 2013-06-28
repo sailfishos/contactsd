@@ -7,6 +7,9 @@ URL: https://github.com/nemomobile/contactsd
 License: LGPLv2
 Source0: %{name}-%{version}.tar.bz2
 BuildRequires: pkgconfig(Qt5Core)
+BuildRequires: pkgconfig(Qt5DBus)
+BuildRequires: pkgconfig(Qt5Network)
+BuildRequires: pkgconfig(Qt5Test)
 BuildRequires: pkgconfig(TelepathyQt5)
 BuildRequires: pkgconfig(Qt5Contacts)
 # mlite required only for tests
