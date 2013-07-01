@@ -39,10 +39,13 @@
 #include "debug.h"
 
 #ifdef USING_QTPIM
+const int QContactOnlineAccount__FieldAccountPath = (QContactOnlineAccount::FieldSubTypes+1);
+
 QContactId apiId(const QContact &contact) { return contact.id(); }
 #else
 QContactLocalId apiId(const QContact &contact) { return contact.localId(); }
 #endif
+
 // --- TestExpectation ---
 
 void TestExpectation::verify(Event event, const QList<ContactIdType> &contactIds)
@@ -125,6 +128,7 @@ void TestFetchContacts::onContactsFetched()
 
 // --- TestExpectationInit ---
 
+
 void TestExpectationInit::verify(Event event, const QList<QContact> &contacts)
 {
     QCOMPARE(event, EventChanged);
@@ -206,7 +210,9 @@ void TestExpectationContact::verify(const QContact &contact)
 {
     if (!mAccountUri.isEmpty()) {
 #ifdef USING_QTPIM
-        // TODO
+        QList<QContactOnlineAccount> details = contact.details<QContactOnlineAccount>();
+        QCOMPARE(details.count(), 1);
+        QCOMPARE(details[0].value<QString>(QContactOnlineAccount__FieldAccountPath), QString(ACCOUNT_PATH));
 #else
         const QString uri = QString("telepathy:%1!%2").arg(ACCOUNT_PATH).arg(mAccountUri);
         QList<QContactOnlineAccount> details = contact.details<QContactOnlineAccount>("DetailUri", uri);
@@ -231,13 +237,13 @@ void TestExpectationContact::verify(const QContact &contact)
             presence = presenceDetail.presenceState();
         } else {
 #ifdef USING_QTPIM
-        // TODO
+            QList<QContactPresence> details = contact.details<QContactPresence>();
 #else
             const QString uri = QString("presence:%1!%2").arg(ACCOUNT_PATH).arg(mAccountUri);
             QList<QContactPresence> details = contact.details<QContactPresence>("DetailUri", uri);
+#endif
             QCOMPARE(details.count(), 1);
             presence = details[0].presenceState();
-#endif
         }
 
         switch (mPresence) {
@@ -275,7 +281,7 @@ void TestExpectationContact::verify(const QContact &contact)
 
     if (mFlags & VerifyAuthorization) {
 #ifdef USING_QTPIM
-        // TODO
+        qWarning() << "Unsupported functionality: presence authorization";
 #else
         const QString uri = QString("presence:%1!%2").arg(ACCOUNT_PATH).arg(mAccountUri);
         QList<QContactPresence> details = contact.details<QContactPresence>("DetailUri", uri);
@@ -289,20 +295,38 @@ void TestExpectationContact::verify(const QContact &contact)
         uint nMatchedField = 0;
 
         Q_FOREACH (const QContactDetail &detail, contact.details()) {
-#ifdef USING_QTPIM
-        // TODO
-#else
             QStringList params;
+#ifdef USING_QTPIM
+            if (detail.contexts().contains(QContactDetail::ContextWork)) {
+#else
             if (detail.contexts().contains("Work")) {
+#endif
                 params << QLatin1String("type=work");
             }
+#ifdef USING_QTPIM
+            if (detail.contexts().contains(QContactDetail::ContextHome)) {
+#else
             if (detail.contexts().contains("Home")) {
+#endif
                 params << QLatin1String("type=home");
             }
 
+#ifdef USING_QTPIM
+            if (detail.type() ==QContactPhoneNumber::Type) {
+#else
             if (detail.definitionName() == "PhoneNumber") {
+#endif
                 QContactPhoneNumber phoneNumber = static_cast<QContactPhoneNumber>(detail);
 
+#ifdef USING_QTPIM
+                Q_FOREACH (int type, phoneNumber.subTypes()) {
+                    if (type == QContactPhoneNumber::SubTypeMobile) {
+                        params << QLatin1String("type=cell");
+                    } else if (type == QContactPhoneNumber::SubTypeVideo) {
+                        params << QLatin1String("type=video");
+                    }
+                }
+#else
                 Q_FOREACH (const QString &type, phoneNumber.subTypes()) {
                     if (type == QLatin1String("Mobile")) {
                         params << QLatin1String("type=cell");
@@ -310,11 +334,16 @@ void TestExpectationContact::verify(const QContact &contact)
                         params << QLatin1String("type=video");
                     }
                 }
+#endif
 
                 verifyContactInfo("tel", QStringList() << phoneNumber.number(), params);
                 nMatchedField++;
             }
+#ifdef USING_QTPIM
+            else if (detail.type() == QContactAddress::Type) {
+#else
             else if (detail.definitionName() == "Address") {
+#endif
                 QContactAddress address = static_cast<QContactAddress>(detail);
                 verifyContactInfo("adr", QStringList() << address.postOfficeBox()
                                                        << QString("unmapped") // extended address is not mapped
@@ -326,12 +355,15 @@ void TestExpectationContact::verify(const QContact &contact)
                                   params);
                 nMatchedField++;
             }
+#ifdef USING_QTPIM
+            else if (detail.type() ==QContactEmailAddress::Type) {
+#else
             else if (detail.definitionName() == "EmailAddress") {
+#endif
                 QContactEmailAddress emailAddress = static_cast<QContactEmailAddress >(detail);
                 verifyContactInfo("email", QStringList() << emailAddress.emailAddress(), params);
                 nMatchedField++;
             }
-#endif
         }
 
         if (mContactInfo != NULL) {

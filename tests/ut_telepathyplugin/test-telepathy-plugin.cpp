@@ -47,6 +47,10 @@
 #include "buddymanagementinterface.h"
 #include "debug.h"
 
+#ifdef USING_QTPIM
+const int QContactOnlineAccount__FieldAccountPath = (QContactOnlineAccount::FieldSubTypes+1);
+#endif
+
 TestTelepathyPlugin::TestTelepathyPlugin(QObject *parent) : Test(parent),
         mNOnlyLocalContacts(0), mCheckLeakedResources(true)
 {
@@ -615,7 +619,7 @@ void TestTelepathyPlugin::testBug253679()
     QContactOnlineAccount onlineAccount;
     onlineAccount.setAccountUri(id);
 #ifdef USING_QTPIM
-    // TODO
+    onlineAccount.setValue(QContactOnlineAccount__FieldAccountPath, QLatin1String(ACCOUNT_PATH));
 #else
     onlineAccount.setValue(QLatin1String("AccountPath"), QLatin1String(ACCOUNT_PATH));
 #endif
