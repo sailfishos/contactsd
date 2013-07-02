@@ -945,7 +945,7 @@ CDTpContact::Changes updateAccountDetails(QContact &self, QContactOnlineAccount 
     CDTpContact::Changes selfChanges = 0;
 
     const QString accountPath(imAccount(accountWrapper));
-    debug() << "Update account" << accountPath;
+    debug() << SRC_LOC << "Update account" << accountPath;
 
     Tp::AccountPtr account = accountWrapper->account();
 
@@ -960,13 +960,14 @@ CDTpContact::Changes updateAccountDetails(QContact &self, QContactOnlineAccount 
     }
     if ((changes & CDTpAccount::Nickname) ||
         (changes & CDTpAccount::DisplayName)) {
-        const QString displayName(account->displayName());
         const QString nickname(account->nickname());
+        const QString displayName(account->displayName());
 
-        if (displayName.isEmpty()) {
-            presence.setNickname(displayName);
-        } else if (nickname.isEmpty()) {
+        // Nickname takes precedence (according to test expectations...)
+        if (!nickname.isEmpty()) {
             presence.setNickname(nickname);
+        } else if (!displayName.isEmpty()) {
+            presence.setNickname(displayName);
         } else {
             presence.setNickname(QString());
         }
