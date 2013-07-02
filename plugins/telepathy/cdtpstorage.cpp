@@ -2013,7 +2013,7 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper, const QList
         QHash<QString, QContact>::Iterator existing = existingContacts.find(address);
         if (existing == existingContacts.end()) {
             warning() << SRC_LOC << "No contact found for address:" << address;
-            continue;
+            existing = existingContacts.insert(address, QContact());
         }
 
         updateContactChanges(contactWrapper, CDTpContact::Added | CDTpContact::Information, *existing, &saveList, &removeList);
