@@ -978,7 +978,9 @@ CDTpContact::Changes updateAccountDetails(QContact &self, QContactOnlineAccount 
         const QString avatarPath(saveAccountAvatar(accountWrapper));
 
         QContactAvatar avatar(findAvatarForAccount(self, qcoa));
-        avatar.setLinkedDetailUris(qcoa.detailUri());
+        if (!avatar.isEmpty()) {
+            avatar.setLinkedDetailUris(qcoa.detailUri());
+        }
 
         if (avatarPath.isEmpty()) {
             if (!avatar.isEmpty()) {
