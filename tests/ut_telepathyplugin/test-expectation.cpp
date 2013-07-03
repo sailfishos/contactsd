@@ -131,9 +131,23 @@ void TestFetchContacts::onContactsFetched()
 
 void TestExpectationInit::verify(Event event, const QList<QContact> &contacts)
 {
-    QCOMPARE(event, EventChanged);
-    QCOMPARE(contacts.count(), 1);
-    QCOMPARE(apiId(contacts[0]), contactManager()->selfContactId());
+    if (event != EventChanged)
+        return;
+
+    QVERIFY(contacts.count() >= 1);
+
+    QList<ContactIdType> changedIds;
+    Q_FOREACH (const QContact &contact, contacts)
+        changedIds.append(apiId(contact));
+    QVERIFY(changedIds.contains(contactManager()->selfContactId()));
+    emitFinished();
+}
+
+void TestExpectationInit::verify(Event event, const QList<ContactIdType> &contactIds, QContactManager::Error error)
+{
+    QCOMPARE(event, EventRemoved);
+    QCOMPARE(contactIds.count(), 1);
+    QCOMPARE(error, QContactManager::DoesNotExistError);
     emitFinished();
 }
 
@@ -157,7 +171,9 @@ void TestExpectationCleanup::verify(Event event, const QList<QContact> &contacts
         }
 
         QContactSyncTarget detail = contact.detail<QContactSyncTarget>();
+#ifndef USING_QTPIM
         QCOMPARE(detail.syncTarget(), QLatin1String("addressbook"));
+#endif
         mNContacts--;
     }
 
@@ -191,17 +207,25 @@ TestExpectationContact::TestExpectationContact(Event event, QString accountUri):
 
 void TestExpectationContact::verify(Event event, const QList<QContact> &contacts)
 {
-    QCOMPARE(event, mEvent);
-    QCOMPARE(contacts.count(), 1);
-    mContact = contacts[0];
-    verify(contacts[0]);
+    if (event != mEvent)
+        return;
+
+    QVERIFY(contacts.count() >= 1);
+
+    mContact = QContact();
+    Q_FOREACH (const QContact &contact, contacts) {
+        if (mSyncTarget.isEmpty() || mSyncTarget == contact.detail<QContactSyncTarget>().syncTarget()) {
+            mContact = contact;
+        }
+    }
+    verify(mContact);
     emitFinished();
 }
 
 void TestExpectationContact::verify(Event event, const QList<ContactIdType> &contactIds, QContactManager::Error error)
 {
     QCOMPARE(event, EventRemoved);
-    QCOMPARE(contactIds.count(), 1);
+    QVERIFY(contactIds.count() >= 1);
     QCOMPARE(error, QContactManager::DoesNotExistError);
     emitFinished();
 }
@@ -346,7 +370,6 @@ void TestExpectationContact::verify(const QContact &contact)
 #endif
                 QContactAddress address = static_cast<QContactAddress>(detail);
                 verifyContactInfo("adr", QStringList() << address.postOfficeBox()
-                                                       << QString("unmapped") // extended address is not mapped
                                                        << address.street()
                                                        << address.locality()
                                                        << address.region()
@@ -377,7 +400,11 @@ void TestExpectationContact::verify(const QContact &contact)
 
     if (mFlags & VerifyGenerator) {
         QContactSyncTarget detail = contact.detail<QContactSyncTarget>();
-        QCOMPARE(detail.syncTarget(), mGenerator);
+#ifdef USING_QTPIM
+        QVERIFY((detail.syncTarget() == mGenerator) || (detail.syncTarget() == "aggregate"));
+#else
+        QCOMPARE(detail.syncTarget() == mGenerator);
+#endif
     }
 }
 
@@ -460,25 +487,26 @@ TestExpectationDisconnect::TestExpectationDisconnect(int nContacts) :
 
 void TestExpectationDisconnect::verify(Event event, const QList<QContact> &contacts)
 {
-    Q_FOREACH (const QContact contact, contacts) {
-        if (apiId(contact) == contactManager()->selfContactId()) {
-            QCOMPARE(event, EventChanged);
-            verifyPresence(TP_TESTS_CONTACTS_CONNECTION_STATUS_OFFLINE);
-            mSelfChanged = true;
+    Q_FOREACH (const QContact &contact, contacts) {
+#ifdef USING_QTPIM
+        if (contact.detail<QContactSyncTarget>().syncTarget() != "aggregate") {
             mNContacts--;
         } else {
-            // Ignore EventChanged events, we want to check that we had a real
-            // tagged update here (for each contact we'll get both an EventChanged
-            // and an EventPresenceChanged
-            if (event == EventChanged) {
-                continue;
+#endif
+            if (apiId(contact) == contactManager()->selfContactId()) {
+                QCOMPARE(event, EventChanged);
+                verifyPresence(TP_TESTS_CONTACTS_CONNECTION_STATUS_OFFLINE);
+                mSelfChanged = true;
+                mNContacts--;
+            } else {
+                QCOMPARE(event, EventChanged);
+                verifyPresence(TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN);
+                mNContacts--;
             }
-
-            QCOMPARE(event, EventPresenceChanged);
-            verifyPresence(TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN);
-            mNContacts--;
+            TestExpectationContact::verify(contact);
+#ifdef USING_QTPIM
         }
-        TestExpectationContact::verify(contact);
+#endif
     }
 
     QVERIFY(mNContacts >= 0);
