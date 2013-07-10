@@ -8,11 +8,6 @@ CONFIG += link_pkgconfig
 PKGCONFIG += Qt5Contacts Qt5Versit qofono-qt5
 DEFINES *= USING_QTPIM
 
-CONFIG(coverage):{
-QMAKE_CXXFLAGS += -c -g  --coverage -ftest-coverage -fprofile-arcs
-LIBS += -lgcov
-}
-
 DEFINES += QT_NO_CAST_TO_ASCII QT_NO_CAST_FROM_ASCII
 
 INCLUDEPATH += $$TOP_SOURCEDIR/src

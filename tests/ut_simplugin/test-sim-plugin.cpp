@@ -85,6 +85,8 @@ void TestSimPlugin::testAdd()
     QCOMPARE(simContacts.count(), 1);
     QCOMPARE(simContacts.at(0).detail<QContactNickname>().nickname(), QStringLiteral("Forrest Gump"));
     QCOMPARE(simContacts.at(0).detail<QContactPhoneNumber>().number(), QStringLiteral("(404) 555-1212"));
+    QVERIFY(simContacts.at(0).detail<QContactPhoneNumber>().contexts().contains(QContactDetail::ContextHome));
+    QVERIFY(simContacts.at(0).detail<QContactPhoneNumber>().subTypes().contains(QContactPhoneNumber::SubTypeVoice));
 }
 
 void TestSimPlugin::testAppend()
@@ -210,6 +212,121 @@ void TestSimPlugin::testAddAndRemove()
     QCOMPARE(simContacts.at(0).detail<QContactNickname>().nickname(), QStringLiteral("Forrest Whittaker"));
 }
 
+void TestSimPlugin::testChangedNumber()
+{
+    QContactManager &m(m_controller->contactManager());
+
+    QCOMPARE(getAllSimContacts(m).count(), 0);
+    QCOMPARE(m_controller->busy(), false);
+
+    m_controller->simPresenceChanged(true);
+    QCOMPARE(m_controller->busy(), false);
+
+    m_controller->vcardDataAvailable(QStringLiteral(
+"BEGIN:VCARD\n"
+"VERSION:3.0\n"
+"FN:Forrest Gump\n"
+"TEL;TYPE=HOME,VOICE:(404) 555-1212\n"
+"END:VCARD\n"));
+    QCOMPARE(m_controller->busy(), true);
+    QTRY_VERIFY(m_controller->busy() == false);
+
+    QList<QContact> simContacts(getAllSimContacts(m));
+    QCOMPARE(simContacts.count(), 1);
+    QCOMPARE(simContacts.at(0).detail<QContactNickname>().nickname(), QStringLiteral("Forrest Gump"));
+    QCOMPARE(simContacts.at(0).detail<QContactPhoneNumber>().number(), QStringLiteral("(404) 555-1212"));
+    QVERIFY(simContacts.at(0).detail<QContactPhoneNumber>().contexts().contains(QContactDetail::ContextHome));
+    QVERIFY(simContacts.at(0).detail<QContactPhoneNumber>().subTypes().contains(QContactPhoneNumber::SubTypeVoice));
+
+    // Change the number and verify that it is updated in the database
+    m_controller->vcardDataAvailable(QStringLiteral(
+"BEGIN:VCARD\n"
+"VERSION:3.0\n"
+"FN:Forrest Gump\n"
+"TEL;TYPE=WORK,VIDEO:(404) 555-6789\n"
+"END:VCARD\n"));
+    QCOMPARE(m_controller->busy(), true);
+    QTRY_VERIFY(m_controller->busy() == false);
+
+    simContacts = getAllSimContacts(m);
+    QCOMPARE(simContacts.count(), 1);
+    QCOMPARE(simContacts.at(0).detail<QContactNickname>().nickname(), QStringLiteral("Forrest Gump"));
+    QCOMPARE(simContacts.at(0).detail<QContactPhoneNumber>().number(), QStringLiteral("(404) 555-6789"));
+    QVERIFY(simContacts.at(0).detail<QContactPhoneNumber>().contexts().contains(QContactDetail::ContextWork));
+    QVERIFY(simContacts.at(0).detail<QContactPhoneNumber>().subTypes().contains(QContactPhoneNumber::SubTypeVideo));
+}
+
+void TestSimPlugin::testMultipleNumbers()
+{
+    QContactManager &m(m_controller->contactManager());
+
+    QCOMPARE(getAllSimContacts(m).count(), 0);
+    QCOMPARE(m_controller->busy(), false);
+
+    m_controller->simPresenceChanged(true);
+    QCOMPARE(m_controller->busy(), false);
+
+    // Add a contact with two numbers
+    m_controller->vcardDataAvailable(QStringLiteral(
+"BEGIN:VCARD\n"
+"VERSION:3.0\n"
+"FN:Forrest Gump\n"
+"TEL;TYPE=HOME,VOICE:(404) 555-1212\n"
+"TEL;TYPE=WORK,VIDEO:(404) 555-6789\n"
+"END:VCARD\n"));
+    QCOMPARE(m_controller->busy(), true);
+    QTRY_VERIFY(m_controller->busy() == false);
+
+    QList<QContact> simContacts(getAllSimContacts(m));
+    QCOMPARE(simContacts.count(), 1);
+    QCOMPARE(simContacts.at(0).detail<QContactNickname>().nickname(), QStringLiteral("Forrest Gump"));
+    QCOMPARE(simContacts.at(0).details<QContactPhoneNumber>().count(), 2);
+    foreach (const QContactPhoneNumber &number, simContacts.at(0).details<QContactPhoneNumber>()) {
+        if (number.number() == QStringLiteral("(404) 555-1212")) {
+            QVERIFY(number.contexts().contains(QContactDetail::ContextHome));
+            QVERIFY(number.subTypes().contains(QContactPhoneNumber::SubTypeVoice));
+        } else {
+            QCOMPARE(number.number(), QStringLiteral("(404) 555-6789"));
+            QVERIFY(number.contexts().contains(QContactDetail::ContextWork));
+            QVERIFY(number.subTypes().contains(QContactPhoneNumber::SubTypeVideo));
+        }
+    }
+
+    QContactId existingId = simContacts.at(0).id();
+
+    // Change the set of numbers
+    m_controller->vcardDataAvailable(QStringLiteral(
+"BEGIN:VCARD\n"
+"VERSION:3.0\n"
+"FN:Forrest Gump\n"
+"TEL;TYPE=WORK,VIDEO:(404) 555-6789\n"
+"TEL;TYPE=HOME,CELL:(404) 555-5555\n"
+"TEL;TYPE=WORK,VOICE:(404) 555-4321\n"
+"END:VCARD\n"));
+    QCOMPARE(m_controller->busy(), true);
+    QTRY_VERIFY(m_controller->busy() == false);
+
+    // Verify that numbers were added and removed, but the contact was not recreated
+    simContacts = getAllSimContacts(m);
+    QCOMPARE(simContacts.count(), 1);
+    QCOMPARE(simContacts.at(0).id(), existingId);
+    QCOMPARE(simContacts.at(0).detail<QContactNickname>().nickname(), QStringLiteral("Forrest Gump"));
+    QCOMPARE(simContacts.at(0).details<QContactPhoneNumber>().count(), 3);
+    foreach (const QContactPhoneNumber &number, simContacts.at(0).details<QContactPhoneNumber>()) {
+        if (number.number() == QStringLiteral("(404) 555-6789")) {
+            QVERIFY(number.contexts().contains(QContactDetail::ContextWork));
+            QVERIFY(number.subTypes().contains(QContactPhoneNumber::SubTypeVideo));
+        } else if (number.number() == QStringLiteral("(404) 555-5555")) {
+            QVERIFY(number.contexts().contains(QContactDetail::ContextHome));
+            QVERIFY(number.subTypes().contains(QContactPhoneNumber::SubTypeMobile));
+        } else {
+            QCOMPARE(number.number(), QStringLiteral("(404) 555-4321"));
+            QVERIFY(number.contexts().contains(QContactDetail::ContextWork));
+            QVERIFY(number.subTypes().contains(QContactPhoneNumber::SubTypeVoice));
+        }
+    }
+}
+
 void TestSimPlugin::testEmpty()
 {
     QContactManager &m(m_controller->contactManager());
@@ -230,7 +347,7 @@ void TestSimPlugin::testEmpty()
     QCOMPARE(getAllSimContacts(m).count(), 1);
     QCOMPARE(m_controller->busy(), false);
 
-    // Process a VCard set not containing Forrest Gump but another contact
+    // Process an empty VCard
     m_controller->simPresenceChanged(true);
     m_controller->vcardDataAvailable(QString());
     QCOMPARE(m_controller->busy(), true);

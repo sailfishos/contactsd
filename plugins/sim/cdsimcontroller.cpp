@@ -19,6 +19,7 @@
 
 #include <QContactDetailFilter>
 #include <QContactNickname>
+#include <QContactPhoneNumber>
 #include <QContactSyncTarget>
 
 #include <QVersitContactImporter>
@@ -50,9 +51,9 @@ CDSimController::CDSimController(QObject *parent)
     connect(&m_fetchIdsRequest, SIGNAL(stateChanged(QContactAbstractRequest::State)),
             this, SLOT(requestStateChanged(QContactAbstractRequest::State)));
 
-    // Fetch only the nickname details for imported contacts
+    // Fetch only the nickname and phone details for imported contacts
     QContactFetchHint hint;
-    hint.setDetailTypesHint(QList<QContactDetail::DetailType>() << QContactNickname::Type);
+    hint.setDetailTypesHint(QList<QContactDetail::DetailType>() << QContactNickname::Type << QContactPhoneNumber::Type);
     hint.setOptimizationHints(QContactFetchHint::NoRelationships | QContactFetchHint::NoActionPreferences | QContactFetchHint::NoBinaryBlobs);
     m_fetchRequest.setFetchHint(hint);
 
@@ -134,6 +135,7 @@ void CDSimController::simPresenceChanged(bool present)
             // Find any contacts that we need to remove
             if (!m_fetchIdsRequest.isActive()) {
                 m_contactIds.clear();
+                m_contacts.clear();
                 m_fetchIdsRequest.start();
                 setBusy(true);
             }
@@ -175,6 +177,7 @@ void CDSimController::readerStateChanged(QVersitReader::State state)
 
     // Fetch the set of SIM contact IDs
     m_contactIds.clear();
+    m_contacts.clear();
     m_fetchIdsRequest.start();
     setBusy(true);
 }
@@ -201,7 +204,6 @@ void CDSimController::requestStateChanged(QContactAbstractRequest::State state)
         if (m_simPresent) {
             if (!m_contactIds.isEmpty()) {
                 // Fetch the contact details so we can compare with the SIM contacts
-                m_contacts.clear();
                 m_fetchRequest.setIds(m_contactIds.toList());
                 m_fetchRequest.start();
             } else {
@@ -244,11 +246,11 @@ void CDSimController::ensureSimContactsPresent()
 {
     // Ensure all contacts from the SIM are present in the store
 
-    QMap<QString, QContactId> existingContacts;
+    QMap<QString, QContact> existingContacts;
     foreach (const QContact &contact, m_contacts) {
         // Identify imported SIM contacts by their nickname record
         const QString nickname(contact.detail<QContactNickname>().nickname());
-        existingContacts.insert(nickname, contact.id());
+        existingContacts.insert(nickname, contact);
     }
 
     QList<QContact> importContacts;
@@ -257,8 +259,42 @@ void CDSimController::ensureSimContactsPresent()
         // SIM imports have their name in the display label
         QContactDisplayLabel displayLabel = simContact.detail<QContactDisplayLabel>();
 
-        QMap<QString, QContactId>::iterator it = existingContacts.find(displayLabel.label());
+        QMap<QString, QContact>::iterator it = existingContacts.find(displayLabel.label());
         if (it != existingContacts.end()) {
+            // Ensure this contact has the right phone numbers
+            QContact &dbContact(*it);
+
+            QSet<QString> existingNumbers;
+            foreach (const QContactPhoneNumber &phoneNumber, dbContact.details<QContactPhoneNumber>()) {
+                existingNumbers.insert(phoneNumber.number());
+            }
+
+            bool modified = false;
+
+            foreach (QContactPhoneNumber phoneNumber, simContact.details<QContactPhoneNumber>()) {
+                QSet<QString>::iterator nit = existingNumbers.find(phoneNumber.number());
+                if (nit != existingNumbers.end()) {
+                    existingNumbers.erase(nit);
+                } else {
+                    // Add this number to the storedContact
+                    dbContact.saveDetail(&phoneNumber);
+                    modified = true;
+                }
+            }
+
+            // Remove any obsolete numbers
+            foreach (QContactPhoneNumber phoneNumber, dbContact.details<QContactPhoneNumber>()) {
+                if (existingNumbers.contains(phoneNumber.number())) {
+                    dbContact.removeDetail(&phoneNumber);
+                    modified = true;
+                }
+            }
+
+            if (modified) {
+                // Add the modified contact to the import set
+                importContacts.append(dbContact);
+            }
+
             existingContacts.erase(it);
         } else {
             // We need to import this contact
@@ -286,7 +322,12 @@ void CDSimController::ensureSimContactsPresent()
 
     if (!existingContacts.isEmpty()) {
         // Remove any imported contacts no longer on the SIM
-        m_removeRequest.setContactIds(existingContacts.values());
+        QList<QContactId> obsoleteIds;
+        foreach (const QContact &contact, existingContacts.values()) {
+            obsoleteIds.append(contact.id());
+        }
+
+        m_removeRequest.setContactIds(obsoleteIds);
         m_removeRequest.start();
     }
 
