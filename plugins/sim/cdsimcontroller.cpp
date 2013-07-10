@@ -95,6 +95,7 @@ void CDSimController::setSyncTarget(const QString &syncTarget)
 
 void CDSimController::setModemPath(const QString &path)
 {
+    qDebug() << "Using modem path:" << path;
     m_modemPath = path;
     m_simManager.setModemPath(m_modemPath);
 
@@ -117,27 +118,30 @@ void CDSimController::setBusy(bool busy)
 
 void CDSimController::simPresenceChanged(bool present)
 {
-    m_simPresent = present;
+    if (m_simPresent != present) {
+        qDebug() << "SIM presence changed:" << present;
+        m_simPresent = present;
 
-    if (m_syncTarget.isEmpty()) {
-        qWarning() << "No sync target is configured";
-    } else {
-        if (m_simPresent) {
-            if (m_modemPath.isEmpty()) {
-                qWarning() << "No modem path is configured";
-            } else {
-                // Read all contacts from the SIM
-                m_phonebook.setModemPath(m_modemPath);
-                m_phonebook.beginImport();
-                setBusy(true);
-            }
+        if (m_syncTarget.isEmpty()) {
+            qWarning() << "No sync target is configured";
         } else {
-            // Find any contacts that we need to remove
-            if (!m_fetchIdsRequest.isActive()) {
-                m_contactIds.clear();
-                m_contacts.clear();
-                m_fetchIdsRequest.start();
-                setBusy(true);
+            if (m_simPresent) {
+                if (m_modemPath.isEmpty()) {
+                    qWarning() << "No modem path is configured";
+                } else {
+                    // Read all contacts from the SIM
+                    m_phonebook.setModemPath(m_modemPath);
+                    m_phonebook.beginImport();
+                    setBusy(true);
+                }
+            } else {
+                // Find any contacts that we need to remove
+                if (!m_fetchIdsRequest.isActive()) {
+                    m_contactIds.clear();
+                    m_contacts.clear();
+                    m_fetchIdsRequest.start();
+                    setBusy(true);
+                }
             }
         }
     }
