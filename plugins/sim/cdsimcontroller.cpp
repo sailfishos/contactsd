@@ -268,16 +268,29 @@ void CDSimController::ensureSimContactsPresent()
             // Ensure this contact has the right phone numbers
             QContact &dbContact(*it);
 
-            QSet<QString> existingNumbers;
+            QMap<QString, QContactPhoneNumber> existingNumbers;
             foreach (const QContactPhoneNumber &phoneNumber, dbContact.details<QContactPhoneNumber>()) {
-                existingNumbers.insert(phoneNumber.number());
+                existingNumbers.insert(phoneNumber.number(), phoneNumber);
             }
 
             bool modified = false;
 
             foreach (QContactPhoneNumber phoneNumber, simContact.details<QContactPhoneNumber>()) {
-                QSet<QString>::iterator nit = existingNumbers.find(phoneNumber.number());
+                QMap<QString, QContactPhoneNumber>::iterator nit = existingNumbers.find(phoneNumber.number());
                 if (nit != existingNumbers.end()) {
+                    // Ensure the context and sub-type are correct
+                    QContactPhoneNumber &existingNumber(*nit);
+                    if (existingNumber.contexts() != phoneNumber.contexts()) {
+                        existingNumber.setContexts(phoneNumber.contexts());
+                        dbContact.saveDetail(&existingNumber);
+                        modified = true;
+                    }
+                    if (existingNumber.subTypes() != phoneNumber.subTypes()) {
+                        existingNumber.setSubTypes(phoneNumber.subTypes());
+                        dbContact.saveDetail(&existingNumber);
+                        modified = true;
+                    }
+
                     existingNumbers.erase(nit);
                 } else {
                     // Add this number to the storedContact

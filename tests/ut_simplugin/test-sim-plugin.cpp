@@ -238,7 +238,9 @@ void TestSimPlugin::testChangedNumber()
     QVERIFY(simContacts.at(0).detail<QContactPhoneNumber>().contexts().contains(QContactDetail::ContextHome));
     QVERIFY(simContacts.at(0).detail<QContactPhoneNumber>().subTypes().contains(QContactPhoneNumber::SubTypeVoice));
 
-    // Change the number and verify that it is updated in the database
+    QContactId existingId = simContacts.at(0).id();
+
+    // Change the number and verify that it is updated in the database, but the contact was not recreated
     m_controller->vcardDataAvailable(QStringLiteral(
 "BEGIN:VCARD\n"
 "VERSION:3.0\n"
@@ -250,10 +252,48 @@ void TestSimPlugin::testChangedNumber()
 
     simContacts = getAllSimContacts(m);
     QCOMPARE(simContacts.count(), 1);
+    QCOMPARE(simContacts.at(0).id(), existingId);
     QCOMPARE(simContacts.at(0).detail<QContactNickname>().nickname(), QStringLiteral("Forrest Gump"));
     QCOMPARE(simContacts.at(0).detail<QContactPhoneNumber>().number(), QStringLiteral("(404) 555-6789"));
     QVERIFY(simContacts.at(0).detail<QContactPhoneNumber>().contexts().contains(QContactDetail::ContextWork));
     QVERIFY(simContacts.at(0).detail<QContactPhoneNumber>().subTypes().contains(QContactPhoneNumber::SubTypeVideo));
+
+    // Change the context and verify that it is updated in the database
+    m_controller->vcardDataAvailable(QStringLiteral(
+"BEGIN:VCARD\n"
+"VERSION:3.0\n"
+"FN:Forrest Gump\n"
+"TEL;TYPE=HOME,VIDEO:(404) 555-6789\n"
+"END:VCARD\n"));
+    QCOMPARE(m_controller->busy(), true);
+    QTRY_VERIFY(m_controller->busy() == false);
+
+    simContacts = getAllSimContacts(m);
+    QCOMPARE(simContacts.count(), 1);
+    QCOMPARE(simContacts.at(0).id(), existingId);
+    QCOMPARE(simContacts.at(0).detail<QContactNickname>().nickname(), QStringLiteral("Forrest Gump"));
+    QCOMPARE(simContacts.at(0).detail<QContactPhoneNumber>().number(), QStringLiteral("(404) 555-6789"));
+    QVERIFY(simContacts.at(0).detail<QContactPhoneNumber>().contexts().contains(QContactDetail::ContextHome));
+    QVERIFY(simContacts.at(0).detail<QContactPhoneNumber>().subTypes().contains(QContactPhoneNumber::SubTypeVideo));
+
+    // Change the subtype and verify that it is updated in the database
+    m_controller->vcardDataAvailable(QStringLiteral(
+"BEGIN:VCARD\n"
+"VERSION:3.0\n"
+"FN:Forrest Gump\n"
+"TEL;TYPE=HOME,VOICE,CELL:(404) 555-6789\n"
+"END:VCARD\n"));
+    QCOMPARE(m_controller->busy(), true);
+    QTRY_VERIFY(m_controller->busy() == false);
+
+    simContacts = getAllSimContacts(m);
+    QCOMPARE(simContacts.count(), 1);
+    QCOMPARE(simContacts.at(0).id(), existingId);
+    QCOMPARE(simContacts.at(0).detail<QContactNickname>().nickname(), QStringLiteral("Forrest Gump"));
+    QCOMPARE(simContacts.at(0).detail<QContactPhoneNumber>().number(), QStringLiteral("(404) 555-6789"));
+    QVERIFY(simContacts.at(0).detail<QContactPhoneNumber>().contexts().contains(QContactDetail::ContextHome));
+    QVERIFY(simContacts.at(0).detail<QContactPhoneNumber>().subTypes().contains(QContactPhoneNumber::SubTypeVoice));
+    QVERIFY(simContacts.at(0).detail<QContactPhoneNumber>().subTypes().contains(QContactPhoneNumber::SubTypeMobile));
 }
 
 void TestSimPlugin::testMultipleNumbers()
