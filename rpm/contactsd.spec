@@ -24,6 +24,8 @@ BuildRequires: pkgconfig(telepathy-glib)
 BuildRequires: pkgconfig(qofono-qt5)
 BuildRequires: pkgconfig(qtcontacts-sqlite-qt5-extensions)
 BuildRequires: pkgconfig(qt5-boostable)
+BuildRequires: qt5-qttools
+BuildRequires: qt5-qttools-linguist
 Requires: mapplauncherd-qt5
 
 %description
@@ -93,7 +95,7 @@ make %{?_smp_mflags}
 
 
 %install
-make INSTALL_ROOT=%{buildroot} install
+%qmake5_install
 
 mkdir -p %{buildroot}%{_libdir}/systemd/user/post-user-session.target.wants
 ln -s ../contactsd.service %{buildroot}%{_libdir}/systemd/user/post-user-session.target.wants/
