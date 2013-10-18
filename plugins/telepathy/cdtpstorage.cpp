@@ -876,23 +876,28 @@ CDTpContact::Changes updateAccountDetails(QContact &self, QContactOnlineAccount 
             selfChanges |= CDTpContact::Presence;
         }
     }
-    if ((changes & CDTpAccount::Nickname) ||
-        (changes & CDTpAccount::DisplayName)) {
+    if (changes & CDTpAccount::Nickname) {
         const QString nickname(account->nickname());
+
+        if (presence.nickname() != nickname) {
+            presence.setNickname(nickname);
+            selfChanges |= CDTpContact::Alias;
+        }
+    }
+    if (changes & CDTpAccount::DisplayName) {
         const QString displayName(account->displayName());
 
-        // Nickname takes precedence (according to test expectations...)
-        QString newNickname;
-        if (!nickname.isEmpty()) {
-            newNickname = nickname;
-        } else if (!displayName.isEmpty()) {
-            newNickname = displayName;
+        if (qcoa.value(QContactOnlineAccount__FieldAccountDisplayName) != displayName) {
+            qcoa.setValue(QContactOnlineAccount__FieldAccountDisplayName, displayName);
+            selfChanges |= CDTpContact::Capabilities;
         }
+    }
+    if (changes & CDTpAccount::StorageInfo) {
+        const QString providerDisplayName(accountWrapper->storageInfo().value(QLatin1String("providerDisplayName")).toString());
 
-        if (presence.nickname() != newNickname) {
-            presence.setNickname(newNickname);
-
-            selfChanges |= CDTpContact::Alias;
+        if (qcoa.value(QContactOnlineAccount__FieldServiceProviderDisplayName) != providerDisplayName) {
+            qcoa.setValue(QContactOnlineAccount__FieldServiceProviderDisplayName, providerDisplayName);
+            selfChanges |= CDTpContact::Capabilities;
         }
     }
     if (changes & CDTpAccount::Avatar) {
@@ -1727,6 +1732,27 @@ CDTpStorage::~CDTpStorage()
 {
 }
 
+/* Set generic account properties of a QContactOnlineAccount. Does not set:
+ * detailUri
+ * linkedDetailUris (i.e. presence)
+ * enabled
+ * accountUri
+ */
+static void updateContactAccount(QContactOnlineAccount &qcoa, CDTpAccountPtr accountWrapper)
+{
+    Tp::AccountPtr account = accountWrapper->account();
+
+    qcoa.setValue(QContactOnlineAccount__FieldAccountPath, imAccount(account));
+    qcoa.setProtocol(protocolType(account->protocolName()));
+    qcoa.setServiceProvider(account->serviceName());
+
+    QString providerDisplayName = accountWrapper->storageInfo().value(QLatin1String("providerDisplayName")).toString();
+    qcoa.setValue(QContactOnlineAccount__FieldServiceProviderDisplayName, providerDisplayName);
+    qcoa.setValue(QContactOnlineAccount__FieldAccountDisplayName, account->displayName());
+
+    addIconPath(qcoa, account);
+}
+
 void CDTpStorage::addNewAccount(QContact &self, CDTpAccountPtr accountWrapper)
 {
     Tp::AccountPtr account = accountWrapper->account();
@@ -1739,17 +1765,12 @@ void CDTpStorage::addNewAccount(QContact &self, CDTpAccountPtr accountWrapper)
 
     // Create a new QCOA for this account
     QContactOnlineAccount newAccount;
+    updateContactAccount(newAccount, accountWrapper);
 
     newAccount.setDetailUri(accountAddress);
     newAccount.setLinkedDetailUris(accountPresence);
-
-    newAccount.setValue(QContactOnlineAccount__FieldAccountPath, accountPath);
     newAccount.setValue(QContactOnlineAccount__FieldEnabled, asString(account->isEnabled()));
     newAccount.setAccountUri(account->normalizedName());
-    newAccount.setProtocol(protocolType(account->protocolName()));
-    newAccount.setServiceProvider(account->serviceName());
-
-    addIconPath(newAccount, account);
 
     // Add the new account to the self contact
     if (!storeContactDetail(self, newAccount, SRC_LOC)) {
@@ -1833,17 +1854,12 @@ bool CDTpStorage::initializeNewContact(QContact &newContact, CDTpAccountPtr acco
 
     // Create a new QCOA for this contact
     QContactOnlineAccount newAccount;
+    updateContactAccount(newAccount, accountWrapper);
 
     newAccount.setDetailUri(contactAddress);
     newAccount.setLinkedDetailUris(contactPresence);
-
-    newAccount.setValue(QContactOnlineAccount__FieldAccountPath, accountPath);
     newAccount.setValue(QContactOnlineAccount__FieldEnabled, asString(true));
     newAccount.setAccountUri(contactId);
-    newAccount.setProtocol(protocolType(account->protocolName()));
-    newAccount.setServiceProvider(account->serviceName());
-
-    addIconPath(newAccount, account);
 
     // Add the new account to the contact
     if (!storeContactDetail(newContact, newAccount, SRC_LOC)) {
@@ -2101,7 +2117,7 @@ void CDTpStorage::syncAccounts(const QList<CDTpAccountPtr> &accounts)
 
     // Find the list of paths for the accounts we now have
     QStringList accountPaths = forEachItem(accounts, extractAccountPath);
-    
+
     QSet<int> existingIndices;
     QSet<QString> removalPaths;
 
