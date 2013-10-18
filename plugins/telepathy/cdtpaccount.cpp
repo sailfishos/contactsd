@@ -25,6 +25,7 @@
 #include <TelepathyQt/PendingContacts>
 #include <TelepathyQt/PendingOperation>
 #include <TelepathyQt/PendingReady>
+#include <TelepathyQt/PendingVariant>
 #include <TelepathyQt/Profile>
 
 #include "cdtpaccount.h"
@@ -71,6 +72,12 @@ CDTpAccount::CDTpAccount(const Tp::AccountPtr &account, const QStringList &toAvo
     }
 
     setConnection(mAccount->connection());
+
+    // Interface instance is owned and freed by mAccount
+    mAccountStorage = mAccount->interface<Tp::Client::AccountInterfaceStorageInterface>();
+    connect(mAccountStorage->requestPropertyStorageSpecificInformation(),
+            SIGNAL(finished(Tp::PendingOperation*)),
+            SLOT(onRequestedStorageSpecificInformation(Tp::PendingOperation*)));
 
     mDisconnectTimeout.setInterval(DisconnectGracePeriod);
     mDisconnectTimeout.setSingleShot(true);
@@ -420,5 +427,22 @@ void CDTpAccount::makeRosterCache()
 CDTpContactPtr CDTpAccount::contact(const QString &id) const
 {
     return mContacts.value(id);
+}
+
+QVariantMap CDTpAccount::storageInfo() const
+{
+    return mStorageInfo;
+}
+
+void CDTpAccount::onRequestedStorageSpecificInformation(Tp::PendingOperation *op)
+{
+    if (!op->isValid()) {
+        debug() << "Cannot get storage specific information for account" << mAccount->objectPath();
+        return;
+    }
+
+    QDBusArgument arg = static_cast<Tp::PendingVariant*>(op)->result().value<QDBusArgument>();
+    mStorageInfo = qdbus_cast<QVariantMap>(arg);
+    Q_EMIT changed(CDTpAccountPtr(this), StorageInfo);
 }
 

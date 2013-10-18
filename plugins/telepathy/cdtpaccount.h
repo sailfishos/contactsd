@@ -31,6 +31,7 @@
 #include <TelepathyQt/Contact>
 #include <TelepathyQt/Types>
 #include <TelepathyQt/PendingOperation>
+#include <TelepathyQt/AccountManager>
 
 #include "types.h"
 #include "cdtpcontact.h"
@@ -41,12 +42,13 @@ class CDTpAccount : public QObject, public Tp::RefCounted
 
 public:
     enum Change {
-        DisplayName = (1 << 0),
-        Nickname    = (1 << 1),
-        Presence    = (1 << 2),
-        Avatar      = (1 << 3),
-        Enabled     = (1 << 4),
-        All         = (1 << 5) -1
+        DisplayName  = (1 << 0),
+        Nickname     = (1 << 1),
+        Presence     = (1 << 2),
+        Avatar       = (1 << 3),
+        Enabled      = (1 << 4),
+        StorageInfo  = (1 << 5),
+        All          = (1 << 6) -1
     };
     Q_DECLARE_FLAGS(Changes, Change)
 
@@ -68,6 +70,8 @@ public:
     void emitSyncEnded(int contactsAdded, int contactsRemoved);
     QHash<QString, CDTpContact::Info> rosterCache() const;
     void setRosterCache(const QHash<QString, CDTpContact::Info> &rosterCache);
+
+    QVariantMap storageInfo() const;
 
 Q_SIGNALS:
     void changed(CDTpAccountPtr accountWrapper, CDTpAccount::Changes changes);
@@ -92,6 +96,7 @@ private Q_SLOTS:
     void onAllKnownContactsChanged(const Tp::Contacts &contactsAdded,
             const Tp::Contacts &contactsRemoved);
     void onDisconnectTimeout();
+    void onRequestedStorageSpecificInformation(Tp::PendingOperation *op);
 
 private:
     void setConnection(const Tp::ConnectionPtr &connection);
@@ -103,6 +108,8 @@ private:
 private:
     Tp::AccountPtr mAccount;
     Tp::ConnectionPtr mCurrentConnection;
+    Tp::Client::AccountInterfaceStorageInterface *mAccountStorage;
+    QVariantMap mStorageInfo;
     QHash<QString, CDTpContactPtr> mContacts;
     QHash<QString, CDTpContact::Info> mRosterCache;
     QStringList mContactsToAvoid;
