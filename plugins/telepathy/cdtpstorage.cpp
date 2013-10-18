@@ -1226,11 +1226,17 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
     }
     if (changes & CDTpContact::Capabilities) {
         QContactOnlineAccount qcoa = existing.detail<QContactOnlineAccount>();
-
+        CDTpAccountPtr accountWrapper = contactWrapper->accountWrapper();
+        const QString providerDisplayName(accountWrapper->storageInfo().value(QLatin1String("providerDisplayName")).toString());
         const QStringList newCapabilities(currentCapabilites(contact->capabilities(), contact->presence().type(), contactWrapper->accountWrapper()->account()));
 
-        if (qcoa.capabilities() != newCapabilities) {
+        if (qcoa.capabilities() != newCapabilities ||
+            qcoa.value(QContactOnlineAccount__FieldAccountDisplayName) != accountWrapper->account()->displayName() ||
+            qcoa.value(QContactOnlineAccount__FieldServiceProviderDisplayName) != providerDisplayName)
+        {
             qcoa.setCapabilities(newCapabilities);
+            qcoa.setValue(QContactOnlineAccount__FieldAccountDisplayName, accountWrapper->account()->displayName());
+            qcoa.setValue(QContactOnlineAccount__FieldServiceProviderDisplayName, providerDisplayName);
 
             if (!storeContactDetail(existing, qcoa, SRC_LOC)) {
                 warning() << SRC_LOC << "Unable to save capabilities to contact for:" << contactAddress;
@@ -1991,13 +1997,19 @@ void CDTpStorage::updateAccountChanges(QContact &self, QContactOnlineAccount &qc
         QHash<QString, CDTpContact::Changes> allChanges;
 
         // Update all contacts reported in the roster changes of this account
-        const QHash<QString, CDTpContact::Changes> changes = accountWrapper->rosterChanges();
-        QHash<QString, CDTpContact::Changes>::ConstIterator it = changes.constBegin(), end = changes.constEnd();
+        const QHash<QString, CDTpContact::Changes> rosterChanges = accountWrapper->rosterChanges();
+        QHash<QString, CDTpContact::Changes>::ConstIterator it = rosterChanges.constBegin(),
+                                                            end = rosterChanges.constEnd();
         for ( ; it != end; ++it) {
             const QString address = imAddress(accountPath, it.key());
+            CDTpContact::Changes flags = it.value() | CDTpContact::Presence;
+
+            // If account display name changes, update QCOA of all contacts
+            if (changes & CDTpAccount::DisplayName)
+                flags |= CDTpContact::Capabilities;
 
             // We always update contact presence since this method is called after a presence change
-            allChanges.insert(address, it.value() | CDTpContact::Presence);
+            allChanges.insert(address, flags);
         }
 
         QList<CDTpContactPtr> tpContacts(accountContacts(accountWrapper));
