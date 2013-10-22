@@ -899,6 +899,7 @@ void TestTelepathyPlugin::contactsChanged(const QList<ContactIdType>& contactIds
     Q_FOREACH (const ContactIdType &id, contactIds) {
         if (!mContactIds.contains(id)) {
             warning() << "Unknown contact ID changed:" << id;
+            mContactIds << id;
         }
     }
     verify(EventChanged, contactIds);
