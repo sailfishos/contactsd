@@ -26,6 +26,7 @@
 
 #include <QContactAddress>
 #include <QContactAvatar>
+#include <QContactNickname>
 #include <QContactEmailAddress>
 #include <QContactFetchByIdRequest>
 #include <QContactGlobalPresence>
@@ -246,12 +247,8 @@ void TestExpectationContact::verify(const QContact &contact)
     }
 
     if (mFlags & VerifyAlias) {
-#ifdef USING_QTPIM
-        QString label = contact.detail<QContactDisplayLabel>().label();
-#else
-        QString label = contact.displayLabel();
-#endif
-        QCOMPARE(label, mAlias);
+        QString nickname = contact.detail<QContactNickname>().nickname();
+        QCOMPARE(nickname, mAlias);
     }
 
     if (mFlags & VerifyPresence) {
