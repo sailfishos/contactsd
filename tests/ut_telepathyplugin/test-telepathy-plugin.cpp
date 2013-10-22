@@ -728,6 +728,7 @@ void TestTelepathyPlugin::testMergedContact()
     TestExpectationContactPtr exp4(new TestExpectationContact(EventChanged));
     exp4->verifyContactId(contact1);
     exp4->verifyPresence(presence);
+    exp4->skipUnlessGeneratorIs("telepathy");
     runExpectation(exp4);
 
 #if 0
