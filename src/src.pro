@@ -26,7 +26,7 @@ TARGET = contactsd
 VERSIONED_TARGET = $$TARGET-1.0
 
 QT += dbus
-QT += gui # for QDesktopServices
+QT -= gui
 
 system(qdbusxml2cpp -c ContactsImportProgressAdaptor -a contactsimportprogressadaptor.h:contactsimportprogressadaptor.cpp com.nokia.contacts.importprogress.xml)
 
