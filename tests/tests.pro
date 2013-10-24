@@ -23,9 +23,9 @@
 PACKAGENAME = contactsd
 
 TEMPLATE = subdirs
-CONFIG += ordered
-
 SUBDIRS += libtelepathy ut_birthdayplugin ut_telepathyplugin ut_simplugin
+
+ut_telepathyplugin.depends = libtelepathy
 
 UNIT_TESTS += ut_birthdayplugin ut_telepathyplugin ut_simplugin
 
