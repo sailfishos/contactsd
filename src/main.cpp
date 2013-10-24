@@ -24,6 +24,8 @@
 #include <QCoreApplication>
 #include <QDBusConnection>
 #include <QTimer>
+#include <QLocale>
+#include <QTranslator>
 
 #include <errno.h>
 #include <signal.h>
@@ -166,6 +168,16 @@ Q_DECL_EXPORT int main(int argc, char **argv)
 
     enableDebug(logConsole);
     debug() << "contactsd version" << VERSION << "started";
+
+    const QString translationPath(QString::fromLatin1(TRANSLATIONS_INSTALL_PATH));
+
+    QScopedPointer<QTranslator> engineeringEnglish(new QTranslator);
+    engineeringEnglish->load(QString::fromLatin1("contactsd_eng_en"), translationPath);
+    app.installTranslator(engineeringEnglish.data());
+
+    QScopedPointer<QTranslator> translator(new QTranslator);
+    translator->load(QLocale(), QString::fromLatin1("contactsd"), QString::fromLatin1("-"), translationPath);
+    app.installTranslator(translator.data());
 
     ContactsDaemon *daemon = new ContactsDaemon(&app);
     daemon->loadPlugins(plugins);

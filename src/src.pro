@@ -34,6 +34,9 @@ INCLUDEPATH += $$TOP_SOURCEDIR/lib
 LIBS += -export-dynamic
 DEFINES += ENABLE_DEBUG
 
+TRANSLATIONS_INSTALL_PATH = "/usr/share/translations"
+DEFINES += TRANSLATIONS_INSTALL_PATH=\"\\\"\"$${TRANSLATIONS_INSTALL_PATH}\"\\\"\"
+
 CONFIG += link_pkgconfig
 packagesExist(qt5-boostable) {
     DEFINES += HAS_BOOSTER
