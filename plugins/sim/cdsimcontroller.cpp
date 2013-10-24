@@ -32,6 +32,7 @@ CDSimController::CDSimController(QObject *parent)
     , m_manager(QStringLiteral("org.nemomobile.contacts.sqlite"))
     , m_simPresent(false)
     , m_busy(false)
+    , m_voicemailConf(0)
 {
     m_fetchIdsRequest.setManager(&m_manager);
     m_fetchRequest.setManager(&m_manager);
@@ -42,6 +43,9 @@ CDSimController::CDSimController(QObject *parent)
             this, SLOT(vcardDataAvailable(const QString &)));
     connect(&m_phonebook, SIGNAL(importFailed()),
             this, SLOT(vcardReadFailed()));
+
+    connect(&m_messageWaiting, SIGNAL(voicemailMailboxNumberChanged(const QString &)),
+            this, SLOT(voicemailConfigurationChanged()));
 
     connect(&m_contactReader, SIGNAL(stateChanged(QVersitReader::State)),
             this, SLOT(readerStateChanged(QVersitReader::State)));
@@ -121,6 +125,8 @@ void CDSimController::simPresenceChanged(bool present)
     if (m_simPresent != present) {
         qDebug() << "SIM presence changed:" << present;
         m_simPresent = present;
+
+        updateVoicemailConfiguration();
 
         if (m_syncTarget.isEmpty()) {
             qWarning() << "No sync target is configured";
@@ -349,5 +355,84 @@ void CDSimController::ensureSimContactsPresent()
     }
 
     setBusy(!importContacts.isEmpty() || !existingContacts.isEmpty());
+}
+
+void CDSimController::voicemailConfigurationChanged()
+{
+    const QString voicemailTarget(QString::fromLatin1("voicemail"));
+
+    QContactDetailFilter syncTargetFilter;
+    syncTargetFilter.setDetailType(QContactSyncTarget::Type, QContactSyncTarget::FieldSyncTarget);
+    syncTargetFilter.setValue(voicemailTarget);
+
+    QContact voicemailContact;
+    foreach (const QContact &contact, m_manager.contacts(syncTargetFilter)) {
+        voicemailContact = contact;
+        break;
+    }
+
+    // If there is a manually configured number, prefer that
+    QString voicemailNumber(m_voicemailConf->value().toString());
+    if (voicemailNumber.isEmpty()) {
+        // Otherwise use the number provided for message waiting
+        voicemailNumber = m_messageWaiting.voicemailMailboxNumber();
+    }
+
+    if (voicemailNumber.isEmpty()) {
+        // Remove the voicemail contact if present
+        if (!voicemailContact.id().isNull()) {
+            if (!m_manager.removeContact(voicemailContact.id())) {
+                qWarning() << "Unable to remove voicemail contact";
+            }
+        }
+    } else {
+        // Add/update the voicemail contact if necessary
+        QContactPhoneNumber number = voicemailContact.detail<QContactPhoneNumber>();
+        if (number.number() == voicemailNumber) {
+            // Nothing to change
+            return;
+        }
+
+        // Update the number
+        number.setNumber(voicemailNumber);
+        voicemailContact.saveDetail(&number);
+
+        QContactNickname nickname = voicemailContact.detail<QContactNickname>();
+        if (nickname.isEmpty()) {
+            //: Name for the contact representing the voicemail mailbox
+            //% "Voicemail System"
+            nickname.setNickname(qtTrId("qtn_sim_voicemail_contact"));
+            voicemailContact.saveDetail(&nickname);
+        }
+
+        QContactSyncTarget syncTarget = voicemailContact.detail<QContactSyncTarget>();
+        if (syncTarget.isEmpty()) {
+            syncTarget.setSyncTarget(voicemailTarget);
+            voicemailContact.saveDetail(&syncTarget);
+        }
+
+        if (!m_manager.saveContact(&voicemailContact)) {
+            qWarning() << "Unable to save voicemail contact";
+        }
+    }
+}
+
+void CDSimController::updateVoicemailConfiguration()
+{
+    if (m_voicemailConf) {
+        delete m_voicemailConf;
+    }
+
+    QString variablePath(QString::fromLatin1("/sailfish/voicecall/voice_mailbox/"));
+    if (m_simPresent) {
+        variablePath.append(m_simManager.cardIdentifier());
+    } else {
+        variablePath.append(QString::fromLatin1("default"));
+    }
+
+    m_voicemailConf = new MGConfItem(variablePath);
+    connect(m_voicemailConf, SIGNAL(valueChanged()), this, SLOT(voicemailConfigurationChanged()));
+
+    voicemailConfigurationChanged();
 }
 
