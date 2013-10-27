@@ -1759,6 +1759,17 @@ static void updateContactAccount(QContactOnlineAccount &qcoa, CDTpAccountPtr acc
     addIconPath(qcoa, account);
 }
 
+void CDTpStorage::addNewAccount()
+{
+    CDTpAccountPtr account = CDTpAccountPtr(qobject_cast<CDTpAccount*>(sender()));
+    QContact self(selfContact());
+    if (!account)
+        return;
+
+    debug() << "New account" << imAccount(account) << "is ready, calling delayed addNewAccount";
+    addNewAccount(self, account);
+}
+
 void CDTpStorage::addNewAccount(QContact &self, CDTpAccountPtr accountWrapper)
 {
     Tp::AccountPtr account = accountWrapper->account();
@@ -1766,6 +1777,12 @@ void CDTpStorage::addNewAccount(QContact &self, CDTpAccountPtr accountWrapper)
     const QString accountPath(imAccount(account));
     const QString accountAddress(imAddress(account));
     const QString accountPresence(imPresence(account));
+
+    if (!accountWrapper->isReady()) {
+        debug() << "Waiting to create new self account" << accountPath << "until ready";
+        connect(accountWrapper.data(), SIGNAL(readyChanged()), SLOT(addNewAccount()));
+        return;
+    }
 
     debug() << "Creating new self account - account:" << accountPath << "address:" << accountAddress;
 
@@ -1973,12 +1990,28 @@ QList<CDTpContactPtr> accountContacts(CDTpAccountPtr accountWrapper)
     return rv;
 }
 
+void CDTpStorage::updateAccount()
+{
+    CDTpAccount *account = qobject_cast<CDTpAccount*>(sender());
+    if (!account)
+        return;
+
+    debug() << "Delayed update of account" << account->account()->objectPath() << "is ready";
+    updateAccount(CDTpAccountPtr(account), CDTpAccount::All);
+}
+
 void CDTpStorage::updateAccountChanges(QContact &self, QContactOnlineAccount &qcoa, CDTpAccountPtr accountWrapper, CDTpAccount::Changes changes)
 {
     Tp::AccountPtr account = accountWrapper->account();
 
     const QString accountPath(imAccount(account));
     const QString accountAddress(imAddress(account));
+
+    if (!accountWrapper->isReady()) {
+        debug() << "Delaying update of account" << accountPath << "address" << accountAddress << "until ready";
+        connect(accountWrapper.data(), SIGNAL(readyChanged()), SLOT(updateAccount()));
+        return;
+    }
 
     debug() << "Synchronizing self account - account:" << accountPath << "address:" << accountAddress;
 

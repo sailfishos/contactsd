@@ -75,6 +75,9 @@ public:
 private Q_SLOTS:
     void onUpdateQueueTimeout();
 
+    void addNewAccount();
+    void updateAccount();
+
 private:
     void cancelQueuedUpdates(const QList<CDTpContactPtr> &contacts);
 

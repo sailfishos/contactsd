@@ -71,6 +71,8 @@ public:
     QHash<QString, CDTpContact::Info> rosterCache() const;
     void setRosterCache(const QHash<QString, CDTpContact::Info> &rosterCache);
 
+    bool isReady() const { return mReady; }
+
     QVariantMap storageInfo() const;
 
 Q_SIGNALS:
@@ -82,6 +84,7 @@ Q_SIGNALS:
     void rosterContactChanged(CDTpContactPtr contactWrapper, CDTpContact::Changes changes);
     void syncStarted(Tp::AccountPtr account);
     void syncEnded(Tp::AccountPtr account, int contactsAdded, int contactsRemoved);
+    void readyChanged();
 
 private Q_SLOTS:
     void onAccountDisplayNameChanged();
@@ -104,6 +107,7 @@ private:
     CDTpContactPtr insertContact(const Tp::ContactPtr &contact);
     void maybeRequestExtraInfo(Tp::ContactPtr contact);
     void makeRosterCache();
+    void setReady();
 
 private:
     Tp::AccountPtr mAccount;
@@ -114,6 +118,7 @@ private:
     QHash<QString, CDTpContact::Info> mRosterCache;
     QStringList mContactsToAvoid;
     QTimer mDisconnectTimeout;
+    bool mReady;
     bool mHasRoster;
     bool mNewAccount;
     bool mImporting;

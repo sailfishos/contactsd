@@ -42,6 +42,7 @@ CDTpAccount::CDTpAccount(const Tp::AccountPtr &account, const QStringList &toAvo
     : QObject(parent),
       mAccount(account),
       mContactsToAvoid(toAvoid),
+      mReady(false),
       mHasRoster(false),
       mNewAccount(newAccount),
       mImporting(false)
@@ -255,6 +256,12 @@ void CDTpAccount::onDisconnectTimeout()
     onAccountConnectionChanged(Tp::ConnectionPtr());
 }
 
+void CDTpAccount::setReady()
+{
+    mReady = true;
+    emit readyChanged();
+}
+
 void CDTpAccount::onContactListStateChanged(Tp::ContactListState state)
 {
     Q_UNUSED(state);
@@ -438,11 +445,15 @@ void CDTpAccount::onRequestedStorageSpecificInformation(Tp::PendingOperation *op
 {
     if (!op->isValid()) {
         debug() << "Cannot get storage specific information for account" << mAccount->objectPath();
-        return;
+        mStorageInfo.clear();
+    } else {
+        QDBusArgument arg = static_cast<Tp::PendingVariant*>(op)->result().value<QDBusArgument>();
+        mStorageInfo = qdbus_cast<QVariantMap>(arg);
     }
 
-    QDBusArgument arg = static_cast<Tp::PendingVariant*>(op)->result().value<QDBusArgument>();
-    mStorageInfo = qdbus_cast<QVariantMap>(arg);
-    Q_EMIT changed(CDTpAccountPtr(this), StorageInfo);
+    if (isReady())
+        Q_EMIT changed(CDTpAccountPtr(this), StorageInfo);
+    else
+        setReady();
 }
 
