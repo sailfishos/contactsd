@@ -97,6 +97,7 @@ CDBirthdayCalendar::~CDBirthdayCalendar()
 mKCal::Notebook::Ptr CDBirthdayCalendar::createNotebook()
 {
     return mKCal::Notebook::Ptr(new mKCal::Notebook(calNotebookId,
+                                                    //% "Birthdays"
                                                     qtTrId("qtn_caln_birthdays"),
                                                     QLatin1String(""),
                                                     calNotebookColor,

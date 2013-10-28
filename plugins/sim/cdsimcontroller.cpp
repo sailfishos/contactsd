@@ -101,6 +101,7 @@ void CDSimController::setModemPath(const QString &path)
 {
     qDebug() << "Using modem path:" << path;
     m_modemPath = path;
+    m_messageWaiting.setModemPath(m_modemPath);
     m_simManager.setModemPath(m_modemPath);
 
     // Sync the contacts list with the initial state
