@@ -29,6 +29,9 @@
 
 #include <qofonophonebook.h>
 #include <qofonosimmanager.h>
+#include <qofonomessagewaiting.h>
+
+#include <MGConfItem>
 
 #ifdef USING_QTPIM
 QTCONTACTS_USE_NAMESPACE
@@ -63,11 +66,13 @@ public Q_SLOTS:
     void contactIdsAvailable();
     void requestStateChanged(QContactAbstractRequest::State state);
     void contactsAvailable();
+    void voicemailConfigurationChanged();
 
 private:
     void setBusy(bool busy);
     void removeAllSimContacts();
     void ensureSimContactsPresent();
+    void updateVoicemailConfiguration();
 
 private:
     QContactManager m_manager;
@@ -84,11 +89,14 @@ private:
     QString m_syncTarget;
     QString m_modemPath;
     QOfonoPhonebook m_phonebook;
+    QOfonoMessageWaiting m_messageWaiting;
 
     QSet<QContactId> m_contactIds;
     QList<QContact> m_contacts;
     QList<QContact> m_simContacts;
     bool m_busy;
+
+    MGConfItem *m_voicemailConf;
 };
 
 #endif // CDSIMCONTROLLER_H
