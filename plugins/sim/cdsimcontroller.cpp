@@ -360,6 +360,11 @@ void CDSimController::ensureSimContactsPresent()
 
 void CDSimController::voicemailConfigurationChanged()
 {
+    if (!m_voicemailConf || !m_simPresent) {
+        // Wait until SIM is present
+        return;
+    }
+
     const QString voicemailTarget(QString::fromLatin1("voicemail"));
 
     QContactDetailFilter syncTargetFilter;
@@ -420,10 +425,6 @@ void CDSimController::voicemailConfigurationChanged()
 
 void CDSimController::updateVoicemailConfiguration()
 {
-    if (m_voicemailConf) {
-        delete m_voicemailConf;
-    }
-
     QString variablePath(QString::fromLatin1("/sailfish/voicecall/voice_mailbox/"));
     if (m_simPresent) {
         variablePath.append(m_simManager.cardIdentifier());
@@ -431,9 +432,12 @@ void CDSimController::updateVoicemailConfiguration()
         variablePath.append(QString::fromLatin1("default"));
     }
 
-    m_voicemailConf = new MGConfItem(variablePath);
-    connect(m_voicemailConf, SIGNAL(valueChanged()), this, SLOT(voicemailConfigurationChanged()));
+    if (!m_voicemailConf || m_voicemailConf->key() != variablePath) {
+        delete m_voicemailConf;
+        m_voicemailConf = new MGConfItem(variablePath);
+        connect(m_voicemailConf, SIGNAL(valueChanged()), this, SLOT(voicemailConfigurationChanged()));
 
-    voicemailConfigurationChanged();
+        voicemailConfigurationChanged();
+    }
 }
 
