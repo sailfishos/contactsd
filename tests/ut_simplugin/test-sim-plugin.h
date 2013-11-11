@@ -39,6 +39,8 @@ private Q_SLOTS:
     void testAddAndRemove();
     void testChangedNumber();
     void testMultipleNumbers();
+    void testMultipleIdenticalNumbers();
+    void testTrimWhitespace();
     void testEmpty();
     void testClear();
 

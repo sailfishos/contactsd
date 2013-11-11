@@ -367,6 +367,134 @@ void TestSimPlugin::testMultipleNumbers()
     }
 }
 
+void TestSimPlugin::testMultipleIdenticalNumbers()
+{
+    QContactManager &m(m_controller->contactManager());
+
+    QCOMPARE(getAllSimContacts(m).count(), 0);
+    QCOMPARE(m_controller->busy(), false);
+
+    m_controller->simPresenceChanged(true);
+    QCOMPARE(m_controller->busy(), false);
+
+    // Add a contact with two very similar numbers
+    m_controller->vcardDataAvailable(QStringLiteral(
+"BEGIN:VCARD\n"
+"VERSION:3.0\n"
+"FN:Forrest Gump\n"
+"TEL;TYPE=HOME,VOICE:(404) 555-1212\n"
+"TEL;TYPE=WORK,VIDEO:(404) 555-1212\n"
+"END:VCARD\n"));
+    QCOMPARE(m_controller->busy(), true);
+    QTRY_VERIFY(m_controller->busy() == false);
+
+    QList<QContact> simContacts(getAllSimContacts(m));
+    QCOMPARE(simContacts.count(), 1);
+    QCOMPARE(simContacts.at(0).detail<QContactNickname>().nickname(), QStringLiteral("Forrest Gump"));
+    QCOMPARE(simContacts.at(0).details<QContactPhoneNumber>().count(), 2);
+    foreach (const QContactPhoneNumber &number, simContacts.at(0).details<QContactPhoneNumber>()) {
+        if (number.contexts().contains(QContactDetail::ContextHome)) {
+            QVERIFY(number.number() == QStringLiteral("(404) 555-1212"));
+            QVERIFY(number.subTypes().contains(QContactPhoneNumber::SubTypeVoice));
+        } else {
+            QCOMPARE(number.number(), QStringLiteral("(404) 555-1212"));
+            QVERIFY(number.contexts().contains(QContactDetail::ContextWork));
+            QVERIFY(number.subTypes().contains(QContactPhoneNumber::SubTypeVideo));
+        }
+    }
+
+    QContactId existingId = simContacts.at(0).id();
+
+    // Modify contact so that the number is now identical
+    m_controller->vcardDataAvailable(QStringLiteral(
+"BEGIN:VCARD\n"
+"VERSION:3.0\n"
+"FN:Forrest Gump\n"
+"TEL;TYPE=HOME,VOICE:(404) 555-1212\n"
+"TEL;TYPE=HOME,VOICE:(404) 555-1212\n"
+"END:VCARD\n"));
+    QCOMPARE(m_controller->busy(), true);
+    QTRY_VERIFY(m_controller->busy() == false);
+
+    // Verify that the contact was not recreated, but instead updated, and that the
+    // duplicate phone number detail has not been duplicated to the stored contact.
+    simContacts = getAllSimContacts(m);
+    QCOMPARE(simContacts.count(), 1);
+    QCOMPARE(simContacts.at(0).id(), existingId);
+    QCOMPARE(simContacts.at(0).detail<QContactNickname>().nickname(), QStringLiteral("Forrest Gump"));
+    QCOMPARE(simContacts.at(0).details<QContactPhoneNumber>().count(), 1);
+    QVERIFY(simContacts.at(0).detail<QContactPhoneNumber>().number() == QStringLiteral("(404) 555-1212"));
+    QVERIFY(simContacts.at(0).detail<QContactPhoneNumber>().contexts().contains(QContactDetail::ContextHome));
+    QVERIFY(simContacts.at(0).detail<QContactPhoneNumber>().subTypes().contains(QContactPhoneNumber::SubTypeVoice));
+}
+
+void TestSimPlugin::testTrimWhitespace()
+{
+    QContactManager &m(m_controller->contactManager());
+
+    QCOMPARE(getAllSimContacts(m).count(), 0);
+    QCOMPARE(m_controller->busy(), false);
+
+    m_controller->simPresenceChanged(true);
+    QCOMPARE(m_controller->busy(), false);
+
+    // Add a contact with two numbers
+    m_controller->vcardDataAvailable(QStringLiteral(
+"BEGIN:VCARD\n"
+"VERSION:3.0\n"
+"FN:Forrest Gump\n"
+"TEL;TYPE=HOME,VOICE:(404) 555-1212\n"
+"TEL;TYPE=WORK,VIDEO:(404) 555-6789\n"
+"END:VCARD\n"));
+    QCOMPARE(m_controller->busy(), true);
+    QTRY_VERIFY(m_controller->busy() == false);
+
+    QList<QContact> simContacts(getAllSimContacts(m));
+    QCOMPARE(simContacts.count(), 1);
+    QCOMPARE(simContacts.at(0).detail<QContactNickname>().nickname(), QStringLiteral("Forrest Gump"));
+    QCOMPARE(simContacts.at(0).details<QContactPhoneNumber>().count(), 2);
+    foreach (const QContactPhoneNumber &number, simContacts.at(0).details<QContactPhoneNumber>()) {
+        if (number.number() == QStringLiteral("(404) 555-1212")) {
+            QVERIFY(number.contexts().contains(QContactDetail::ContextHome));
+            QVERIFY(number.subTypes().contains(QContactPhoneNumber::SubTypeVoice));
+        } else {
+            QCOMPARE(number.number(), QStringLiteral("(404) 555-6789"));
+            QVERIFY(number.contexts().contains(QContactDetail::ContextWork));
+            QVERIFY(number.subTypes().contains(QContactPhoneNumber::SubTypeVideo));
+        }
+    }
+
+    QContactId existingId = simContacts.at(0).id();
+
+    // Add another contact with identical + whitespace name, changed number
+    m_controller->vcardDataAvailable(QStringLiteral(
+"BEGIN:VCARD\n"
+"VERSION:3.0\n"
+"FN:Forrest Gump \n"
+"TEL;TYPE=HOME,VOICE:(404) 555-1212\n"
+"TEL;TYPE=WORK,VIDEO:(404) 555-6888\n"
+"END:VCARD\n"));
+    QCOMPARE(m_controller->busy(), true);
+    QTRY_VERIFY(m_controller->busy() == false);
+
+    // Verify that the contact was not recreated, but instead updated
+    simContacts = getAllSimContacts(m);
+    QCOMPARE(simContacts.count(), 1);
+    QCOMPARE(simContacts.at(0).id(), existingId);
+    QCOMPARE(simContacts.at(0).detail<QContactNickname>().nickname(), QStringLiteral("Forrest Gump"));
+    QCOMPARE(simContacts.at(0).details<QContactPhoneNumber>().count(), 2);
+    foreach (const QContactPhoneNumber &number, simContacts.at(0).details<QContactPhoneNumber>()) {
+        if (number.number() == QStringLiteral("(404) 555-1212")) {
+            QVERIFY(number.contexts().contains(QContactDetail::ContextHome));
+            QVERIFY(number.subTypes().contains(QContactPhoneNumber::SubTypeVoice));
+        } else {
+            QCOMPARE(number.number(), QStringLiteral("(404) 555-6888"));
+            QVERIFY(number.contexts().contains(QContactDetail::ContextWork));
+            QVERIFY(number.subTypes().contains(QContactPhoneNumber::SubTypeVideo));
+        }
+    }
+}
+
 void TestSimPlugin::testEmpty()
 {
     QContactManager &m(m_controller->contactManager());

@@ -260,7 +260,7 @@ void CDSimController::ensureSimContactsPresent()
     QMap<QString, QContact> existingContacts;
     foreach (const QContact &contact, m_contacts) {
         // Identify imported SIM contacts by their nickname record
-        const QString nickname(contact.detail<QContactNickname>().nickname());
+        const QString nickname(contact.detail<QContactNickname>().nickname().trimmed());
         existingContacts.insert(nickname, contact);
     }
 
@@ -270,48 +270,58 @@ void CDSimController::ensureSimContactsPresent()
         // SIM imports have their name in the display label
         QContactDisplayLabel displayLabel = simContact.detail<QContactDisplayLabel>();
 
-        QMap<QString, QContact>::iterator it = existingContacts.find(displayLabel.label());
+        // first, remove any duplicate phone number details from the sim contact
+        QList<QContactPhoneNumber> existingSimPhoneNumbers;
+        foreach (QContactPhoneNumber phoneNumber, simContact.details<QContactPhoneNumber>()) {
+            bool foundDuplicateNumber = false;
+            for (int i = 0; i < existingSimPhoneNumbers.size(); ++i) {
+                if (existingSimPhoneNumbers.at(i).number() == phoneNumber.number()
+                        && existingSimPhoneNumbers.at(i).contexts() == phoneNumber.contexts()
+                        && existingSimPhoneNumbers.at(i).subTypes() == phoneNumber.subTypes()) {
+                    // an exact duplicate of this number already exists in the sim contact.
+                    foundDuplicateNumber = true;
+                    simContact.removeDetail(&phoneNumber);
+                    break;
+                }
+            }
+
+            if (!foundDuplicateNumber) {
+                existingSimPhoneNumbers.append(phoneNumber);
+            }
+        }
+
+        // then, determine whether this contact is already represented in the device phonebook
+        QMap<QString, QContact>::iterator it = existingContacts.find(displayLabel.label().trimmed());
         if (it != existingContacts.end()) {
             // Ensure this contact has the right phone numbers
             QContact &dbContact(*it);
 
-            QMap<QString, QContactPhoneNumber> existingNumbers;
-            foreach (const QContactPhoneNumber &phoneNumber, dbContact.details<QContactPhoneNumber>()) {
-                existingNumbers.insert(phoneNumber.number(), phoneNumber);
-            }
-
+            QList<QContactPhoneNumber> existingNumbers(dbContact.details<QContactPhoneNumber>());
             bool modified = false;
-
             foreach (QContactPhoneNumber phoneNumber, simContact.details<QContactPhoneNumber>()) {
-                QMap<QString, QContactPhoneNumber>::iterator nit = existingNumbers.find(phoneNumber.number());
-                if (nit != existingNumbers.end()) {
-                    // Ensure the context and sub-type are correct
-                    QContactPhoneNumber &existingNumber(*nit);
-                    if (existingNumber.contexts() != phoneNumber.contexts()) {
-                        existingNumber.setContexts(phoneNumber.contexts());
-                        dbContact.saveDetail(&existingNumber);
-                        modified = true;
+                bool foundExistingNumber = false;
+                for (int i = 0; i < existingNumbers.size(); ++i) {
+                    if (existingNumbers.at(i).number() == phoneNumber.number()
+                            && existingNumbers.at(i).contexts() == phoneNumber.contexts()
+                            && existingNumbers.at(i).subTypes() == phoneNumber.subTypes()) {
+                        // this number was not modified.  We don't need to change it.
+                        foundExistingNumber = true;
+                        existingNumbers.removeAt(i);
+                        break;
                     }
-                    if (existingNumber.subTypes() != phoneNumber.subTypes()) {
-                        existingNumber.setSubTypes(phoneNumber.subTypes());
-                        dbContact.saveDetail(&existingNumber);
-                        modified = true;
-                    }
+                }
 
-                    existingNumbers.erase(nit);
-                } else {
-                    // Add this number to the storedContact
+                if (!foundExistingNumber) {
+                    // this number is new, or modified.  We need to change it.
                     dbContact.saveDetail(&phoneNumber);
                     modified = true;
                 }
             }
 
             // Remove any obsolete numbers
-            foreach (QContactPhoneNumber phoneNumber, dbContact.details<QContactPhoneNumber>()) {
-                if (existingNumbers.contains(phoneNumber.number())) {
-                    dbContact.removeDetail(&phoneNumber);
-                    modified = true;
-                }
+            foreach (QContactPhoneNumber phoneNumber, existingNumbers) {
+                dbContact.removeDetail(&phoneNumber);
+                modified = true;
             }
 
             if (modified) {
@@ -325,7 +335,7 @@ void CDSimController::ensureSimContactsPresent()
 
             // Convert the display label to a nickname; display label is managed by the backend
             QContactNickname nickname = simContact.detail<QContactNickname>();
-            nickname.setNickname(displayLabel.label());
+            nickname.setNickname(displayLabel.label().trimmed());
             simContact.saveDetail(&nickname);
 
             simContact.removeDetail(&displayLabel);
