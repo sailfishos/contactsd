@@ -41,6 +41,7 @@ private Q_SLOTS:
     void testMultipleNumbers();
     void testMultipleIdenticalNumbers();
     void testTrimWhitespace();
+    void testCoalescing();
     void testEmpty();
     void testClear();
 

@@ -264,9 +264,53 @@ void CDSimController::ensureSimContactsPresent()
         existingContacts.insert(nickname, contact);
     }
 
+    // coalesce SIM contacts with the same display label.
+    QList<QContact> coalescedSimContacts;
+    foreach (const QContact &simContact, m_simContacts) {
+        const QContactDisplayLabel &displayLabel = simContact.detail<QContactDisplayLabel>();
+        const QList<QContactPhoneNumber> &phoneNumbers = simContact.details<QContactPhoneNumber>();
+
+        // search for a pre-existing match in the coalesced list.
+        bool coalescedContactFound = false;
+        for (int i = 0; i < coalescedSimContacts.size(); ++i) {
+            QContact coalescedContact = coalescedSimContacts.at(i);
+            if (coalescedContact.detail<QContactDisplayLabel>().label().trimmed() == displayLabel.label().trimmed()) {
+                // found a match.  Coalesce the phone numbers and update the contact in the list.
+                QList<QContactPhoneNumber> coalescedPhoneNumbers = coalescedContact.details<QContactPhoneNumber>();
+                foreach (QContactPhoneNumber phn, phoneNumbers) {
+                    // check to see if the coalesced phone numbers list contains this number
+                    bool coalescedNumberFound = false;
+                    foreach (const QContactPhoneNumber &cphn, coalescedPhoneNumbers) {
+                        if (phn.number() == cphn.number()
+                                && phn.contexts() == cphn.contexts()
+                                && phn.subTypes() == cphn.subTypes()) {
+                            // already exists in the coalesced contact, no need to add it.
+                            coalescedNumberFound = true;
+                            break;
+                        }
+                    }
+
+                    // if not, add the number to the coalesced contact and to the coalesced list
+                    if (!coalescedNumberFound) {
+                        coalescedContact.saveDetail(&phn);
+                        coalescedPhoneNumbers.append(phn);
+                    }
+                }
+                coalescedSimContacts.replace(i, coalescedContact);
+                coalescedContactFound = true;
+                break;
+            }
+        }
+
+        // no match? add to list.
+        if (!coalescedContactFound) {
+            coalescedSimContacts.append(simContact);
+        }
+    }
+
     QList<QContact> importContacts;
 
-    foreach (QContact simContact, m_simContacts) {
+    foreach (QContact simContact, coalescedSimContacts) {
         // SIM imports have their name in the display label
         QContactDisplayLabel displayLabel = simContact.detail<QContactDisplayLabel>();
 
