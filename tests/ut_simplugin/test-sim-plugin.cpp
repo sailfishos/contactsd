@@ -495,6 +495,56 @@ void TestSimPlugin::testTrimWhitespace()
     }
 }
 
+void TestSimPlugin::testCoalescing()
+{
+    QContactManager &m(m_controller->contactManager());
+
+    QCOMPARE(getAllSimContacts(m).count(), 0);
+    QCOMPARE(m_controller->busy(), false);
+
+    m_controller->simPresenceChanged(true);
+    QCOMPARE(m_controller->busy(), false);
+
+    // Add the same contact a bunch of times
+    m_controller->vcardDataAvailable(QStringLiteral(
+"BEGIN:VCARD\n"
+"VERSION:3.0\n"
+"FN:Forrest Gump\n"
+"TEL;TYPE=HOME,VOICE:(404) 555-1212\n"
+"TEL;TYPE=WORK,VIDEO:(404) 555-6789\n"
+"END:VCARD\n"
+"BEGIN:VCARD\n"
+"VERSION:3.0\n"
+"FN:Forrest Gump \n" /* whitespace shouldn't affect coalescing */
+"TEL;TYPE=HOME,VOICE:(404) 555-1212\n"
+"TEL;TYPE=WORK,VIDEO:(404) 555-6789\n"
+"TEL;TYPE=WORK,VOICE:(404) 555-6888\n"
+"END:VCARD\n"
+"FN:Forrest Gump\n"
+"TEL;TYPE=HOME,VOICE:(404) 555-1212\n"
+"END:VCARD\n"));
+    QCOMPARE(m_controller->busy(), true);
+    QTRY_VERIFY(m_controller->busy() == false);
+
+    QList<QContact> simContacts(getAllSimContacts(m));
+    QCOMPARE(simContacts.count(), 1); // should all be coalesced into one.
+    QCOMPARE(simContacts.at(0).detail<QContactNickname>().nickname(), QStringLiteral("Forrest Gump"));
+    QCOMPARE(simContacts.at(0).details<QContactPhoneNumber>().count(), 3);
+    foreach (const QContactPhoneNumber &number, simContacts.at(0).details<QContactPhoneNumber>()) {
+        if (number.number() == QStringLiteral("(404) 555-1212")) {
+            QVERIFY(number.contexts().contains(QContactDetail::ContextHome));
+            QVERIFY(number.subTypes().contains(QContactPhoneNumber::SubTypeVoice));
+        } else if (number.number() == QStringLiteral("(404) 555-6888")) {
+            QVERIFY(number.contexts().contains(QContactDetail::ContextWork));
+            QVERIFY(number.subTypes().contains(QContactPhoneNumber::SubTypeVoice));
+        } else {
+            QCOMPARE(number.number(), QStringLiteral("(404) 555-6789"));
+            QVERIFY(number.contexts().contains(QContactDetail::ContextWork));
+            QVERIFY(number.subTypes().contains(QContactPhoneNumber::SubTypeVideo));
+        }
+    }
+}
+
 void TestSimPlugin::testEmpty()
 {
     QContactManager &m(m_controller->contactManager());
