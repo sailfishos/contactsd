@@ -171,8 +171,18 @@ CDBirthdayController::onFullSyncRequestStateChanged(QContactAbstractRequest::Sta
 void
 CDBirthdayController::onUpdateQueueTimeout()
 {
-    fetchContacts(mUpdatedContacts);
-    mUpdatedContacts.clear();
+    QList<ContactIdType> contactIds(mUpdatedContacts.toList());
+
+    // If we request too many contact IDs, we will exceed the SQLite bound variable limit
+    const int batchSize = 200;
+    if (contactIds.count() > batchSize) {
+        mUpdatedContacts = contactIds.mid(batchSize).toSet();
+        contactIds = contactIds.mid(0, batchSize);
+    } else {
+        mUpdatedContacts.clear();
+    }
+
+    fetchContacts(contactIds);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -180,14 +190,14 @@ CDBirthdayController::onUpdateQueueTimeout()
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 void
-CDBirthdayController::fetchContacts(const QSet<ContactIdType> &contactIds)
+CDBirthdayController::fetchContacts(const QList<ContactIdType> &contactIds)
 {
 #ifdef USING_QTPIM
     QContactIdFilter fetchFilter;
 #else
     QContactLocalIdFilter fetchFilter;
 #endif
-    fetchFilter.setIds(contactIds.toList());
+    fetchFilter.setIds(contactIds);
 
     fetchContacts(fetchFilter, SLOT(onFetchRequestStateChanged(QContactAbstractRequest::State)));
 }
@@ -282,6 +292,11 @@ CDBirthdayController::processFetchRequest(QContactFetchRequest *const fetchReque
     // Provide hint we are done with this request.
     fetchRequest->deleteLater();
 
+    // If some updated contacts weren't requested, we need to go again
+    if (!mUpdatedContacts.isEmpty() && !mUpdateTimer.isActive()) {
+        mUpdateTimer.start();
+    }
+
     return success;
 }
 
@@ -305,9 +320,11 @@ CDBirthdayController::updateBirthdays(const QList<QContact> &changedBirthdays)
 
         // Display label or birthdate was removed from the contact, so delete it from the calendar.
         if (contactDisplayLabel.isEmpty() || contactBirthday.date().isNull()) {
-            debug() << "Contact: " << apiId(contact) << " removed birthday or displayLabel, so delete the calendar event";
+            if (!calendarBirthday.date().isNull()) {
+                debug() << "Contact: " << apiId(contact) << " removed birthday or displayLabel, so delete the calendar event";
 
-            mCalendar->deleteBirthday(apiId(contact));
+                mCalendar->deleteBirthday(apiId(contact));
+            }
         // Display label or birthdate was changed on the contact, so update the calendar.
         } else if ((contactDisplayLabel != calendarBirthday.summary()) ||
                    (contactBirthday.date() != calendarBirthday.date())) {

@@ -81,7 +81,7 @@ private:
     bool processFetchRequest(QContactFetchRequest * const fetchRequest,
                              QContactAbstractRequest::State newState,
                              SyncMode syncMode = Incremental);
-    void fetchContacts(const QSet<ContactIdType> &contactIds);
+    void fetchContacts(const QList<ContactIdType> &contactIds);
     void fetchContacts(const QContactFilter &filter, const char *slot);
     void updateBirthdays(const QList<QContact> &changedBirthdays);
     void syncBirthdays(const QList<QContact> &birthdayContacts);
