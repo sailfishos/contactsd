@@ -178,12 +178,10 @@ const int UPDATE_MAXIMUM_TIMEOUT = 2000; // ms
 
 QContactManager *manager()
 {
-#ifdef USING_QTPIM
-    // Temporary override until qtpim supports QTCONTACTS_MANAGER_OVERRIDE
-    static QContactManager *manager = new QContactManager(QStringLiteral("org.nemomobile.contacts.sqlite"));
-#else
-    static QContactManager *manager = new QContactManager;
-#endif
+    QMap<QString, QString> parameters;
+    parameters.insert(QString::fromLatin1("mergePresenceChanges"), QString::fromLatin1("false"));
+
+    static QContactManager *manager = new QContactManager(QStringLiteral("org.nemomobile.contacts.sqlite"), parameters);
     return manager;
 }
 

@@ -26,10 +26,20 @@
 
 using namespace Contactsd;
 
+namespace {
+
+QMap<QString, QString> contactManagerParameters()
+{
+    QMap<QString, QString> rv;
+    rv.insert(QStringLiteral("mergePresenceChanges"), QStringLiteral("false"));
+    return rv;
+}
+
+}
+
 CDSimController::CDSimController(QObject *parent)
     : QObject(parent)
-    // Temporary override until qtpim supports QTCONTACTS_MANAGER_OVERRIDE
-    , m_manager(QStringLiteral("org.nemomobile.contacts.sqlite"))
+    , m_manager(QStringLiteral("org.nemomobile.contacts.sqlite"), contactManagerParameters())
     , m_simPresent(false)
     , m_busy(false)
     , m_voicemailConf(0)
