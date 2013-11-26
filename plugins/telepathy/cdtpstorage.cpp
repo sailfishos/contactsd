@@ -401,18 +401,20 @@ DetailList contactChangesList(CDTpContact::Changes changes)
 {
     DetailList rv;
 
-    if (changes & CDTpContact::Alias) {
-        rv.append(detailType<QContactNickname>());
-    }
-    if (changes & CDTpContact::Presence) {
-        rv.append(detailType<QContactPresence>());
-    }
-    if (changes & CDTpContact::Capabilities) {
-        rv.append(detailType<QContactOnlineAccount>());
-        rv.append(detailType<QContactOriginMetadata>());
-    }
-    if (changes & CDTpContact::Avatar) {
-        rv.append(detailType<QContactAvatar>());
+    if ((changes & CDTpContact::Information) == 0) {
+        if (changes & CDTpContact::Alias) {
+            rv.append(detailType<QContactNickname>());
+        }
+        if (changes & CDTpContact::Presence) {
+            rv.append(detailType<QContactPresence>());
+        }
+        if (changes & CDTpContact::Capabilities) {
+            rv.append(detailType<QContactOnlineAccount>());
+            rv.append(detailType<QContactOriginMetadata>());
+        }
+        if (changes & CDTpContact::Avatar) {
+            rv.append(detailType<QContactAvatar>());
+        }
     }
 
     return rv;
@@ -420,14 +422,8 @@ DetailList contactChangesList(CDTpContact::Changes changes)
 
 bool storeContact(QContact &contact, const QString &location, CDTpContact::Changes changes = CDTpContact::All)
 {
-    QList<QContact> contacts;
-    DetailList updates;
-
-    const bool minimizedUpdate((changes != CDTpContact::All) && ((changes & CDTpContact::Information) == 0));
-    if (minimizedUpdate) {
-        contacts << contact;
-        updates = contactChangesList(changes);
-    }
+    const DetailList updates = contactChangesList(changes);
+    const bool minimizedUpdate(!updates.isEmpty());
 
 #ifdef DEBUG_OVERLOAD
     debug() << "Storing contact" << asString(apiId(contact)) << "from:" << location;
@@ -435,7 +431,9 @@ bool storeContact(QContact &contact, const QString &location, CDTpContact::Chang
 #endif
 
     if (minimizedUpdate) {
-        if (!manager()->saveContacts(&contacts, contactChangesList(changes))) {
+        QList<QContact> contacts;
+        contacts << contact;
+        if (!manager()->saveContacts(&contacts, updates)) {
             warning() << "Failed minimized storing contact" << asString(apiId(contact)) << "from:" << location << "error:" << manager()->error();
 #ifndef DEBUG_OVERLOAD
             output(debug(), contact);
@@ -455,51 +453,72 @@ bool storeContact(QContact &contact, const QString &location, CDTpContact::Chang
     return true;
 }
 
-void updateContacts(const QString &location, QList<QContact> *saveList, QList<ContactIdType> *removeList, CDTpContact::Changes changes = CDTpContact::All)
+void appendContactChange(CDTpStorage::ContactChangeSet *saveSet, const QContact &contact, CDTpContact::Changes changes)
 {
-    if (saveList && !saveList->isEmpty()) {
-        const DetailList detailList(contactChangesList(changes));
-
-        QElapsedTimer t;
-        t.start();
-
-        // Try to store contacts in batches
-        int storedCount = 0;
-        while (storedCount < saveList->count()) {
-            QList<QContact> batch(saveList->mid(storedCount, BATCH_STORE_SIZE));
-            storedCount += BATCH_STORE_SIZE;
-
-            do {
-                bool success;
-                QMap<int, QContactManager::Error> errorMap;
-                if (changes == CDTpContact::All) {
-                    success = manager()->saveContacts(&batch, &errorMap);
-                } else {
-                    success = manager()->saveContacts(&batch, detailList, &errorMap);
-                }
-                if (success) {
-                    // We could copy the updated contacts back into saveList here, but it doesn't seem warranted
-                    break;
-                }
-
-                const int errorCount = errorMap.count();
-                if (!errorCount) {
-                    break;
-                }
-
-                // Remove the problematic contacts
-                QList<int> indices = errorMap.keys();
-                QList<int>::const_iterator begin = indices.begin(), it = begin + errorCount;
-                do {
-                    int errorIndex = (*--it);
-                    const QContact &badContact(batch.at(errorIndex));
-                    warning() << "Failed storing contact" << asString(apiId(badContact)) << "from:" << location << "error:" << errorMap.value(errorIndex);
-                    output(debug(), badContact);
-                    batch.removeAt(errorIndex);
-                } while (it != begin);
-            } while (true);
+    if (changes != 0) {
+        if (changes & CDTpContact::Information) {
+            // All changes including Information will be full stores, so group them all together
+            changes = CDTpContact::All;
         }
-        debug() << "Updated" << saveList->count() << "batched contacts - elapsed:" << t.elapsed();
+        (*saveSet)[changes].append(contact);
+    }
+}
+
+void updateContacts(const QString &location, CDTpStorage::ContactChangeSet *saveSet, QList<ContactIdType> *removeList)
+{
+    if (saveSet && !saveSet->isEmpty()) {
+        // Each element of the save set is a list of contacts with the same set of changes
+        CDTpStorage::ContactChangeSet::iterator sit = saveSet->begin(), send = saveSet->end();
+        for ( ; sit != send; ++sit) {
+            CDTpContact::Changes changes = sit.key();
+            QList<QContact> *saveList = &(sit.value());
+
+            if (saveList && !saveList->isEmpty()) {
+                // Restrict the update to only modify the detail types that have changed for these contacts
+                const DetailList detailList(contactChangesList(changes));
+
+                QElapsedTimer t;
+                t.start();
+
+                // Try to store contacts in batches
+                int storedCount = 0;
+                while (storedCount < saveList->count()) {
+                    QList<QContact> batch(saveList->mid(storedCount, BATCH_STORE_SIZE));
+                    storedCount += BATCH_STORE_SIZE;
+
+                    do {
+                        bool success;
+                        QMap<int, QContactManager::Error> errorMap;
+                        if (detailList.isEmpty()) {
+                            success = manager()->saveContacts(&batch, &errorMap);
+                        } else {
+                            success = manager()->saveContacts(&batch, detailList, &errorMap);
+                        }
+                        if (success) {
+                            // We could copy the updated contacts back into saveList here, but it doesn't seem warranted
+                            break;
+                        }
+
+                        const int errorCount = errorMap.count();
+                        if (!errorCount) {
+                            break;
+                        }
+
+                        // Remove the problematic contacts
+                        QList<int> indices = errorMap.keys();
+                        QList<int>::const_iterator begin = indices.begin(), it = begin + errorCount;
+                        do {
+                            int errorIndex = (*--it);
+                            const QContact &badContact(batch.at(errorIndex));
+                            warning() << "Failed storing contact" << asString(apiId(badContact)) << "from:" << location << "error:" << errorMap.value(errorIndex);
+                            output(debug(), badContact);
+                            batch.removeAt(errorIndex);
+                        } while (it != begin);
+                    } while (true);
+                }
+                debug() << "Updated" << saveList->count() << "batched contacts - elapsed:" << t.elapsed() << detailList;
+            }
+        }
     }
 
     if (removeList && !removeList->isEmpty()) {
@@ -1099,7 +1118,7 @@ void decomposeNameDetails(const QString &formattedName, QContactName *nameDetail
     }
 }
 
-void updateContactDetails(QNetworkAccessManager &network, QContact &existing, CDTpContactPtr contactWrapper, CDTpContact::Changes changes)
+CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QContact &existing, CDTpContactPtr contactWrapper, CDTpContact::Changes changes)
 {
     const QString contactAddress(imAddress(contactWrapper));
     debug() << "Update contact" << contactAddress;
@@ -1456,6 +1475,8 @@ void updateContactDetails(QNetworkAccessManager &network, QContact &existing, CD
                 presenceState(contact->publishState()));
     }
     */
+
+    return changes;
 }
 
 template<typename T, typename R>
@@ -1677,16 +1698,16 @@ bool CDTpStorage::initializeNewContact(QContact &newContact, CDTpContactPtr cont
 
 void CDTpStorage::updateContactChanges(CDTpContactPtr contactWrapper, CDTpContact::Changes changes)
 {
-    QList<QContact> saveList;
+    ContactChangeSet saveSet;
     QList<ContactIdType> removeList;
 
     QContact existing = findExistingContact(imAddress(contactWrapper));
-    updateContactChanges(contactWrapper, changes, existing, &saveList, &removeList);
+    updateContactChanges(contactWrapper, changes, existing, &saveSet, &removeList);
 
-    updateContacts(SRC_LOC, &saveList, &removeList);
+    updateContacts(SRC_LOC, &saveSet, &removeList);
 }
 
-void CDTpStorage::updateContactChanges(CDTpContactPtr contactWrapper, CDTpContact::Changes changes, QContact &existing, QList<QContact> *saveList, QList<ContactIdType> *removeList)
+void CDTpStorage::updateContactChanges(CDTpContactPtr contactWrapper, CDTpContact::Changes changes, QContact &existing, ContactChangeSet *saveSet, QList<ContactIdType> *removeList)
 {
     const QString accountPath(imAccount(contactWrapper));
     const QString contactAddress(imAddress(contactWrapper));
@@ -1702,11 +1723,12 @@ void CDTpStorage::updateContactChanges(CDTpContactPtr contactWrapper, CDTpContac
                 warning() << SRC_LOC << "Unable to create contact for account:" << accountPath << contactAddress;
                 return;
             }
+            changes |= CDTpContact::All;
         }
 
-        updateContactDetails(mNetwork, existing, contactWrapper, changes);
+        changes = updateContactDetails(mNetwork, existing, contactWrapper, changes);
 
-        saveList->append(existing);
+        appendContactChange(saveSet, existing, changes);
     }
 }
 
@@ -1770,41 +1792,44 @@ void CDTpStorage::updateAccountChanges(QContact &self, QContactOnlineAccount &qc
         // Retrieve the existing contacts in a single batch
         QHash<QString, QContact> existingContacts = findExistingContacts(contactAddresses);
 
-        QList<QContact> saveList;
+        ContactChangeSet saveSet;
         QList<ContactIdType> removeList;
 
         foreach (const CDTpContactPtr &contactWrapper, tpContacts) {
             const QString address = imAddress(accountPath, contactWrapper->contact()->id());
 
+            QHash<QString, CDTpContact::Changes>::Iterator cit = allChanges.find(address);
+            if (cit == allChanges.end()) {
+                warning() << SRC_LOC << "No changes found for contact:" << address;
+                continue;
+            }
+
+            CDTpContact::Changes changes = *cit;
+
             QHash<QString, QContact>::Iterator existing = existingContacts.find(address);
             if (existing == existingContacts.end()) {
                 warning() << SRC_LOC << "No contact found for address:" << address;
                 existing = existingContacts.insert(address, QContact());
-            }
-
-            QHash<QString, CDTpContact::Changes>::Iterator changes = allChanges.find(address);
-            if (changes == allChanges.end()) {
-                warning() << SRC_LOC << "No changes found for contact:" << address;
-                continue;
+                changes |= CDTpContact::All;
             }
 
             // If we got a contact without avatar in the roster, and the original
             // had an avatar, then ignore the avatar update (some contact managers
             // send the initial roster with the avatar missing)
             // Contact updates that have a null avatar will clear the avatar though
-            if (*changes & CDTpContact::DefaultAvatar) {
-                if (*changes != CDTpContact::Added
-                  && contactWrapper->contact()->avatarData().fileName.isEmpty()) {
-                    *changes ^= CDTpContact::DefaultAvatar;
+            if (changes & CDTpContact::DefaultAvatar) {
+                if (((changes & CDTpContact::All) != CDTpContact::All) &&
+                    contactWrapper->contact()->avatarData().fileName.isEmpty()) {
+                    changes &= ~CDTpContact::DefaultAvatar;
                 }
             }
 
-            updateContactChanges(contactWrapper, *changes, *existing, &saveList, &removeList);
+            updateContactChanges(contactWrapper, changes, *existing, &saveSet, &removeList);
         }
 
-        updateContacts(SRC_LOC, &saveList, &removeList);
+        updateContacts(SRC_LOC, &saveSet, &removeList);
     } else {
-        QList<QContact> saveList;
+        ContactChangeSet saveSet;
 
         // Set presence to unknown for all contacts of this account
         foreach (const ContactIdType &contactId, findContactIdsForAccount(accountPath)) {
@@ -1836,10 +1861,10 @@ void CDTpStorage::updateAccountChanges(QContact &self, QContactOnlineAccount &qc
                 }
             }
 
-            saveList.append(existing);
+            appendContactChange(&saveSet, existing, CDTpContact::Presence | CDTpContact::Capabilities);
         }
 
-        updateContacts(SRC_LOC, &saveList, 0, CDTpContact::Presence | CDTpContact::Capabilities);
+        updateContacts(SRC_LOC, &saveSet, 0);
     }
 }
 
@@ -1929,7 +1954,7 @@ void CDTpStorage::createAccount(CDTpAccountPtr accountWrapper)
     // Retrieve the existing contacts in a single batch
     QHash<QString, QContact> existingContacts = findExistingContacts(contactAddresses);
 
-    QList<QContact> saveList;
+    ContactChangeSet saveSet;
     QList<ContactIdType> removeList;
 
     // Add any contacts already present for this account
@@ -1942,10 +1967,10 @@ void CDTpStorage::createAccount(CDTpAccountPtr accountWrapper)
             existing = existingContacts.insert(address, QContact());
         }
 
-        updateContactChanges(contactWrapper, CDTpContact::All, *existing, &saveList, &removeList);
+        updateContactChanges(contactWrapper, CDTpContact::All, *existing, &saveSet, &removeList);
     }
 
-    updateContacts(SRC_LOC, &saveList, &removeList);
+    updateContacts(SRC_LOC, &saveSet, &removeList);
 }
 
 void CDTpStorage::updateAccount(CDTpAccountPtr accountWrapper, CDTpAccount::Changes changes)
@@ -2054,19 +2079,22 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper, const QList
     // Retrieve the existing contacts in a single batch
     QHash<QString, QContact> existingContacts = findExistingContacts(contactAddresses);
 
-    QList<QContact> saveList;
+    ContactChangeSet saveSet;
     QList<ContactIdType> removeList;
 
     foreach (const CDTpContactPtr &contactWrapper, addedContacts) {
         const QString address = imAddress(accountPath, contactWrapper->contact()->id());
 
+        CDTpContact::Changes changes = CDTpContact::Information;
+
         QHash<QString, QContact>::Iterator existing = existingContacts.find(address);
         if (existing == existingContacts.end()) {
             warning() << SRC_LOC << "No contact found for address:" << address;
             existing = existingContacts.insert(address, QContact());
+            changes |= CDTpContact::All;
         }
 
-        updateContactChanges(contactWrapper, CDTpContact::Added | CDTpContact::Information, *existing, &saveList, &removeList);
+        updateContactChanges(contactWrapper, changes, *existing, &saveSet, &removeList);
     }
     foreach (const CDTpContactPtr &contactWrapper, removedContacts) {
         const QString address = imAddress(accountPath, contactWrapper->contact()->id());
@@ -2077,10 +2105,10 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper, const QList
             continue;
         }
 
-        updateContactChanges(contactWrapper, CDTpContact::Deleted, *existing, &saveList, &removeList);
+        updateContactChanges(contactWrapper, CDTpContact::Deleted, *existing, &saveSet, &removeList);
     }
 
-    updateContacts(SRC_LOC, &saveList, &removeList);
+    updateContacts(SRC_LOC, &saveSet, &removeList);
 }
 
 void CDTpStorage::createAccountContacts(CDTpAccountPtr accountWrapper, const QStringList &imIds, uint localId)
@@ -2091,18 +2119,18 @@ void CDTpStorage::createAccountContacts(CDTpAccountPtr accountWrapper, const QSt
 
     debug() << SRC_LOC << "Create contacts account:" << accountPath;
 
-    QList<QContact> saveList;
+    ContactChangeSet saveSet;
 
     foreach (const QString &id, imIds) {
         QContact newContact;
         if (!initializeNewContact(newContact, accountWrapper, id, QString())) {
             warning() << SRC_LOC << "Unable to create contact for account:" << accountPath << id;
         } else {
-            saveList.append(newContact);
+            appendContactChange(&saveSet, newContact, CDTpContact::All);
         }
     }
 
-    updateContacts(SRC_LOC, &saveList, 0);
+    updateContacts(SRC_LOC, &saveSet, 0);
 }
 
 /* Use this only in offline mode - use syncAccountContacts in online mode */
@@ -2173,7 +2201,7 @@ void CDTpStorage::onUpdateQueueTimeout()
     // Retrieve the existing contacts in a single batch
     QHash<QString, QContact> existingContacts = findExistingContacts(contactAddresses);
 
-    QList<QContact> saveList;
+    ContactChangeSet saveSet;
     QList<ContactIdType> removeList;
 
     for (it = updates.constBegin(), end = updates.constEnd(); it != end; ++it) {
@@ -2189,17 +2217,19 @@ void CDTpStorage::onUpdateQueueTimeout()
         }
 
         const QString address(imAddress(contactWrapper));
+        CDTpContact::Changes changes = it.value();
 
         QHash<QString, QContact>::Iterator existing = existingContacts.find(address);
         if (existing == existingContacts.end()) {
             warning() << SRC_LOC << "No contact found for address:" << address;
             existing = existingContacts.insert(address, QContact());
+            changes |= CDTpContact::All;
         }
 
-        updateContactChanges(contactWrapper, it.value(), *existing, &saveList, &removeList);
+        updateContactChanges(contactWrapper, changes, *existing, &saveSet, &removeList);
     }
 
-    updateContacts(SRC_LOC, &saveList, &removeList);
+    updateContacts(SRC_LOC, &saveSet, &removeList);
 }
 
 void CDTpStorage::cancelQueuedUpdates(const QList<CDTpContactPtr> &contacts)

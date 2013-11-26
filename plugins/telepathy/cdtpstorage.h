@@ -49,6 +49,8 @@ class CDTpStorage : public QObject
     Q_OBJECT
 
 public:
+    typedef QMap<CDTpContact::Changes, QList<QContact> > ContactChangeSet;
+
     CDTpStorage(QObject *parent = 0);
     ~CDTpStorage();
 
@@ -83,11 +85,14 @@ private:
 
     bool initializeNewContact(QContact &newContact, CDTpAccountPtr accountWrapper, const QString &contactId, const QString &alias);
     bool initializeNewContact(QContact &newContact, CDTpContactPtr contactWrapper);
+
+    void updateContactChanges(CDTpContactPtr contactWrapper, CDTpContact::Changes changes, QContact &existing, ContactChangeSet *saveList,
 #ifdef USING_QTPIM
-    void updateContactChanges(CDTpContactPtr contactWrapper, CDTpContact::Changes changes, QContact &existing, QList<QContact> *saveList, QList<QContactId> *removeList);
+                              QList<QContactId> *removeList
 #else
-    void updateContactChanges(CDTpContactPtr contactWrapper, CDTpContact::Changes changes, QContact &existing, QList<QContact> *saveList, QList<QContactLocalId> *removeList);
+                              QList<QContactLocalId> *removeList
 #endif
+                              );
     void updateContactChanges(CDTpContactPtr contactWrapper, CDTpContact::Changes changes);
 
 private:
