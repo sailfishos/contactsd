@@ -865,11 +865,16 @@ CDTpContact::Changes updateAccountDetails(QContact &self, QContactOnlineAccount 
     if (changes & CDTpAccount::Presence) {
         Tp::Presence tpPresence(account->currentPresence());
 
-        presence.setPresenceState(qContactPresenceState(tpPresence.type()));
-        presence.setTimestamp(QDateTime::currentDateTime());
-        presence.setCustomMessage(tpPresence.statusMessage());
+        QContactPresence::PresenceState newState(qContactPresenceState(tpPresence.type()));
+        const QString newMessage(tpPresence.statusMessage());
 
-        selfChanges |= CDTpContact::Presence;
+        if ((presence.presenceState() != newState) || (presence.customMessage() != newMessage)) {
+            presence.setPresenceState(newState);
+            presence.setCustomMessage(newMessage);
+            presence.setTimestamp(QDateTime::currentDateTime());
+
+            selfChanges |= CDTpContact::Presence;
+        }
     }
     if ((changes & CDTpAccount::Nickname) ||
         (changes & CDTpAccount::DisplayName)) {
@@ -877,39 +882,43 @@ CDTpContact::Changes updateAccountDetails(QContact &self, QContactOnlineAccount 
         const QString displayName(account->displayName());
 
         // Nickname takes precedence (according to test expectations...)
+        QString newNickname;
         if (!nickname.isEmpty()) {
-            presence.setNickname(nickname);
+            newNickname = nickname;
         } else if (!displayName.isEmpty()) {
-            presence.setNickname(displayName);
-        } else {
-            presence.setNickname(QString());
+            newNickname = displayName;
         }
 
-        selfChanges |= CDTpContact::Presence;
+        if (presence.nickname() != newNickname) {
+            presence.setNickname(newNickname);
+
+            selfChanges |= CDTpContact::Alias;
+        }
     }
     if (changes & CDTpAccount::Avatar) {
         const QString avatarPath(saveAccountAvatar(accountWrapper));
 
         QContactAvatar avatar(findAvatarForAccount(self, qcoa));
-        if (!avatar.isEmpty()) {
-            avatar.setLinkedDetailUris(qcoa.detailUri());
-        }
 
         if (avatarPath.isEmpty()) {
             if (!avatar.isEmpty()) {
                 if (!self.removeDetail(&avatar)) {
                     warning() << SRC_LOC << "Unable to remove avatar for account:" << accountPath;
                 }
+
+                selfChanges |= CDTpContact::Avatar;
             }
         } else {
+            // We can't test for URL changes, because the content at the URI may have changed instead
             avatar.setImageUrl(QUrl::fromLocalFile(avatarPath));
+            avatar.setLinkedDetailUris(qcoa.detailUri());
 
             if (!storeContactDetail(self, avatar, SRC_LOC)) {
                 warning() << SRC_LOC << "Unable to save avatar for account:" << accountPath;
             }
-        }
 
-        selfChanges |= CDTpContact::Avatar;
+            selfChanges |= CDTpContact::Avatar;
+        }
     }
 
     if (selfChanges & CDTpContact::Presence) {
@@ -1762,6 +1771,7 @@ void CDTpStorage::updateAccountChanges(QContact &self, QContactOnlineAccount &qc
     if (presence.isEmpty()) {
         warning() << SRC_LOC << "Unable to find presence to match account:" << accountPath;
     }
+
     CDTpContact::Changes selfChanges = updateAccountDetails(self, qcoa, presence, accountWrapper, changes);
 
     if (!storeContact(self, SRC_LOC, selfChanges)) {
