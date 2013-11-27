@@ -1134,13 +1134,21 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
 
     Tp::ContactPtr contact = contactWrapper->contact();
 
+    CDTpContact::Changes contactChanges;
+
     // Apply changes
     if (changes & CDTpContact::Alias) {
         QContactNickname nickname = existing.detail<QContactNickname>();
-        nickname.setNickname(contact->alias().trimmed());
 
-        if (!storeContactDetail(existing, nickname, SRC_LOC)) {
-            warning() << SRC_LOC << "Unable to save alias to contact for:" << contactAddress;
+        const QString newNickname(contact->alias().trimmed());
+        if (nickname.nickname() != newNickname) {
+            nickname.setNickname(newNickname);
+
+            if (!storeContactDetail(existing, nickname, SRC_LOC)) {
+                warning() << SRC_LOC << "Unable to save alias to contact for:" << contactAddress;
+            }
+
+            contactChanges |= CDTpContact::Alias;
         }
 
         // The alias is also reflected in the presence
@@ -1150,13 +1158,22 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
         Tp::Presence tpPresence(contact->presence());
 
         QContactPresence presence = existing.detail<QContactPresence>();
-        presence.setPresenceState(qContactPresenceState(tpPresence.type()));
-        presence.setTimestamp(QDateTime::currentDateTime());
-        presence.setCustomMessage(tpPresence.statusMessage());
-        presence.setNickname(contact->alias().trimmed());
 
-        if (!storeContactDetail(existing, presence, SRC_LOC)) {
-            warning() << SRC_LOC << "Unable to save presence to contact for:" << contactAddress;
+        const QContactPresence::PresenceState newState(qContactPresenceState(tpPresence.type()));
+        const QString newMessage(tpPresence.statusMessage());
+        const QString newNickname(contact->alias().trimmed());
+
+        if (presence.presenceState() != newState || presence.customMessage() != newMessage || presence.nickname() != newNickname) {
+            presence.setPresenceState(newState);
+            presence.setCustomMessage(newMessage);
+            presence.setNickname(newNickname);
+            presence.setTimestamp(QDateTime::currentDateTime());
+
+            if (!storeContactDetail(existing, presence, SRC_LOC)) {
+                warning() << SRC_LOC << "Unable to save presence to contact for:" << contactAddress;
+            }
+
+            contactChanges |= CDTpContact::Presence;
         }
 
         // Since we use static account capabilities as fallback, each presence also implies
@@ -1166,10 +1183,17 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
     }
     if (changes & CDTpContact::Capabilities) {
         QContactOnlineAccount qcoa = existing.detail<QContactOnlineAccount>();
-        qcoa.setCapabilities(currentCapabilites(contact->capabilities(), contact->presence().type(), contactWrapper->accountWrapper()->account()));
 
-        if (!storeContactDetail(existing, qcoa, SRC_LOC)) {
-            warning() << SRC_LOC << "Unable to save capabilities to contact for:" << contactAddress;
+        const QStringList newCapabilities(currentCapabilites(contact->capabilities(), contact->presence().type(), contactWrapper->accountWrapper()->account()));
+
+        if (qcoa.capabilities() != newCapabilities) {
+            qcoa.setCapabilities(newCapabilities);
+
+            if (!storeContactDetail(existing, qcoa, SRC_LOC)) {
+                warning() << SRC_LOC << "Unable to save capabilities to contact for:" << contactAddress;
+            }
+
+            contactChanges |= CDTpContact::Capabilities;
         }
     }
     if (changes & CDTpContact::Information) {
@@ -1446,6 +1470,8 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
                     }
                 }
             }
+
+            contactChanges |= CDTpContact::Information;
         }
     }
     if (changes & CDTpContact::Avatar) {
@@ -1462,14 +1488,19 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
             if (!existing.removeDetail(&avatar)) {
                 warning() << SRC_LOC << "Unable to remove avatar from contact:" << contactAddress;
             }
+
+            contactChanges |= CDTpContact::Avatar;
         } else {
             QContactOnlineAccount qcoa = existing.detail<QContactOnlineAccount>();
 
+            // We can't test for URL changes, because the content at the URI may have changed instead
             avatar.setImageUrl(QUrl::fromLocalFile(avatarPath));
             avatar.setLinkedDetailUris(qcoa.detailUri());
             if (!storeContactDetail(existing, avatar, SRC_LOC)) {
                 warning() << SRC_LOC << "Unable to save avatar for contact:" << contactAddress;
             }
+
+            contactChanges |= CDTpContact::Avatar;
         }
     }
     if (changes & CDTpContact::DefaultAvatar) {
@@ -1485,7 +1516,7 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
     }
     */
 
-    return changes;
+    return contactChanges;
 }
 
 template<typename T, typename R>
@@ -1841,37 +1872,57 @@ void CDTpStorage::updateAccountChanges(QContact &self, QContactOnlineAccount &qc
     } else {
         ContactChangeSet saveSet;
 
+        const QContactPresence::PresenceState newState(qContactPresenceState(Tp::ConnectionPresenceTypeUnknown));
+        const QStringList newCapabilities(currentCapabilites(account->capabilities(), Tp::ConnectionPresenceTypeUnknown, account));
+
         // Set presence to unknown for all contacts of this account
         foreach (const ContactIdType &contactId, findContactIdsForAccount(accountPath)) {
             QContact existing = manager()->contact(contactId);
 
-            QContactPresence presence = existing.detail<QContactPresence>();
-            presence.setPresenceState(qContactPresenceState(Tp::ConnectionPresenceTypeUnknown));
-            presence.setTimestamp(QDateTime::currentDateTime());
+            CDTpContact::Changes changes;
 
-            if (!storeContactDetail(existing, presence, SRC_LOC)) {
-                warning() << SRC_LOC << "Unable to save unknown presence to contact for:" << contactId;
+            QContactPresence presence = existing.detail<QContactPresence>();
+
+            if (presence.presenceState() != newState) {
+                presence.setPresenceState(newState);
+                presence.setTimestamp(QDateTime::currentDateTime());
+
+                if (!storeContactDetail(existing, presence, SRC_LOC)) {
+                    warning() << SRC_LOC << "Unable to save unknown presence to contact for:" << contactId;
+                }
+
+                changes |= CDTpContact::Presence;
             }
 
             // Also reset the capabilities
             QContactOnlineAccount qcoa = existing.detail<QContactOnlineAccount>();
-            qcoa.setCapabilities(currentCapabilites(account->capabilities(), Tp::ConnectionPresenceTypeUnknown, account));
 
-            if (!storeContactDetail(existing, qcoa, SRC_LOC)) {
-                warning() << SRC_LOC << "Unable to save capabilities to contact for:" << contactId;
+            if (qcoa.capabilities() != newCapabilities) {
+                qcoa.setCapabilities(newCapabilities);
+
+                if (!storeContactDetail(existing, qcoa, SRC_LOC)) {
+                    warning() << SRC_LOC << "Unable to save capabilities to contact for:" << contactId;
+                }
+
+                changes |= CDTpContact::Capabilities;
             }
 
             if (!account->isEnabled()) {
                 // Mark the contact as un-enabled also
                 QContactOriginMetadata metadata = existing.detail<QContactOriginMetadata>();
-                metadata.setEnabled(false);
 
-                if (!storeContactDetail(existing, metadata, SRC_LOC)) {
-                    warning() << SRC_LOC << "Unable to un-enable contact for:" << contactId;
+                if (metadata.enabled()) {
+                    metadata.setEnabled(false);
+
+                    if (!storeContactDetail(existing, metadata, SRC_LOC)) {
+                        warning() << SRC_LOC << "Unable to un-enable contact for:" << contactId;
+                    }
+
+                    changes |= CDTpContact::Capabilities;
                 }
             }
 
-            appendContactChange(&saveSet, existing, CDTpContact::Presence | CDTpContact::Capabilities);
+            appendContactChange(&saveSet, existing, changes);
         }
 
         updateContacts(SRC_LOC, &saveSet, 0);
