@@ -1127,6 +1127,42 @@ void decomposeNameDetails(const QString &formattedName, QContactName *nameDetail
     }
 }
 
+template<typename T, typename F>
+bool detailListsDiffer(const QList<T> &lhs, const QList<T> &rhs, F detailsDiffer)
+{
+    if (lhs.count() != rhs.count())
+        return true;
+
+    typename QList<T>::const_iterator lit = lhs.constBegin(), lend = lhs.constEnd();
+    for (typename QList<T>::const_iterator rit = rhs.constBegin(); lit != lend; ++lit, ++rit) {
+        if (detailsDiffer(*lit, *rit)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+template<typename T>
+bool replaceDetails(QContact &contact, QList<T> &details, const QString &address, const QString &location)
+{
+    deleteContactDetails<T>(contact);
+
+    foreach (T detail, details) {
+        if (!storeContactDetail(contact, detail, location)) {
+            warning() << SRC_LOC << "Unable to save detail to contact:" << address;
+        }
+    }
+
+    return true;
+}
+
+template<typename T>
+bool replaceDetails(QContact &contact, T &detail, const QString &address, const QString &location)
+{
+    return replaceDetails(contact, QList<T>() << detail, address, location);
+}
+
 CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QContact &existing, CDTpContactPtr contactWrapper, CDTpContact::Changes changes)
 {
     const QString contactAddress(imAddress(contactWrapper));
@@ -1198,17 +1234,17 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
     }
     if (changes & CDTpContact::Information) {
         if (contactWrapper->isInformationKnown()) {
-            // Delete any existing info we have for this contact
-            deleteContactDetails<QContactAddress>(existing);
-            deleteContactDetails<QContactBirthday>(existing);
-            deleteContactDetails<QContactEmailAddress>(existing);
-            deleteContactDetails<QContactGender>(existing);
-            deleteContactDetails<QContactName>(existing);
-            deleteContactDetails<QContactNickname>(existing);
-            deleteContactDetails<QContactNote>(existing);
-            deleteContactDetails<QContactOrganization>(existing);
-            deleteContactDetails<QContactPhoneNumber>(existing);
-            deleteContactDetails<QContactUrl>(existing);
+            // Extract the current information state from the info fields
+            QList<QContactAddress> newAddresses;
+            QContactBirthday newBirthday;
+            QList<QContactEmailAddress> newEmailAddresses;
+            QContactGender newGender;
+            QContactName newName;
+            QList<QContactNickname> newNicknames;
+            QList<QContactNote> newNotes;
+            QList<QContactOrganization> newOrganizations;
+            QList<QContactPhoneNumber> newPhoneNumbers;
+            QList<QContactUrl> newUrls;
 
             Tp::ContactInfoFieldList listContactInfo = contact->infoFields().allFields();
             if (listContactInfo.count() != 0) {
@@ -1279,9 +1315,7 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
                         phoneNumberDetail.setNumber(asString(field, 0));
                         phoneNumberDetail.setSubTypes(selectedTypes);
 
-                        if (!storeContactDetail(existing, phoneNumberDetail, SRC_LOC)) {
-                            warning() << SRC_LOC << "Unable to save phone number to contact";
-                        }
+                        newPhoneNumbers.append(phoneNumberDetail);
                     } else if (field.fieldName == QLatin1String("adr")) {
 #ifdef USING_QTPIM
                         QList<int> selectedTypes;
@@ -1312,9 +1346,7 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
                         addressDetail.setPostcode(asString(field, 5));
                         addressDetail.setCountry(asString(field, 6));
 
-                        if (!storeContactDetail(existing, addressDetail, SRC_LOC)) {
-                            warning() << SRC_LOC << "Unable to save address to contact";
-                        }
+                        newAddresses.append(addressDetail);
                     } else if (field.fieldName == QLatin1String("email")) {
                         QContactEmailAddress emailDetail;
                         if (detailContext != invalidContext) {
@@ -1322,9 +1354,7 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
                         }
                         emailDetail.setEmailAddress(asString(field, 0));
 
-                        if (!storeContactDetail(existing, emailDetail, SRC_LOC)) {
-                            warning() << SRC_LOC << "Unable to save email address to contact";
-                        }
+                        newEmailAddresses.append(emailDetail);
                     } else if (field.fieldName == QLatin1String("url")) {
                         QContactUrl urlDetail;
                         if (detailContext != invalidContext) {
@@ -1332,9 +1362,7 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
                         }
                         urlDetail.setUrl(asString(field, 0));
 
-                        if (!storeContactDetail(existing, urlDetail, SRC_LOC)) {
-                            warning() << SRC_LOC << "Unable to save URL to contact";
-                        }
+                        newUrls.append(urlDetail);
                     } else if (field.fieldName == QLatin1String("title")) {
                         organizationDetail.setTitle(asString(field, 0));
                         if (detailContext != invalidContext) {
@@ -1352,9 +1380,7 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
                             organizationDetail.setContexts(detailContext);
                         }
 
-                        if (!storeContactDetail(existing, organizationDetail, SRC_LOC)) {
-                            warning() << SRC_LOC << "Unable to save organization to contact";
-                        }
+                        newOrganizations.append(organizationDetail);
 
                         // Clear out the stored details
                         organizationDetail = QContactOrganization();
@@ -1387,9 +1413,7 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
                                 nicknameDetail.setContexts(detailContext);
                             }
 
-                            if (!storeContactDetail(existing, nicknameDetail, SRC_LOC)) {
-                                warning() << SRC_LOC << "Unable to save nickname to contact";
-                            }
+                            newNicknames.append(nicknameDetail);
 
                             // Use the nickname as the customLabel if we have no 'fn' data
                             if (formattedName.isEmpty()) {
@@ -1397,16 +1421,14 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
                             }
                         }
                     } else if (field.fieldName == QLatin1String("note") ||
-                             field.fieldName == QLatin1String("desc")) {
+                               field.fieldName == QLatin1String("desc")) {
                         QContactNote noteDetail;
                         if (detailContext != invalidContext) {
                             noteDetail.setContexts(detailContext);
                         }
                         noteDetail.setNote(asString(field, 0));
 
-                        if (!storeContactDetail(existing, noteDetail, SRC_LOC)) {
-                            warning() << SRC_LOC << "Unable to save note to contact";
-                        }
+                        newNotes.append(noteDetail);
                     } else if (field.fieldName == QLatin1String("bday")) {
                         /* FIXME: support more date format for compatibility */
                         const QString dateText(asString(field, 0));
@@ -1423,9 +1445,7 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
                             QContactBirthday birthdayDetail;
                             birthdayDetail.setDate(date);
 
-                            if (!storeContactDetail(existing, birthdayDetail, SRC_LOC)) {
-                                warning() << SRC_LOC << "Unable to save birthday to contact";
-                            }
+                            newBirthday = birthdayDetail;
                         } else {
                             debug() << "Unsupported bday format:" << field.fieldValue[0];
                         }
@@ -1441,9 +1461,7 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
                             genderDetail.setGender(*it);
 #endif
 
-                            if (!storeContactDetail(existing, genderDetail, SRC_LOC)) {
-                                warning() << SRC_LOC << "Unable to save gender to contact";
-                            }
+                            newGender = genderDetail;
                         } else {
                             debug() << "Unsupported gender type:" << type;
                         }
@@ -1465,13 +1483,150 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
 #endif
                     }
 
-                    if (!storeContactDetail(existing, nameDetail, SRC_LOC)) {
-                        warning() << SRC_LOC << "Unable to save name details to contact";
-                    }
+                    newName = nameDetail;
                 }
             }
 
-            contactChanges |= CDTpContact::Information;
+            // For all detail types, test if there has been any change
+            bool changed = false;
+
+            const QList<QContactAddress> oldAddresses = existing.details<QContactAddress>();
+            if (detailListsDiffer(oldAddresses, newAddresses,
+                [](const QContactAddress &oldAddress, const QContactAddress &newAddress) {
+                    if ((oldAddress.contexts() != newAddress.contexts()) ||
+                        (oldAddress.subTypes() != newAddress.subTypes()) ||
+                        (oldAddress.postOfficeBox() != newAddress.postOfficeBox()) ||
+                        (oldAddress.street() != newAddress.street()) ||
+                        (oldAddress.locality() != newAddress.locality()) ||
+                        (oldAddress.region() != newAddress.region()) ||
+                        (oldAddress.postcode() != newAddress.postcode()) ||
+                        (oldAddress.country() != newAddress.country())) {
+                        return true;
+                    }
+                    return false;
+                })
+            ) {
+                changed |= replaceDetails(existing, newAddresses, contactAddress, SRC_LOC);
+            }
+
+            QContactBirthday oldBirthday = existing.detail<QContactBirthday>();
+            if (!oldBirthday.isEmpty() && newBirthday.isEmpty()) {
+                deleteContactDetails<QContactBirthday>(existing);
+            } else if ((oldBirthday.isEmpty() && !newBirthday.isEmpty()) ||
+                       (oldBirthday.date() != newBirthday.date())) {
+                changed |= replaceDetails(existing, newBirthday, contactAddress, SRC_LOC);
+            }
+
+            const QList<QContactEmailAddress> oldEmailAddresses = existing.details<QContactEmailAddress>();
+            if (detailListsDiffer(oldEmailAddresses, newEmailAddresses,
+                [](const QContactEmailAddress &oldEmailAddress, const QContactEmailAddress &newEmailAddress) {
+                    if ((oldEmailAddress.contexts() != newEmailAddress.contexts()) ||
+                        (oldEmailAddress.emailAddress() != newEmailAddress.emailAddress())) {
+                        return true;
+                    }
+                    return false;
+                })
+            ) {
+                changed |= replaceDetails(existing, newEmailAddresses, contactAddress, SRC_LOC);
+            }
+
+            QContactGender oldGender = existing.detail<QContactGender>();
+            if (!oldGender.isEmpty() && newGender.isEmpty()) {
+                deleteContactDetails<QContactGender>(existing);
+            } else if ((oldGender.isEmpty() && !newGender.isEmpty()) ||
+                       (oldGender.gender() != newGender.gender())) {
+                changed |= replaceDetails(existing, newGender, contactAddress, SRC_LOC);
+            }
+
+            QContactName oldName = existing.detail<QContactName>();
+            if ((oldName.firstName() != newName.firstName()) ||
+                (oldName.middleName() != newName.middleName()) ||
+                (oldName.lastName() != newName.lastName()) ||
+                (oldName.value<QString>(QContactName__FieldCustomLabel) != newName.value<QString>(QContactName__FieldCustomLabel)) ||
+                (oldName.prefix() != newName.prefix()) ||
+                (oldName.suffix() != newName.suffix())) {
+                changed |= replaceDetails(existing, newName, contactAddress, SRC_LOC);
+            }
+
+            // Nicknames are different to other list types, since they can come from the presence info as well
+            const QList<QContactNickname> oldNicknames = existing.details<QContactNickname>();
+            foreach (QContactNickname newNickname, newNicknames) {
+                bool found = false;
+                foreach (const QContactNickname &oldNickname, oldNicknames) {
+                    if ((oldNickname.contexts() == newNickname.contexts()) &&
+                        (oldNickname.nickname() == newNickname.nickname())) {
+                        // Nickname already present
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found) {
+                    // Add this nickname
+                    if (!storeContactDetail(existing, newNickname, SRC_LOC)) {
+                        warning() << SRC_LOC << "Unable to save nickname to contact for:" << contactAddress;
+                    }
+                    changed = true;
+                }
+            }
+
+            const QList<QContactNote> oldNotes = existing.details<QContactNote>();
+            if (detailListsDiffer(oldNotes, newNotes,
+                [](const QContactNote &oldNote, const QContactNote &newNote) {
+                    if ((oldNote.contexts() != newNote.contexts()) ||
+                        (oldNote.note() != newNote.note())) {
+                        return true;
+                    }
+                    return false;
+                })
+            ) {
+                changed |= replaceDetails(existing, newNotes, contactAddress, SRC_LOC);
+            }
+
+            const QList<QContactOrganization> oldOrganizations = existing.details<QContactOrganization>();
+            if (detailListsDiffer(oldOrganizations, newOrganizations,
+                [](const QContactOrganization &oldOrganization, const QContactOrganization &newOrganization) {
+                    if ((oldOrganization.contexts() != newOrganization.contexts()) ||
+                        (oldOrganization.name() != newOrganization.name()) ||
+                        (oldOrganization.department() != newOrganization.department())) {
+                        return true;
+                    }
+                    return false;
+                })
+            ) {
+                changed |= replaceDetails(existing, newOrganizations, contactAddress, SRC_LOC);
+            }
+
+            const QList<QContactPhoneNumber> oldPhoneNumbers = existing.details<QContactPhoneNumber>();
+            if (detailListsDiffer(oldPhoneNumbers, newPhoneNumbers,
+                [](const QContactPhoneNumber &oldPhoneNumber, const QContactPhoneNumber &newPhoneNumber) {
+                    if ((oldPhoneNumber.contexts() != newPhoneNumber.contexts()) ||
+                        (oldPhoneNumber.subTypes() != newPhoneNumber.subTypes()) ||
+                        (oldPhoneNumber.number() != newPhoneNumber.number())) {
+                        return true;
+                    }
+                    return false;
+                })
+            ) {
+                changed |= replaceDetails(existing, newPhoneNumbers, contactAddress, SRC_LOC);
+            }
+
+            const QList<QContactUrl> oldUrls = existing.details<QContactUrl>();
+            if (detailListsDiffer(oldUrls, newUrls,
+                [](const QContactUrl &oldUrl, const QContactUrl &newUrl) {
+                    if ((oldUrl.contexts() != newUrl.contexts()) ||
+                        (oldUrl.url() != newUrl.url())) {
+                        return true;
+                    }
+                    return false;
+                })
+            ) {
+                changed |= replaceDetails(existing, newUrls, contactAddress, SRC_LOC);
+            }
+
+            if (changed) {
+                contactChanges |= CDTpContact::Information;
+            }
         }
     }
     if (changes & CDTpContact::Avatar) {
