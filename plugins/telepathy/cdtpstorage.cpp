@@ -909,15 +909,17 @@ CDTpContact::Changes updateAccountDetails(QContact &self, QContactOnlineAccount 
                 selfChanges |= CDTpContact::Avatar;
             }
         } else {
-            // We can't test for URL changes, because the content at the URI may have changed instead
-            avatar.setImageUrl(QUrl::fromLocalFile(avatarPath));
-            avatar.setLinkedDetailUris(qcoa.detailUri());
+            QUrl avatarUrl(QUrl::fromLocalFile(avatarPath));
+            if (avatarUrl != avatar.imageUrl()) {
+                avatar.setImageUrl(avatarUrl);
+                avatar.setLinkedDetailUris(qcoa.detailUri());
 
-            if (!storeContactDetail(self, avatar, SRC_LOC)) {
-                warning() << SRC_LOC << "Unable to save avatar for account:" << accountPath;
+                if (!storeContactDetail(self, avatar, SRC_LOC)) {
+                    warning() << SRC_LOC << "Unable to save avatar for account:" << accountPath;
+                }
+
+                selfChanges |= CDTpContact::Avatar;
             }
-
-            selfChanges |= CDTpContact::Avatar;
         }
     }
 
@@ -1646,16 +1648,19 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
 
             contactChanges |= CDTpContact::Avatar;
         } else {
-            QContactOnlineAccount qcoa = existing.detail<QContactOnlineAccount>();
+            QUrl avatarUrl(QUrl::fromLocalFile(avatarPath));
+            if (avatarUrl != avatar.imageUrl()) {
+                avatar.setImageUrl(avatarUrl);
 
-            // We can't test for URL changes, because the content at the URI may have changed instead
-            avatar.setImageUrl(QUrl::fromLocalFile(avatarPath));
-            avatar.setLinkedDetailUris(qcoa.detailUri());
-            if (!storeContactDetail(existing, avatar, SRC_LOC)) {
-                warning() << SRC_LOC << "Unable to save avatar for contact:" << contactAddress;
+                QContactOnlineAccount qcoa = existing.detail<QContactOnlineAccount>();
+                avatar.setLinkedDetailUris(qcoa.detailUri());
+
+                if (!storeContactDetail(existing, avatar, SRC_LOC)) {
+                    warning() << SRC_LOC << "Unable to save avatar for contact:" << contactAddress;
+                }
+
+                contactChanges |= CDTpContact::Avatar;
             }
-
-            contactChanges |= CDTpContact::Avatar;
         }
     }
     if (changes & CDTpContact::DefaultAvatar) {
