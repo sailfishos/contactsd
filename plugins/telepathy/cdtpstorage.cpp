@@ -1641,12 +1641,14 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
         QContactAvatar avatar = existing.detail<QContactAvatar>();
 
         if (avatarPath.isEmpty()) {
-            // Remove the avatar detail
-            if (!existing.removeDetail(&avatar)) {
-                warning() << SRC_LOC << "Unable to remove avatar from contact:" << contactAddress;
-            }
+            if (!avatar.isEmpty()) {
+                // Remove the avatar detail
+                if (!existing.removeDetail(&avatar)) {
+                    warning() << SRC_LOC << "Unable to remove avatar from contact:" << contactAddress;
+                }
 
-            contactChanges |= CDTpContact::Avatar;
+                contactChanges |= CDTpContact::Avatar;
+            }
         } else {
             QUrl avatarUrl(QUrl::fromLocalFile(avatarPath));
             if (avatarUrl != avatar.imageUrl()) {
