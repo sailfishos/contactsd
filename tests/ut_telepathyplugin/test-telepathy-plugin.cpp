@@ -74,12 +74,10 @@ void TestTelepathyPlugin::initTestCase()
     dbus_g_bus_get(DBUS_BUS_STARTER, 0);
 
     /* Create a QContactManager and track added/changed contacts */
-#ifdef USING_QTPIM
-    // Temporary override until qtpim supports QTCONTACTS_MANAGER_OVERRIDE
-    mContactManager = new QContactManager(QStringLiteral("org.nemomobile.contacts.sqlite"));
-#else
-    mContactManager = new QContactManager;
-#endif
+    QMap<QString, QString> parameters;
+    parameters.insert(QStringLiteral("mergePresenceChanges"), QStringLiteral("false"));
+    mContactManager = new QContactManager(QStringLiteral("org.nemomobile.contacts.sqlite"), parameters);
+
 #ifdef USING_QTPIM
     connect(mContactManager,
             SIGNAL(contactsAdded(const QList<QContactId>&)),
