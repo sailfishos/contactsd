@@ -53,12 +53,12 @@ CDBirthdayController::CDBirthdayController(QObject *parent)
     , mCalendar(0)
     , mManager(0)
 {
-#ifdef USING_QTPIM
-    // Temporary override until qtpim supports QTCONTACTS_MANAGER_OVERRIDE
-    mManager = new QContactManager(QStringLiteral("org.nemomobile.contacts.sqlite"), QMap<QString, QString>(), this);
-#else
-    mManager = new QContactManager(this);
-#endif
+    // We don't need to handle presence changes, so report them separately and ignore them
+    QMap<QString, QString> parameters;
+    parameters.insert(QString::fromLatin1("mergePresenceChanges"), QString::fromLatin1("false"));
+
+    mManager = new QContactManager(QStringLiteral("org.nemomobile.contacts.sqlite"), parameters, this);
+
 #ifdef USING_QTPIM
     connect(mManager, SIGNAL(contactsAdded(QList<QContactId>)),
             SLOT(contactsChanged(QList<QContactId>)));
@@ -74,6 +74,7 @@ CDBirthdayController::CDBirthdayController(QObject *parent)
     connect(mManager, SIGNAL(contactsRemoved(QList<QContactLocalId>)),
             SLOT(contactsRemoved(QList<QContactLocalId>)));
 #endif
+
     connect(mManager, SIGNAL(dataChanged()), SLOT(updateAllBirthdays()));
 
     const CDBirthdayCalendar::SyncMode syncMode = stampFileExists() ? CDBirthdayCalendar::KeepOldDB :
@@ -101,9 +102,6 @@ CDBirthdayController::contactsChanged(const QList<ContactIdType>& contacts)
     mUpdateTimer.start();
 }
 
-#ifdef USING_QTPIM
-#else
-#endif
 void CDBirthdayController::contactsRemoved(const QList<ContactIdType>& contacts)
 {
     foreach (const ContactIdType &id, contacts)

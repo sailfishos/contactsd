@@ -69,12 +69,9 @@ TestBirthdayPlugin::TestBirthdayPlugin(QObject *parent) :
 
 void TestBirthdayPlugin::init()
 {
-#ifdef USING_QTPIM
-    // Temporary override until qtpim supports QTCONTACTS_MANAGER_OVERRIDE
-    mManager = new QContactManager(QStringLiteral("org.nemomobile.contacts.sqlite"));
-#else
-    mManager = new QContactManager;
-#endif
+    QMap<QString, QString> parameters;
+    parameters.insert(QStringLiteral("mergePresenceChanges"), QStringLiteral("false"));
+    mManager = new QContactManager(QStringLiteral("org.nemomobile.contacts.sqlite"), parameters);
 }
 
 void TestBirthdayPlugin::initTestCase()
