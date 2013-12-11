@@ -161,6 +161,15 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
         return;
     }
 
+    // Construct an event summary from the contact's display label.
+    // Note that we don't try to do something clever like "John's Birthday"
+    // as the possessive form varies from language to language, sometimes
+    // in ways which can modify the name word-body.
+    // So, avoid the mess by saying Happy Birthday instead.
+    //: Birthday events in the calendar will have this summary set, eg "Happy Birthday, John Smith!"
+    //% "Happy Birthday, %1!"
+    QString eventSummary = qtTrId("qtn_caln_birthdays_event_summary").arg(displayLabel);
+
     // Retrieve birthday event.
     if (not mStorage->isValidNotebook(calNotebookId)) {
         warning() << Q_FUNC_INFO << "Invalid notebook ID: " << calNotebookId;
@@ -174,7 +183,6 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
         event = KCalCore::Event::Ptr(new KCalCore::Event());
         event->startUpdates();
         event->setUid(calendarEventId(contactId(contact)));
-        event->setAllDay(true);
 
         // Ensure events appear as birthdays in the calendar, NB#259710.
         event->setCategories(QStringList() << QLatin1String("BIRTHDAY"));
@@ -190,11 +198,12 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
     }
 
     // Transfer birthday details from contact to calendar event.
-    event->setSummary(displayLabel);
+    event->setSummary(eventSummary);
 
     // Event has only date information, no time.
     event->setDtStart(KDateTime(contactBirthday, QTime(), KDateTime::ClockTime));
-    event->setDtEnd(KDateTime(contactBirthday.addDays(1), QTime(), KDateTime::ClockTime));
+    event->setDtEnd(KDateTime(contactBirthday, QTime(23,59,59), KDateTime::ClockTime));
+    event->setAllDay(true);
 
     // Must always set the recurrence as it depends on the event date.
     KCalCore::Recurrence *const recurrence = event->recurrence();
@@ -243,13 +252,16 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
 
     }
 
-    // Set the alarms on the event
+    // Clear the alarms on the event
     event->clearAlarms();
-    KCalCore::Alarm::Ptr alarm = event->newAlarm();
-    alarm->setType(KCalCore::Alarm::Audio);
-    alarm->setEnabled(true);
-    alarm->setDisplayAlarm(event->summary());
-    alarm->setStartOffset(KCalCore::Duration(-36 * 3600 /* seconds */));
+
+    // We don't want any alarms for birthday events.
+    // To set an alarm for birthday events, uncomment the code below.
+    //KCalCore::Alarm::Ptr alarm = event->newAlarm();
+    //alarm->setType(KCalCore::Alarm::Audio);
+    //alarm->setEnabled(true);
+    //alarm->setDisplayAlarm(event->summary());
+    //alarm->setStartOffset(KCalCore::Duration(-36 * 3600 /* seconds */));
 
     event->setReadOnly(true);
     event->endUpdates();
