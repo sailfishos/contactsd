@@ -161,15 +161,6 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
         return;
     }
 
-    // Construct an event summary from the contact's display label.
-    // Note that we don't try to do something clever like "John's Birthday"
-    // as the possessive form varies from language to language, sometimes
-    // in ways which can modify the name word-body.
-    // So, avoid the mess by saying Happy Birthday instead.
-    //: Birthday events in the calendar will have this summary set, eg "Happy Birthday, John Smith!"
-    //% "Happy Birthday, %1!"
-    QString eventSummary = qtTrId("qtn_caln_birthdays_event_summary").arg(displayLabel);
-
     // Retrieve birthday event.
     if (not mStorage->isValidNotebook(calNotebookId)) {
         warning() << Q_FUNC_INFO << "Invalid notebook ID: " << calNotebookId;
@@ -198,7 +189,7 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
     }
 
     // Transfer birthday details from contact to calendar event.
-    event->setSummary(eventSummary);
+    event->setSummary(displayLabel);
 
     // Event has only date information, no time.
     event->setDtStart(KDateTime(contactBirthday, QTime(), KDateTime::ClockTime));
