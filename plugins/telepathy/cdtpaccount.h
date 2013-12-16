@@ -31,6 +31,7 @@
 #include <TelepathyQt/Contact>
 #include <TelepathyQt/Types>
 #include <TelepathyQt/PendingOperation>
+#include <TelepathyQt/AccountManager>
 
 #include "types.h"
 #include "cdtpcontact.h"
@@ -41,12 +42,13 @@ class CDTpAccount : public QObject, public Tp::RefCounted
 
 public:
     enum Change {
-        DisplayName = (1 << 0),
-        Nickname    = (1 << 1),
-        Presence    = (1 << 2),
-        Avatar      = (1 << 3),
-        Enabled     = (1 << 4),
-        All         = (1 << 5) -1
+        DisplayName  = (1 << 0),
+        Nickname     = (1 << 1),
+        Presence     = (1 << 2),
+        Avatar       = (1 << 3),
+        Enabled      = (1 << 4),
+        StorageInfo  = (1 << 5),
+        All          = (1 << 6) -1
     };
     Q_DECLARE_FLAGS(Changes, Change)
 
@@ -69,6 +71,10 @@ public:
     QHash<QString, CDTpContact::Info> rosterCache() const;
     void setRosterCache(const QHash<QString, CDTpContact::Info> &rosterCache);
 
+    bool isReady() const { return mReady; }
+
+    QVariantMap storageInfo() const;
+
 Q_SIGNALS:
     void changed(CDTpAccountPtr accountWrapper, CDTpAccount::Changes changes);
     void rosterChanged(CDTpAccountPtr accountWrapper);
@@ -78,6 +84,7 @@ Q_SIGNALS:
     void rosterContactChanged(CDTpContactPtr contactWrapper, CDTpContact::Changes changes);
     void syncStarted(Tp::AccountPtr account);
     void syncEnded(Tp::AccountPtr account, int contactsAdded, int contactsRemoved);
+    void readyChanged();
 
 private Q_SLOTS:
     void onAccountDisplayNameChanged();
@@ -92,6 +99,7 @@ private Q_SLOTS:
     void onAllKnownContactsChanged(const Tp::Contacts &contactsAdded,
             const Tp::Contacts &contactsRemoved);
     void onDisconnectTimeout();
+    void onRequestedStorageSpecificInformation(Tp::PendingOperation *op);
 
 private:
     void setConnection(const Tp::ConnectionPtr &connection);
@@ -99,14 +107,18 @@ private:
     CDTpContactPtr insertContact(const Tp::ContactPtr &contact);
     void maybeRequestExtraInfo(Tp::ContactPtr contact);
     void makeRosterCache();
+    void setReady();
 
 private:
     Tp::AccountPtr mAccount;
     Tp::ConnectionPtr mCurrentConnection;
+    Tp::Client::AccountInterfaceStorageInterface *mAccountStorage;
+    QVariantMap mStorageInfo;
     QHash<QString, CDTpContactPtr> mContacts;
     QHash<QString, CDTpContact::Info> mRosterCache;
     QStringList mContactsToAvoid;
     QTimer mDisconnectTimeout;
+    bool mReady;
     bool mHasRoster;
     bool mNewAccount;
     bool mImporting;

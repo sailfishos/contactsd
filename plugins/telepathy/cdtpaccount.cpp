@@ -25,6 +25,7 @@
 #include <TelepathyQt/PendingContacts>
 #include <TelepathyQt/PendingOperation>
 #include <TelepathyQt/PendingReady>
+#include <TelepathyQt/PendingVariant>
 #include <TelepathyQt/Profile>
 
 #include "cdtpaccount.h"
@@ -41,6 +42,7 @@ CDTpAccount::CDTpAccount(const Tp::AccountPtr &account, const QStringList &toAvo
     : QObject(parent),
       mAccount(account),
       mContactsToAvoid(toAvoid),
+      mReady(false),
       mHasRoster(false),
       mNewAccount(newAccount),
       mImporting(false)
@@ -71,6 +73,12 @@ CDTpAccount::CDTpAccount(const Tp::AccountPtr &account, const QStringList &toAvo
     }
 
     setConnection(mAccount->connection());
+
+    // Interface instance is owned and freed by mAccount
+    mAccountStorage = mAccount->interface<Tp::Client::AccountInterfaceStorageInterface>();
+    connect(mAccountStorage->requestPropertyStorageSpecificInformation(),
+            SIGNAL(finished(Tp::PendingOperation*)),
+            SLOT(onRequestedStorageSpecificInformation(Tp::PendingOperation*)));
 
     mDisconnectTimeout.setInterval(DisconnectGracePeriod);
     mDisconnectTimeout.setSingleShot(true);
@@ -248,6 +256,12 @@ void CDTpAccount::onDisconnectTimeout()
     onAccountConnectionChanged(Tp::ConnectionPtr());
 }
 
+void CDTpAccount::setReady()
+{
+    mReady = true;
+    emit readyChanged();
+}
+
 void CDTpAccount::onContactListStateChanged(Tp::ContactListState state)
 {
     Q_UNUSED(state);
@@ -420,5 +434,26 @@ void CDTpAccount::makeRosterCache()
 CDTpContactPtr CDTpAccount::contact(const QString &id) const
 {
     return mContacts.value(id);
+}
+
+QVariantMap CDTpAccount::storageInfo() const
+{
+    return mStorageInfo;
+}
+
+void CDTpAccount::onRequestedStorageSpecificInformation(Tp::PendingOperation *op)
+{
+    if (!op->isValid()) {
+        debug() << "Cannot get storage specific information for account" << mAccount->objectPath();
+        mStorageInfo.clear();
+    } else {
+        QDBusArgument arg = static_cast<Tp::PendingVariant*>(op)->result().value<QDBusArgument>();
+        mStorageInfo = qdbus_cast<QVariantMap>(arg);
+    }
+
+    if (isReady())
+        Q_EMIT changed(CDTpAccountPtr(this), StorageInfo);
+    else
+        setReady();
 }
 
