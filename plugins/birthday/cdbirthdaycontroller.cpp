@@ -32,6 +32,7 @@
 #include <QContactBirthday>
 #include <QContactDetailFilter>
 #include <QContactFetchRequest>
+#include <QContactSyncTarget>
 #ifdef USING_QTPIM
 #include <QContactIdFilter>
 #else
@@ -46,7 +47,29 @@ QTM_USE_NAMESPACE
 
 using namespace Contactsd;
 
+namespace {
+
 const int UPDATE_TIMEOUT = 1000; // ms
+
+template<typename DetailType>
+QContactDetailFilter detailFilter(
+#ifdef USING_QTPIM
+    int field = -1
+#else
+    const QString &field = QString()
+#endif
+)
+{
+    QContactDetailFilter filter;
+#ifdef USING_QTPIM
+    filter.setDetailType(DetailType::Type, field);
+#else
+    filter.setDetailDefinitionName(DetailType::DefinitionName, field);
+#endif
+    return filter;
+}
+
+}
 
 CDBirthdayController::CDBirthdayController(QObject *parent)
     : QObject(parent)
@@ -147,13 +170,7 @@ void
 CDBirthdayController::updateAllBirthdays()
 {
     // Fetch any contact with a birthday.
-    QContactDetailFilter fetchFilter;
-#ifdef USING_QTPIM
-    fetchFilter.setDetailType(QContactBirthday::Type);
-#else
-    fetchFilter.setDetailDefinitionName(QContactBirthday::DefinitionName);
-#endif
-
+    QContactDetailFilter fetchFilter(detailFilter<QContactBirthday>());
     fetchContacts(fetchFilter, SLOT(onFullSyncRequestStateChanged(QContactAbstractRequest::State)));
 }
 
@@ -228,10 +245,14 @@ CDBirthdayController::fetchContacts(const QContactFilter &filter, const char *sl
                                    QContactFetchHint::NoActionPreferences |
                                    QContactFetchHint::NoBinaryBlobs);
 
+    // Only fetch aggregate contacts
+    QContactDetailFilter syncTargetFilter(detailFilter<QContactSyncTarget>(QContactSyncTarget::FieldSyncTarget));
+    syncTargetFilter.setValue(QString::fromLatin1("aggregate"));
+
     QContactFetchRequest * const fetchRequest = new QContactFetchRequest(this);
     fetchRequest->setManager(mManager);
     fetchRequest->setFetchHint(fetchHint);
-    fetchRequest->setFilter(filter);
+    fetchRequest->setFilter(filter & syncTargetFilter);
 
     connect(fetchRequest, SIGNAL(stateChanged(QContactAbstractRequest::State)), slot);
 
