@@ -93,6 +93,7 @@ private:
     static QString calendarEventId(ContactIdType contactId);
 
     KCalCore::Event::Ptr calendarEvent(ContactIdType contactId);
+    void setReadOnly(bool readOnly, bool save = false);
 
 private Q_SLOTS:
     void onLocaleChanged();
