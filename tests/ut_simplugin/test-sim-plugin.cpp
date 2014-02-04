@@ -53,8 +53,7 @@ void TestSimPlugin::init()
 
 void TestSimPlugin::initTestCase()
 {
-    m_controller = new CDSimController;
-    m_controller->setSyncTarget(QStringLiteral("sim-test"));
+    m_controller = new CDSimController(this, QStringLiteral("sim-test"));
 }
 
 void TestSimPlugin::testAdd()
@@ -610,7 +609,6 @@ void TestSimPlugin::testClear()
 
     // Report the SIM card removed
     m_controller->simPresenceChanged(false);
-    QCOMPARE(m_controller->busy(), true);
     QTRY_VERIFY(m_controller->busy() == false);
 
     // All sim contacts should be removed
