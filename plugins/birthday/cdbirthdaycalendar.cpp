@@ -196,7 +196,7 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
 
     // Event has only date information, no time.
     event->setDtStart(KDateTime(contactBirthday, QTime(), KDateTime::ClockTime));
-    event->setDtEnd(KDateTime(contactBirthday.addDays(1), QTime(), KDateTime::ClockTime));
+    event->setHasEndDate(false);
     event->setAllDay(true);
 
     // Must always set the recurrence as it depends on the event date.
