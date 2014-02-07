@@ -10,6 +10,7 @@ QT += dbus testlib
 DEFINES += ENABLE_DEBUG
 
 PKGCONFIG += mlite5 Qt5Contacts Qt5Versit qofono-qt5
+PKGCONFIG += qtcontacts-sqlite-qt5-extensions
 DEFINES *= USING_QTPIM
 
 INCLUDEPATH += \

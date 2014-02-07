@@ -18,9 +18,11 @@
 #include "debug.h"
 
 #include <QContactDetailFilter>
+#include <QContactDeactivated>
 #include <QContactNickname>
 #include <QContactPhoneNumber>
 #include <QContactSyncTarget>
+#include <QContactStatusFlags>
 
 #include <QVersitContactImporter>
 
@@ -81,6 +83,11 @@ QContactDetailFilter CDSimController::simSyncTargetFilter() const
     return syncTargetFilter;
 }
 
+QContactFilter CDSimController::deactivatedFilter() const
+{
+    return QContactStatusFlags::matchFlag(QContactStatusFlags::IsDeactivated, QContactFilter::MatchContains);
+}
+
 QContactManager &CDSimController::contactManager()
 {
     return m_manager;
@@ -128,7 +135,7 @@ void CDSimController::performTransientImport()
         }
     } else {
         m_simContacts.clear();
-        removeAllSimContacts();
+        deactivateAllSimContacts();
     }
 }
 
@@ -197,6 +204,24 @@ void CDSimController::readerStateChanged(QVersitReader::State state)
     setBusy(false);
 }
 
+void CDSimController::deactivateAllSimContacts()
+{
+    QList<QContactId> ids = m_manager.contactIds(simSyncTargetFilter());
+    if (ids.size()) {
+        QList<QContact> deactivatedContacts;
+
+        foreach (QContact contact, m_manager.contacts(ids)) {
+            QContactDeactivated deactivated;
+            contact.saveDetail(&deactivated);
+            deactivatedContacts.append(contact);
+        }
+
+        if (!m_manager.saveContacts(&deactivatedContacts)) {
+            qWarning() << "Error deactivating sim contacts";
+        }
+    }
+}
+
 void CDSimController::removeAllSimContacts()
 {
     QList<QContactId> doomedIds = m_manager.contactIds(simSyncTargetFilter());
@@ -213,7 +238,11 @@ void CDSimController::ensureSimContactsPresent()
     QContactFetchHint hint;
     hint.setDetailTypesHint(QList<QContactDetail::DetailType>() << QContactNickname::Type << QContactPhoneNumber::Type);
     hint.setOptimizationHints(QContactFetchHint::NoRelationships | QContactFetchHint::NoActionPreferences | QContactFetchHint::NoBinaryBlobs);
+
     QList<QContact> storedSimContacts = m_manager.contacts(simSyncTargetFilter(), QList<QContactSortOrder>(), hint);
+
+    // Also find any deactivated SIM contacts
+    storedSimContacts.append(m_manager.contacts(simSyncTargetFilter() & deactivatedFilter(), QList<QContactSortOrder>(), hint));
 
     QMap<QString, QContact> existingContacts;
     foreach (const QContact &contact, storedSimContacts) {
@@ -322,6 +351,13 @@ void CDSimController::ensureSimContactsPresent()
             // Remove any obsolete numbers
             foreach (QContactPhoneNumber phoneNumber, existingNumbers) {
                 dbContact.removeDetail(&phoneNumber);
+                modified = true;
+            }
+
+            // Reactivate this contact if necessary
+            if (!dbContact.details<QContactDeactivated>().isEmpty()) {
+                QContactDeactivated deactivated = dbContact.detail<QContactDeactivated>();
+                dbContact.removeDetail(&deactivated);
                 modified = true;
             }
 
@@ -451,3 +487,6 @@ void CDSimController::updateVoicemailConfiguration()
     }
 }
 
+// Instantiate the extension functions
+#include <qcontactdeactivated_impl.h>
+#include <qcontactstatusflags_impl.h>
