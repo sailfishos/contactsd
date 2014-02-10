@@ -22,7 +22,7 @@ BuildRequires: pkgconfig(libmkcal-qt5)
 BuildRequires: pkgconfig(libkcalcoren-qt5)
 BuildRequires: pkgconfig(telepathy-glib)
 BuildRequires: pkgconfig(qofono-qt5)
-BuildRequires: pkgconfig(qtcontacts-sqlite-qt5-extensions) >= 0.1.35
+BuildRequires: pkgconfig(qtcontacts-sqlite-qt5-extensions) >= 0.1.42
 BuildRequires: pkgconfig(qt5-boostable)
 BuildRequires: qt5-qttools
 BuildRequires: qt5-qttools-linguist
