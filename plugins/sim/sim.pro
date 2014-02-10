@@ -6,6 +6,7 @@ CONFIG += plugin
 
 CONFIG += link_pkgconfig
 PKGCONFIG += mlite5 Qt5Contacts Qt5Versit qofono-qt5
+PKGCONFIG += qtcontacts-sqlite-qt5-extensions
 DEFINES *= USING_QTPIM
 
 DEFINES += QT_NO_CAST_TO_ASCII QT_NO_CAST_FROM_ASCII

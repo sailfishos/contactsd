@@ -64,11 +64,14 @@ public Q_SLOTS:
 
 private:
     void setBusy(bool busy);
+    void deactivateAllSimContacts();
     void removeAllSimContacts();
     void ensureSimContactsPresent();
     void updateVoicemailConfiguration();
     void performTransientImport();
+
     QContactDetailFilter simSyncTargetFilter() const;
+    QContactFilter deactivatedFilter() const;
 
 private:
     QContactManager m_manager;
