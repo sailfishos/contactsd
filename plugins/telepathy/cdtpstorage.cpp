@@ -1959,16 +1959,17 @@ void CDTpStorage::updateContactChanges(CDTpContactPtr contactWrapper, CDTpContac
             removeList->append(apiId(existing));
         }
     } else {
+        bool needAllChanges = false;
         if (existing.isEmpty()) {
             if (!initializeNewContact(existing, contactWrapper)) {
                 warning() << SRC_LOC << "Unable to create contact for account:" << accountPath << contactAddress;
                 return;
             }
-            changes |= CDTpContact::All;
+            needAllChanges = true;
         }
 
         changes = updateContactDetails(mNetwork, existing, contactWrapper, changes);
-
+        if (needAllChanges) changes = CDTpContact::All;
         appendContactChange(saveSet, existing, changes);
     }
 }
