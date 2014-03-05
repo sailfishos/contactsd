@@ -24,6 +24,7 @@
 
 #include <QVersitReader>
 
+#include <qofonomodem.h>
 #include <qofonophonebook.h>
 #include <qofonosimmanager.h>
 #include <qofonomessagewaiting.h>
@@ -61,6 +62,7 @@ public Q_SLOTS:
     void readerStateChanged(QVersitReader::State state);
     void voicemailConfigurationChanged();
     void transientImportConfigurationChanged();
+    void interfacesChanged(const QStringList &interfaces);
 
 private:
     void setBusy(bool busy);
@@ -80,9 +82,11 @@ private:
     QOfonoSimManager m_simManager;
     bool m_simPresent;
     bool m_transientImport;
+    bool m_phonebookAvailable;
 
     QString m_simSyncTarget;
     QString m_modemPath;
+    QOfonoModem m_modem;
     QOfonoPhonebook m_phonebook;
     QOfonoMessageWaiting m_messageWaiting;
 
