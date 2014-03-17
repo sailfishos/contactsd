@@ -44,6 +44,7 @@ CDSimController::CDSimController(QObject *parent, const QString &syncTarget)
     , m_manager(QStringLiteral("org.nemomobile.contacts.sqlite"), contactManagerParameters())
     , m_simPresent(false)
     , m_transientImport(true)
+    , m_phonebookAvailable(false)
     , m_simSyncTarget(syncTarget)
     , m_busy(false)
     , m_voicemailConf(0)
@@ -66,7 +67,10 @@ CDSimController::CDSimController(QObject *parent, const QString &syncTarget)
     connect(&m_contactReader, SIGNAL(stateChanged(QVersitReader::State)),
             this, SLOT(readerStateChanged(QVersitReader::State)));
 
-    // Resync the contacts list whenever the SIM is inserted/removed
+    // Resync the contacts list whenever the phonebook availability changes
+    connect(&m_modem, SIGNAL(interfacesChanged(const QStringList &)),
+            this, SLOT(interfacesChanged(const QStringList &)));
+
     connect(&m_simManager, SIGNAL(presenceChanged(bool)),
             this, SLOT(simPresenceChanged(bool)));
 }
@@ -97,10 +101,12 @@ void CDSimController::setModemPath(const QString &path)
 {
     qDebug() << "Using modem path:" << path;
     m_modemPath = path;
+    m_modem.setModemPath(m_modemPath);
     m_messageWaiting.setModemPath(m_modemPath);
     m_simManager.setModemPath(m_modemPath);
 
     // Sync the contacts list with the initial state
+    interfacesChanged(m_modem.interfaces());
     simPresenceChanged(m_simManager.present());
 }
 
@@ -124,7 +130,7 @@ void CDSimController::performTransientImport()
         return;
     }
 
-    if (m_simPresent && m_transientImport) {
+    if (m_phonebookAvailable && m_transientImport) {
         if (m_modemPath.isEmpty()) {
             qWarning() << "No modem path is configured";
         } else {
@@ -156,9 +162,16 @@ void CDSimController::transientImportConfigurationChanged()
 void CDSimController::simPresenceChanged(bool present)
 {
     if (m_simPresent != present) {
-        qDebug() << "SIM presence changed:" << present;
         m_simPresent = present;
         updateVoicemailConfiguration();
+    }
+}
+
+void CDSimController::interfacesChanged(const QStringList &interfaces)
+{
+    const bool available(interfaces.contains(QString::fromLatin1("org.ofono.Phonebook")));
+    if (m_phonebookAvailable != available) {
+        m_phonebookAvailable = available;
         performTransientImport();
     }
 }
