@@ -853,6 +853,11 @@ void updateSocialAvatars(QNetworkAccessManager &network, CDTpContactPtr contactW
     updateFacebookAvatar(network, contactWrapper, socialId, CDTpAvatarUpdate::Large);
 }
 
+bool onlineAccountEnabled(const QContactOnlineAccount &qcoa)
+{
+    return (qcoa.value(QContactOnlineAccount__FieldEnabled).toString() == asString(true));
+}
+
 CDTpContact::Changes updateAccountDetails(QContact &self, QContactOnlineAccount &qcoa, QContactPresence &presence, CDTpAccountPtr accountWrapper, CDTpAccount::Changes changes)
 {
     CDTpContact::Changes selfChanges = 0;
@@ -926,6 +931,12 @@ CDTpContact::Changes updateAccountDetails(QContact &self, QContactOnlineAccount 
                 selfChanges |= CDTpContact::Avatar;
             }
         }
+    }
+
+    // Ensure this account's enabled status is reflected
+    if (account->isEnabled() != onlineAccountEnabled(qcoa)) {
+        qcoa.setValue(QContactOnlineAccount__FieldEnabled, asString(account->isEnabled()));
+        selfChanges |= CDTpContact::Capabilities;
     }
 
     if (selfChanges & CDTpContact::Presence) {
@@ -1227,15 +1238,19 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
     if (changes & CDTpContact::Capabilities) {
         QContactOnlineAccount qcoa = existing.detail<QContactOnlineAccount>();
         CDTpAccountPtr accountWrapper = contactWrapper->accountWrapper();
+        Tp::AccountPtr account = accountWrapper->account();
+
         const QString providerDisplayName(accountWrapper->storageInfo().value(QLatin1String("providerDisplayName")).toString());
-        const QStringList newCapabilities(currentCapabilites(contact->capabilities(), contact->presence().type(), contactWrapper->accountWrapper()->account()));
+        const QStringList newCapabilities(currentCapabilites(contact->capabilities(), contact->presence().type(), account));
 
         if (qcoa.capabilities() != newCapabilities ||
-            qcoa.value(QContactOnlineAccount__FieldAccountDisplayName) != accountWrapper->account()->displayName() ||
+            onlineAccountEnabled(qcoa) != account->isEnabled() ||
+            qcoa.value(QContactOnlineAccount__FieldAccountDisplayName) != account->displayName() ||
             qcoa.value(QContactOnlineAccount__FieldServiceProviderDisplayName) != providerDisplayName)
         {
             qcoa.setCapabilities(newCapabilities);
-            qcoa.setValue(QContactOnlineAccount__FieldAccountDisplayName, accountWrapper->account()->displayName());
+            qcoa.setValue(QContactOnlineAccount__FieldEnabled, asString(account->isEnabled()));
+            qcoa.setValue(QContactOnlineAccount__FieldAccountDisplayName, account->displayName());
             qcoa.setValue(QContactOnlineAccount__FieldServiceProviderDisplayName, providerDisplayName);
 
             if (!storeContactDetail(existing, qcoa, SRC_LOC)) {
@@ -2121,8 +2136,9 @@ void CDTpStorage::updateAccountChanges(QContact &self, QContactOnlineAccount &qc
             // Also reset the capabilities
             QContactOnlineAccount qcoa = existing.detail<QContactOnlineAccount>();
 
-            if (qcoa.capabilities() != newCapabilities) {
+            if (qcoa.capabilities() != newCapabilities || onlineAccountEnabled(qcoa)) {
                 qcoa.setCapabilities(newCapabilities);
+                qcoa.setValue(QContactOnlineAccount__FieldEnabled, asString(false));
 
                 if (!storeContactDetail(existing, qcoa, SRC_LOC)) {
                     warning() << SRC_LOC << "Unable to save capabilities to contact for:" << contactId;
