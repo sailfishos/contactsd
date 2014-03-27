@@ -49,6 +49,8 @@ using namespace Contactsd;
 
 namespace {
 
+// version number for current type of birthday events. Increase number when changing event details.
+const int CURRENT_BIRTHDAY_VERSION = 1;
 const int UPDATE_TIMEOUT = 1000; // ms
 
 template<typename DetailType>
@@ -100,8 +102,8 @@ CDBirthdayController::CDBirthdayController(QObject *parent)
 
     connect(mManager, SIGNAL(dataChanged()), SLOT(updateAllBirthdays()));
 
-    const CDBirthdayCalendar::SyncMode syncMode = stampFileExists() ? CDBirthdayCalendar::KeepOldDB :
-                                                                      CDBirthdayCalendar::DropOldDB;
+    const CDBirthdayCalendar::SyncMode syncMode = stampFileUpToDate() ? CDBirthdayCalendar::KeepOldDB :
+                                                                        CDBirthdayCalendar::DropOldDB;
 
     mCalendar = new CDBirthdayCalendar(syncMode, this);
     updateAllBirthdays();
@@ -138,26 +140,34 @@ void CDBirthdayController::contactsRemoved(const QList<ContactIdType>& contacts)
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool
-CDBirthdayController::stampFileExists()
+CDBirthdayController::stampFileUpToDate()
 {
-    const QFile cacheFile(stampFilePath(), this);
+    QFile cacheFile(stampFilePath());
+    if (!cacheFile.exists()) {
+        return false;
+    }
 
-    return cacheFile.exists();
+    if (!cacheFile.open(QIODevice::ReadOnly)) {
+        return false;
+    }
+
+    QByteArray content = cacheFile.read(100);
+    bool ok;
+    int value = content.toInt(&ok);
+    return (ok && value == CURRENT_BIRTHDAY_VERSION);
 }
 
 void
 CDBirthdayController::createStampFile()
 {
-    QFile cacheFile(stampFilePath(), this);
+    QFile cacheFile(stampFilePath());
 
-    if (not cacheFile.exists()) {
-        if (not cacheFile.open(QIODevice::WriteOnly)) {
-            warning() << Q_FUNC_INFO << "Unable to create birthday plugin stamp file "
-                                     << cacheFile.fileName() << " with error " << cacheFile.errorString();
-        } else {
-            cacheFile.close();
-        }
+    if (not cacheFile.open(QIODevice::WriteOnly)) {
+        warning() << Q_FUNC_INFO << "Unable to create birthday plugin stamp file "
+                  << cacheFile.fileName() << " with error " << cacheFile.errorString();
     }
+
+    cacheFile.write(QByteArray::number(CURRENT_BIRTHDAY_VERSION));
 }
 
 QString

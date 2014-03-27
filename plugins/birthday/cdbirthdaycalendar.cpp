@@ -69,7 +69,7 @@ CDBirthdayCalendar::CDBirthdayCalendar(SyncMode syncMode, QObject *parent) :
         notebook = createNotebook();
         mStorage->addNotebook(notebook);
     } else {
-        setReadOnly(true, true);
+        setReadOnly(false);
 
         // Clear the calendar database if and only if restoring from a backup.
         switch(syncMode) {
@@ -84,6 +84,8 @@ CDBirthdayCalendar::CDBirthdayCalendar(SyncMode syncMode, QObject *parent) :
             mStorage->addNotebook(notebook);
             break;
         }
+
+        setReadOnly(true, true);
     }
 }
 
@@ -149,7 +151,6 @@ static QContactLocalId contactId(const QContact &contact) { return contact.local
 
 void CDBirthdayCalendar::updateBirthday(const QContact &contact)
 {
-    setReadOnly(false);
     // Retrieve contact details.
 #ifdef USING_QTPIM
     const QString displayLabel = contact.detail<QContactDisplayLabel>().label();
@@ -164,10 +165,15 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
         return;
     }
 
+    setReadOnly(false);
+
     if (not mStorage->isValidNotebook(calNotebookId)) {
         warning() << Q_FUNC_INFO << "Invalid notebook ID: " << calNotebookId;
         return;
     }
+
+    // NOTE: if making changes beyond summary and date, increase event version number in controller.
+    // NOTE: controller is assuming name as summary and uses that to detect changes
 
     // Retrieve birthday event.
     KCalCore::Event::Ptr event = calendarEvent(contactId(contact));

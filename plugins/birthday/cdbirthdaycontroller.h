@@ -75,7 +75,7 @@ private Q_SLOTS:
     void onUpdateQueueTimeout();
 
 private:
-    bool stampFileExists();
+    bool stampFileUpToDate();
     void createStampFile();
     QString stampFilePath() const;
     bool processFetchRequest(QContactFetchRequest * const fetchRequest,
