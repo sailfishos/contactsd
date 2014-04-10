@@ -22,4 +22,4 @@
 
 TEMPLATE = subdirs
 
-SUBDIRS += telepathy birthday sim
+SUBDIRS += telepathy birthday sim exporter
