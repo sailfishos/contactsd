@@ -30,6 +30,8 @@
 
 #include <QDateTime>
 
+#include <unistd.h>
+
 using namespace Contactsd;
 
 namespace {
@@ -37,6 +39,7 @@ namespace {
 const QString exportSyncTarget(QStringLiteral("export"));
 const QString aggregateSyncTarget(QStringLiteral("aggregate"));
 const QString oobIdsKey(QStringLiteral("privilegedIds"));
+const QString avatarPathsKey(QStringLiteral("avatarPaths"));
 
 // Delay 500ms for accumulate futher changes when a contact is updated
 // Wait 10s for further changes when a contact presence is updated
@@ -107,6 +110,72 @@ void removeProvenanceInformation(QContact &contact)
     }
 }
 
+QHash<QUrl, QUrl> modifyAvatarUrls(QContact &contact)
+{
+    QHash<QUrl, QUrl> changes;
+
+    foreach (const QContactAvatar &avatar, contact.details<QContactAvatar>()) {
+        const QUrl imageUrl(avatar.imageUrl());
+        if (imageUrl.scheme().isEmpty() || imageUrl.isLocalFile()) {
+            // Avatar paths may indicate files not accessible to non-privileged apps
+            // Link to them from an accessible path, and update the stored path in the avatar detail
+            const QString path(avatar.imageUrl().path());
+            if (QFile::exists(path)) {
+                const QFileInfo fi(path);
+                const QString privilegedPath(fi.absoluteFilePath());
+
+                int index = privilegedPath.indexOf(QStringLiteral("/privileged/Contacts/"));
+                if (index != -1) {
+                    // Try to make a nonprivileged version of this file
+                    QString nonprivilegedPath(QString(privilegedPath).remove(index, 11));
+                    if (!QFile::exists(nonprivilegedPath)) {
+                        // Ensure the target directory exists
+                        index = nonprivilegedPath.lastIndexOf(QLatin1Char('/'));
+                        if (index) {
+                            const QString dirPath(nonprivilegedPath.left(index));
+                            QDir dir(dirPath);
+                            if (!dir.exists() && !QDir::root().mkpath(dirPath)) {
+                                qWarning() << "Unable to create directory path:" << dirPath;
+                            }
+                        }
+
+                        // Try to link the file to the new path
+                        QByteArray oldPath(privilegedPath.toUtf8());
+                        QByteArray newPath(nonprivilegedPath.toUtf8());
+                        if (::link(oldPath.constData(), newPath.constData()) != 0) {
+                            qWarning() << "Unable to create link to:" << privilegedPath << nonprivilegedPath;
+                            nonprivilegedPath = QString();
+                        }
+                    }
+
+                    // Update the avatar to point to the alternative path
+                    QContactAvatar copy(avatar);
+                    copy.setImageUrl(QUrl::fromLocalFile(nonprivilegedPath));
+                    contact.saveDetail(&copy);
+
+                    changes.insert(copy.imageUrl(), avatar.imageUrl());
+                }
+            }
+        }
+    }
+
+    return changes;
+}
+
+void reverseAvatarChanges(QContact &contact, const QHash<QUrl, QUrl> &changes)
+{
+    foreach (const QContactAvatar &avatar, contact.details<QContactAvatar>()) {
+        const QHash<QUrl, QUrl>::const_iterator it = changes.constFind(avatar.imageUrl());
+        if (it != changes.constEnd()) {
+            // This avatar's URL is one we changed it to; revert the change to prevent
+            // it being detected as a nonprivileged modification
+            QContactAvatar copy(avatar);
+            copy.setImageUrl(*it);
+            contact.saveDetail(&copy);
+        }
+    }
+}
+
 QSet<QContactDetail::DetailType> getIgnorableDetailTypes()
 {
     QSet<QContactDetail::DetailType> rv;
@@ -136,6 +205,7 @@ private:
     QMap<QContactId, QContactId> m_nonprivilegedIds;
     QContactId m_privilegedSelfId;
     QContactId m_nonprivilegedSelfId;
+    QHash<QContactId, QHash<QUrl, QUrl> > m_avatarPathChanges;
 
     bool prepareSync()
     {
@@ -151,7 +221,7 @@ private:
 
         // Read our extra OOB data
         QMap<QString, QVariant> values;
-        if (!d->m_engine->fetchOOB(d->m_stateData[m_accountId].m_oobScope, QStringList() << oobIdsKey, &values)) {
+        if (!d->m_engine->fetchOOB(d->m_stateData[m_accountId].m_oobScope, QStringList() << oobIdsKey << avatarPathsKey, &values)) {
             qWarning() << "Failed to read sync state data for" << exportSyncTarget;
             return false;
         }
@@ -178,6 +248,13 @@ private:
             m_nonprivilegedIds.insert(m_privilegedSelfId, m_nonprivilegedSelfId);
         }
 
+        // Retrieve any avatar path changes we have made
+        {
+            QByteArray cdata = values.value(avatarPathsKey).toByteArray();
+            QDataStream ds(cdata);
+            ds >> m_avatarPathChanges;
+        }
+
         return true;
     }
 
@@ -199,6 +276,13 @@ private:
         }
         values.insert(oobIdsKey, QVariant(cdata));
 
+        cdata.clear();
+        {
+            QDataStream write(&cdata, QIODevice::WriteOnly);
+            write << m_avatarPathChanges;
+        }
+        values.insert(avatarPathsKey, QVariant(cdata));
+
         if (!d->m_engine->storeOOB(d->m_stateData[m_accountId].m_oobScope, values)) {
             qWarning() << "Failed to store sync state data to OOB storage";
             return false;
@@ -210,6 +294,24 @@ private:
         }
 
         return true;
+    }
+
+    void prepareImportContact(QContact &contact, const QContactId &privilegedId)
+    {
+        // Remove the timestamp detail from this contact
+        QContactTimestamp ts(contact.detail<QContactTimestamp>());
+        contact.removeDetail(&ts);
+
+        // Remap avatar path changes
+        if (!privilegedId.isNull()) {
+            // If we modified this contact's avatar path, reverse that change
+            QHash<QContactId, QHash<QUrl, QUrl> >::const_iterator it = m_avatarPathChanges.constFind(privilegedId);
+            if (it != m_avatarPathChanges.constEnd()) {
+                reverseAvatarChanges(contact, *it);
+            }
+        }
+
+        removeProvenanceInformation(contact);
     }
 
     bool syncNonprivilegedToPrivileged()
@@ -234,10 +336,7 @@ private:
                     selfContact = contact;
                     selfContact.setId(m_privilegedSelfId);
 
-                    QContactTimestamp ts(selfContact.detail<QContactTimestamp>());
-                    selfContact.removeDetail(&ts);
-
-                    removeProvenanceInformation(selfContact);
+                    prepareImportContact(selfContact, m_privilegedSelfId);
                     continue;
                 }
 
@@ -257,11 +356,7 @@ private:
                 QContactGuid guid(contact.detail<QContactGuid>());
                 contact.removeDetail(&guid);
 
-                // Remove the timestamp detail from this contact
-                QContactTimestamp ts(contact.detail<QContactTimestamp>());
-                contact.removeDetail(&ts);
-
-                removeProvenanceInformation(contact);
+                prepareImportContact(contact, privilegedId);
 
                 modifiedContacts.append(contact);
             }
@@ -314,6 +409,19 @@ qDebug() << "modifiedContacts:" << modifiedContacts;
         return true;
     }
 
+    void prepareExportContact(QContact &contact, const QContactId &privilegedId)
+    {
+        // Remove the timestamp detail
+        QContactTimestamp ts(contact.detail<QContactTimestamp>());
+        contact.removeDetail(&ts);
+
+        // Remap avatar path changes
+        QHash<QUrl, QUrl> changes = modifyAvatarUrls(contact);
+        m_avatarPathChanges.insert(privilegedId, changes);
+
+        removeProvenanceInformation(contact);
+    }
+
     bool syncPrivilegedToNonprivileged()
     {
         // Find privileged DB changes we need to reflect (including presence changes)
@@ -344,10 +452,7 @@ qDebug() << "locallyDeleted:" << locallyDeleted;
                 selfContact = contact;
                 selfContact.setId(m_nonprivilegedSelfId);
 
-                QContactTimestamp ts(selfContact.detail<QContactTimestamp>());
-                selfContact.removeDetail(&ts);
-
-                removeProvenanceInformation(selfContact);
+                prepareExportContact(selfContact, m_privilegedSelfId);
                 continue;
             }
 
@@ -366,11 +471,7 @@ qDebug() << "locallyDeleted:" << locallyDeleted;
             st.setSyncTarget(aggregateSyncTarget);
             contact.saveDetail(&st);
 
-            // Remove the timestamp detail
-            QContactTimestamp ts(contact.detail<QContactTimestamp>());
-            contact.removeDetail(&ts);
-
-            removeProvenanceInformation(contact);
+            prepareExportContact(contact, privilegedId);
 
             modifiedContacts.append(contact);
         }
@@ -381,6 +482,8 @@ qDebug() << "locallyDeleted:" << locallyDeleted;
             if (!nonprivilegedId.isNull()) {
                 removedContactIds.append(nonprivilegedId);
             }
+
+            m_avatarPathChanges.remove(privilegedId);
         }
 
         if (!modifiedContacts.isEmpty()) {
