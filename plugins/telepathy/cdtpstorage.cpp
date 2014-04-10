@@ -114,7 +114,7 @@ QStringList asStringList(const Tp::ContactInfoField &field, int i)
     QStringList rv;
 
     while (i < field.fieldValue.count()) {
-        rv.append(field.fieldValue[i]);
+        rv.append(field.fieldValue[i].trimmed());
         ++i;
     }
 
@@ -1161,14 +1161,67 @@ bool detailListsDiffer(const QList<T> &lhs, const QList<T> &rhs, F detailsDiffer
     return false;
 }
 
+// Test detail for validity - for most details, we need some content, beside contexts, etc.
+bool invalidDetail(const QContactDetail &detail) { return detail.isEmpty(); }
+bool invalidDetail(const QContactAddress &address)
+{
+    return address.postOfficeBox().isEmpty() &&
+           address.street().isEmpty() &&
+           address.locality().isEmpty() &&
+           address.region().isEmpty() &&
+           address.postcode().isEmpty() &&
+           address.country().isEmpty();
+}
+bool invalidDetail(const QContactBirthday &birthday)
+{
+    return !birthday.date().isValid();
+}
+bool invalidDetail(const QContactEmailAddress &address)
+{
+    return address.emailAddress().isEmpty();
+}
+bool invalidDetail(const QContactName &name)
+{
+    return name.prefix().isEmpty() &&
+           name.firstName().isEmpty() &&
+           name.middleName().isEmpty() &&
+           name.lastName().isEmpty() &&
+           name.suffix().isEmpty();
+}
+bool invalidDetail(const QContactNickname &nickname)
+{
+    return nickname.nickname().isEmpty();
+}
+bool invalidDetail(const QContactNote &note)
+{
+    return note.note().isEmpty();
+}
+bool invalidDetail(const QContactOrganization &org)
+{
+    return org.title().isEmpty() &&
+           org.role().isEmpty() &&
+           org.name().isEmpty() &&
+           org.department().isEmpty();
+}
+bool invalidDetail(const QContactPhoneNumber &phoneNumber)
+{
+    return phoneNumber.number().isEmpty();
+}
+bool invalidDetail(const QContactUrl &url)
+{
+    return url.url().isEmpty();
+}
+
 template<typename T>
 bool replaceDetails(QContact &contact, QList<T> &details, const QString &address, const QString &location)
 {
     deleteContactDetails<T>(contact);
 
     foreach (T detail, details) {
-        if (!storeContactDetail(contact, detail, location)) {
-            warning() << SRC_LOC << "Unable to save detail to contact:" << address;
+        if (!invalidDetail(detail)) {
+            if (!storeContactDetail(contact, detail, location)) {
+                warning() << SRC_LOC << "Unable to save detail to contact:" << address;
+            }
         }
     }
 
@@ -1340,7 +1393,7 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
 
                         QContactPhoneNumber phoneNumberDetail;
                         phoneNumberDetail.setContexts(detailContext == invalidContext ? defaultContext : detailContext);
-                        phoneNumberDetail.setNumber(asString(field, 0));
+                        phoneNumberDetail.setNumber(asString(field, 0).trimmed());
                         phoneNumberDetail.setSubTypes(selectedTypes);
 
                         newPhoneNumbers.append(phoneNumberDetail);
@@ -1358,7 +1411,13 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
                         }
 
                         // QContactAddress does not support extended street address, so combine the fields
-                        QString streetAddress(asString(field, 1) + QLatin1Char('\n') + asString(field, 2));
+                        QStringList streetParts;
+                        for (int i = 1; i <= 2; ++i) {
+                            QString part(asString(field, i).trimmed());
+                            if (!part.isEmpty()) {
+                                streetParts.append(part);
+                            }
+                        }
 
                         QContactAddress addressDetail;
                         if (detailContext != invalidContext) {
@@ -1367,12 +1426,12 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
                         if (selectedTypes.isEmpty()) {
                             addressDetail.setSubTypes(selectedTypes);
                         }
-                        addressDetail.setPostOfficeBox(asString(field, 0));
-                        addressDetail.setStreet(streetAddress);
-                        addressDetail.setLocality(asString(field, 3));
-                        addressDetail.setRegion(asString(field, 4));
-                        addressDetail.setPostcode(asString(field, 5));
-                        addressDetail.setCountry(asString(field, 6));
+                        addressDetail.setPostOfficeBox(asString(field, 0).trimmed());
+                        addressDetail.setStreet(streetParts.join(QString::fromLatin1("\n")));
+                        addressDetail.setLocality(asString(field, 3).trimmed());
+                        addressDetail.setRegion(asString(field, 4).trimmed());
+                        addressDetail.setPostcode(asString(field, 5).trimmed());
+                        addressDetail.setCountry(asString(field, 6).trimmed());
 
                         newAddresses.append(addressDetail);
                     } else if (field.fieldName == QLatin1String("email")) {
@@ -1380,7 +1439,7 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
                         if (detailContext != invalidContext) {
                             emailDetail.setContexts(detailContext);
                         }
-                        emailDetail.setEmailAddress(asString(field, 0));
+                        emailDetail.setEmailAddress(asString(field, 0).trimmed());
 
                         newEmailAddresses.append(emailDetail);
                     } else if (field.fieldName == QLatin1String("url")) {
@@ -1388,21 +1447,21 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
                         if (detailContext != invalidContext) {
                             urlDetail.setContexts(detailContext);
                         }
-                        urlDetail.setUrl(asString(field, 0));
+                        urlDetail.setUrl(asString(field, 0).trimmed());
 
                         newUrls.append(urlDetail);
                     } else if (field.fieldName == QLatin1String("title")) {
-                        organizationDetail.setTitle(asString(field, 0));
+                        organizationDetail.setTitle(asString(field, 0).trimmed());
                         if (detailContext != invalidContext) {
                             organizationDetail.setContexts(detailContext);
                         }
                     } else if (field.fieldName == QLatin1String("role")) {
-                        organizationDetail.setRole(asString(field, 0));
+                        organizationDetail.setRole(asString(field, 0).trimmed());
                         if (detailContext != invalidContext) {
                             organizationDetail.setContexts(detailContext);
                         }
                     } else if (field.fieldName == QLatin1String("org")) {
-                        organizationDetail.setName(asString(field, 0));
+                        organizationDetail.setName(asString(field, 0).trimmed());
                         organizationDetail.setDepartment(asStringList(field, 1));
                         if (detailContext != invalidContext) {
                             organizationDetail.setContexts(detailContext);
@@ -1417,15 +1476,15 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
                             nameDetail.setContexts(detailContext);
                         }
 
-                        replaceNameDetail(&QContactName::lastName, &QContactName::setLastName, &nameDetail, asString(field, 0));
-                        replaceNameDetail(&QContactName::firstName, &QContactName::setFirstName, &nameDetail, asString(field, 1));
-                        replaceNameDetail(&QContactName::middleName, &QContactName::setMiddleName, &nameDetail, asString(field, 2));
-                        replaceNameDetail(&QContactName::prefix, &QContactName::setPrefix, &nameDetail, asString(field, 3));
-                        replaceNameDetail(&QContactName::suffix, &QContactName::setSuffix, &nameDetail, asString(field, 4));
+                        replaceNameDetail(&QContactName::lastName, &QContactName::setLastName, &nameDetail, asString(field, 0).trimmed());
+                        replaceNameDetail(&QContactName::firstName, &QContactName::setFirstName, &nameDetail, asString(field, 1).trimmed());
+                        replaceNameDetail(&QContactName::middleName, &QContactName::setMiddleName, &nameDetail, asString(field, 2).trimmed());
+                        replaceNameDetail(&QContactName::prefix, &QContactName::setPrefix, &nameDetail, asString(field, 3).trimmed());
+                        replaceNameDetail(&QContactName::suffix, &QContactName::setSuffix, &nameDetail, asString(field, 4).trimmed());
 
                         structuredName = true;
                     } else if (field.fieldName == QLatin1String("fn")) {
-                        const QString fn(asString(field, 0));
+                        const QString fn(asString(field, 0).trimmed());
                         if (!fn.isEmpty()) {
                             if (detailContext != invalidContext) {
                                 nameDetail.setContexts(detailContext);
@@ -1433,7 +1492,7 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
                             formattedName = fn;
                         }
                     } else if (field.fieldName == QLatin1String("nickname")) {
-                        const QString nickname(asString(field, 0));
+                        const QString nickname(asString(field, 0).trimmed());
                         if (!nickname.isEmpty()) {
                             QContactNickname nicknameDetail;
                             nicknameDetail.setNickname(nickname);
@@ -1454,7 +1513,7 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
                         if (detailContext != invalidContext) {
                             noteDetail.setContexts(detailContext);
                         }
-                        noteDetail.setNote(asString(field, 0));
+                        noteDetail.setNote(asString(field, 0).trimmed());
 
                         newNotes.append(noteDetail);
                     } else if (field.fieldName == QLatin1String("bday")) {
