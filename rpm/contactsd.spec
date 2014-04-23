@@ -23,7 +23,9 @@ BuildRequires: pkgconfig(libkcalcoren-qt5)
 BuildRequires: pkgconfig(telepathy-glib)
 BuildRequires: pkgconfig(qofono-qt5)
 BuildRequires: pkgconfig(qtcontacts-sqlite-qt5-extensions) >= 0.1.54
-BuildRequires: pkgconfig(buteosyncfw5)
+# pkgconfig(buteosyncfw5) is not correctly versioned, use the provider package instead:
+#BuildRequires: pkgconfig(buteosyncfw5) >= 0.6.33
+BuildRequires: buteo-syncfw-qt5-devel >= 0.6.33
 BuildRequires: pkgconfig(qt5-boostable)
 BuildRequires: qt5-qttools
 BuildRequires: qt5-qttools-linguist
