@@ -454,6 +454,17 @@ qDebug() << "locallyDeleted:" << locallyDeleted;
         QList<QPair<QContactId, int> > additionIds;
 
         // Apply primary DB changes to the nonprivileged DB
+        foreach (QContact contact, locallyDeleted) {
+            const QContactId privilegedId(contact.id());
+            const QContactId nonprivilegedId(m_nonprivilegedIds.value(privilegedId));
+            if (!nonprivilegedId.isNull()) {
+                removedContactIds.append(nonprivilegedId);
+            }
+
+            m_avatarPathChanges.remove(privilegedId);
+        }
+
+        // Note: a contact reported as deleted cannot also be in the added or modified lists
         foreach (QContact contact, locallyAdded + locallyModified) {
             const QContactId privilegedId(contact.id());
 
@@ -485,14 +496,12 @@ qDebug() << "locallyDeleted:" << locallyDeleted;
             modifiedContacts.append(contact);
         }
 
-        foreach (QContact contact, locallyDeleted) {
-            const QContactId privilegedId(contact.id());
-            const QContactId nonprivilegedId(m_nonprivilegedIds.value(privilegedId));
-            if (!nonprivilegedId.isNull()) {
-                removedContactIds.append(nonprivilegedId);
+        if (!removedContactIds.isEmpty()) {
+            // Remove any deleted contacts first so their details cannot conflict with subsequent additions
+            if (!m_nonprivileged.removeContacts(removedContactIds)) {
+                qWarning() << "Unable to remove privileged DB deletions from export DB!";
+                return false;
             }
-
-            m_avatarPathChanges.remove(privilegedId);
         }
 
         if (!modifiedContacts.isEmpty()) {
@@ -511,13 +520,6 @@ qDebug() << "locallyDeleted:" << locallyDeleted;
                     m_nonprivilegedIds.insert(privilegedId, nonprivilegedId);
                     m_privilegedIds.insert(nonprivilegedId, privilegedId);
                 }
-            }
-        }
-
-        if (!removedContactIds.isEmpty()) {
-            if (!m_nonprivileged.removeContacts(removedContactIds)) {
-                qWarning() << "Unable to remove privileged DB deletions from export DB!";
-                return false;
             }
         }
 
