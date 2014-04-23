@@ -18,6 +18,9 @@
 
 #include <QObject>
 #include <QTimer>
+#include <QSet>
+#include <QStringList>
+#include <QString>
 
 #include <QContactManager>
 
@@ -41,6 +44,8 @@ private slots:
     void onNonprivilegedContactsChanged(const QList<QContactId> &changedIds);
     void onNonprivilegedContactsRemoved(const QList<QContactId> &removedIds);
 
+    void onSyncContactsChanged(const QStringList &syncTargets);
+
     void onSyncTimeout();
 
 private:
@@ -50,6 +55,7 @@ private:
     QContactManager m_privilegedManager;
     QContactManager m_nonprivilegedManager;
     QTimer m_syncTimer;
+    QSet<QString> m_syncTargetsNeedingSync;
 };
 
 #endif // CDEXPORTERCONTROLLER_H
