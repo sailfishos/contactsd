@@ -422,7 +422,7 @@ private:
         removeProvenanceInformation(contact);
     }
 
-    bool syncNonprivilegedToPrivileged()
+    bool syncNonprivilegedToPrivileged(bool debug)
     {
         QList<QContact> modifiedContacts;
         QList<QContact> removedContacts;
@@ -481,10 +481,12 @@ private:
             }
         }
 
-qDebug() << "remote changes ================================";
-qDebug() << "m_remoteSince:" << m_remoteSince;
-qDebug() << "removedContacts:" << removedContacts;
-qDebug() << "modifiedContacts:" << modifiedContacts;
+        if (debug) {
+            qDebug() << "remote changes ================================";
+            qDebug() << "m_remoteSince:" << m_remoteSince;
+            qDebug() << "removedContacts:" << removedContacts;
+            qDebug() << "modifiedContacts:" << modifiedContacts;
+        }
 
         if (!storeRemoteChanges(removedContacts, &modifiedContacts, m_accountId)) {
             qWarning() << "Unable to store remote changes";
@@ -533,7 +535,7 @@ qDebug() << "modifiedContacts:" << modifiedContacts;
         removeProvenanceInformation(contact);
     }
 
-    bool syncPrivilegedToNonprivileged()
+    bool syncPrivilegedToNonprivileged(bool debug)
     {
         // Find privileged DB changes we need to reflect (including presence changes)
         QDateTime localSince;
@@ -543,11 +545,13 @@ qDebug() << "modifiedContacts:" << modifiedContacts;
             return false;
         }
 
-qDebug() << "local changes --------------------------------";
-qDebug() << "localSince:" << localSince;
-qDebug() << "locallyAdded:" << locallyAdded;
-qDebug() << "locallyModified:" << locallyModified;
-qDebug() << "locallyDeleted:" << locallyDeleted;
+        if (debug) {
+            qDebug() << "local changes --------------------------------";
+            qDebug() << "localSince:" << localSince;
+            qDebug() << "locallyAdded:" << locallyAdded;
+            qDebug() << "locallyModified:" << locallyModified;
+            qDebug() << "locallyDeleted:" << locallyDeleted;
+        }
 
         QList<QContact> modifiedContacts;
         QList<QContactId> removedContactIds;
@@ -645,13 +649,13 @@ public:
         m_nonprivilegedSelfId = m_nonprivileged.selfContactId();
     }
 
-    bool sync()
+    bool sync(bool debug)
     {
         // Proceed through the steps of the TWCSA algorithm, where the nonprivileged database
         // is equivalent to 'remote' and the privileged datsbase is euqivalent to 'local'
         return (prepareSync() &&
-                syncNonprivilegedToPrivileged() &&
-                syncPrivilegedToNonprivileged() &&
+                syncNonprivilegedToPrivileged(debug) &&
+                syncPrivilegedToNonprivileged(debug) &&
                 finalizeSync());
     }
 };
@@ -711,6 +715,8 @@ CDExporterController::CDExporterController(QObject *parent)
     : QObject(parent)
     , m_privilegedManager(managerName(), privilegedManagerParameters())
     , m_nonprivilegedManager(managerName(), nonprivilegedManagerParameters())
+    , m_disabledConf(QStringLiteral("/org/nemomobile/contacts/export/disabled"))
+    , m_debugConf(QStringLiteral("/org/nemomobile/contacts/export/debug"))
 {
     // Use a timer to delay reaction, so we don't sync until sequential changes have completed
     m_syncTimer.setSingleShot(true);
@@ -729,8 +735,12 @@ CDExporterController::CDExporterController(QObject *parent)
     connect(&m_nonprivilegedManager, SIGNAL(contactsChanged(QList<QContactId>)), this, SLOT(onNonprivilegedContactsChanged(QList<QContactId>)));
     connect(&m_nonprivilegedManager, SIGNAL(contactsRemoved(QList<QContactId>)), this, SLOT(onNonprivilegedContactsRemoved(QList<QContactId>)));
 
-    // Do an initial sync
-    m_syncTimer.start(1);
+    if (m_disabledConf.value().toInt() == 0) {
+        // Do an initial sync
+        m_syncTimer.start(1);
+    } else {
+        qWarning() << "Contacts database export is disabled";
+    }
 }
 
 CDExporterController::~CDExporterController()
@@ -791,7 +801,7 @@ void CDExporterController::onSyncTimeout()
 {
     // Perform a sync between the privileged and non-privileged managers
     SyncAdapter adapter(m_privilegedManager, m_nonprivilegedManager);
-    if (!adapter.sync()) {
+    if (!adapter.sync(m_debugConf.value().toInt() > 0)) {
         qWarning() << "Unable to synchronize database changes!";
     }
 
@@ -803,6 +813,8 @@ void CDExporterController::onSyncTimeout()
 void CDExporterController::scheduleSync(ChangeType type)
 {
     // Something has changed that needs to be exported
-    m_syncTimer.start(type == PresenceChange ? presenceSyncDelay : syncDelay);
+    if (m_disabledConf.value().toInt() == 0) {
+        m_syncTimer.start(type == PresenceChange ? presenceSyncDelay : syncDelay);
+    }
 }
 
