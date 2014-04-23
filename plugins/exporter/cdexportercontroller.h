@@ -24,6 +24,8 @@
 
 #include <QContactManager>
 
+#include <MGConfItem>
+
 QTCONTACTS_USE_NAMESPACE
 
 class CDExporterController : public QObject
@@ -56,6 +58,9 @@ private:
     QContactManager m_nonprivilegedManager;
     QTimer m_syncTimer;
     QSet<QString> m_syncTargetsNeedingSync;
+
+    MGConfItem m_disabledConf;
+    MGConfItem m_debugConf;
 };
 
 #endif // CDEXPORTERCONTROLLER_H

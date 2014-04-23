@@ -108,6 +108,102 @@ QContactFilter removedSinceFilter(const QDateTime &ts)
     return syncTargetFilter(aggregateSyncTarget) & removedFilter;
 }
 
+QString mangleDetailUri(const QString &uri, const QContactId &privilegedId)
+{
+    if (uri.startsWith(aggregateSyncTarget)) {
+        int index = uri.indexOf(QChar::fromLatin1(':'));
+        if (index != -1) {
+            if (privilegedId.isNull()) {
+                // This is a new aggregate - remove the existing mangling
+                return uri.mid(index + 1);
+            } else {
+                // Replace the existing mangling with that used in the privileged DB
+                const quint32 dbId(QtContactsSqliteExtensions::internalContactId(privilegedId));
+                const QString prefix(aggregateSyncTarget + QStringLiteral("-%1").arg(dbId));
+                return prefix + uri.mid(index);
+            }
+        }
+    }
+
+    return uri;
+}
+
+void mangleDetailUris(QContact &contact, const QContactId &privilegedId)
+{
+    foreach (const QContactDetail &detail, contact.details()) {
+        bool modified(false);
+
+        QString detailUri(detail.detailUri());
+        if (!detailUri.isEmpty()) {
+            detailUri = mangleDetailUri(detailUri, privilegedId);
+            modified = true;
+        }
+
+        QStringList linkedDetailUris(detail.linkedDetailUris());
+        if (!linkedDetailUris.isEmpty()) {
+            QStringList::iterator it = linkedDetailUris.begin(), end = linkedDetailUris.end();
+            for ( ; it != end; ++it) {
+                QString &linkedUri(*it);
+                if (!linkedUri.isEmpty()) {
+                    linkedUri = mangleDetailUri(linkedUri, privilegedId);
+                    modified = true;
+                }
+            }
+        }
+
+        if (modified) {
+            QContactDetail copy(detail);
+            copy.setDetailUri(detailUri);
+            copy.setLinkedDetailUris(linkedDetailUris);
+            contact.saveDetail(&copy);
+        }
+    }
+}
+
+QString demangleDetailUri(const QString &uri)
+{
+    if (uri.startsWith(aggregateSyncTarget)) {
+        int index = uri.indexOf(QChar::fromLatin1(':'));
+        if (index != -1) {
+            return uri.mid(index + 1);
+        }
+    }
+
+    return uri;
+}
+
+void demangleDetailUris(QContact &contact)
+{
+    foreach (const QContactDetail &detail, contact.details()) {
+        bool modified(false);
+
+        QString detailUri(detail.detailUri());
+        if (!detailUri.isEmpty()) {
+            detailUri = demangleDetailUri(detailUri);
+            modified = true;
+        }
+
+        QStringList linkedDetailUris(detail.linkedDetailUris());
+        if (!linkedDetailUris.isEmpty()) {
+            QStringList::iterator it = linkedDetailUris.begin(), end = linkedDetailUris.end();
+            for ( ; it != end; ++it) {
+                QString &linkedUri(*it);
+                if (!linkedUri.isEmpty()) {
+                    linkedUri = demangleDetailUri(linkedUri);
+                    modified = true;
+                }
+            }
+        }
+
+        if (modified) {
+            QContactDetail copy(detail);
+            copy.setDetailUri(detailUri);
+            copy.setLinkedDetailUris(linkedDetailUris);
+            contact.saveDetail(&copy);
+        }
+    }
+}
+
 void removeProvenanceInformation(QContact &contact)
 {
     foreach (const QContactDetail &detail, contact.details()) {
@@ -320,10 +416,13 @@ private:
             }
         }
 
+        // Mangle detail URIs to match the privileged DB data
+        mangleDetailUris(contact, privilegedId);
+
         removeProvenanceInformation(contact);
     }
 
-    bool syncNonprivilegedToPrivileged()
+    bool syncNonprivilegedToPrivileged(bool debug)
     {
         QList<QContact> modifiedContacts;
         QList<QContact> removedContacts;
@@ -382,10 +481,12 @@ private:
             }
         }
 
-qDebug() << "remote changes ================================";
-qDebug() << "m_remoteSince:" << m_remoteSince;
-qDebug() << "removedContacts:" << removedContacts;
-qDebug() << "modifiedContacts:" << modifiedContacts;
+        if (debug) {
+            qDebug() << "remote changes ================================";
+            qDebug() << "m_remoteSince:" << m_remoteSince;
+            qDebug() << "removedContacts:" << removedContacts;
+            qDebug() << "modifiedContacts:" << modifiedContacts;
+        }
 
         if (!storeRemoteChanges(removedContacts, &modifiedContacts, m_accountId)) {
             qWarning() << "Unable to store remote changes";
@@ -428,10 +529,13 @@ qDebug() << "modifiedContacts:" << modifiedContacts;
         QHash<QUrl, QUrl> changes = modifyAvatarUrls(contact);
         m_avatarPathChanges.insert(privilegedId, changes);
 
+        // Remove any detail URI mangling used in the privileged DB
+        demangleDetailUris(contact);
+
         removeProvenanceInformation(contact);
     }
 
-    bool syncPrivilegedToNonprivileged()
+    bool syncPrivilegedToNonprivileged(bool debug)
     {
         // Find privileged DB changes we need to reflect (including presence changes)
         QDateTime localSince;
@@ -441,11 +545,13 @@ qDebug() << "modifiedContacts:" << modifiedContacts;
             return false;
         }
 
-qDebug() << "local changes --------------------------------";
-qDebug() << "localSince:" << localSince;
-qDebug() << "locallyAdded:" << locallyAdded;
-qDebug() << "locallyModified:" << locallyModified;
-qDebug() << "locallyDeleted:" << locallyDeleted;
+        if (debug) {
+            qDebug() << "local changes --------------------------------";
+            qDebug() << "localSince:" << localSince;
+            qDebug() << "locallyAdded:" << locallyAdded;
+            qDebug() << "locallyModified:" << locallyModified;
+            qDebug() << "locallyDeleted:" << locallyDeleted;
+        }
 
         QList<QContact> modifiedContacts;
         QList<QContactId> removedContactIds;
@@ -454,6 +560,17 @@ qDebug() << "locallyDeleted:" << locallyDeleted;
         QList<QPair<QContactId, int> > additionIds;
 
         // Apply primary DB changes to the nonprivileged DB
+        foreach (QContact contact, locallyDeleted) {
+            const QContactId privilegedId(contact.id());
+            const QContactId nonprivilegedId(m_nonprivilegedIds.value(privilegedId));
+            if (!nonprivilegedId.isNull()) {
+                removedContactIds.append(nonprivilegedId);
+            }
+
+            m_avatarPathChanges.remove(privilegedId);
+        }
+
+        // Note: a contact reported as deleted cannot also be in the added or modified lists
         foreach (QContact contact, locallyAdded + locallyModified) {
             const QContactId privilegedId(contact.id());
 
@@ -485,14 +602,12 @@ qDebug() << "locallyDeleted:" << locallyDeleted;
             modifiedContacts.append(contact);
         }
 
-        foreach (QContact contact, locallyDeleted) {
-            const QContactId privilegedId(contact.id());
-            const QContactId nonprivilegedId(m_nonprivilegedIds.value(privilegedId));
-            if (!nonprivilegedId.isNull()) {
-                removedContactIds.append(nonprivilegedId);
+        if (!removedContactIds.isEmpty()) {
+            // Remove any deleted contacts first so their details cannot conflict with subsequent additions
+            if (!m_nonprivileged.removeContacts(removedContactIds)) {
+                qWarning() << "Unable to remove privileged DB deletions from export DB!";
+                return false;
             }
-
-            m_avatarPathChanges.remove(privilegedId);
         }
 
         if (!modifiedContacts.isEmpty()) {
@@ -511,13 +626,6 @@ qDebug() << "locallyDeleted:" << locallyDeleted;
                     m_nonprivilegedIds.insert(privilegedId, nonprivilegedId);
                     m_privilegedIds.insert(nonprivilegedId, privilegedId);
                 }
-            }
-        }
-
-        if (!removedContactIds.isEmpty()) {
-            if (!m_nonprivileged.removeContacts(removedContactIds)) {
-                qWarning() << "Unable to remove privileged DB deletions from export DB!";
-                return false;
             }
         }
 
@@ -541,13 +649,13 @@ public:
         m_nonprivilegedSelfId = m_nonprivileged.selfContactId();
     }
 
-    bool sync()
+    bool sync(bool debug)
     {
         // Proceed through the steps of the TWCSA algorithm, where the nonprivileged database
         // is equivalent to 'remote' and the privileged datsbase is euqivalent to 'local'
         return (prepareSync() &&
-                syncNonprivilegedToPrivileged() &&
-                syncPrivilegedToNonprivileged() &&
+                syncNonprivilegedToPrivileged(debug) &&
+                syncPrivilegedToNonprivileged(debug) &&
                 finalizeSync());
     }
 };
@@ -607,6 +715,8 @@ CDExporterController::CDExporterController(QObject *parent)
     : QObject(parent)
     , m_privilegedManager(managerName(), privilegedManagerParameters())
     , m_nonprivilegedManager(managerName(), nonprivilegedManagerParameters())
+    , m_disabledConf(QStringLiteral("/org/nemomobile/contacts/export/disabled"))
+    , m_debugConf(QStringLiteral("/org/nemomobile/contacts/export/debug"))
 {
     // Use a timer to delay reaction, so we don't sync until sequential changes have completed
     m_syncTimer.setSingleShot(true);
@@ -625,8 +735,12 @@ CDExporterController::CDExporterController(QObject *parent)
     connect(&m_nonprivilegedManager, SIGNAL(contactsChanged(QList<QContactId>)), this, SLOT(onNonprivilegedContactsChanged(QList<QContactId>)));
     connect(&m_nonprivilegedManager, SIGNAL(contactsRemoved(QList<QContactId>)), this, SLOT(onNonprivilegedContactsRemoved(QList<QContactId>)));
 
-    // Do an initial sync
-    m_syncTimer.start(1);
+    if (m_disabledConf.value().toInt() == 0) {
+        // Do an initial sync
+        m_syncTimer.start(1);
+    } else {
+        qWarning() << "Contacts database export is disabled";
+    }
 }
 
 CDExporterController::~CDExporterController()
@@ -687,7 +801,7 @@ void CDExporterController::onSyncTimeout()
 {
     // Perform a sync between the privileged and non-privileged managers
     SyncAdapter adapter(m_privilegedManager, m_nonprivilegedManager);
-    if (!adapter.sync()) {
+    if (!adapter.sync(m_debugConf.value().toInt() > 0)) {
         qWarning() << "Unable to synchronize database changes!";
     }
 
@@ -699,6 +813,8 @@ void CDExporterController::onSyncTimeout()
 void CDExporterController::scheduleSync(ChangeType type)
 {
     // Something has changed that needs to be exported
-    m_syncTimer.start(type == PresenceChange ? presenceSyncDelay : syncDelay);
+    if (m_disabledConf.value().toInt() == 0) {
+        m_syncTimer.start(type == PresenceChange ? presenceSyncDelay : syncDelay);
+    }
 }
 
