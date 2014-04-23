@@ -108,6 +108,102 @@ QContactFilter removedSinceFilter(const QDateTime &ts)
     return syncTargetFilter(aggregateSyncTarget) & removedFilter;
 }
 
+QString mangleDetailUri(const QString &uri, const QContactId &privilegedId)
+{
+    if (uri.startsWith(aggregateSyncTarget)) {
+        int index = uri.indexOf(QChar::fromLatin1(':'));
+        if (index != -1) {
+            if (privilegedId.isNull()) {
+                // This is a new aggregate - remove the existing mangling
+                return uri.mid(index + 1);
+            } else {
+                // Replace the existing mangling with that used in the privileged DB
+                const quint32 dbId(QtContactsSqliteExtensions::internalContactId(privilegedId));
+                const QString prefix(aggregateSyncTarget + QStringLiteral("-%1").arg(dbId));
+                return prefix + uri.mid(index);
+            }
+        }
+    }
+
+    return uri;
+}
+
+void mangleDetailUris(QContact &contact, const QContactId &privilegedId)
+{
+    foreach (const QContactDetail &detail, contact.details()) {
+        bool modified(false);
+
+        QString detailUri(detail.detailUri());
+        if (!detailUri.isEmpty()) {
+            detailUri = mangleDetailUri(detailUri, privilegedId);
+            modified = true;
+        }
+
+        QStringList linkedDetailUris(detail.linkedDetailUris());
+        if (!linkedDetailUris.isEmpty()) {
+            QStringList::iterator it = linkedDetailUris.begin(), end = linkedDetailUris.end();
+            for ( ; it != end; ++it) {
+                QString &linkedUri(*it);
+                if (!linkedUri.isEmpty()) {
+                    linkedUri = mangleDetailUri(linkedUri, privilegedId);
+                    modified = true;
+                }
+            }
+        }
+
+        if (modified) {
+            QContactDetail copy(detail);
+            copy.setDetailUri(detailUri);
+            copy.setLinkedDetailUris(linkedDetailUris);
+            contact.saveDetail(&copy);
+        }
+    }
+}
+
+QString demangleDetailUri(const QString &uri)
+{
+    if (uri.startsWith(aggregateSyncTarget)) {
+        int index = uri.indexOf(QChar::fromLatin1(':'));
+        if (index != -1) {
+            return uri.mid(index + 1);
+        }
+    }
+
+    return uri;
+}
+
+void demangleDetailUris(QContact &contact)
+{
+    foreach (const QContactDetail &detail, contact.details()) {
+        bool modified(false);
+
+        QString detailUri(detail.detailUri());
+        if (!detailUri.isEmpty()) {
+            detailUri = demangleDetailUri(detailUri);
+            modified = true;
+        }
+
+        QStringList linkedDetailUris(detail.linkedDetailUris());
+        if (!linkedDetailUris.isEmpty()) {
+            QStringList::iterator it = linkedDetailUris.begin(), end = linkedDetailUris.end();
+            for ( ; it != end; ++it) {
+                QString &linkedUri(*it);
+                if (!linkedUri.isEmpty()) {
+                    linkedUri = demangleDetailUri(linkedUri);
+                    modified = true;
+                }
+            }
+        }
+
+        if (modified) {
+            QContactDetail copy(detail);
+            copy.setDetailUri(detailUri);
+            copy.setLinkedDetailUris(linkedDetailUris);
+            contact.saveDetail(&copy);
+        }
+    }
+}
+
 void removeProvenanceInformation(QContact &contact)
 {
     foreach (const QContactDetail &detail, contact.details()) {
@@ -320,6 +416,9 @@ private:
             }
         }
 
+        // Mangle detail URIs to match the privileged DB data
+        mangleDetailUris(contact, privilegedId);
+
         removeProvenanceInformation(contact);
     }
 
@@ -427,6 +526,9 @@ qDebug() << "modifiedContacts:" << modifiedContacts;
         // Remap avatar path changes
         QHash<QUrl, QUrl> changes = modifyAvatarUrls(contact);
         m_avatarPathChanges.insert(privilegedId, changes);
+
+        // Remove any detail URI mangling used in the privileged DB
+        demangleDetailUris(contact);
 
         removeProvenanceInformation(contact);
     }
