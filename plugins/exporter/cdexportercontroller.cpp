@@ -602,9 +602,31 @@ private:
             modifiedContacts.append(contact);
         }
 
-        if (!removedContactIds.isEmpty()) {
-            // Remove any deleted contacts first so their details cannot conflict with subsequent additions
-            if (!m_nonprivileged.removeContacts(removedContactIds)) {
+        // Remove any deleted contacts first so their details cannot conflict with subsequent additions
+        while (!removedContactIds.isEmpty()) {
+            QMap<int, QContactManager::Error> removeErrors;
+            if (m_nonprivileged.removeContacts(removedContactIds, &removeErrors)) {
+                break;
+            } else {
+                if (!removeErrors.isEmpty()) {
+                    // Failures due to local non-existence do not concern us
+                    QMap<int, QContactManager::Error>::const_iterator it = removeErrors.constBegin(), end = removeErrors.constEnd();
+                    for ( ; it != end; ++it) {
+                        if (it.value() != QContactManager::DoesNotExistError) {
+                            // This error is a problem we shouldn't ignore
+                            qDebug() << "Error removing ID:" << removedContactIds.at(it.key()) << "error:" << it.value();
+                            break;
+                        }
+                    }
+                    if (it == end) {
+                        // All errors are inconsequential - remove the offending IDs and try again
+                        QList<int> removeIndices(removeErrors.keys());
+                        while (!removeIndices.isEmpty()) {
+                            removedContactIds.removeAt(removeIndices.takeLast());
+                        }
+                        continue;
+                    }
+                }
                 qWarning() << "Unable to remove privileged DB deletions from export DB!";
                 return false;
             }
