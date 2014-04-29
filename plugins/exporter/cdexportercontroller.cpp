@@ -602,10 +602,39 @@ private:
             modifiedContacts.append(contact);
         }
 
-        if (!removedContactIds.isEmpty()) {
-            // Remove any deleted contacts first so their details cannot conflict with subsequent additions
-            if (!m_nonprivileged.removeContacts(removedContactIds)) {
+        // Remove any deleted contacts first so their details cannot conflict with subsequent additions
+        while (!removedContactIds.isEmpty()) {
+            QMap<int, QContactManager::Error> removeErrors;
+            if (m_nonprivileged.removeContacts(removedContactIds, &removeErrors)) {
+                break;
+            } else {
+                if (!removeErrors.isEmpty()) {
+                    // Failures due to local non-existence do not concern us
+                    QMap<int, QContactManager::Error>::const_iterator it = removeErrors.constBegin(), end = removeErrors.constEnd();
+                    for ( ; it != end; ++it) {
+                        if (it.value() != QContactManager::DoesNotExistError) {
+                            // This error is a problem we shouldn't ignore
+                            qDebug() << "Error removing ID:" << removedContactIds.at(it.key()) << "error:" << it.value();
+                            break;
+                        }
+                    }
+                    if (it == end) {
+                        // All errors are inconsequential - remove the offending IDs and try again
+                        QList<int> removeIndices(removeErrors.keys());
+                        while (!removeIndices.isEmpty()) {
+                            removedContactIds.removeAt(removeIndices.takeLast());
+                        }
+                        continue;
+                    }
+                }
+
                 qWarning() << "Unable to remove privileged DB deletions from export DB!";
+
+                // Removing contacts is less important than updating - if we can perform updates,
+                // then failure to remove should not abort the sync attempt
+                if (!modifiedContacts.isEmpty()) {
+                    break;
+                }
                 return false;
             }
         }
@@ -631,8 +660,8 @@ private:
 
         if (!selfContact.id().isNull()) {
             if (!m_nonprivileged.saveContact(&selfContact)) {
+                // Do not abort the sync attempt for this error
                 qWarning() << "Unable to save privileged DB self contact changes to export DB!";
-                return false;
             }
         }
 
