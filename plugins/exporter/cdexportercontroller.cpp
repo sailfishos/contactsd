@@ -627,7 +627,14 @@ private:
                         continue;
                     }
                 }
+
                 qWarning() << "Unable to remove privileged DB deletions from export DB!";
+
+                // Removing contacts is less important than updating - if we can perform updates,
+                // then failure to remove should not abort the sync attempt
+                if (!modifiedContacts.isEmpty()) {
+                    break;
+                }
                 return false;
             }
         }
@@ -653,8 +660,8 @@ private:
 
         if (!selfContact.id().isNull()) {
             if (!m_nonprivileged.saveContact(&selfContact)) {
+                // Do not abort the sync attempt for this error
                 qWarning() << "Unable to save privileged DB self contact changes to export DB!";
-                return false;
             }
         }
 
