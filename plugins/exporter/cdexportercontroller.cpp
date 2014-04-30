@@ -27,6 +27,7 @@
 
 #include <QContactChangeLogFilter>
 #include <QContactGuid>
+#include <QContactIdFilter>
 
 #include <QDateTime>
 #include <QDBusConnection>
@@ -153,8 +154,12 @@ void mangleDetailUris(QContact &contact, const QContactId &privilegedId)
 
         if (modified) {
             QContactDetail copy(detail);
-            copy.setDetailUri(detailUri);
-            copy.setLinkedDetailUris(linkedDetailUris);
+            if (!detailUri.isEmpty()) {
+                copy.setDetailUri(detailUri);
+            }
+            if (!linkedDetailUris.isEmpty()) {
+                copy.setLinkedDetailUris(linkedDetailUris);
+            }
             contact.saveDetail(&copy);
         }
     }
@@ -197,8 +202,12 @@ void demangleDetailUris(QContact &contact)
 
         if (modified) {
             QContactDetail copy(detail);
-            copy.setDetailUri(detailUri);
-            copy.setLinkedDetailUris(linkedDetailUris);
+            if (!detailUri.isEmpty()) {
+                copy.setDetailUri(detailUri);
+            }
+            if (!linkedDetailUris.isEmpty()) {
+                copy.setLinkedDetailUris(linkedDetailUris);
+            }
             contact.saveDetail(&copy);
         }
     }
@@ -286,6 +295,7 @@ QSet<QContactDetail::DetailType> getIgnorableDetailTypes()
     QSet<QContactDetail::DetailType> rv;
     rv.insert(QContactDetail__TypeDeactivated);
     rv.insert(QContactDetail::TypeDisplayLabel);
+    rv.insert(QContactDetail::TypeGlobalPresence);
     rv.insert(QContactDetail__TypeIncidental);
     rv.insert(QContactDetail__TypeStatusFlags);
     rv.insert(QContactDetail::TypeSyncTarget);
@@ -297,6 +307,76 @@ const QSet<QContactDetail::DetailType> &ignorableDetailTypes()
 {
     static QSet<QContactDetail::DetailType> types(getIgnorableDetailTypes());
     return types;
+}
+
+QSet<QContactDetail::DetailType> getPresenceDetailTypes()
+{
+    QSet<QContactDetail::DetailType> rv;
+    rv.insert(QContactDetail::TypePresence);
+    rv.insert(QContactDetail::TypeOnlineAccount);
+    rv.insert(QContactDetail__TypeOriginMetadata);
+    return rv;
+}
+
+bool presenceOnlyChange(const QContact &oldContact, const QContact &newContact)
+{
+    // A presence-only change affects only { Presence, OnlineAccount, OriginMetadata }
+    static QSet<QContactDetail::DetailType> presenceTypes(getPresenceDetailTypes());
+
+    QList<QContactDetail> oldDetails(oldContact.details());
+
+    QList<QContactDetail>::const_iterator it = oldDetails.constBegin(), end = oldDetails.constEnd();
+    for ( ; it != end; ++it) {
+        QContactDetail::DetailType type((*it).type());
+        if (presenceTypes.contains(type) || ignorableDetailTypes().contains(type)) {
+            continue;
+        }
+
+        QList<QContactDetail>::const_iterator pit = oldDetails.constBegin();
+        while (pit != it && (*pit).type() != type) {
+            ++pit;
+        }
+        if (pit != it) {
+            // We have already tested this detail type
+            continue;
+        }
+
+        // Test details of this type for changes
+        QList<QContactDetail> oldTypeDetails(oldContact.details(type));
+        QList<QContactDetail> newTypeDetails(newContact.details(type));
+        if (newTypeDetails.count() != oldTypeDetails.count()) {
+            return false;
+        }
+
+        // Compare the values to see if there are changes
+        QList<QContactDetail>::const_iterator oit = oldTypeDetails.constBegin(), oend = oldTypeDetails.constEnd();
+        for ( ; oit != oend; ++oit) {
+            QContactDetail oldDetail(*oit);
+
+            // Ignore differences in detail URIs
+            oldDetail.removeValue(QContactDetail::FieldDetailUri);
+            oldDetail.removeValue(QContactDetail::FieldLinkedDetailUris);
+
+            QList<QContactDetail>::iterator nit = newTypeDetails.begin(), nend = newTypeDetails.end();
+            for ( ; nit != nend; ++nit) {
+                QContactDetail newDetail(*nit);
+                newDetail.removeValue(QContactDetail::FieldDetailUri);
+                newDetail.removeValue(QContactDetail::FieldLinkedDetailUris);
+                if (newDetail == oldDetail) {
+                    break;
+                }
+            }
+            if (nit != nend) {
+                // Don't match any other details to this one
+                newTypeDetails.erase(nit);
+            } else {
+                // No match found - this difference prevents a presence-only change
+                return false;
+            }
+        }
+    }
+
+    return true;
 }
 
 class SyncAdapter : public QtContactsSqliteExtensions::TwoWayContactSyncAdapter
@@ -435,7 +515,10 @@ private:
         QList<QContactId> removedIds = m_nonprivileged.contactIds(removedSinceFilter(m_remoteSince));
 
         if (!modifiedIds.isEmpty() || !removedIds.isEmpty()) {
-            foreach (QContact contact, m_nonprivileged.contacts(modifiedIds)) {
+            QContactFetchHint fetchHint;
+            fetchHint.setOptimizationHints(QContactFetchHint::NoRelationships);
+
+            foreach (QContact contact, m_nonprivileged.contacts(modifiedIds, fetchHint)) {
                 // Find the primary DB ID for this contact, if it exists there
                 const QContactId nonprivilegedId(contact.id());
 
@@ -553,11 +636,12 @@ private:
             qDebug() << "locallyDeleted:" << locallyDeleted;
         }
 
+        QList<QContact> addedContacts;
         QList<QContact> modifiedContacts;
         QList<QContactId> removedContactIds;
         QContact selfContact;
 
-        QList<QPair<QContactId, int> > additionIds;
+        QList<QContactId> additionIds;
 
         // Apply primary DB changes to the nonprivileged DB
         foreach (QContact contact, locallyDeleted) {
@@ -586,7 +670,7 @@ private:
             contact.setId(nonprivilegedId);
             if (nonprivilegedId.isNull()) {
                 // This is an addition
-                additionIds.append(qMakePair(privilegedId, modifiedContacts.count()));
+                additionIds.append(privilegedId);
 
                 // Remove the primary DB ID
                 contact.setId(QContactId());
@@ -599,7 +683,11 @@ private:
 
             prepareExportContact(contact, privilegedId);
 
-            modifiedContacts.append(contact);
+            if (nonprivilegedId.isNull()) {
+                addedContacts.append(contact);
+            } else {
+                modifiedContacts.append(contact);
+            }
         }
 
         // Remove any deleted contacts first so their details cannot conflict with subsequent additions
@@ -614,7 +702,7 @@ private:
                     for ( ; it != end; ++it) {
                         if (it.value() != QContactManager::DoesNotExistError) {
                             // This error is a problem we shouldn't ignore
-                            qDebug() << "Error removing ID:" << removedContactIds.at(it.key()) << "error:" << it.value();
+                            qWarning() << "Error removing ID:" << removedContactIds.at(it.key()) << "error:" << it.value();
                             break;
                         }
                     }
@@ -639,7 +727,59 @@ private:
             }
         }
 
-        if (!modifiedContacts.isEmpty()) {
+        if (!modifiedContacts.isEmpty() || !addedContacts.isEmpty()) {
+            if (!modifiedContacts.isEmpty()) {
+                // Partition this modified set into two groups - those that only include presence changes, and the remainder
+                QMap<QContactId, const QContact *> potentialPresenceChanges;
+                foreach (const QContact &contact, modifiedContacts) {
+                    // Only contacts with online accounts can have presence changes
+                    if (!contact.details<QContactOnlineAccount>().isEmpty()) {
+                        potentialPresenceChanges.insert(contact.id(), &contact);
+                    }
+                }
+
+                if (!potentialPresenceChanges.isEmpty()) {
+                    QList<QContact> presenceChangedContacts;
+
+                    QContactIdFilter idFilter;
+                    idFilter.setIds(potentialPresenceChanges.keys());
+                    QContactFetchHint fetchHint;
+                    fetchHint.setOptimizationHints(QContactFetchHint::NoRelationships);
+
+                    QSet<QContactId> presenceChangedIds;
+                    foreach (QContact contact, m_nonprivileged.contacts(idFilter, QList<QContactSortOrder>(), fetchHint)) {
+                        const QContact *newContact(potentialPresenceChanges.value(contact.id()));
+                        if (presenceOnlyChange(contact, *newContact)) {
+                            presenceChangedContacts.append(*newContact);
+                            presenceChangedIds.insert(contact.id());
+                        }
+                    }
+
+                    if (!presenceChangedIds.isEmpty()) {
+                        // Remove the presence-only changed contacts from the modified list
+                        QList<QContact>::iterator it = modifiedContacts.begin();
+                        while (it != modifiedContacts.end()) {
+                            if (presenceChangedIds.contains((*it).id())) {
+                                it = modifiedContacts.erase(it);
+                            } else {
+                                ++it;
+                            }
+                        }
+                    }
+
+                    // Save the presence changes first
+                    if (!m_nonprivileged.saveContacts(&presenceChangedContacts, getPresenceDetailTypes().toList())) {
+                        qWarning() << "Unable to save privileged DB presence changes to export DB!";
+                        // Don't abort the sync operation for presence update failure
+                    }
+                }
+            }
+
+            const size_t addedContactsOffset = modifiedContacts.count();
+            if (!addedContacts.isEmpty()) {
+                modifiedContacts.append(addedContacts);
+            }
+
             if (!m_nonprivileged.saveContacts(&modifiedContacts)) {
                 qWarning() << "Unable to save privileged DB changes to export DB!";
                 return false;
@@ -647,11 +787,11 @@ private:
 
             if (!additionIds.isEmpty()) {
                 // Find the IDs allocated in the export DB
-                QList<QPair<QContactId, int> >::const_iterator it = additionIds.constBegin(), end = additionIds.constEnd();
-                for ( ; it != end; ++it) {
-                    const QContactId &privilegedId((*it).first);
-                    const int additionIndex((*it).second);
-                    const QContactId nonprivilegedId(modifiedContacts.at(additionIndex).id());
+                QList<QContactId>::const_iterator iit = additionIds.constBegin(), iend = additionIds.constEnd();
+                QList<QContact>::const_iterator cit = modifiedContacts.constBegin() + addedContactsOffset;
+                for ( ; iit != iend; ++iit, ++cit) {
+                    const QContactId &privilegedId(*iit);
+                    const QContactId nonprivilegedId((*cit).id());
                     m_nonprivilegedIds.insert(privilegedId, nonprivilegedId);
                     m_privilegedIds.insert(nonprivilegedId, privilegedId);
                 }
