@@ -502,7 +502,7 @@ private:
         removeProvenanceInformation(contact);
     }
 
-    bool syncNonprivilegedToPrivileged(bool debug)
+    bool syncNonprivilegedToPrivileged(bool importChanges, bool debug)
     {
         QList<QContact> modifiedContacts;
         QList<QContact> removedContacts;
@@ -510,56 +510,58 @@ private:
 
         QList<QPair<QContactId, int> > additionIds;
 
-        // Find nonprivileged changes since our last sync
-        QList<QContactId> modifiedIds = m_nonprivileged.contactIds(modifiedSinceFilter(m_remoteSince));
-        QList<QContactId> removedIds = m_nonprivileged.contactIds(removedSinceFilter(m_remoteSince));
+        if (importChanges) {
+            // Find nonprivileged changes since our last sync
+            QList<QContactId> modifiedIds = m_nonprivileged.contactIds(modifiedSinceFilter(m_remoteSince));
+            QList<QContactId> removedIds = m_nonprivileged.contactIds(removedSinceFilter(m_remoteSince));
 
-        if (!modifiedIds.isEmpty() || !removedIds.isEmpty()) {
-            QContactFetchHint fetchHint;
-            fetchHint.setOptimizationHints(QContactFetchHint::NoRelationships);
+            if (!modifiedIds.isEmpty() || !removedIds.isEmpty()) {
+                QContactFetchHint fetchHint;
+                fetchHint.setOptimizationHints(QContactFetchHint::NoRelationships);
 
-            foreach (QContact contact, m_nonprivileged.contacts(modifiedIds, fetchHint)) {
-                // Find the primary DB ID for this contact, if it exists there
-                const QContactId nonprivilegedId(contact.id());
+                foreach (QContact contact, m_nonprivileged.contacts(modifiedIds, fetchHint)) {
+                    // Find the primary DB ID for this contact, if it exists there
+                    const QContactId nonprivilegedId(contact.id());
 
-                // Self contact must be treated separately
-                if (nonprivilegedId == m_nonprivilegedSelfId) {
-                    selfContact = contact;
-                    selfContact.setId(m_privilegedSelfId);
+                    // Self contact must be treated separately
+                    if (nonprivilegedId == m_nonprivilegedSelfId) {
+                        selfContact = contact;
+                        selfContact.setId(m_privilegedSelfId);
 
-                    prepareImportContact(selfContact, m_privilegedSelfId);
-                    continue;
-                }
+                        prepareImportContact(selfContact, m_privilegedSelfId);
+                        continue;
+                    }
 
-                const QContactId privilegedId(m_privilegedIds.value(nonprivilegedId));
-                contact.setId(privilegedId);
-                if (privilegedId.isNull()) {
-                    // This is an addition
-                    additionIds.append(qMakePair(nonprivilegedId, modifiedContacts.count()));
-                }
-
-                // Reset the syncTarget to 'aggregate' for this contact
-                QContactSyncTarget st(contact.detail<QContactSyncTarget>());
-                st.setSyncTarget(aggregateSyncTarget);
-                contact.saveDetail(&st);
-
-                // Remove any GUID from this contact
-                QContactGuid guid(contact.detail<QContactGuid>());
-                contact.removeDetail(&guid);
-
-                prepareImportContact(contact, privilegedId);
-
-                modifiedContacts.append(contact);
-            }
-
-            foreach (const QContactId &nonprivilegedId, removedIds) {
-                const QContactId privilegedId(m_privilegedIds.value(nonprivilegedId));
-                if (!privilegedId.isNull()) {
-                    QContact contact;
+                    const QContactId privilegedId(m_privilegedIds.value(nonprivilegedId));
                     contact.setId(privilegedId);
-                    removedContacts.append(contact);
-                } else {
-                    qWarning() << "Cannot remove export deletion without primary ID:" << nonprivilegedId;
+                    if (privilegedId.isNull()) {
+                        // This is an addition
+                        additionIds.append(qMakePair(nonprivilegedId, modifiedContacts.count()));
+                    }
+
+                    // Reset the syncTarget to 'aggregate' for this contact
+                    QContactSyncTarget st(contact.detail<QContactSyncTarget>());
+                    st.setSyncTarget(aggregateSyncTarget);
+                    contact.saveDetail(&st);
+
+                    // Remove any GUID from this contact
+                    QContactGuid guid(contact.detail<QContactGuid>());
+                    contact.removeDetail(&guid);
+
+                    prepareImportContact(contact, privilegedId);
+
+                    modifiedContacts.append(contact);
+                }
+
+                foreach (const QContactId &nonprivilegedId, removedIds) {
+                    const QContactId privilegedId(m_privilegedIds.value(nonprivilegedId));
+                    if (!privilegedId.isNull()) {
+                        QContact contact;
+                        contact.setId(privilegedId);
+                        removedContacts.append(contact);
+                    } else {
+                        qWarning() << "Cannot remove export deletion without primary ID:" << nonprivilegedId;
+                    }
                 }
             }
         }
@@ -818,12 +820,12 @@ public:
         m_nonprivilegedSelfId = m_nonprivileged.selfContactId();
     }
 
-    bool sync(bool debug)
+    bool sync(bool importChanges, bool debug)
     {
         // Proceed through the steps of the TWCSA algorithm, where the nonprivileged database
-        // is equivalent to 'remote' and the privileged datsbase is euqivalent to 'local'
+        // is equivalent to 'remote' and the privileged database is equivalent to 'local'
         return (prepareSync() &&
-                syncNonprivilegedToPrivileged(debug) &&
+                syncNonprivilegedToPrivileged(importChanges, debug) &&
                 syncPrivilegedToNonprivileged(debug) &&
                 finalizeSync());
     }
@@ -886,6 +888,7 @@ CDExporterController::CDExporterController(QObject *parent)
     , m_nonprivilegedManager(managerName(), nonprivilegedManagerParameters())
     , m_disabledConf(QStringLiteral("/org/nemomobile/contacts/export/disabled"))
     , m_debugConf(QStringLiteral("/org/nemomobile/contacts/export/debug"))
+    , m_importConf(QStringLiteral("/org/nemomobile/contacts/export/import"))
 {
     // Use a timer to delay reaction, so we don't sync until sequential changes have completed
     m_syncTimer.setSingleShot(true);
@@ -943,19 +946,25 @@ void CDExporterController::onPrivilegedContactsRemoved(const QList<QContactId> &
 void CDExporterController::onNonprivilegedContactsAdded(const QList<QContactId> &addedIds)
 {
     Q_UNUSED(addedIds)
-    scheduleSync(DataChange);
+    if (m_importConf.value().toInt() > 0) {
+        scheduleSync(DataChange);
+    }
 }
 
 void CDExporterController::onNonprivilegedContactsChanged(const QList<QContactId> &changedIds)
 {
     Q_UNUSED(changedIds)
-    scheduleSync(DataChange);
+    if (m_importConf.value().toInt() > 0) {
+        scheduleSync(DataChange);
+    }
 }
 
 void CDExporterController::onNonprivilegedContactsRemoved(const QList<QContactId> &removedIds)
 {
     Q_UNUSED(removedIds)
-    scheduleSync(DataChange);
+    if (m_importConf.value().toInt() > 0) {
+        scheduleSync(DataChange);
+    }
 }
 
 void CDExporterController::onSyncContactsChanged(const QStringList &syncTargets)
@@ -968,9 +977,12 @@ void CDExporterController::onSyncContactsChanged(const QStringList &syncTargets)
 
 void CDExporterController::onSyncTimeout()
 {
+    const bool importChanges(m_importConf.value().toInt() > 0);
+    const bool debug(m_debugConf.value().toInt() > 0);
+
     // Perform a sync between the privileged and non-privileged managers
     SyncAdapter adapter(m_privilegedManager, m_nonprivilegedManager);
-    if (!adapter.sync(m_debugConf.value().toInt() > 0)) {
+    if (!adapter.sync(importChanges, debug)) {
         qWarning() << "Unable to synchronize database changes!";
     }
 
