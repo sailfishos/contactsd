@@ -61,6 +61,7 @@ private:
 
     MGConfItem m_disabledConf;
     MGConfItem m_debugConf;
+    MGConfItem m_importConf;
 };
 
 #endif // CDEXPORTERCONTROLLER_H
