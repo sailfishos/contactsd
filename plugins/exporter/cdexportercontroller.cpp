@@ -620,7 +620,7 @@ private:
         removeProvenanceInformation(contact);
     }
 
-    bool syncPrivilegedToNonprivileged(bool debug)
+    bool syncPrivilegedToNonprivileged(bool importChanges, bool debug)
     {
         // Find privileged DB changes we need to reflect (including presence changes)
         QDateTime localSince;
@@ -777,13 +777,71 @@ private:
                 }
             }
 
-            const size_t addedContactsOffset = modifiedContacts.count();
+            size_t addedContactsOffset = modifiedContacts.count();
             if (!addedContacts.isEmpty()) {
                 modifiedContacts.append(addedContacts);
             }
 
-            if (!m_nonprivileged.saveContacts(&modifiedContacts)) {
-                qWarning() << "Unable to save privileged DB changes to export DB!";
+            while (!modifiedContacts.isEmpty()) {
+                QMap<int, QContactManager::Error> saveErrors;
+                if (m_nonprivileged.saveContacts(&modifiedContacts, &saveErrors)) {
+                    break;
+                }
+
+                if (!importChanges) {
+                    // If changes to the export database are not reimported, then deletions from the
+                    // export database must be handled by recreating the contact
+                    if (!saveErrors.isEmpty()) {
+                        // Are these errors that we can handle?
+                        QMap<int, QContactManager::Error>::const_iterator it = saveErrors.constBegin(), end = saveErrors.constEnd();
+                        for ( ; it != end; ++it) {
+                            // If some contact in the batch does not exist, any others in the batch will report LockedError
+                            if ((it.value() != QContactManager::DoesNotExistError) &&
+                                (it.value() != QContactManager::LockedError)) {
+                                // This error is a problem we shouldn't ignore
+                                qWarning() << "Error updating ID:" << modifiedContacts.at(it.key()).id() << "error:" << it.value();
+                                break;
+                            }
+                        }
+                        if (it == end) {
+                            // All errors can be handled - convert the failed modifications to additions
+                            QList<int> removeIndices;
+                            for (it = saveErrors.constBegin(); it != end; ++it) {
+                                if (it.value() == QContactManager::DoesNotExistError) {
+                                    const int index(it.key());
+                                    QContact modified(modifiedContacts.at(index));
+
+                                    const QContactId obsoleteId(modified.id());
+                                    const QContactId privilegedId(m_privilegedIds.value(obsoleteId));
+
+                                    m_nonprivilegedIds.remove(privilegedId);
+                                    m_privilegedIds.remove(obsoleteId);
+
+                                    removeIndices.append(index);
+
+                                    // Convert the failed modification to an addition
+                                    modified.setId(QContactId());
+                                    modifiedContacts.append(modified);
+                                    additionIds.append(privilegedId);
+                                    qWarning() << "Recreating remotely deleted contact:" << privilegedId;
+                                }
+                            }
+
+                            // Remove the invalid modifications from the save list
+                            while (!removeIndices.isEmpty()) {
+                                const int index(removeIndices.takeLast());
+                                modifiedContacts.removeAt(index);
+                                --addedContactsOffset;
+                            }
+
+                            // Attempt the save again
+                            continue;
+                        }
+                    }
+                }
+
+                // We can't handle this error - abort the save
+                qWarning() << "Unable to save privileged DB modifications to export DB!";
                 return false;
             }
 
@@ -826,7 +884,7 @@ public:
         // is equivalent to 'remote' and the privileged database is equivalent to 'local'
         return (prepareSync() &&
                 syncNonprivilegedToPrivileged(importChanges, debug) &&
-                syncPrivilegedToNonprivileged(debug) &&
+                syncPrivilegedToNonprivileged(importChanges, debug) &&
                 finalizeSync());
     }
 };
