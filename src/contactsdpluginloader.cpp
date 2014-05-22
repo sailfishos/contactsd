@@ -64,17 +64,20 @@ public:
 };
 
 
-ContactsdPluginLoader::ContactsdPluginLoader()
+ContactsdPluginLoader::ContactsdPluginLoader(QDBusConnection *connection)
     : mImportTimer(0)
     , mCheckAliveTimer(0)
+    , mDBusConnection(connection)
+    , mHaveRegisteredDBus(false)
 {
-    if (registerNotificationService()) {
-        (void) new ContactsImportProgressAdaptor(this);
-    }
 }
 
 ContactsdPluginLoader::~ContactsdPluginLoader()
 {
+    if (mHaveRegisteredDBus) {
+        mDBusConnection->unregisterObject(QLatin1String("/"));
+    }
+
     qDeleteAll(mPluginStore.values());
     mPluginStore.clear();
 }
@@ -313,22 +316,17 @@ QString ContactsdPluginLoader::pluginName(BasePlugin *plugin)
 
 bool ContactsdPluginLoader::registerNotificationService()
 {
-    QDBusConnection connection = QDBusConnection::sessionBus();
-    if (!connection.isConnected()) {
-        warning() << "Could not connect to DBus:" << connection.lastError();
-        return false;
+    if (mHaveRegisteredDBus) {
+        return true;
     }
 
-    if (!connection.registerService("com.nokia.contactsd")) {
-        warning() << "Could not register DBus service "
-            "'com.nokia.contactsd':" << connection.lastError();
-        return false;
-    }
-
-    if (!connection.registerObject("/", this)) {
+    if (!mDBusConnection->registerObject("/", this)) {
         warning() << "Could not register DBus object '/':" <<
-            connection.lastError();
+            mDBusConnection->lastError();
         return false;
     }
+
+    mHaveRegisteredDBus = true;
+    (void) new ContactsImportProgressAdaptor(this);
     return true;
 }

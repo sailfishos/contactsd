@@ -38,6 +38,7 @@ TRANSLATIONS_INSTALL_PATH = "/usr/share/translations"
 DEFINES += TRANSLATIONS_INSTALL_PATH=\"\\\"\"$${TRANSLATIONS_INSTALL_PATH}\"\\\"\"
 
 CONFIG += link_pkgconfig
+PKGCONFIG += buteosyncfw5
 packagesExist(qt5-boostable) {
     DEFINES += HAS_BOOSTER
     PKGCONFIG += qt5-boostable
@@ -50,6 +51,7 @@ HEADERS += contactsd.h \
     importstate.h \
     importstateconst.h \
     contactsimportprogressadaptor.h \
+    synctrigger.h \
     debug.h \
     base-plugin.h
 
@@ -58,6 +60,7 @@ SOURCES += main.cpp \
     contactsdpluginloader.cpp \
     importstate.cpp \
     contactsimportprogressadaptor.cpp \
+    synctrigger.cpp \
     debug.cpp \
     base-plugin.cpp
 
