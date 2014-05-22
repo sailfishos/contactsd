@@ -34,13 +34,14 @@ class QTimer;
 class QPluginLoader;
 class QString;
 class QStringList;
+class QDBusConnection;
 
 class Q_DECL_EXPORT ContactsdPluginLoader : public QObject
 {
     Q_OBJECT
 
 public:
-    ContactsdPluginLoader();
+    ContactsdPluginLoader(QDBusConnection *connection);
     ~ContactsdPluginLoader();
 
     void loadPlugins(const QStringList &plugins);
@@ -81,6 +82,9 @@ private:
 
     QTimer *mImportTimer;
     QTimer *mCheckAliveTimer;
+
+    QDBusConnection *mDBusConnection;
+    bool mHaveRegisteredDBus;
 };
 
 #endif

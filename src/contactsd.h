@@ -27,8 +27,12 @@
 #include <QObject>
 #include <QSocketNotifier>
 #include <QStringList>
+#include <QDBusConnection>
 
 class ContactsdPluginLoader;
+namespace Contactsd {
+    class SyncTrigger;
+}
 
 class Q_DECL_EXPORT ContactsDaemon : public QObject
 {
@@ -49,9 +53,11 @@ private Q_SLOTS:
     void onUnixSignalReceived();
 
 private:
+    QDBusConnection mDBusConnection;
     ContactsdPluginLoader *mLoader;
     static int sigFd[2];
     QSocketNotifier *mSignalNotifier;
+    Contactsd::SyncTrigger *mSyncTrigger;
 };
 
 #endif // CONTACTSDAEMON_H

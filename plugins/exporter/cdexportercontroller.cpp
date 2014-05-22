@@ -889,55 +889,6 @@ public:
     }
 };
 
-void triggerSyncProfiles(const QSet<QString> &syncTargets)
-{
-    // This function is called when a contact change is detected.
-    // We trigger sync with a particular sync profile if:
-    //  - the profile is enabled
-    //  - the profile is for the service corresponding to the sync target
-    //  - the profile is a Contacts sync profile
-    //  - the profile has two-way directionality (or upsync)
-    //  - the profile has always-up-to-date set (sync on change)
-
-    Buteo::ProfileManager profileManager;
-    QList<Buteo::SyncProfile*> syncProfiles = profileManager.allSyncProfiles();
-    Q_FOREACH (Buteo::SyncProfile *profile, syncProfiles) {
-        if (!profile) {
-            continue;
-        }
-
-        QString profileId = profile->name();
-        bool isEnabled = profile->isEnabled();
-        bool isTwoWay = profile->syncDirection() == Buteo::SyncProfile::SYNC_DIRECTION_TWO_WAY
-                     || profile->syncDirection() == Buteo::SyncProfile::SYNC_DIRECTION_TO_REMOTE;
-        bool alwaysUpToDate = profile->key(Buteo::KEY_SYNC_ALWAYS_UP_TO_DATE, QStringLiteral("false")) == QStringLiteral("true");
-
-        // By convention, the template profile name should be of the form:
-        // "syncTarget.dataType" -- eg, "google.Contacts"
-        // And per-account profiles should be suffixed with "-accountId"
-        bool isContacts = profileId.toLower().contains(QStringLiteral("contacts"));
-        bool isTarget = false;
-        Q_FOREACH (const QString &syncTarget, syncTargets) {
-            if (profileId.toLower().startsWith(syncTarget)) {
-                isTarget = true;
-                break;
-            }
-        }
-
-        delete profile;
-
-        if (isEnabled && isTarget && isContacts && isTwoWay && alwaysUpToDate) {
-            QDBusMessage message = QDBusMessage::createMethodCall(
-                    QStringLiteral("com.meego.msyncd"),
-                    QStringLiteral("/synchronizer"),
-                    QStringLiteral("com.meego.msyncd"),
-                    QStringLiteral("startSync"));
-            message.setArguments(QVariantList() << profileId);
-            QDBusConnection::sessionBus().asyncCall(message);
-        }
-    }
-}
-
 }
 
 CDExporterController::CDExporterController(QObject *parent)
@@ -1045,8 +996,19 @@ void CDExporterController::onSyncTimeout()
     }
 
     // And trigger a sync to external Contacts sync sources
-    triggerSyncProfiles(m_syncTargetsNeedingSync);
-    m_syncTargetsNeedingSync.clear();
+    if (!m_syncTargetsNeedingSync.isEmpty()) {
+        QDBusMessage message = QDBusMessage::createMethodCall(
+                QStringLiteral("com.nokia.contactsd"),
+                QStringLiteral("/SyncTrigger"),
+                QStringLiteral("com.nokia.contactsd"),
+                QStringLiteral("triggerSync"));
+        message.setArguments(QVariantList()
+                << QVariant::fromValue<QStringList>(QStringList(m_syncTargetsNeedingSync.toList()))
+                << QVariant::fromValue<qint32>(1)   // only if AlwaysUpToDate set in profile
+                << QVariant::fromValue<qint32>(1)); // only if Upsync or TwoWay direction
+        QDBusConnection::sessionBus().asyncCall(message);
+        m_syncTargetsNeedingSync.clear();
+    }
 }
 
 void CDExporterController::scheduleSync(ChangeType type)
