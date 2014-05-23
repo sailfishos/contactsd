@@ -29,6 +29,7 @@
 
 #include "contactsd.h"
 #include "contactsdpluginloader.h"
+#include "synctrigger.h"
 #include "debug.h"
 
 #include <unistd.h>
@@ -72,8 +73,21 @@ int ContactsDaemon::sigFd[2] = {0, 0};
 
 ContactsDaemon::ContactsDaemon(QObject *parent)
     : QObject(parent),
-      mLoader(new ContactsdPluginLoader())
+      mDBusConnection(QDBusConnection::sessionBus()),
+      mLoader(new ContactsdPluginLoader(&mDBusConnection)),
+      mSyncTrigger(new SyncTrigger(&mDBusConnection))
 {
+    if (!mDBusConnection.isConnected()) {
+        warning() << "Could not connect to DBus:" << mDBusConnection.lastError();
+    } else if (!mDBusConnection.registerService(QStringLiteral("com.nokia.contactsd"))) {
+        warning() << "Could not register DBus service "
+            "'com.nokia.contactsd':" << mDBusConnection.lastError();
+    } else if (!mLoader->registerNotificationService()) {
+        warning() << "unable to register notification service";
+    } else if (!mSyncTrigger->registerTriggerService()) {
+        warning() << "unable to register sync trigger service";
+    }
+
     // The UNIX signals call unixSignalHandler(), but that is not called
     // through the main loop. To process signals in the mainloop correctly,
     // we create a socket, and write a byte on one end when the UNIX signal
@@ -91,6 +105,8 @@ ContactsDaemon::ContactsDaemon(QObject *parent)
 ContactsDaemon::~ContactsDaemon()
 {
     delete mLoader;
+    delete mSyncTrigger;
+    mDBusConnection.unregisterService(QLatin1String("com.nokia.contactsd"));
 }
 
 void ContactsDaemon::loadPlugins(const QStringList &plugins)
