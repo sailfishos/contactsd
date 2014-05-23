@@ -94,15 +94,16 @@ void SyncTrigger::triggerSync(const QStringList &syncTargets, int syncPolicy, in
         bool isTarget = syncTargets.isEmpty();
         if (!isTarget) {
             Q_FOREACH (const QString &syncTarget, syncTargets) {
-                if (syncTarget.toLower() != QStringLiteral("google")) {
-                    continue; // we currently only support automatic sync with Google
-                }
-
                 if (profileId.toLower().startsWith(syncTarget.toLower())) {
                     isTarget = true;
                     break;
                 }
             }
+        }
+
+        // in the future, we should inspect the sync profile for deltasync flag
+        if (!profileId.toLower().startsWith(QStringLiteral("google"))) {
+            isTarget = false; // we currently only support automatic sync with Google
         }
 
         delete profile;
