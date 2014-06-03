@@ -440,7 +440,7 @@ private:
             return false;
         }
 
-        if (!readSyncStateData(&m_remoteSince, m_accountId)) {
+        if (!readSyncStateData(&m_remoteSince, m_accountId, TwoWayContactSyncAdapter::ReadPartialState)) {
             qWarning() << "Unable to read sync state data";
             return false;
         }
