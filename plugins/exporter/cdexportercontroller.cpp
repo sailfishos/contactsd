@@ -386,11 +386,52 @@ private:
     QContactManager &m_privileged;
     QContactManager &m_nonprivileged;
     QDateTime m_remoteSince;
-    QMap<QContactId, QContactId> m_privilegedIds;
-    QMap<QContactId, QContactId> m_nonprivilegedIds;
+    QMap<QString, QString> m_privilegedIds;     // Hold in string form; conversion to QContactId is expensive and likely unnecessary
+    QMap<QString, QString> m_nonprivilegedIds;  // As above.
     QContactId m_privilegedSelfId;
     QContactId m_nonprivilegedSelfId;
+    bool m_privilegedIdsModified;
     QHash<QContactId, QHash<QUrl, QUrl> > m_avatarPathChanges;
+    bool m_avatarPathChangesModified;
+
+    QContactId getPrivilegedId(const QContactId &nonprivilegedId) const { return QContactId::fromString(m_privilegedIds.value(nonprivilegedId.toString())); }
+    QContactId getNonprivilegedId(const QContactId &privilegedId) const { return QContactId::fromString(m_nonprivilegedIds.value(privilegedId.toString())); }
+
+    void registerIdPair(const QString &privilegedId, const QString &nonprivilegedId)
+    {
+        m_privilegedIds.insert(nonprivilegedId, privilegedId);
+        m_nonprivilegedIds.insert(privilegedId, nonprivilegedId);
+        m_privilegedIdsModified = true;
+    }
+    void deregisterIdPair(const QString &privilegedId, const QString &nonprivilegedId)
+    {
+        QMap<QString, QString>::iterator pit = m_privilegedIds.find(nonprivilegedId);
+        if (pit != m_privilegedIds.end()) {
+            if (*pit != privilegedId) {
+                qWarning() << "Mismatch on ID pair deregistration:" << *pit << "!=" << privilegedId;
+                m_privilegedIds.erase(pit);
+            }
+        }
+        QMap<QString, QString>::iterator nit = m_nonprivilegedIds.find(privilegedId);
+        if (nit != m_nonprivilegedIds.end()) {
+            if (*nit != nonprivilegedId) {
+                qWarning() << "Mismatch on ID pair deregistration:" << *nit << "!=" << nonprivilegedId;
+                m_nonprivilegedIds.erase(nit);
+            }
+        }
+        m_privilegedIdsModified = true;
+    }
+
+    void registerAvatarPathChange(const QContactId &contactId, const QHash<QUrl, QUrl> &changes)
+    {
+        m_avatarPathChanges.insert(contactId, changes);
+        m_avatarPathChangesModified = true;
+    }
+    void deregisterAvatarPathChange(const QContactId &contactId)
+    {
+        m_avatarPathChanges.remove(contactId);
+        m_avatarPathChangesModified = true;
+    }
 
     bool prepareSync()
     {
@@ -399,7 +440,7 @@ private:
             return false;
         }
 
-        if (!readSyncStateData(&m_remoteSince, m_accountId)) {
+        if (!readSyncStateData(&m_remoteSince, m_accountId, TwoWayContactSyncAdapter::ReadPartialState)) {
             qWarning() << "Unable to read sync state data";
             return false;
         }
@@ -411,26 +452,25 @@ private:
             return false;
         }
 
-        QMap<QString, QString> privilegedIds;
+        // Read the IDs from storage
         {
             QByteArray cdata = values.value(oobIdsKey).toByteArray();
             QDataStream ds(cdata);
-            ds >> privilegedIds;
+            ds >> m_privilegedIds;
         }
 
-        QMap<QString, QString>::const_iterator it = privilegedIds.constBegin(), end = privilegedIds.constEnd();
+        // Create a reversed ID mapping
+        QMap<QString, QString>::const_iterator it = m_privilegedIds.constBegin(), end = m_privilegedIds.constEnd();
         for ( ; it != end; ++it) {
-            const QContactId nonprivilegedId(QContactId::fromString(it.key()));
-            const QContactId privilegedId(QContactId::fromString(it.value()));
-
-            m_privilegedIds.insert(nonprivilegedId, privilegedId);
-            m_nonprivilegedIds.insert(privilegedId, nonprivilegedId);
+            m_nonprivilegedIds.insert(it.value(), it.key());
         }
 
         // Ensure that the self IDS are mapped to each other
         if (m_privilegedIds.isEmpty()) {
-            m_privilegedIds.insert(m_nonprivilegedSelfId, m_privilegedSelfId);
-            m_nonprivilegedIds.insert(m_privilegedSelfId, m_nonprivilegedSelfId);
+            const QString privilegedSelfId(m_privilegedSelfId.toString());
+            const QString nonprivilegedSelfId(m_nonprivilegedSelfId.toString());
+
+            registerIdPair(privilegedSelfId, nonprivilegedSelfId);
         }
 
         // Retrieve any avatar path changes we have made
@@ -448,29 +488,29 @@ private:
         // Store the set of existing IDs to OOB
         QMap<QString, QVariant> values;
 
-        QByteArray cdata;
-        {
-            QMap<QString, QString> privilegedIds;
-            QMap<QContactId, QContactId>::const_iterator it = m_privilegedIds.constBegin(), end = m_privilegedIds.constEnd();
-            for ( ; it != end; ++it) {
-                privilegedIds.insert(it.key().toString(), it.value().toString());
+        if (m_privilegedIdsModified) {
+            QByteArray cdata;
+            {
+                QDataStream write(&cdata, QIODevice::WriteOnly);
+                write << m_privilegedIds;
             }
-
-            QDataStream write(&cdata, QIODevice::WriteOnly);
-            write << privilegedIds;
+            values.insert(oobIdsKey, QVariant(cdata));
         }
-        values.insert(oobIdsKey, QVariant(cdata));
 
-        cdata.clear();
-        {
-            QDataStream write(&cdata, QIODevice::WriteOnly);
-            write << m_avatarPathChanges;
+        if (m_avatarPathChangesModified) {
+            QByteArray cdata;
+            {
+                QDataStream write(&cdata, QIODevice::WriteOnly);
+                write << m_avatarPathChanges;
+            }
+            values.insert(avatarPathsKey, QVariant(cdata));
         }
-        values.insert(avatarPathsKey, QVariant(cdata));
 
-        if (!d->m_engine->storeOOB(d->m_stateData[m_accountId].m_oobScope, values)) {
-            qWarning() << "Failed to store sync state data to OOB storage";
-            return false;
+        if (!values.isEmpty()) {
+            if (!d->m_engine->storeOOB(d->m_stateData[m_accountId].m_oobScope, values)) {
+                qWarning() << "Failed to store sync state data to OOB storage";
+                return false;
+            }
         }
 
         if (!storeSyncStateData(m_accountId)) {
@@ -532,7 +572,7 @@ private:
                         continue;
                     }
 
-                    const QContactId privilegedId(m_privilegedIds.value(nonprivilegedId));
+                    const QContactId privilegedId(getPrivilegedId(nonprivilegedId));
                     contact.setId(privilegedId);
                     if (privilegedId.isNull()) {
                         // This is an addition
@@ -554,7 +594,7 @@ private:
                 }
 
                 foreach (const QContactId &nonprivilegedId, removedIds) {
-                    const QContactId privilegedId(m_privilegedIds.value(nonprivilegedId));
+                    const QContactId privilegedId(getPrivilegedId(nonprivilegedId));
                     if (!privilegedId.isNull()) {
                         QContact contact;
                         contact.setId(privilegedId);
@@ -582,11 +622,11 @@ private:
             // Find the IDs allocated in the primary DB
             QList<QPair<QContactId, int> >::const_iterator it = additionIds.constBegin(), end = additionIds.constEnd();
             for ( ; it != end; ++it) {
-                const QContactId &nonprivilegedId((*it).first);
+                const QString nonprivilegedId((*it).first.toString());
                 const int additionIndex((*it).second);
-                const QContactId privilegedId(modifiedContacts.at(additionIndex).id());
-                m_privilegedIds.insert(nonprivilegedId, privilegedId);
-                m_nonprivilegedIds.insert(privilegedId, nonprivilegedId);
+                const QString privilegedId(modifiedContacts.at(additionIndex).id().toString());
+
+                registerIdPair(privilegedId, nonprivilegedId);
             }
         }
 
@@ -611,8 +651,7 @@ private:
         contact.removeDetail(&ts);
 
         // Remap avatar path changes
-        QHash<QUrl, QUrl> changes = modifyAvatarUrls(contact);
-        m_avatarPathChanges.insert(privilegedId, changes);
+        registerAvatarPathChange(privilegedId, modifyAvatarUrls(contact));
 
         // Remove any detail URI mangling used in the privileged DB
         demangleDetailUris(contact);
@@ -648,12 +687,12 @@ private:
         // Apply primary DB changes to the nonprivileged DB
         foreach (QContact contact, locallyDeleted) {
             const QContactId privilegedId(contact.id());
-            const QContactId nonprivilegedId(m_nonprivilegedIds.value(privilegedId));
+            const QContactId nonprivilegedId(getNonprivilegedId(privilegedId));
             if (!nonprivilegedId.isNull()) {
                 removedContactIds.append(nonprivilegedId);
             }
 
-            m_avatarPathChanges.remove(privilegedId);
+            deregisterAvatarPathChange(privilegedId);
         }
 
         // Note: a contact reported as deleted cannot also be in the added or modified lists
@@ -668,7 +707,7 @@ private:
                 continue;
             }
 
-            const QContactId nonprivilegedId(m_nonprivilegedIds.value(privilegedId));
+            const QContactId nonprivilegedId(getNonprivilegedId(privilegedId));
             contact.setId(nonprivilegedId);
             if (nonprivilegedId.isNull()) {
                 // This is an addition
@@ -812,10 +851,9 @@ private:
                                     QContact modified(modifiedContacts.at(index));
 
                                     const QContactId obsoleteId(modified.id());
-                                    const QContactId privilegedId(m_privilegedIds.value(obsoleteId));
+                                    const QContactId privilegedId(getPrivilegedId(obsoleteId));
 
-                                    m_nonprivilegedIds.remove(privilegedId);
-                                    m_privilegedIds.remove(obsoleteId);
+                                    deregisterIdPair(privilegedId.toString(), obsoleteId.toString());
 
                                     removeIndices.append(index);
 
@@ -850,10 +888,10 @@ private:
                 QList<QContactId>::const_iterator iit = additionIds.constBegin(), iend = additionIds.constEnd();
                 QList<QContact>::const_iterator cit = modifiedContacts.constBegin() + addedContactsOffset;
                 for ( ; iit != iend; ++iit, ++cit) {
-                    const QContactId &privilegedId(*iit);
-                    const QContactId nonprivilegedId((*cit).id());
-                    m_nonprivilegedIds.insert(privilegedId, nonprivilegedId);
-                    m_privilegedIds.insert(nonprivilegedId, privilegedId);
+                    const QString privilegedId((*iit).toString());
+                    const QString nonprivilegedId((*cit).id().toString());
+
+                    registerIdPair(privilegedId, nonprivilegedId);
                 }
             }
         }
@@ -873,6 +911,8 @@ public:
         : TwoWayContactSyncAdapter(exportSyncTarget, privileged)
         , m_privileged(privileged)
         , m_nonprivileged(nonprivileged)
+        , m_privilegedIdsModified(false)
+        , m_avatarPathChangesModified(false)
     {
         m_privilegedSelfId = m_privileged.selfContactId();
         m_nonprivilegedSelfId = m_nonprivileged.selfContactId();
