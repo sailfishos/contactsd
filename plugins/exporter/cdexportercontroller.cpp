@@ -611,6 +611,10 @@ private:
             qDebug() << "m_remoteSince:" << m_remoteSince;
             qDebug() << "removedContacts:" << removedContacts;
             qDebug() << "modifiedContacts:" << modifiedContacts;
+        } else {
+            if (!removedContacts.isEmpty() || !modifiedContacts.isEmpty()) {
+                qWarning() << "CDExport: importing changes:" << removedContacts.count() << (modifiedContacts.count() - additionIds.count()) << additionIds.count();
+            }
         }
 
         if (!storeRemoteChanges(removedContacts, &modifiedContacts, m_accountId)) {
@@ -675,6 +679,10 @@ private:
             qDebug() << "locallyAdded:" << locallyAdded;
             qDebug() << "locallyModified:" << locallyModified;
             qDebug() << "locallyDeleted:" << locallyDeleted;
+        } else {
+            if (!locallyAdded.isEmpty() || !locallyModified.isEmpty() || !locallyDeleted.isEmpty()) {
+                qWarning() << "CDExport: exporting changes:" << locallyAdded.count() << locallyModified.count() << locallyDeleted.count();
+            }
         }
 
         QList<QContact> addedContacts;
@@ -1037,6 +1045,7 @@ void CDExporterController::onSyncTimeout()
 
     // And trigger a sync to external Contacts sync sources
     if (!m_syncTargetsNeedingSync.isEmpty()) {
+        qWarning() << "CDExport: triggering contacts sync" << QStringList(m_syncTargetsNeedingSync.toList()).join(QStringLiteral(":"));
         QDBusMessage message = QDBusMessage::createMethodCall(
                 QStringLiteral("com.nokia.contactsd"),
                 QStringLiteral("/SyncTrigger"),

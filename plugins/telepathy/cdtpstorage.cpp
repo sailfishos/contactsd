@@ -147,6 +147,18 @@ QString asString(CDTpContact::Info::Capability c)
     return QString();
 }
 
+QString asString(CDTpAccount::Changes changes)
+{
+    QStringList rv;
+    if (changes & CDTpAccount::DisplayName) { rv.append(QLatin1String("DisplayName")); }
+    if (changes & CDTpAccount::Nickname) { rv.append(QLatin1String("Nickname")); }
+    if (changes & CDTpAccount::Presence) { rv.append(QLatin1String("Presence")); }
+    if (changes & CDTpAccount::Avatar) { rv.append(QLatin1String("Avatar")); }
+    if (changes & CDTpAccount::Enabled) { rv.append(QLatin1String("Enabled")); }
+    if (changes & CDTpAccount::StorageInfo) { rv.append(QLatin1String("StorageInfo")); }
+    return rv.join(QLatin1Char(':'));
+}
+
 #ifdef USING_QTPIM
 QString asString(const QContactId &id) { return id.toString(); }
 #else
@@ -2239,6 +2251,8 @@ void CDTpStorage::syncAccounts(const QList<CDTpAccountPtr> &accounts)
     // Find the list of paths for the accounts we now have
     QStringList accountPaths = forEachItem(accounts, extractAccountPath);
 
+    qWarning() << "CDTpStorage: syncAccounts:" << accountPaths;
+
     QSet<int> existingIndices;
     QSet<QString> removalPaths;
 
@@ -2289,7 +2303,7 @@ void CDTpStorage::createAccount(CDTpAccountPtr accountWrapper)
 
     const QString accountPath(imAccount(accountWrapper));
 
-    debug() << SRC_LOC << "Create account:" << accountPath;
+    qWarning() << "CDTpStorage: createAccount:" << accountPath;
 
     // Ensure this account does not already exist
     foreach (const QContactOnlineAccount &existingAccount, self.details<QContactOnlineAccount>()) {
@@ -2343,7 +2357,7 @@ void CDTpStorage::updateAccount(CDTpAccountPtr accountWrapper, CDTpAccount::Chan
 
     const QString accountPath(imAccount(accountWrapper));
 
-    debug() << SRC_LOC << "Update account:" << accountPath;
+    qWarning() << "CDTpStorage: updateAccount:" << accountPath << asString(changes);
 
     foreach (QContactOnlineAccount existingAccount, self.details<QContactOnlineAccount>()) {
         const QString existingPath(stringValue(existingAccount, QContactOnlineAccount__FieldAccountPath));
@@ -2368,7 +2382,7 @@ void CDTpStorage::removeAccount(CDTpAccountPtr accountWrapper)
 
     const QString accountPath(imAccount(accountWrapper));
 
-    debug() << SRC_LOC << "Remove account:" << accountPath;
+    qWarning() << "CDTpStorage: removeAccount:" << accountPath;
 
     foreach (QContactOnlineAccount existingAccount, self.details<QContactOnlineAccount>()) {
         const QString existingPath(stringValue(existingAccount, QContactOnlineAccount__FieldAccountPath));
@@ -2394,7 +2408,7 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper)
 
     const QString accountPath(imAccount(accountWrapper));
 
-    debug() << SRC_LOC << "Sync contacts account:" << accountPath;
+    qWarning() << "CDTpStorage: syncAccountContacts (roster change):" << accountPath;
 
     foreach (QContactOnlineAccount existingAccount, self.details<QContactOnlineAccount>()) {
         const QString existingPath(stringValue(existingAccount, QContactOnlineAccount__FieldAccountPath));
@@ -2410,6 +2424,8 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper)
 void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper, const QList<CDTpContactPtr> &contactsAdded, const QList<CDTpContactPtr> &contactsRemoved)
 {
     const QString accountPath(imAccount(accountWrapper));
+
+    qWarning() << "CDTpStorage: syncAccountContacts (roster update):" << accountPath << contactsAdded.count() << contactsRemoved.count();
 
     // Ensure there are no duplicates in the list
     QList<CDTpContactPtr> addedContacts(contactsAdded.toSet().toList());
@@ -2477,7 +2493,7 @@ void CDTpStorage::createAccountContacts(CDTpAccountPtr accountWrapper, const QSt
 
     const QString accountPath(imAccount(accountWrapper));
 
-    debug() << SRC_LOC << "Create contacts account:" << accountPath;
+    qWarning() << "CDTpStorage: createAccountContacts:" << accountPath << imIds.count();
 
     ContactChangeSet saveSet;
 
@@ -2498,7 +2514,7 @@ void CDTpStorage::removeAccountContacts(CDTpAccountPtr accountWrapper, const QSt
 {
     const QString accountPath(imAccount(accountWrapper));
 
-    debug() << SRC_LOC << "Remove contacts account:" << accountPath;
+    qWarning() << "CDTpStorage: removeAccountContacts:" << accountPath << contactIds.count();
 
     QStringList imAddressList;
     foreach (const QString &id, contactIds) {
