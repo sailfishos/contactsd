@@ -649,6 +649,11 @@ QString imAccount(Tp::AccountPtr account)
     return account->objectPath();
 }
 
+QString imAccount(CDTpAccount *account)
+{
+    return imAccount(account->account());
+}
+
 QString imAccount(CDTpAccountPtr accountWrapper)
 {
     return imAccount(accountWrapper->account());
@@ -1835,13 +1840,17 @@ static void updateContactAccount(QContactOnlineAccount &qcoa, CDTpAccountPtr acc
 
 void CDTpStorage::addNewAccount()
 {
-    CDTpAccountPtr account = CDTpAccountPtr(qobject_cast<CDTpAccount*>(sender()));
-    QContact self(selfContact());
+    CDTpAccount *account = qobject_cast<CDTpAccount*>(sender());
     if (!account)
         return;
 
+    // Disconnect the signal
+    disconnect(account, SIGNAL(readyChanged()), this, SLOT(addNewAccount()));
+
+    QContact self(selfContact());
+
     debug() << "New account" << imAccount(account) << "is ready, calling delayed addNewAccount";
-    addNewAccount(self, account);
+    addNewAccount(self, CDTpAccountPtr(account));
 }
 
 void CDTpStorage::addNewAccount(QContact &self, CDTpAccountPtr accountWrapper)
@@ -2071,7 +2080,10 @@ void CDTpStorage::updateAccount()
     if (!account)
         return;
 
-    debug() << "Delayed update of account" << account->account()->objectPath() << "is ready";
+    // Disconnect the signal
+    disconnect(account, SIGNAL(readyChanged()), this, SLOT(updateAccount()));
+
+    debug() << "Delayed update of account" << imAccount(account) << "is ready";
     updateAccount(CDTpAccountPtr(account), CDTpAccount::All);
 }
 
