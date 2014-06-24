@@ -103,6 +103,7 @@ private:
     QHash<CDTpContactPtr, CDTpContact::Changes> mUpdateQueue;
     QTimer mUpdateTimer;
     QElapsedTimer mWaitTimer;
+    QMap<QString, CDTpAccount::Changes> m_accountPendingChanges;
 };
 
 #endif // CDTPSTORAGE_H
