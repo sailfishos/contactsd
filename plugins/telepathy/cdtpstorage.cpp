@@ -661,6 +661,11 @@ QString imAccount(Tp::AccountPtr account)
     return account->objectPath();
 }
 
+QString imAccount(CDTpAccount *account)
+{
+    return imAccount(account->account());
+}
+
 QString imAccount(CDTpAccountPtr accountWrapper)
 {
     return imAccount(accountWrapper->account());
@@ -1847,13 +1852,17 @@ static void updateContactAccount(QContactOnlineAccount &qcoa, CDTpAccountPtr acc
 
 void CDTpStorage::addNewAccount()
 {
-    CDTpAccountPtr account = CDTpAccountPtr(qobject_cast<CDTpAccount*>(sender()));
-    QContact self(selfContact());
+    CDTpAccount *account = qobject_cast<CDTpAccount*>(sender());
     if (!account)
         return;
 
+    // Disconnect the signal
+    disconnect(account, SIGNAL(readyChanged()), this, SLOT(addNewAccount()));
+
+    QContact self(selfContact());
+
     debug() << "New account" << imAccount(account) << "is ready, calling delayed addNewAccount";
-    addNewAccount(self, account);
+    addNewAccount(self, CDTpAccountPtr(account));
 }
 
 void CDTpStorage::addNewAccount(QContact &self, CDTpAccountPtr accountWrapper)
@@ -2083,8 +2092,19 @@ void CDTpStorage::updateAccount()
     if (!account)
         return;
 
-    debug() << "Delayed update of account" << account->account()->objectPath() << "is ready";
-    updateAccount(CDTpAccountPtr(account), CDTpAccount::All);
+    // Disconnect the signal
+    disconnect(account, SIGNAL(readyChanged()), this, SLOT(updateAccount()));
+
+    const QString accountPath(imAccount(account));
+
+    debug() << "Delayed update of account" << accountPath << "is ready";
+    CDTpAccount::Changes changes = CDTpAccount::All;
+    QMap<QString, CDTpAccount::Changes>::iterator it = m_accountPendingChanges.find(accountPath);
+    if (it != m_accountPendingChanges.end()) {
+        changes = it.value();
+        m_accountPendingChanges.erase(it);
+    }
+    updateAccount(CDTpAccountPtr(account), changes);
 }
 
 void CDTpStorage::updateAccountChanges(QContact &self, QContactOnlineAccount &qcoa, CDTpAccountPtr accountWrapper, CDTpAccount::Changes changes)
@@ -2096,7 +2116,13 @@ void CDTpStorage::updateAccountChanges(QContact &self, QContactOnlineAccount &qc
 
     if (!accountWrapper->isReady()) {
         debug() << "Delaying update of account" << accountPath << "address" << accountAddress << "until ready";
-        connect(accountWrapper.data(), SIGNAL(readyChanged()), SLOT(updateAccount()));
+        QMap<QString, CDTpAccount::Changes>::iterator it = m_accountPendingChanges.find(accountPath);
+        if (it != m_accountPendingChanges.end()) {
+            it.value() |= changes;
+        } else {
+            m_accountPendingChanges.insert(accountPath, changes);
+            connect(accountWrapper.data(), SIGNAL(readyChanged()), SLOT(updateAccount()));
+        }
         return;
     }
 
