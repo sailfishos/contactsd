@@ -220,7 +220,7 @@ DetailList::value_type detailType()
 #endif
 }
 
-QContactFetchHint contactFetchHint(bool selfContact = false)
+QContactFetchHint contactFetchHint(const DetailList &detailTypes = DetailList())
 {
     QContactFetchHint hint;
 
@@ -229,16 +229,12 @@ QContactFetchHint contactFetchHint(bool selfContact = false)
                               QContactFetchHint::NoActionPreferences |
                               QContactFetchHint::NoBinaryBlobs);
 
-    if (selfContact) {
-        // For the self contact, we only care about accounts/presence/avatars
+    if (!detailTypes.isEmpty()) {
 #ifdef USING_QTPIM
-        hint.setDetailTypesHint(DetailList()
+        hint.setDetailTypesHint(detailTypes);
 #else
-        hint.setDetailDefinitionsHint(DetailList()
+        hint.setDetailDefinitionsHint(detailTypes);
 #endif
-            << detailType<QContactOnlineAccount>()
-            << detailType<QContactPresence>()
-            << detailType<QContactAvatar>());
     }
 
     return hint;
@@ -353,8 +349,11 @@ ContactIdType selfContactLocalId()
 
 QContact selfContact()
 {
+    // For the self contact, we only care about accounts/presence/avatars
     static ContactIdType selfLocalId(selfContactLocalId());
-    static QContactFetchHint hint(contactFetchHint(true));
+    static QContactFetchHint hint(contactFetchHint(DetailList() << detailType<QContactOnlineAccount>()
+                                                                << detailType<QContactPresence>()
+                                                                << detailType<QContactAvatar>()));
 
     return manager()->contact(selfLocalId, hint);
 }
@@ -557,8 +556,6 @@ QList<ContactIdType> findContactIdsForAccount(const QString &accountPath)
 
 QHash<QString, QContact> findExistingContacts(const QStringList &contactAddresses)
 {
-    static QContactFetchHint hint(contactFetchHint());
-
     QHash<QString, QContact> rv;
 
     // If there is a large number of contacts, do a two-step fetch
@@ -568,26 +565,16 @@ QHash<QString, QContact> findExistingContacts(const QStringList &contactAddresse
         QSet<QString> addressSet(contactAddresses.toSet());
 
         // First fetch all telepathy contacts, ID data only
-#ifdef USING_QTPIM
-        hint.setDetailTypesHint(DetailList() << QContactOriginMetadata::Type);
-#else
-        hint.setDetailDefinitionsHint(DetailList() << QContactOriginMetadata::DefinitionName);
-#endif
-
-        foreach (const QContact &contact, manager()->contacts(matchTelepathyFilter(), QList<QContactSortOrder>(), hint)) {
+        QContactFetchHint idHint(contactFetchHint(DetailList() << detailType<QContactOriginMetadata>()));
+        foreach (const QContact &contact, manager()->contacts(matchTelepathyFilter(), QList<QContactSortOrder>(), idHint)) {
             const QString &address = stringValue(contact.detail<QContactOriginMetadata>(), QContactOriginMetadata::FieldId);
             if (addressSet.contains(address)) {
                 ids.append(apiId(contact));
             }
         }
 
-#ifdef USING_QTPIM
-        hint.setDetailTypesHint(DetailList());
-#else
-        hint.setDetailDefinitionsHint(DetailList());
-#endif
-
         // Now fetch the details of the required contacts by ID
+        QContactFetchHint hint(contactFetchHint());
         foreach (const QContact &contact, manager()->contacts(ids, hint)) {
             rv.insert(stringValue(contact.detail<QContactOriginMetadata>(), QContactOriginMetadata::FieldId), contact);
         }
@@ -602,6 +589,7 @@ QHash<QString, QContact> findExistingContacts(const QStringList &contactAddresse
         }
         filter << addressFilter;
 
+        QContactFetchHint hint(contactFetchHint());
         foreach (const QContact &contact, manager()->contacts(filter, QList<QContactSortOrder>(), hint)) {
             rv.insert(stringValue(contact.detail<QContactOriginMetadata>(), QContactOriginMetadata::FieldId), contact);
         }
@@ -617,12 +605,11 @@ QHash<QString, QContact> findExistingContacts(const QSet<QString> &contactAddres
 
 QContact findExistingContact(const QString &contactAddress)
 {
-    static QContactFetchHint hint(contactFetchHint());
-
     QContactIntersectionFilter filter;
     filter << QContactOriginMetadata::matchId(contactAddress);
     filter << matchTelepathyFilter();
 
+    QContactFetchHint hint(contactFetchHint());
     foreach (const QContact &contact, manager()->contacts(filter, QList<QContactSortOrder>(), hint)) {
         // Return the first match we find (there should be only one)
         return contact;
@@ -2212,8 +2199,11 @@ void CDTpStorage::updateAccountChanges(QContact &self, QContactOnlineAccount &qc
         const QStringList newCapabilities(currentCapabilites(account->capabilities(), Tp::ConnectionPresenceTypeUnknown, account));
 
         // Set presence to unknown for all contacts of this account
-        foreach (const ContactIdType &contactId, findContactIdsForAccount(accountPath)) {
-            QContact existing = manager()->contact(contactId);
+        QContactFetchHint hint(contactFetchHint(DetailList() << detailType<QContactPresence>()
+                                                             << detailType<QContactOnlineAccount>()
+                                                             << detailType<QContactOriginMetadata>()));
+        foreach (QContact existing, manager()->contacts(findContactIdsForAccount(accountPath), hint)) {
+            const QContactId &contactId(existing.id());
 
             CDTpContact::Changes changes;
 
@@ -2550,7 +2540,8 @@ void CDTpStorage::removeAccountContacts(CDTpAccountPtr accountWrapper, const QSt
     QList<ContactIdType> removeIds;
 
     // Find any contacts matching the supplied ID list
-    foreach (const QContact &existing, manager()->contacts(findContactIdsForAccount(accountPath))) {
+    QContactFetchHint hint(contactFetchHint(DetailList() << detailType<QContactOriginMetadata>()));
+    foreach (const QContact &existing, manager()->contacts(findContactIdsForAccount(accountPath), hint)) {
         QContactOriginMetadata metadata = existing.detail<QContactOriginMetadata>();
         if (imAddressList.contains(metadata.id())) {
             removeIds.append(apiId(existing));
