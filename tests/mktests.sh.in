@@ -65,7 +65,7 @@ EOF
 cat <<EOF
       <case $attributes>
         <description>$description</description>
-        <step>CONTACTSD_DEBUG=1 $command $test</step>
+        <step>/usr/sbin/run-blts-root /bin/su -g privileged -c 'CONTACTSD_DEBUG=1 $command $test' nemo</step>
       </case>
 EOF
     done
