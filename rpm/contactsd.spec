@@ -67,6 +67,7 @@ Requires: %{name} = %{version}-%{release}
 Summary: Tests for %{name}
 Group: Development/Libraries
 Requires: %{name} = %{version}-%{release}
+Requires: blts-tools
 
 %description tests
 %{summary}.
