@@ -22,24 +22,28 @@
 # Alternatively, this file may be used in accordance with the terms and
 # conditions contained in a signed written agreement between you and Nokia.
 
+# gconftool-2 lines got commented, but probably can be removed, since
+# it seems scratchbox is not used any more to run tests and gconf it self is
+# also not used in nemo based systems. Tests run just fine w/o.
+
 cleanup ()
 {
   # Restore the original language
-  gconftool-2 --type string --set /meegotouch/i18n/language $CURRENT_LANG
+  # gconftool-2 --type string --set /meegotouch/i18n/language $CURRENT_LANG
 
   kill $contactsd_pid
   tracker-control -r > /dev/null
 }
 trap cleanup INT HUP TERM
 
-CURRENT_LANG=$(gconftool-2 --get /meegotouch/i18n/language)
+#CURRENT_LANG=$(gconftool-2 --get /meegotouch/i18n/language)
 tracker-control -r > /dev/null
 /usr/lib/tracker/tracker-store >/dev/null 2>&1 &
 
 sleep 3
 
 # Set the language manually since the key is missing in scratchbox
-gconftool-2 --type string --set /meegotouch/i18n/language en
+# gconftool-2 --type string --set /meegotouch/i18n/language en
 
 UNITTEST="$@"
 
