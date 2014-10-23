@@ -579,6 +579,9 @@ void TestSimPlugin::testEmpty()
 void TestSimPlugin::testClear()
 {
     QContactManager &m(m_controller->contactManager());
+    // Notify about fake presence of the Phonebook interface
+    QTest::ignoreMessage(QtWarningMsg, "No modem path is configured ");
+    m_controller->interfacesChanged(QStringList(QString::fromLatin1("org.ofono.Phonebook")));
 
     // Add two contacts manually
     QContact gump;
@@ -605,15 +608,12 @@ void TestSimPlugin::testClear()
     QCOMPARE(getAllSimContacts(m).count(), 2);
     QCOMPARE(m_controller->busy(), false);
 
-    m_controller->simPresenceChanged(true);
-
-    // Report the SIM card removed
-    m_controller->simPresenceChanged(false);
+    // Report the phonebook unavailability (happens when SIM card gets removed)
+    m_controller->interfacesChanged(QStringList());
     QTRY_VERIFY(m_controller->busy() == false);
 
     // All sim contacts should be removed
     QList<QContact> simContacts(getAllSimContacts(m));
-    QEXPECT_FAIL("", "Needs a fix!", Continue);
     QCOMPARE(simContacts.count(), 0);
 }
 
