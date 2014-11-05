@@ -75,7 +75,7 @@ void TestTelepathyPlugin::initTestCase()
 
     /* Create a QContactManager and track added/changed contacts */
     QMap<QString, QString> parameters;
-    parameters.insert(QStringLiteral("mergePresenceChanges"), QStringLiteral("false"));
+    parameters.insert(QStringLiteral("mergePresenceChanges"), QStringLiteral("true"));
     mContactManager = new QContactManager(QStringLiteral("org.nemomobile.contacts.sqlite"), parameters);
 
 #ifdef USING_QTPIM
