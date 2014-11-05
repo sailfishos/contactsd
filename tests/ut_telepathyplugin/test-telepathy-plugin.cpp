@@ -248,6 +248,9 @@ void TestTelepathyPlugin::testSelfContact()
 
 void TestTelepathyPlugin::testAuthorization()
 {
+#ifdef USING_QTPIM
+    QSKIP("Presence authorization not supported by qtpim");
+#endif
     TpHandle handle;
 
     /* Create a new contact "romeo" */
