@@ -1,6 +1,6 @@
 /** This file is part of Contacts daemon
  **
- ** Copyright (c) 2013 Jolla Ltd.
+ ** Copyright (c) 2013-2014 Jolla Ltd.
  **
  ** Contact: Matt Vogt <matthew.vogt@jollamobile.com>
  **
@@ -42,9 +42,7 @@ QMap<QString, QString> contactManagerParameters()
 CDSimController::CDSimController(QObject *parent, const QString &syncTarget)
     : QObject(parent)
     , m_manager(QStringLiteral("org.nemomobile.contacts.sqlite"), contactManagerParameters())
-    , m_simPresent(false)
     , m_transientImport(true)
-    , m_phonebookAvailable(false)
     , m_simSyncTarget(syncTarget)
     , m_busy(false)
     , m_voicemailConf(0)
@@ -56,20 +54,20 @@ CDSimController::CDSimController(QObject *parent, const QString &syncTarget)
 
     connect(&m_transientImportConf, SIGNAL(valueChanged()), this, SLOT(transientImportConfigurationChanged()));
 
-    connect(&m_phonebook, SIGNAL(importReady(const QString &)),
-            this, SLOT(vcardDataAvailable(const QString &)));
+    connect(&m_phonebook, SIGNAL(importReady(QString)),
+            this, SLOT(vcardDataAvailable(QString)));
     connect(&m_phonebook, SIGNAL(importFailed()),
             this, SLOT(vcardReadFailed()));
 
-    connect(&m_messageWaiting, SIGNAL(voicemailMailboxNumberChanged(const QString &)),
+    connect(&m_messageWaiting, SIGNAL(voicemailMailboxNumberChanged(QString)),
             this, SLOT(voicemailConfigurationChanged()));
 
     connect(&m_contactReader, SIGNAL(stateChanged(QVersitReader::State)),
             this, SLOT(readerStateChanged(QVersitReader::State)));
 
     // Resync the contacts list whenever the phonebook availability changes
-    connect(&m_modem, SIGNAL(interfacesChanged(const QStringList &)),
-            this, SLOT(interfacesChanged(const QStringList &)));
+    connect(&m_phonebook, SIGNAL(validChanged(bool)),
+            this, SLOT(phoneBookAvailabilityChanged(bool)));
 
     connect(&m_simManager, SIGNAL(presenceChanged(bool)),
             this, SLOT(simPresenceChanged(bool)));
@@ -100,14 +98,9 @@ QContactManager &CDSimController::contactManager()
 void CDSimController::setModemPath(const QString &path)
 {
     qDebug() << "Using modem path:" << path;
-    m_modemPath = path;
-    m_modem.setModemPath(m_modemPath);
-    m_messageWaiting.setModemPath(m_modemPath);
-    m_simManager.setModemPath(m_modemPath);
-
-    // Sync the contacts list with the initial state
-    interfacesChanged(m_modem.interfaces());
-    simPresenceChanged(m_simManager.present());
+    m_phonebook.setModemPath(path);
+    m_messageWaiting.setModemPath(path);
+    m_simManager.setModemPath(path);
 }
 
 bool CDSimController::busy() const
@@ -115,8 +108,9 @@ bool CDSimController::busy() const
     return m_busy;
 }
 
-void CDSimController::setBusy(bool busy)
+void CDSimController::updateBusy()
 {
+    bool busy = m_phonebook.importing() || m_contactReader.state() == QVersitReader::ActiveState;
     if (m_busy != busy) {
         m_busy = busy;
         emit busyChanged(m_busy);
@@ -130,15 +124,10 @@ void CDSimController::performTransientImport()
         return;
     }
 
-    if (m_phonebookAvailable && m_transientImport) {
-        if (m_modemPath.isEmpty()) {
-            qWarning() << "No modem path is configured";
-        } else {
-            // Read all contacts from the SIM
-            m_phonebook.setModemPath(m_modemPath);
-            m_phonebook.beginImport();
-            setBusy(true);
-        }
+    if (m_phonebook.isValid() && m_transientImport) {
+        // Read all contacts from the SIM
+        m_phonebook.beginImport();
+        updateBusy();
     } else {
         m_simContacts.clear();
         deactivateAllSimContacts();
@@ -159,21 +148,15 @@ void CDSimController::transientImportConfigurationChanged()
     }
 }
 
-void CDSimController::simPresenceChanged(bool present)
+void CDSimController::simPresenceChanged(bool)
 {
-    if (m_simPresent != present) {
-        m_simPresent = present;
-        updateVoicemailConfiguration();
-    }
+    updateVoicemailConfiguration();
 }
 
-void CDSimController::interfacesChanged(const QStringList &interfaces)
+void CDSimController::phoneBookAvailabilityChanged(bool available)
 {
-    const bool available(interfaces.contains(QString::fromLatin1("org.ofono.Phonebook")));
-    if (m_phonebookAvailable != available) {
-        m_phonebookAvailable = available;
-        performTransientImport();
-    }
+    performTransientImport();
+    updateBusy();
 }
 
 void CDSimController::vcardDataAvailable(const QString &vcardData)
@@ -182,13 +165,13 @@ void CDSimController::vcardDataAvailable(const QString &vcardData)
     m_simContacts.clear();
     m_contactReader.setData(vcardData.toUtf8());
     m_contactReader.startReading();
-    setBusy(true);
+    updateBusy();
 }
 
 void CDSimController::vcardReadFailed()
 {
-    qWarning() << "Unable to read VCard data from SIM:" << m_modemPath;
-    setBusy(false);
+    qWarning() << "Unable to read VCard data from SIM:" << m_phonebook.modemPath();
+    updateBusy();
 }
 
 void CDSimController::readerStateChanged(QVersitReader::State state)
@@ -214,7 +197,7 @@ void CDSimController::readerStateChanged(QVersitReader::State state)
         }
     }
 
-    setBusy(false);
+    updateBusy();
 }
 
 void CDSimController::deactivateAllSimContacts()
@@ -419,7 +402,7 @@ void CDSimController::ensureSimContactsPresent()
 
 void CDSimController::voicemailConfigurationChanged()
 {
-    if (!m_voicemailConf || !m_simPresent) {
+    if (!m_voicemailConf || !m_simManager.present()) {
         // Wait until SIM is present
         return;
     }
@@ -485,7 +468,7 @@ void CDSimController::voicemailConfigurationChanged()
 void CDSimController::updateVoicemailConfiguration()
 {
     QString variablePath(QString::fromLatin1("/sailfish/voicecall/voice_mailbox/"));
-    if (m_simPresent) {
+    if (m_simManager.present()) {
         variablePath.append(m_simManager.cardIdentifier());
     } else {
         variablePath.append(QString::fromLatin1("default"));
