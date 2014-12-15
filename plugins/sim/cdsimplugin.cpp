@@ -1,6 +1,6 @@
 /** This file is part of Contacts daemon
  **
- ** Copyright (c) 2013 Jolla Ltd.
+ ** Copyright (c) 2013-2014 Jolla Ltd.
  **
  ** Contact: Matt Vogt <matthew.vogt@jollamobile.com>
  **
@@ -36,14 +36,14 @@ void CDSimPlugin::init()
 
     mController = new CDSimController(this);
 
-    QOfonoManager ofonoManager;
-    const QStringList &modems(ofonoManager.modems());
-    if (modems.isEmpty()) {
-        qWarning() << "No modem available for sim plugin";
-    } else {
-        // TODO: select the correct modem
-        mController->setModemPath(modems.first());
-    }
+    // Associate CDSimController with the default modem
+    // NB: Expect this to happen asynchronously, as a result of receiving
+    // defaultModemChanged signal.
+    QOfonoManager* ofonoManager = new QOfonoManager(mController);
+    QString modemPath(ofonoManager->defaultModem());
+    if (!modemPath.isEmpty()) mController->setModemPath(modemPath);
+    connect(ofonoManager, SIGNAL(defaultModemChanged(QString)),
+        mController, SLOT(setModemPath(QString)));
 }
 
 CDSimPlugin::MetaData CDSimPlugin::metaData()

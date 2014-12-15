@@ -1,6 +1,6 @@
 /** This file is part of Contacts daemon
  **
- ** Copyright (c) 2013 Jolla Ltd.
+ ** Copyright (c) 2013-2014 Jolla Ltd.
  **
  ** Contact: Matt Vogt <matthew.vogt@jollamobile.com>
  **
@@ -42,13 +42,13 @@ class CDSimController : public QObject
 {
     Q_OBJECT
 
+
+
 public:
     explicit CDSimController(QObject *parent = 0, const QString &syncTarget = QString::fromLatin1("sim"));
     ~CDSimController();
 
     QContactManager &contactManager();
-
-    void setModemPath(const QString &path);
 
     bool busy() const;
 
@@ -56,16 +56,17 @@ Q_SIGNALS:
     void busyChanged(bool);
 
 public Q_SLOTS:
+    void setModemPath(const QString &path);
     void simPresenceChanged(bool present);
     void vcardDataAvailable(const QString &vcardData);
     void vcardReadFailed();
     void readerStateChanged(QVersitReader::State state);
     void voicemailConfigurationChanged();
     void transientImportConfigurationChanged();
-    void interfacesChanged(const QStringList &interfaces);
+    void phoneBookAvailabilityChanged(bool available);
 
 private:
-    void setBusy(bool busy);
+    void updateBusy();
     void deactivateAllSimContacts();
     void removeAllSimContacts();
     void ensureSimContactsPresent();
@@ -80,13 +81,9 @@ private:
     QVersitReader m_contactReader;
 
     QOfonoSimManager m_simManager;
-    bool m_simPresent;
     bool m_transientImport;
-    bool m_phonebookAvailable;
 
     QString m_simSyncTarget;
-    QString m_modemPath;
-    QOfonoModem m_modem;
     QOfonoPhonebook m_phonebook;
     QOfonoMessageWaiting m_messageWaiting;
 

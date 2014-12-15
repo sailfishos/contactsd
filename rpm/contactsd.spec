@@ -29,6 +29,7 @@ BuildRequires: buteo-syncfw-qt5-devel >= 0.6.33
 BuildRequires: pkgconfig(qt5-boostable)
 BuildRequires: qt5-qttools
 BuildRequires: qt5-qttools-linguist
+Requires: libqofono-qt5 >= 0.67
 Requires: mapplauncherd-qt5
 
 %description

@@ -19,7 +19,12 @@
 #include <QObject>
 #include <QtTest/QtTest>
 
-#include "../../plugins/sim/cdsimcontroller.h"
+// "unprotect" m_phonebook.onModemInterfacesChanged
+#define private public
+#define protected public
+#include "cdsimcontroller.h"
+#undef private
+#undef protected
 
 class TestSimPlugin : public QObject
 {
