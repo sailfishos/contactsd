@@ -24,6 +24,8 @@
 #ifndef CDBIRTHDAYCONTROLLER_H
 #define CDBIRTHDAYCONTROLLER_H
 
+#include "cdbirthdaycalendar.h"
+
 #include <QSet>
 #include <QObject>
 #include <QTimer>
@@ -54,28 +56,27 @@ private Q_SLOTS:
     void contactsChanged(const QList<QContactId> &contacts);
     void contactsRemoved(const QList<QContactId> &contacts);
 
-    void onFetchRequestStateChanged(QContactAbstractRequest::State newState);
-    void onFullSyncRequestStateChanged(QContactAbstractRequest::State newState);
+    void onRequestStateChanged(QContactAbstractRequest::State newState);
     void updateAllBirthdays();
     void onUpdateQueueTimeout();
 
 private:
-    bool stampFileUpToDate();
-    void createStampFile();
-    QString stampFilePath() const;
-    bool processFetchRequest(QContactFetchRequest * const fetchRequest,
-                             QContactAbstractRequest::State newState,
-                             SyncMode syncMode = Incremental);
-    void fetchContacts(const QList<QContactId> &contactIds);
-    void fetchContacts(const QContactFilter &filter, const char *slot);
+    static void createStampFile();
+    static QString stampFilePath();
+    static bool stampFileUpToDate();
+
+    void fetchContacts(const QContactFilter &filter, SyncMode mode);
     void updateBirthdays(const QList<QContact> &changedBirthdays);
     void syncBirthdays(const QList<QContact> &birthdayContacts);
 
 private:
-    CDBirthdayCalendar *mCalendar;
-    QContactManager *mManager;
+    CDBirthdayCalendar mCalendar;
+    QContactManager mManager;
+    QScopedPointer<QContactFetchRequest> mRequest;
     QSet<QContactId> mUpdatedContacts;
     QTimer mUpdateTimer;
+    SyncMode mSyncMode;
+    bool mUpdateAllPending;
 };
 
 #endif // CDBIRTHDAYCONTROLLER_H

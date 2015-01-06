@@ -53,32 +53,33 @@ QContactDetailFilter detailFilter(int field = -1)
     return filter;
 }
 
-}
-
-CDBirthdayController::CDBirthdayController(QObject *parent)
-    : QObject(parent)
-    , mCalendar(0)
-    , mManager(0)
+QMap<QString, QString> managerParameters()
 {
     // We don't need to handle presence changes, so report them separately and ignore them
     QMap<QString, QString> parameters;
     parameters.insert(QString::fromLatin1("mergePresenceChanges"), QString::fromLatin1("false"));
+    return parameters;
+}
 
-    mManager = new QContactManager(QStringLiteral("org.nemomobile.contacts.sqlite"), parameters, this);
+}
 
-    connect(mManager, SIGNAL(contactsAdded(QList<QContactId>)),
+CDBirthdayController::CDBirthdayController(QObject *parent)
+    : QObject(parent)
+    , mCalendar(stampFileUpToDate() ? CDBirthdayCalendar::KeepOldDB : CDBirthdayCalendar::DropOldDB)
+    , mManager(QStringLiteral("org.nemomobile.contacts.sqlite"), managerParameters())
+    , mRequest(new QContactFetchRequest)
+    , mSyncMode(Incremental)
+    , mUpdateAllPending(false)
+{
+    connect(&mManager, SIGNAL(contactsAdded(QList<QContactId>)),
             SLOT(contactsChanged(QList<QContactId>)));
-    connect(mManager, SIGNAL(contactsChanged(QList<QContactId>)),
+    connect(&mManager, SIGNAL(contactsChanged(QList<QContactId>)),
             SLOT(contactsChanged(QList<QContactId>)));
-    connect(mManager, SIGNAL(contactsRemoved(QList<QContactId>)),
+    connect(&mManager, SIGNAL(contactsRemoved(QList<QContactId>)),
             SLOT(contactsRemoved(QList<QContactId>)));
 
-    connect(mManager, SIGNAL(dataChanged()), SLOT(updateAllBirthdays()));
+    connect(&mManager, SIGNAL(dataChanged()), SLOT(updateAllBirthdays()));
 
-    const CDBirthdayCalendar::SyncMode syncMode = stampFileUpToDate() ? CDBirthdayCalendar::KeepOldDB :
-                                                                        CDBirthdayCalendar::DropOldDB;
-
-    mCalendar = new CDBirthdayCalendar(syncMode, this);
     updateAllBirthdays();
 
     mUpdateTimer.setInterval(UPDATE_TIMEOUT);
@@ -103,8 +104,8 @@ CDBirthdayController::contactsChanged(const QList<QContactId>& contacts)
 void CDBirthdayController::contactsRemoved(const QList<QContactId>& contacts)
 {
     foreach (const QContactId &id, contacts)
-        mCalendar->deleteBirthday(id);
-    mCalendar->save();
+        mCalendar.deleteBirthday(id);
+    mCalendar.save();
 }
 
 
@@ -144,7 +145,7 @@ CDBirthdayController::createStampFile()
 }
 
 QString
-CDBirthdayController::stampFilePath() const
+CDBirthdayController::stampFilePath()
 {
     return BasePlugin::cacheFileName(QLatin1String("calendar.stamp"));
 }
@@ -152,23 +153,26 @@ CDBirthdayController::stampFilePath() const
 void
 CDBirthdayController::updateAllBirthdays()
 {
-    // Fetch any contact with a birthday.
-    QContactDetailFilter fetchFilter(detailFilter<QContactBirthday>());
-    fetchContacts(fetchFilter, SLOT(onFullSyncRequestStateChanged(QContactAbstractRequest::State)));
-}
-
-void
-CDBirthdayController::onFullSyncRequestStateChanged(QContactAbstractRequest::State newState)
-{
-    if (processFetchRequest(qobject_cast<QContactFetchRequest*>(sender()), newState, FullSync)) {
-        // Create the stamp file only after a successful full sync.
-        createStampFile();
+    if (mRequest->isActive()) {
+        mUpdateAllPending = true;
+    } else {
+        // Fetch every contact with a birthday.
+        fetchContacts(detailFilter<QContactBirthday>(), FullSync);
     }
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// Incremental sync logic
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 void
 CDBirthdayController::onUpdateQueueTimeout()
 {
+    if (mRequest->isActive()) {
+        // The timer will be restarted by completion of the active request
+        return;
+    }
+
     QList<QContactId> contactIds(mUpdatedContacts.toList());
 
     // If we request too many contact IDs, we will exceed the SQLite bound variable limit
@@ -180,26 +184,10 @@ CDBirthdayController::onUpdateQueueTimeout()
         mUpdatedContacts.clear();
     }
 
-    fetchContacts(contactIds);
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// Incremental sync logic
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-void
-CDBirthdayController::fetchContacts(const QList<QContactId> &contactIds)
-{
     QContactIdFilter fetchFilter;
     fetchFilter.setIds(contactIds);
 
-    fetchContacts(fetchFilter, SLOT(onFetchRequestStateChanged(QContactAbstractRequest::State)));
-}
-
-void
-CDBirthdayController::onFetchRequestStateChanged(QContactAbstractRequest::State newState)
-{
-    processFetchRequest(qobject_cast<QContactFetchRequest*>(sender()), newState, Incremental);
+    fetchContacts(fetchFilter, Incremental);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -207,89 +195,76 @@ CDBirthdayController::onFetchRequestStateChanged(QContactAbstractRequest::State 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 void
-CDBirthdayController::fetchContacts(const QContactFilter &filter, const char *slot)
+CDBirthdayController::fetchContacts(const QContactFilter &filter, SyncMode mode)
 {
+    // Set up the fetch request object
+    mRequest->setManager(&mManager);
+
     QContactFetchHint fetchHint;
-    static const QList<QContactDetail::DetailType> detailTypes = QList<QContactDetail::DetailType>() 
-        << QContactBirthday::Type
-        << QContactDisplayLabel::Type;
-    fetchHint.setDetailTypesHint(detailTypes);
+    fetchHint.setDetailTypesHint(QList<QContactDetail::DetailType>() << QContactBirthday::Type << QContactDisplayLabel::Type);
     fetchHint.setOptimizationHints(QContactFetchHint::NoRelationships |
                                    QContactFetchHint::NoActionPreferences |
                                    QContactFetchHint::NoBinaryBlobs);
+    mRequest->setFetchHint(fetchHint);
 
     // Only fetch aggregate contacts
     QContactDetailFilter syncTargetFilter(detailFilter<QContactSyncTarget>(QContactSyncTarget::FieldSyncTarget));
-    syncTargetFilter.setValue(QString::fromLatin1("aggregate"));
+    syncTargetFilter.setValue(QStringLiteral("aggregate"));
+    mRequest->setFilter(filter & syncTargetFilter);
 
-    QContactFetchRequest * const fetchRequest = new QContactFetchRequest(this);
-    fetchRequest->setManager(mManager);
-    fetchRequest->setFetchHint(fetchHint);
-    fetchRequest->setFilter(filter & syncTargetFilter);
+    connect(mRequest.data(), SIGNAL(stateChanged(QContactAbstractRequest::State)),
+            SLOT(onRequestStateChanged(QContactAbstractRequest::State)));
 
-    connect(fetchRequest, SIGNAL(stateChanged(QContactAbstractRequest::State)), slot);
-
-    if (not fetchRequest->start()) {
+    if (!mRequest->start()) {
         warning() << Q_FUNC_INFO << "Unable to start birthday contact fetch request";
-        delete fetchRequest;
-        return;
+    } else {
+        debug() << "Birthday contacts fetch request started";
+        mSyncMode = mode;
     }
-
-    debug() << "Birthday contacts fetch request started";
 }
 
-bool
-CDBirthdayController::processFetchRequest(QContactFetchRequest *const fetchRequest,
-                                          QContactAbstractRequest::State newState,
-                                          SyncMode syncMode)
+void
+CDBirthdayController::onRequestStateChanged(QContactAbstractRequest::State newState)
 {
-    if (fetchRequest == 0) {
-        warning() << Q_FUNC_INFO << "Invalid fetch request";
-        return false;
-    }
-
-    bool success = false;
-
-    switch (newState) {
-    case QContactAbstractRequest::FinishedState:
+    if (newState == QContactAbstractRequest::FinishedState) {
         debug() << "Birthday contacts fetch request finished";
 
-        if (fetchRequest->error() != QContactManager::NoError) {
-            warning() << Q_FUNC_INFO << "Error during birthday contact fetch request, code: "
-                      << fetchRequest->error();
+        if (mRequest->error() != QContactManager::NoError) {
+            warning() << Q_FUNC_INFO << "Error during birthday contact fetch request, code:" << mRequest->error();
         } else {
-            const QList<QContact> contacts = fetchRequest->contacts();
+            if (mSyncMode == FullSync) {
+                syncBirthdays(mRequest->contacts());
 
-            if (FullSync == syncMode) {
-                syncBirthdays(contacts);
+                // Create the stamp file only after a successful full sync.
+                createStampFile();
             } else {
-                updateBirthdays(contacts);
+                updateBirthdays(mRequest->contacts());
             }
-            success = true;
         }
 
-        break;
-
-    case QContactAbstractRequest::CanceledState:
-        break;
-
-    default:
-        return false;
+        // We're finished with this request, clear it out to drop any contact data
+        // (although don't delete it directly, as we're currently handling a signal from it)
+        mRequest.take()->deleteLater();
+        mRequest.reset(new QContactFetchRequest);
+    } else if (newState == QContactAbstractRequest::CanceledState) {
+        debug() << "Birthday contacts fetch request canceled";
+    } else {
+        // Request still in progress
+        return;
     }
 
     // Save the calendar in any case (success or not), since this "save" call
     // also applies for the deleteBirthday() calls in processNotificationQueues()
-    mCalendar->save();
+    mCalendar.save();
 
-    // Provide hint we are done with this request.
-    fetchRequest->deleteLater();
-
-    // If some updated contacts weren't requested, we need to go again
-    if (!mUpdatedContacts.isEmpty() && !mUpdateTimer.isActive()) {
+    if (mUpdateAllPending) {
+        // We need to update all birthdays
+        mUpdateAllPending = false;
+        updateAllBirthdays();
+    } else if (!mUpdatedContacts.isEmpty() && !mUpdateTimer.isActive()) {
+        // If some updated contacts weren't requested, we need to go again
         mUpdateTimer.start();
     }
-
-    return success;
 }
 
 void
@@ -298,14 +273,14 @@ CDBirthdayController::updateBirthdays(const QList<QContact> &changedBirthdays)
     foreach (const QContact &contact, changedBirthdays) {
         const QContactBirthday contactBirthday = contact.detail<QContactBirthday>();
         const QString contactDisplayLabel = contact.detail<QContactDisplayLabel>().label();
-        const CalendarBirthday calendarBirthday = mCalendar->birthday(contact.id());
+        const CalendarBirthday calendarBirthday = mCalendar.birthday(contact.id());
 
         // Display label or birthdate was removed from the contact, so delete it from the calendar.
         if (contactDisplayLabel.isEmpty() || contactBirthday.date().isNull()) {
             if (!calendarBirthday.date().isNull()) {
                 debug() << "Contact: " << contact.id() << " removed birthday or displayLabel, so delete the calendar event";
 
-                mCalendar->deleteBirthday(contact.id());
+                mCalendar.deleteBirthday(contact.id());
             }
         // Display label or birthdate was changed on the contact, so update the calendar.
         } else if ((contactDisplayLabel != calendarBirthday.summary()) ||
@@ -315,7 +290,7 @@ CDBirthdayController::updateBirthdays(const QList<QContact> &changedBirthdays)
                     << " changed details to: " << contactBirthday.date() << contactDisplayLabel
                     << ", so update the calendar event";
 
-            mCalendar->updateBirthday(contact);
+            mCalendar.updateBirthday(contact);
         }
     }
 }
@@ -323,13 +298,12 @@ CDBirthdayController::updateBirthdays(const QList<QContact> &changedBirthdays)
 void
 CDBirthdayController::syncBirthdays(const QList<QContact> &birthdayContacts)
 {
-    QHash<QContactId, CalendarBirthday> oldBirthdays = mCalendar->birthdays();
+    QHash<QContactId, CalendarBirthday> oldBirthdays = mCalendar.birthdays();
 
     // Check all birthdays from the contacts if the stored calendar item is up-to-date
     foreach (const QContact &contact, birthdayContacts) {
         const QString contactDisplayLabel = contact.detail<QContactDisplayLabel>().label();
-
-        if (contactDisplayLabel.isNull()) {
+        if (contactDisplayLabel.isEmpty()) {
             debug() << "Contact: " << contact << " has no displayLabel, so not syncing to calendar";
             continue;
         }
@@ -347,20 +321,20 @@ CDBirthdayController::syncBirthdays(const QList<QContact> &birthdayContacts)
                         << " and calendar displayLabel: " << calendarBirthday.summary()
                         << " changed details to: " << contact << ", so update the calendar event";
 
-                mCalendar->updateBirthday(contact);
+                mCalendar.updateBirthday(contact);
             }
 
             // Birthday exists, so not a garbage one
             oldBirthdays.erase(it);
         } else {
             // Create new birthday
-            mCalendar->updateBirthday(contact);
+            mCalendar.updateBirthday(contact);
         }
     }
 
     // Remaining old birthdays in the calendar db do not did not match any contact, so remove them.
     foreach (const QContactId &id, oldBirthdays.keys()) {
         debug() << "Birthday with contact id" << id << "no longer has a matching contact, trashing it";
-        mCalendar->deleteBirthday(id);
+        mCalendar.deleteBirthday(id);
     }
 }
