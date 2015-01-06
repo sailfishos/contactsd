@@ -115,25 +115,21 @@ mKCal::Notebook::Ptr CDBirthdayCalendar::createNotebook()
                                                     0));
 }
 
-QHash<CDBirthdayCalendar::ContactIdType, CalendarBirthday>
+QHash<QContactId, CalendarBirthday>
 CDBirthdayCalendar::birthdays()
 {
     if (not mStorage->loadNotebookIncidences(calNotebookId)) {
         warning() << Q_FUNC_INFO << "Failed to load all incidences";
-        return QHash<ContactIdType, CalendarBirthday>();
+        return QHash<QContactId, CalendarBirthday>();
     }
 
-    QHash<ContactIdType, CalendarBirthday> result;
+    QHash<QContactId, CalendarBirthday> result;
 
     foreach(const KCalCore::Event::Ptr event, mCalendar->events()) {
         const QString eventUid = event->uid();
-        const ContactIdType contactId = localContactId(eventUid);
+        const QContactId contactId = localContactId(eventUid);
 
-#ifdef USING_QTPIM
         if (!contactId.isNull()) {
-#else
-        if (0 != contactId) {
-#endif
             result.insert(contactId, CalendarBirthday(event->dtStart().date(), event->summary()));
         } else {
             warning() << Q_FUNC_INFO << "Birthday event with a bad uid: " << eventUid;
@@ -143,25 +139,15 @@ CDBirthdayCalendar::birthdays()
     return result;
 }
 
-#ifdef USING_QTPIM
-static QContactId contactId(const QContact &contact) { return contact.id(); }
-#else
-static QContactLocalId contactId(const QContact &contact) { return contact.localId(); }
-#endif
-
 void CDBirthdayCalendar::updateBirthday(const QContact &contact)
 {
     // Retrieve contact details.
-#ifdef USING_QTPIM
     const QString displayLabel = contact.detail<QContactDisplayLabel>().label();
-#else
-    const QString displayLabel = contact.displayLabel();
-#endif
     const QDate contactBirthday = contact.detail<QContactBirthday>().date();
 
     if (displayLabel.isEmpty() || contactBirthday.isNull()) {
         warning() << Q_FUNC_INFO << "Contact without name or birthday, local ID: "
-                  << contactId(contact);
+                  << contact.id();
         return;
     }
 
@@ -176,13 +162,13 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
     // NOTE: controller is assuming name as summary and uses that to detect changes
 
     // Retrieve birthday event.
-    KCalCore::Event::Ptr event = calendarEvent(contactId(contact));
+    KCalCore::Event::Ptr event = calendarEvent(contact.id());
 
     if (event.isNull()) {
         // Add a new event.
         event = KCalCore::Event::Ptr(new KCalCore::Event());
         event->startUpdates();
-        event->setUid(calendarEventId(contactId(contact)));
+        event->setUid(calendarEventId(contact.id()));
 
         // Ensure events appear as birthdays in the calendar, NB#259710.
         event->setCategories(QStringList() << QLatin1String("BIRTHDAY"));
@@ -266,10 +252,10 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
     event->setReadOnly(true);
     event->endUpdates();
     setReadOnly(true);
-    debug() << "Updated birthday event in calendar, local ID: " << contactId(contact);
+    debug() << "Updated birthday event in calendar, local ID: " << contact.id();
 }
 
-void CDBirthdayCalendar::deleteBirthday(ContactIdType contactId)
+void CDBirthdayCalendar::deleteBirthday(const QContactId &contactId)
 {
     KCalCore::Event::Ptr event = calendarEvent(contactId);
 
@@ -292,7 +278,7 @@ void CDBirthdayCalendar::save()
     setReadOnly(true);
 }
 
-CalendarBirthday CDBirthdayCalendar::birthday(ContactIdType contactId)
+CalendarBirthday CDBirthdayCalendar::birthday(const QContactId &contactId)
 {
     KCalCore::Event::Ptr event = calendarEvent(contactId);
 
@@ -303,7 +289,6 @@ CalendarBirthday CDBirthdayCalendar::birthday(ContactIdType contactId)
     return CalendarBirthday(event->dtStart().date(), event->summary());
 }
 
-#ifdef USING_QTPIM
 quint32 numericContactId(const QContactId &id)
 {
     // Note: only works with the qtcontacts-sqlite backend
@@ -322,18 +307,8 @@ QContactId fromNumericContactId(quint32 id)
     static const QString idStr(QStringLiteral("qtcontacts:org.nemomobile.contacts.sqlite::sql-%1"));
     return QContactId::fromString(idStr.arg(id));
 }
-#else
-const QContactLocalId &numericContactId(const QContactLocalId &id)
-{
-    return id;
-}
-QContactLocalId fromNumericContactId(quint32 id)
-{
-    return id;
-}
-#endif
 
-CDBirthdayCalendar::ContactIdType CDBirthdayCalendar::localContactId(const QString &calendarEventId)
+QContactId CDBirthdayCalendar::localContactId(const QString &calendarEventId)
 {
     quint32 numericId = 0;
 
@@ -344,12 +319,12 @@ CDBirthdayCalendar::ContactIdType CDBirthdayCalendar::localContactId(const QStri
     return fromNumericContactId(numericId);
 }
 
-QString CDBirthdayCalendar::calendarEventId(ContactIdType contactId)
+QString CDBirthdayCalendar::calendarEventId(const QContactId &contactId)
 {
     return calIdExtension + QString::number(numericContactId(contactId));
 }
 
-KCalCore::Event::Ptr CDBirthdayCalendar::calendarEvent(ContactIdType contactId)
+KCalCore::Event::Ptr CDBirthdayCalendar::calendarEvent(const QContactId &contactId)
 {
     const QString eventId = calendarEventId(contactId);
 

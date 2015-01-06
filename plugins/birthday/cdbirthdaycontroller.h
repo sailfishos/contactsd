@@ -35,11 +35,7 @@
 
 class CDBirthdayCalendar;
 
-#ifdef USING_QTPIM
 QTCONTACTS_USE_NAMESPACE
-#else
-QTM_USE_NAMESPACE
-#endif
 
 class CDBirthdayController : public QObject
 {
@@ -51,23 +47,12 @@ class CDBirthdayController : public QObject
     };
 
 public:
-#ifdef USING_QTPIM
-    typedef QContactId ContactIdType;
-#else
-    typedef QContactLocalId ContactIdType;
-#endif
-    
     explicit CDBirthdayController(QObject *parent = 0);
     ~CDBirthdayController();
 
 private Q_SLOTS:
-#ifdef USING_QTPIM
     void contactsChanged(const QList<QContactId> &contacts);
     void contactsRemoved(const QList<QContactId> &contacts);
-#else
-    void contactsChanged(const QList<QContactLocalId> &contacts);
-    void contactsRemoved(const QList<QContactLocalId> &contacts);
-#endif
 
     void onFetchRequestStateChanged(QContactAbstractRequest::State newState);
     void onFullSyncRequestStateChanged(QContactAbstractRequest::State newState);
@@ -81,7 +66,7 @@ private:
     bool processFetchRequest(QContactFetchRequest * const fetchRequest,
                              QContactAbstractRequest::State newState,
                              SyncMode syncMode = Incremental);
-    void fetchContacts(const QList<ContactIdType> &contactIds);
+    void fetchContacts(const QList<QContactId> &contactIds);
     void fetchContacts(const QContactFilter &filter, const char *slot);
     void updateBirthdays(const QList<QContact> &changedBirthdays);
     void syncBirthdays(const QList<QContact> &birthdayContacts);
@@ -89,7 +74,7 @@ private:
 private:
     CDBirthdayCalendar *mCalendar;
     QContactManager *mManager;
-    QSet<ContactIdType> mUpdatedContacts;
+    QSet<QContactId> mUpdatedContacts;
     QTimer mUpdateTimer;
 };
 

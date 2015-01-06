@@ -39,17 +39,11 @@
 #include "test-expectation.h"
 #include "debug.h"
 
-#ifdef USING_QTPIM
 const int QContactOnlineAccount__FieldAccountPath = (QContactOnlineAccount::FieldSubTypes+1);
-
-QContactId apiId(const QContact &contact) { return contact.id(); }
-#else
-QContactLocalId apiId(const QContact &contact) { return contact.localId(); }
-#endif
 
 // --- TestExpectation ---
 
-void TestExpectation::verify(Event event, const QList<ContactIdType> &contactIds)
+void TestExpectation::verify(Event event, const QList<QContactId> &contactIds)
 {
      new TestFetchContacts(contactIds, event, this);
 }
@@ -62,7 +56,7 @@ void TestExpectation::verify(Event event, const QList<QContact> &contacts)
     emitFinished();
 }
 
-void TestExpectation::verify(Event event, const QList<ContactIdType> &contactIds, QContactManager::Error error)
+void TestExpectation::verify(Event event, const QList<QContactId> &contactIds, QContactManager::Error error)
 {
     Q_UNUSED(event);
     Q_UNUSED(contactIds);
@@ -79,7 +73,7 @@ void TestExpectation::emitFinished()
 
 // --- TestFetchContacts ---
 
-TestFetchContacts::TestFetchContacts(const QList<ContactIdType> &contactIds,
+TestFetchContacts::TestFetchContacts(const QList<QContactId> &contactIds,
         Event event, TestExpectation *exp) : QObject(exp),
         mContactIds(contactIds), mEvent(event), mExp(exp)
 {
@@ -88,11 +82,7 @@ TestFetchContacts::TestFetchContacts(const QList<ContactIdType> &contactIds,
             SIGNAL(resultsAvailable()),
             SLOT(onContactsFetched()));
     request->setManager(mExp->contactManager());
-#ifdef USING_QTPIM
     request->setIds(contactIds);
-#else
-    request->setLocalIds(contactIds);
-#endif
     QVERIFY(request->start());
 }
 
@@ -137,14 +127,14 @@ void TestExpectationInit::verify(Event event, const QList<QContact> &contacts)
 
     QVERIFY(contacts.count() >= 1);
 
-    QList<ContactIdType> changedIds;
+    QList<QContactId> changedIds;
     Q_FOREACH (const QContact &contact, contacts)
-        changedIds.append(apiId(contact));
+        changedIds.append(contact.id());
     QVERIFY(changedIds.contains(contactManager()->selfContactId()));
     emitFinished();
 }
 
-void TestExpectationInit::verify(Event event, const QList<ContactIdType> &contactIds, QContactManager::Error error)
+void TestExpectationInit::verify(Event event, const QList<QContactId> &contactIds, QContactManager::Error error)
 {
     QCOMPARE(event, EventRemoved);
     QCOMPARE(contactIds.count(), 1);
@@ -164,7 +154,7 @@ void TestExpectationCleanup::verify(Event event, const QList<QContact> &contacts
     QCOMPARE(event, EventChanged);
 
     Q_FOREACH (const QContact &contact, contacts) {
-        if (apiId(contact) == contactManager()->selfContactId()) {
+        if (contact.id() == contactManager()->selfContactId()) {
             QVERIFY(!mSelfChanged);
             mSelfChanged = true;
             mNContacts--;
@@ -172,16 +162,13 @@ void TestExpectationCleanup::verify(Event event, const QList<QContact> &contacts
         }
 
         QContactSyncTarget detail = contact.detail<QContactSyncTarget>();
-#ifndef USING_QTPIM
-        QCOMPARE(detail.syncTarget(), QLatin1String("addressbook"));
-#endif
         mNContacts--;
     }
 
     maybeEmitFinished();
 }
 
-void TestExpectationCleanup::verify(Event event, const QList<ContactIdType> &contactIds, QContactManager::Error error)
+void TestExpectationCleanup::verify(Event event, const QList<QContactId> &contactIds, QContactManager::Error error)
 {
     QCOMPARE(event, EventRemoved);
     QCOMPARE(error, QContactManager::DoesNotExistError);
@@ -223,7 +210,7 @@ void TestExpectationContact::verify(Event event, const QList<QContact> &contacts
     emitFinished();
 }
 
-void TestExpectationContact::verify(Event event, const QList<ContactIdType> &contactIds, QContactManager::Error error)
+void TestExpectationContact::verify(Event event, const QList<QContactId> &contactIds, QContactManager::Error error)
 {
     QCOMPARE(event, EventRemoved);
     QVERIFY(contactIds.count() >= 1);
@@ -234,16 +221,9 @@ void TestExpectationContact::verify(Event event, const QList<ContactIdType> &con
 void TestExpectationContact::verify(const QContact &contact)
 {
     if (!mAccountUri.isEmpty()) {
-#ifdef USING_QTPIM
         QList<QContactOnlineAccount> details = contact.details<QContactOnlineAccount>();
         QCOMPARE(details.count(), 1);
         QCOMPARE(details[0].value<QString>(QContactOnlineAccount__FieldAccountPath), QString(ACCOUNT_PATH));
-#else
-        const QString uri = QString("telepathy:%1!%2").arg(ACCOUNT_PATH).arg(mAccountUri);
-        QList<QContactOnlineAccount> details = contact.details<QContactOnlineAccount>("DetailUri", uri);
-        QCOMPARE(details.count(), 1);
-        QCOMPARE(details[0].value("AccountPath"), QString(ACCOUNT_PATH));
-#endif
     }
 
     if (mFlags & VerifyAlias) {
@@ -257,12 +237,7 @@ void TestExpectationContact::verify(const QContact &contact)
             QContactGlobalPresence presenceDetail = contact.detail<QContactGlobalPresence>();
             presence = presenceDetail.presenceState();
         } else {
-#ifdef USING_QTPIM
             QList<QContactPresence> details = contact.details<QContactPresence>();
-#else
-            const QString uri = QString("presence:%1!%2").arg(ACCOUNT_PATH).arg(mAccountUri);
-            QList<QContactPresence> details = contact.details<QContactPresence>("DetailUri", uri);
-#endif
             QCOMPARE(details.count(), 1);
             presence = details[0].presenceState();
         }
@@ -301,15 +276,7 @@ void TestExpectationContact::verify(const QContact &contact)
     }
 
     if (mFlags & VerifyAuthorization) {
-#ifdef USING_QTPIM
         qWarning() << "Unsupported functionality: presence authorization";
-#else
-        const QString uri = QString("presence:%1!%2").arg(ACCOUNT_PATH).arg(mAccountUri);
-        QList<QContactPresence> details = contact.details<QContactPresence>("DetailUri", uri);
-        QCOMPARE(details.count(), 1);
-        QCOMPARE(details[0].value("AuthStatusFrom"), mSubscriptionState);
-        QCOMPARE(details[0].value("AuthStatusTo"), mPublishState);
-#endif
     }
 
     if (mFlags & VerifyInfo) {
@@ -317,29 +284,16 @@ void TestExpectationContact::verify(const QContact &contact)
 
         Q_FOREACH (const QContactDetail &detail, contact.details()) {
             QStringList params;
-#ifdef USING_QTPIM
             if (detail.contexts().contains(QContactDetail::ContextWork)) {
-#else
-            if (detail.contexts().contains("Work")) {
-#endif
                 params << QLatin1String("type=work");
             }
-#ifdef USING_QTPIM
             if (detail.contexts().contains(QContactDetail::ContextHome)) {
-#else
-            if (detail.contexts().contains("Home")) {
-#endif
                 params << QLatin1String("type=home");
             }
 
-#ifdef USING_QTPIM
             if (detail.type() ==QContactPhoneNumber::Type) {
-#else
-            if (detail.definitionName() == "PhoneNumber") {
-#endif
                 QContactPhoneNumber phoneNumber = static_cast<QContactPhoneNumber>(detail);
 
-#ifdef USING_QTPIM
                 Q_FOREACH (int type, phoneNumber.subTypes()) {
                     if (type == QContactPhoneNumber::SubTypeMobile) {
                         params << QLatin1String("type=cell");
@@ -347,24 +301,11 @@ void TestExpectationContact::verify(const QContact &contact)
                         params << QLatin1String("type=video");
                     }
                 }
-#else
-                Q_FOREACH (const QString &type, phoneNumber.subTypes()) {
-                    if (type == QLatin1String("Mobile")) {
-                        params << QLatin1String("type=cell");
-                    } else if (type == QLatin1String("Video")) {
-                        params << QLatin1String("type=video");
-                    }
-                }
-#endif
 
                 verifyContactInfo("tel", QStringList() << phoneNumber.number(), params);
                 nMatchedField++;
             }
-#ifdef USING_QTPIM
             else if (detail.type() == QContactAddress::Type) {
-#else
-            else if (detail.definitionName() == "Address") {
-#endif
                 QContactAddress address = static_cast<QContactAddress>(detail);
                 verifyContactInfo("adr", QStringList() << address.postOfficeBox()
                                                        << address.street()
@@ -375,11 +316,7 @@ void TestExpectationContact::verify(const QContact &contact)
                                   params);
                 nMatchedField++;
             }
-#ifdef USING_QTPIM
             else if (detail.type() ==QContactEmailAddress::Type) {
-#else
-            else if (detail.definitionName() == "EmailAddress") {
-#endif
                 QContactEmailAddress emailAddress = static_cast<QContactEmailAddress >(detail);
                 verifyContactInfo("email", QStringList() << emailAddress.emailAddress(), params);
                 nMatchedField++;
@@ -392,16 +329,12 @@ void TestExpectationContact::verify(const QContact &contact)
     }
 
     if (mFlags & VerifyContactId) {
-        QCOMPARE(apiId(contact), mContactId);
+        QCOMPARE(contact.id(), mContactId);
     }
 
     if (mFlags & VerifyGenerator) {
         QContactSyncTarget detail = contact.detail<QContactSyncTarget>();
-#ifdef USING_QTPIM
         QVERIFY((detail.syncTarget() == mGenerator) || (detail.syncTarget() == "aggregate"));
-#else
-        QCOMPARE(detail.syncTarget() == mGenerator);
-#endif
     }
 }
 
@@ -485,12 +418,10 @@ TestExpectationDisconnect::TestExpectationDisconnect(int nContacts) :
 void TestExpectationDisconnect::verify(Event event, const QList<QContact> &contacts)
 {
     Q_FOREACH (const QContact &contact, contacts) {
-#ifdef USING_QTPIM
         if (contact.detail<QContactSyncTarget>().syncTarget() != "aggregate") {
             mNContacts--;
         } else {
-#endif
-            if (apiId(contact) == contactManager()->selfContactId()) {
+            if (contact.id() == contactManager()->selfContactId()) {
                 QCOMPARE(event, EventChanged);
                 verifyPresence(TP_TESTS_CONTACTS_CONNECTION_STATUS_OFFLINE);
                 mSelfChanged = true;
@@ -501,9 +432,7 @@ void TestExpectationDisconnect::verify(Event event, const QList<QContact> &conta
                 mNContacts--;
             }
             TestExpectationContact::verify(contact);
-#ifdef USING_QTPIM
         }
-#endif
     }
 
     QVERIFY(mNContacts >= 0);
@@ -514,8 +443,8 @@ void TestExpectationDisconnect::verify(Event event, const QList<QContact> &conta
 
 // --- TestExpectationMerge ---
 
-TestExpectationMerge::TestExpectationMerge(const ContactIdType &masterId,
-        const QList<ContactIdType> &mergeIds, const QList<TestExpectationContactPtr> expectations)
+TestExpectationMerge::TestExpectationMerge(const QContactId &masterId,
+        const QList<QContactId> &mergeIds, const QList<TestExpectationContactPtr> expectations)
         : mMasterId(masterId), mMergeIds(mergeIds), mGotMergedContact(false),
         mContactExpectations(expectations)
 {
@@ -525,7 +454,7 @@ void TestExpectationMerge::verify(Event event, const QList<QContact> &contacts)
 {
     QCOMPARE(event, EventChanged);
     QCOMPARE(contacts.count(), 1);
-    QCOMPARE(apiId(contacts[0]), mMasterId);
+    QCOMPARE(contacts[0].id(), mMasterId);
     mGotMergedContact = true;
 
     Q_FOREACH (TestExpectationContactPtr exp, mContactExpectations) {
@@ -536,13 +465,13 @@ void TestExpectationMerge::verify(Event event, const QList<QContact> &contacts)
 }
 
 
-void TestExpectationMerge::verify(Event event, const QList<ContactIdType> &contactIds,
+void TestExpectationMerge::verify(Event event, const QList<QContactId> &contactIds,
         QContactManager::Error error)
 {
     QCOMPARE(event, EventRemoved);
     QCOMPARE(error, QContactManager::DoesNotExistError);
 
-    Q_FOREACH (const ContactIdType &id, contactIds) {
+    Q_FOREACH (const QContactId &id, contactIds) {
         QVERIFY(mMergeIds.contains(id));
         mMergeIds.removeOne(id);
     }
@@ -578,7 +507,7 @@ void TestExpectationMass::verify(Event event, const QList<QContact> &contacts)
     maybeEmitFinished();
 }
 
-void TestExpectationMass::verify(Event event, const QList<ContactIdType> &contactIds,
+void TestExpectationMass::verify(Event event, const QList<QContactId> &contactIds,
         QContactManager::Error error)
 {
     QCOMPARE(event, EventRemoved);

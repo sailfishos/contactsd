@@ -31,12 +31,8 @@
 
 #include <MGConfItem>
 
-#ifdef USING_QTPIM
 QTCONTACTS_USE_NAMESPACE
 QTVERSIT_USE_NAMESPACE
-#else
-#error "SIM plugin has not been ported to QtMobility Contacts/Versit"
-#endif
 
 class CDSimController : public QObject
 {

@@ -42,7 +42,6 @@ DEFINES += ENABLE_DEBUG
 
 PKGCONFIG += Qt5Contacts
 PKGCONFIG += TelepathyQt5
-DEFINES *= USING_QTPIM
 
 system(cp $$PWD/../../plugins/telepathy/com.nokia.contacts.buddymanagement.xml .)
 system(qdbusxml2cpp -c BuddyManagementInterface -p buddymanagementinterface.h:buddymanagementinterface.cpp com.nokia.contacts.buddymanagement.xml)

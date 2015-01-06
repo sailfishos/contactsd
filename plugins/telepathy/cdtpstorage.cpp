@@ -36,11 +36,7 @@
 #include <QContactIntersectionFilter>
 #include <QContactRelationshipFilter>
 #include <QContactUnionFilter>
-#ifdef USING_QTPIM
 #include <QContactIdFilter>
-#else
-#include <QContactLocalIdFilter>
-#endif
 
 #include <QContactAddress>
 #include <QContactAvatar>
@@ -75,13 +71,7 @@ using namespace Contactsd;
 // at least have FIFO semantics on lock release.
 #define BATCH_STORE_SIZE 5
 
-#ifdef USING_QTPIM
-typedef QContactId ContactIdType;
 typedef QList<QContactDetail::DetailType> DetailList;
-#else
-typedef QContactLocalId ContactIdType;
-typedef QStringList DetailList;
-#endif
 
 namespace {
 
@@ -159,28 +149,14 @@ QString asString(CDTpAccount::Changes changes)
     return rv.join(QLatin1Char(':'));
 }
 
-#ifdef USING_QTPIM
 QString asString(const QContactId &id) { return id.toString(); }
-#else
-QString asString(QContactLocalId id) { return QString::number(id); }
-#endif
-
-#ifdef USING_QTPIM
-QContactId apiId(const QContact &contact) { return contact.id(); }
-#else
-QContactLocalId apiId(const QContact &contact) { return contact.localId(); }
-#endif
 
 }
 
 template<typename F>
 QString stringValue(const QContactDetail &detail, F field)
 {
-#ifdef USING_QTPIM
     return detail.value<QString>(field);
-#else
-    return detail.value(field);
-#endif
 }
 
 namespace {
@@ -200,11 +176,7 @@ QContactManager *manager()
 QContactDetailFilter matchTelepathyFilter()
 {
     QContactDetailFilter filter;
-#ifdef USING_QTPIM
     filter.setDetailType(QContactSyncTarget::Type, QContactSyncTarget::FieldSyncTarget);
-#else
-    filter.setDetailDefinitionName(QContactSyncTarget::DefinitionName, QContactSyncTarget::FieldSyncTarget);
-#endif
     filter.setValue(QLatin1String("telepathy"));
     filter.setMatchFlags(QContactFilter::MatchExactly);
     return filter;
@@ -213,11 +185,7 @@ QContactDetailFilter matchTelepathyFilter()
 template<typename T>
 DetailList::value_type detailType()
 {
-#ifdef USING_QTPIM
     return T::Type;
-#else
-    return QString::fromLatin1(T::DefinitionName.latin1());
-#endif
 }
 
 QContactFetchHint contactFetchHint(const DetailList &detailTypes = DetailList())
@@ -230,46 +198,33 @@ QContactFetchHint contactFetchHint(const DetailList &detailTypes = DetailList())
                               QContactFetchHint::NoBinaryBlobs);
 
     if (!detailTypes.isEmpty()) {
-#ifdef USING_QTPIM
         hint.setDetailTypesHint(detailTypes);
-#else
-        hint.setDetailDefinitionsHint(detailTypes);
-#endif
     }
 
     return hint;
 }
 
-ContactIdType selfContactLocalId()
+QContactId selfContactLocalId()
 {
     QContactManager *mgr(manager());
 
     // Check that there is a self contact
     QContactId selfId;
-#ifdef USING_QTPIM
     selfId = mgr->selfContactId();
-#else
-    selfId.setLocalId(mgr->selfContactId());
-#endif
 
     // Find the telepathy contact aggregated by the real self contact
     QContactRelationshipFilter relationshipFilter;
-#ifdef USING_QTPIM
     relationshipFilter.setRelationshipType(QContactRelationship::Aggregates());
     QContact relatedContact;
     relatedContact.setId(selfId);
     relationshipFilter.setRelatedContact(relatedContact);
-#else
-    relationshipFilter.setRelationshipType(QContactRelationship::Aggregates);
-    relationshipFilter.setRelatedContactId(selfId);
-#endif
     relationshipFilter.setRelatedContactRole(QContactRelationship::First);
 
     QContactIntersectionFilter selfFilter;
     selfFilter << matchTelepathyFilter();
     selfFilter << relationshipFilter;
 
-    QList<ContactIdType> selfContactIds = mgr->contactIds(selfFilter);
+    QList<QContactId> selfContactIds = mgr->contactIds(selfFilter);
     if (selfContactIds.count() > 0) {
         if (selfContactIds.count() > 1) {
             warning() << "Invalid number of telepathy self contacts!" << selfContactIds.count();
@@ -292,16 +247,10 @@ ContactIdType selfContactLocalId()
         } else {
             // Now connect our contact to the real self contact
             QContactRelationship relationship;
-#ifdef USING_QTPIM
             relationship.setRelationshipType(QContactRelationship::Aggregates());
             relatedContact.setId(selfId);
             relationship.setFirst(relatedContact);
             relationship.setSecond(tpSelf);
-#else
-            relationship.setRelationshipType(QContactRelationship::Aggregates);
-            relationship.setFirst(selfId);
-            relationship.setSecond(tpSelf.id());
-#endif
 
             if (!mgr->saveRelationship(&relationship)) {
                 warning() << "Unable to save relationship for self contact - error:" << mgr->error();
@@ -309,14 +258,9 @@ ContactIdType selfContactLocalId()
             }
 
             // Find the aggregate contact created by saving our self contact
-#ifdef USING_QTPIM
             relationshipFilter.setRelationshipType(QContactRelationship::Aggregates());
             relatedContact.setId(tpSelf.id());
             relationshipFilter.setRelatedContact(relatedContact);
-#else
-            relationshipFilter.setRelationshipType(QContactRelationship::Aggregates);
-            relationshipFilter.setRelatedContactId(tpSelf.id());
-#endif
             relationshipFilter.setRelatedContactRole(QContactRelationship::Second);
 
             foreach (const QContact &aggregator, mgr->contacts(relationshipFilter)) {
@@ -325,32 +269,26 @@ ContactIdType selfContactLocalId()
 
                 // Remove the relationship between these contacts (which removes the childless aggregate)
                 QContactRelationship relationship;
-#ifdef USING_QTPIM
                 relationship.setRelationshipType(QContactRelationship::Aggregates());
                 relationship.setFirst(aggregator);
                 relationship.setSecond(tpSelf);
-#else
-                relationship.setRelationshipType(QContactRelationship::Aggregates);
-                relationship.setFirst(aggregator.id());
-                relationship.setSecond(tpSelf.id());
-#endif
 
                 if (!mgr->removeRelationship(relationship)) {
                     warning() << "Unable to remove relationship for self contact - error:" << mgr->error();
                 }
             }
 
-            return apiId(tpSelf);
+            return tpSelf.id();
         }
     }
 
-    return ContactIdType();
+    return QContactId();
 }
 
 QContact selfContact()
 {
     // For the self contact, we only care about accounts/presence/avatars
-    static ContactIdType selfLocalId(selfContactLocalId());
+    static QContactId selfLocalId(selfContactLocalId());
     static QContactFetchHint hint(contactFetchHint(DetailList() << detailType<QContactOnlineAccount>()
                                                                 << detailType<QContactPresence>()
                                                                 << detailType<QContactAvatar>()));
@@ -361,24 +299,15 @@ QContact selfContact()
 template<typename Debug>
 Debug output(Debug debug, const QContactDetail &detail)
 {
-#ifdef USING_QTPIM
     const QMap<int, QVariant> &values(detail.values());
     QMap<int, QVariant>::const_iterator it = values.constBegin(), end = values.constEnd();
-#else
-    const QVariantMap &values(detail.variantValues());
-    QVariantMap::const_iterator it = values.constBegin(), end = values.constEnd();
-#endif
     for ( ; it != end; ++it) {
         debug << "\n   -" << it.key() << ":" << it.value();
     }
     return debug;
 }
 
-#ifdef USING_QTPIM
 QContactDetail::DetailType detailType(const QContactDetail &detail) { return detail.type(); }
-#else
-QString detailType(const QContactDetail &detail) { return detail.definitionName(); }
-#endif
 
 template<typename Debug>
 Debug output(Debug debug, const QContact &contact)
@@ -437,7 +366,7 @@ bool storeContact(QContact &contact, const QString &location, CDTpContact::Chang
     const bool minimizedUpdate(!updates.isEmpty());
 
 #ifdef DEBUG_OVERLOAD
-    debug() << "Storing contact" << asString(apiId(contact)) << "from:" << location;
+    debug() << "Storing contact" << asString(contact.id()) << "from:" << location;
     output(debug(), contact);
 #endif
 
@@ -445,7 +374,7 @@ bool storeContact(QContact &contact, const QString &location, CDTpContact::Chang
         QList<QContact> contacts;
         contacts << contact;
         if (!manager()->saveContacts(&contacts, updates)) {
-            warning() << "Failed minimized storing contact" << asString(apiId(contact)) << "from:" << location << "error:" << manager()->error();
+            warning() << "Failed minimized storing contact" << asString(contact.id()) << "from:" << location << "error:" << manager()->error();
 #ifndef DEBUG_OVERLOAD
             output(debug(), contact);
 #endif
@@ -454,7 +383,7 @@ bool storeContact(QContact &contact, const QString &location, CDTpContact::Chang
         }
     } else {
         if (!manager()->saveContact(&contact)) {
-            warning() << "Failed storing contact" << asString(apiId(contact)) << "from:" << location;
+            warning() << "Failed storing contact" << asString(contact.id()) << "from:" << location;
 #ifndef DEBUG_OVERLOAD
             output(debug(), contact);
 #endif
@@ -475,7 +404,7 @@ void appendContactChange(CDTpStorage::ContactChangeSet *saveSet, const QContact 
     }
 }
 
-void updateContacts(const QString &location, CDTpStorage::ContactChangeSet *saveSet, QList<ContactIdType> *removeList)
+void updateContacts(const QString &location, CDTpStorage::ContactChangeSet *saveSet, QList<QContactId> *removeList)
 {
     if (saveSet && !saveSet->isEmpty()) {
         // Each element of the save set is a list of contacts with the same set of changes
@@ -521,7 +450,7 @@ void updateContacts(const QString &location, CDTpStorage::ContactChangeSet *save
                         do {
                             int errorIndex = (*--it);
                             const QContact &badContact(batch.at(errorIndex));
-                            warning() << "Failed storing contact" << asString(apiId(badContact)) << "from:" << location << "error:" << errorMap.value(errorIndex);
+                            warning() << "Failed storing contact" << asString(badContact.id()) << "from:" << location << "error:" << errorMap.value(errorIndex);
                             output(debug(), badContact);
                             batch.removeAt(errorIndex);
                         } while (it != begin);
@@ -536,7 +465,7 @@ void updateContacts(const QString &location, CDTpStorage::ContactChangeSet *save
         QElapsedTimer t;
         t.start();
 
-        QList<ContactIdType>::iterator it = removeList->begin(), end = removeList->end();
+        QList<QContactId>::iterator it = removeList->begin(), end = removeList->end();
         for ( ; it != end; ++it) {
             if (!manager()->removeContact(*it)) {
                 warning() << "Unable to remove contact";
@@ -546,7 +475,7 @@ void updateContacts(const QString &location, CDTpStorage::ContactChangeSet *save
     }
 }
 
-QList<ContactIdType> findContactIdsForAccount(const QString &accountPath)
+QList<QContactId> findContactIdsForAccount(const QString &accountPath)
 {
     QContactIntersectionFilter filter;
     filter << QContactOriginMetadata::matchGroupId(accountPath);
@@ -561,7 +490,7 @@ QHash<QString, QContact> findExistingContacts(const QStringList &contactAddresse
     // If there is a large number of contacts, do a two-step fetch
     const int maxDirectMatches = 10;
     if (contactAddresses.count() > maxDirectMatches) {
-        QList<ContactIdType> ids;
+        QList<QContactId> ids;
         QSet<QString> addressSet(contactAddresses.toSet());
 
         // First fetch all telepathy contacts, ID data only
@@ -569,7 +498,7 @@ QHash<QString, QContact> findExistingContacts(const QStringList &contactAddresse
         foreach (const QContact &contact, manager()->contacts(matchTelepathyFilter(), QList<QContactSortOrder>(), idHint)) {
             const QString &address = stringValue(contact.detail<QContactOriginMetadata>(), QContactOriginMetadata::FieldId);
             if (addressSet.contains(address)) {
-                ids.append(apiId(contact));
+                ids.append(contact.id());
             }
         }
 
@@ -972,11 +901,7 @@ void deleteContactDetails(QContact &existing)
     }
 }
 
-#ifdef USING_QTPIM
 typedef QHash<QString, int> Dictionary;
-#else
-typedef QHash<QString, QString> Dictionary;
-#endif
 
 Dictionary initPhoneTypes()
 {
@@ -1039,7 +964,6 @@ const Dictionary &genderTypes()
     return types;
 }
 
-#ifdef USING_QTPIM
 Dictionary initProtocolTypes()
 {
     Dictionary types;
@@ -1067,12 +991,6 @@ QContactOnlineAccount::Protocol protocolType(const QString &protocol)
 
     return QContactOnlineAccount::ProtocolUnknown;
 }
-#else
-const QString &protocolType(const QString &protocol)
-{
-    return protocol;
-}
-#endif
 
 template<typename F1, typename F2>
 void updateNameDetail(F1 getter, F2 setter, QContactName *nameDetail, const QString &value)
@@ -1333,15 +1251,9 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
 
             Tp::ContactInfoFieldList listContactInfo = contact->infoFields().allFields();
             if (listContactInfo.count() != 0) {
-#ifdef USING_QTPIM
                 const int defaultContext(QContactDetail::ContextOther);
                 const int homeContext(QContactDetail::ContextHome);
                 const int workContext(QContactDetail::ContextWork);
-#else
-                const QLatin1String defaultContext("Other");
-                const QLatin1String homeContext("Home");
-                const QLatin1String workContext("Work");
-#endif
 
                 QContactOrganization organizationDetail;
                 QContactName nameDetail;
@@ -1356,13 +1268,8 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
 
                     // Extract field types
                     QStringList subTypes;
-#ifdef USING_QTPIM
                     int detailContext = -1;
                     const int invalidContext = -1;
-#else
-                    QString detailContext;
-                    const QString invalidContext;
-#endif
 
                     foreach (const QString &param, field.parameters) {
                         if (!param.startsWith(QLatin1String("type="))) {
@@ -1379,11 +1286,7 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
                     }
 
                     if (field.fieldName == QLatin1String("tel")) {
-#ifdef USING_QTPIM
                         QList<int> selectedTypes;
-#else
-                        QStringList selectedTypes;
-#endif
                         foreach (const QString &type, subTypes) {
                             Dictionary::const_iterator it = phoneTypes().find(type.toLower());
                             if (it != phoneTypes().constEnd()) {
@@ -1402,11 +1305,7 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
 
                         newPhoneNumbers.append(phoneNumberDetail);
                     } else if (field.fieldName == QLatin1String("adr")) {
-#ifdef USING_QTPIM
                         QList<int> selectedTypes;
-#else
-                        QStringList selectedTypes;
-#endif
                         foreach (const QString &type, subTypes) {
                             Dictionary::const_iterator it = addressTypes().find(type.toLower());
                             if (it != addressTypes().constEnd()) {
@@ -1546,11 +1445,7 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
                         Dictionary::const_iterator it = genderTypes().find(type.toLower());
                         if (it != addressTypes().constEnd()) {
                             QContactGender genderDetail;
-#ifdef USING_QTPIM
                             genderDetail.setGender(static_cast<QContactGender::GenderField>(*it));
-#else
-                            genderDetail.setGender(*it);
-#endif
 
                             newGender = genderDetail;
                         } else {
@@ -1567,11 +1462,7 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
                     }
 
                     if (!formattedName.isEmpty()) {
-#ifdef USING_QTPIM
                         nameDetail.setValue(QContactName__FieldCustomLabel, formattedName);
-#else
-                        nameDetail.setCustomLabel(formattedName);
-#endif
                     }
 
                     newName = nameDetail;
@@ -1993,11 +1884,7 @@ bool CDTpStorage::initializeNewContact(QContact &newContact, CDTpAccountPtr acco
 
         decomposeNameDetails(alias, &name);
 
-#ifdef USING_QTPIM
         name.setValue(QContactName__FieldCustomLabel, alias);
-#else
-        name.setCustomLabel(alias);
-#endif
 
         if (!storeContactDetail(newContact, name, SRC_LOC)) {
             warning() << SRC_LOC << "Unable to save name to contact for:" << contactAddress;
@@ -2022,7 +1909,7 @@ bool CDTpStorage::initializeNewContact(QContact &newContact, CDTpContactPtr cont
 void CDTpStorage::updateContactChanges(CDTpContactPtr contactWrapper, CDTpContact::Changes changes)
 {
     ContactChangeSet saveSet;
-    QList<ContactIdType> removeList;
+    QList<QContactId> removeList;
 
     QContact existing = findExistingContact(imAddress(contactWrapper));
     updateContactChanges(contactWrapper, changes, existing, &saveSet, &removeList);
@@ -2030,7 +1917,7 @@ void CDTpStorage::updateContactChanges(CDTpContactPtr contactWrapper, CDTpContac
     updateContacts(SRC_LOC, &saveSet, &removeList);
 }
 
-void CDTpStorage::updateContactChanges(CDTpContactPtr contactWrapper, CDTpContact::Changes changes, QContact &existing, ContactChangeSet *saveSet, QList<ContactIdType> *removeList)
+void CDTpStorage::updateContactChanges(CDTpContactPtr contactWrapper, CDTpContact::Changes changes, QContact &existing, ContactChangeSet *saveSet, QList<QContactId> *removeList)
 {
     const QString accountPath(imAccount(contactWrapper));
     const QString contactAddress(imAddress(contactWrapper));
@@ -2038,7 +1925,7 @@ void CDTpStorage::updateContactChanges(CDTpContactPtr contactWrapper, CDTpContac
     if (changes & CDTpContact::Deleted) {
         // This contact has been deleted
         if (!existing.isEmpty()) {
-            removeList->append(apiId(existing));
+            removeList->append(existing.id());
         }
     } else {
         bool needAllChanges = false;
@@ -2157,7 +2044,7 @@ void CDTpStorage::updateAccountChanges(QContact &self, QContactOnlineAccount &qc
         QHash<QString, QContact> existingContacts = findExistingContacts(contactAddresses);
 
         ContactChangeSet saveSet;
-        QList<ContactIdType> removeList;
+        QList<QContactId> removeList;
 
         foreach (const CDTpContactPtr &contactWrapper, tpContacts) {
             const QString address = imAddress(accountPath, contactWrapper->contact()->id());
@@ -2345,7 +2232,7 @@ void CDTpStorage::createAccount(CDTpAccountPtr accountWrapper)
     QHash<QString, QContact> existingContacts = findExistingContacts(contactAddresses);
 
     ContactChangeSet saveSet;
-    QList<ContactIdType> removeList;
+    QList<QContactId> removeList;
 
     // Add any contacts already present for this account
     foreach (const CDTpContactPtr &contactWrapper, tpContacts) {
@@ -2472,7 +2359,7 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper, const QList
     QHash<QString, QContact> existingContacts = findExistingContacts(contactAddresses);
 
     ContactChangeSet saveSet;
-    QList<ContactIdType> removeList;
+    QList<QContactId> removeList;
 
     foreach (const CDTpContactPtr &contactWrapper, addedContacts) {
         const QString address = imAddress(accountPath, contactWrapper->contact()->id());
@@ -2537,14 +2424,14 @@ void CDTpStorage::removeAccountContacts(CDTpAccountPtr accountWrapper, const QSt
         imAddressList.append(imAddress(accountPath, id));
     }
 
-    QList<ContactIdType> removeIds;
+    QList<QContactId> removeIds;
 
     // Find any contacts matching the supplied ID list
     QContactFetchHint hint(contactFetchHint(DetailList() << detailType<QContactOriginMetadata>()));
     foreach (const QContact &existing, manager()->contacts(findContactIdsForAccount(accountPath), hint)) {
         QContactOriginMetadata metadata = existing.detail<QContactOriginMetadata>();
         if (imAddressList.contains(metadata.id())) {
-            removeIds.append(apiId(existing));
+            removeIds.append(existing.id());
         }
     }
 
@@ -2595,7 +2482,7 @@ void CDTpStorage::onUpdateQueueTimeout()
     QHash<QString, QContact> existingContacts = findExistingContacts(contactAddresses);
 
     ContactChangeSet saveSet;
-    QList<ContactIdType> removeList;
+    QList<QContactId> removeList;
 
     for (it = updates.constBegin(), end = updates.constEnd(); it != end; ++it) {
         CDTpContactPtr contactWrapper = it.key();

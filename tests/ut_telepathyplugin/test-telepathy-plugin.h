@@ -42,11 +42,7 @@
 #include "test.h"
 #include "test-expectation.h"
 
-#ifdef USING_QTPIM
 QTCONTACTS_USE_NAMESPACE
-#else
-QTM_USE_NAMESPACE
-#endif
 
 /**
  * Telepathy plugin's unit test
@@ -57,24 +53,12 @@ class TestTelepathyPlugin : public Test
     Q_PLUGIN_METADATA(IID "org.nemomobile.contactsd.test-telepathy")
 
 public:
-#ifdef USING_QTPIM
-    typedef QContactId ContactIdType;
-#else
-    typedef QContactLocalId ContactIdType;
-#endif
-
     TestTelepathyPlugin(QObject *parent = 0);
 
 protected Q_SLOTS:
-#ifdef USING_QTPIM
     void contactsAdded(const QList<QContactId>& contactIds);
     void contactsChanged(const QList<QContactId>& contactIds);
     void contactsRemoved(const QList<QContactId>& contactIds);
-#else
-    void contactsAdded(const QList<QContactLocalId>& contactIds);
-    void contactsChanged(const QList<QContactLocalId>& contactIds);
-    void contactsRemoved(const QList<QContactLocalId>& contactIds);
-#endif
     void onContactsFetched();
     void requestStateChanged(QContactAbstractRequest::State newState);
 
@@ -112,7 +96,7 @@ private:
     TestExpectationContactPtr createContact(const gchar *id, TpHandle &handle, bool please = false);
     TestExpectationContactPtr createContact(const gchar *id, bool please = false);
     GPtrArray *createContactInfoTel(const gchar *number);
-    void verify(Event event, const QList<ContactIdType> &contactIds);
+    void verify(Event event, const QList<QContactId> &contactIds);
     void runExpectation(TestExpectationPtr expectation);
     void startRequest(QContactAbstractRequest *request);
 
@@ -125,7 +109,7 @@ private:
     TpConnection *mConnection;
     TestContactListManager *mListManager;
 
-    QList<ContactIdType> mContactIds;
+    QList<QContactId> mContactIds;
     int mNOnlyLocalContacts;
 
     TestExpectationPtr mExpectation;

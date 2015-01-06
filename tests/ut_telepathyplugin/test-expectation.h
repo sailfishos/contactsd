@@ -37,13 +37,7 @@
 
 #define ACCOUNT_PATH TP_ACCOUNT_OBJECT_PATH_BASE "fakecm/fakeproto/fakeaccount"
 
-#ifdef USING_QTPIM
 QTCONTACTS_USE_NAMESPACE
-typedef QContactId ContactIdType;
-#else
-QTM_USE_NAMESPACE
-typedef QContactLocalId ContactIdType;
-#endif
 
 typedef enum {
     EventAdded,
@@ -59,7 +53,7 @@ class TestExpectation : public QObject, public Tp::RefCounted
     Q_OBJECT
 
 public:
-    void verify(Event event, const QList<ContactIdType> &contactIds);
+    void verify(Event event, const QList<QContactId> &contactIds);
 
     void setContactManager(QContactManager *contactManager) { mContactManager = contactManager; };
     QContactManager *contactManager() { return mContactManager; };
@@ -69,7 +63,7 @@ Q_SIGNALS:
 
 protected:
     virtual void verify(Event event, const QList<QContact> &contacts);
-    virtual void verify(Event event, const QList<ContactIdType> &contactIds, QContactManager::Error error);
+    virtual void verify(Event event, const QList<QContactId> &contactIds, QContactManager::Error error);
     void emitFinished();
 
 private:
@@ -86,13 +80,13 @@ class TestFetchContacts : public QObject
     Q_OBJECT
 
 public:
-    TestFetchContacts(const QList<ContactIdType> &contactIds, Event event, TestExpectation *exp);
+    TestFetchContacts(const QList<QContactId> &contactIds, Event event, TestExpectation *exp);
 
 private Q_SLOTS:
     void onContactsFetched();
 
 private:
-    QList<ContactIdType> mContactIds;
+    QList<QContactId> mContactIds;
     Event mEvent;
     TestExpectation *mExp;
 };
@@ -105,7 +99,7 @@ class TestExpectationInit : public TestExpectation
 
 protected:
     void verify(Event event, const QList<QContact> &contacts);
-    void verify(Event event, const QList<ContactIdType> &contactIds, QContactManager::Error error);
+    void verify(Event event, const QList<QContactId> &contactIds, QContactManager::Error error);
 };
 typedef Tp::SharedPtr<TestExpectationInit> TestExpectationInitPtr;
 
@@ -120,7 +114,7 @@ public:
 
 protected:
     void verify(Event event, const QList<QContact> &contacts);
-    void verify(Event event, const QList<ContactIdType> &contactIds, QContactManager::Error error);
+    void verify(Event event, const QList<QContactId> &contactIds, QContactManager::Error error);
 
 private:
     void maybeEmitFinished();
@@ -152,26 +146,20 @@ public:
     void verifyAuthorization(const QString &subscriptionState, const QString &publishState) { mSubscriptionState = subscriptionState; mPublishState = publishState; mFlags |= VerifyAuthorization; };
     void verifyInfo(GPtrArray *contactInfo) { mContactInfo = contactInfo; mFlags |= VerifyInfo; };
     void verifyContactId(const QContact &contact) {
-#ifdef USING_QTPIM
         mContactId = contact.id();
-#else
-        mContactId = contact.localId();
-#endif
         mFlags |= VerifyContactId;
     };
     void verifyGenerator(const QString &generator) {
         mGenerator = generator;
         mFlags |= VerifyGenerator;
-#ifdef USING_QTPIM
         skipUnlessGeneratorIs(mGenerator);
-#endif
     }
 
     void verify(const QContact &contact);
 
 protected:
     void verify(Event event, const QList<QContact> &contacts);
-    void verify(Event event, const QList<ContactIdType> &contactIds, QContactManager::Error error);
+    void verify(Event event, const QList<QContactId> &contactIds, QContactManager::Error error);
 
 private:
     enum VerifyFlags {
@@ -198,7 +186,7 @@ private:
     QString mSubscriptionState;
     QString mPublishState;
     GPtrArray *mContactInfo;
-    ContactIdType mContactId;
+    QContactId mContactId;
     QString mGenerator;
     QString mSyncTarget;
 
@@ -231,18 +219,18 @@ class TestExpectationMerge : public TestExpectation
     Q_OBJECT
 
 public:
-    TestExpectationMerge(const ContactIdType &masterId, const QList<ContactIdType> &mergeIds,
+    TestExpectationMerge(const QContactId &masterId, const QList<QContactId> &mergeIds,
             const QList<TestExpectationContactPtr> expectations = QList<TestExpectationContactPtr>());
 
 protected:
     void verify(Event event, const QList<QContact> &contacts);
-    void verify(Event event, const QList<ContactIdType> &contactIds, QContactManager::Error error);
+    void verify(Event event, const QList<QContactId> &contactIds, QContactManager::Error error);
 
 private:
     void maybeEmitFinished();
 
-    ContactIdType mMasterId;
-    QList<ContactIdType> mMergeIds;
+    QContactId mMasterId;
+    QList<QContactId> mMergeIds;
     bool mGotMergedContact;
     QList<TestExpectationContactPtr> mContactExpectations;
 };
@@ -259,7 +247,7 @@ public:
 
 protected:
     void verify(Event event, const QList<QContact> &contacts);
-    void verify(Event event, const QList<ContactIdType> &contactIds, QContactManager::Error error);
+    void verify(Event event, const QList<QContactId> &contactIds, QContactManager::Error error);
 
 private:
     void maybeEmitFinished();
