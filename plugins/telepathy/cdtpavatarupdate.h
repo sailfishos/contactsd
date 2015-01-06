@@ -40,33 +40,24 @@ public:
     static const QString Large;
     static const QString Square;
 
-    explicit CDTpAvatarUpdate(QNetworkReply *networkReply,
-                              CDTpContact *contactWrapper,
-                              const QString &filename,
-                              const QString &avatarType,
-                              QObject *parent = 0);
-
-    virtual ~CDTpAvatarUpdate();
-
-    const QString & avatarPath() const { return mAvatarPath; }
-
-signals:
-    void finished();
+    static void updateContact(CDTpContact *contactWrapper, QNetworkReply *networkReply, const QString &filename,
+                              const QString &avatarType = Large);
 
 private slots:
-    void onRequestFinished();
+    void onRequestDone();
 
 private:
+    CDTpAvatarUpdate(QNetworkReply *networkReply, CDTpContact *contactWrapper, const QString &filename, const QString &avatarType);
+
     void setNetworkReply(QNetworkReply *networkReply);
-    QString writeAvatarFile(QFile &avatarFile);
+    QString writeAvatarFile(QFile &avatarFile, const QDir &cacheDir);
+    QNetworkReply *updateContactAvatar();
 
 private:
     QPointer<QNetworkReply> mNetworkReply;
     QPointer<CDTpContact> mContactWrapper;
     const QString mFilename;
     const QString mAvatarType;
-    const QDir mCacheDir;
-    QString mAvatarPath;
 };
 
 #endif // CDTPAVATARREQUEST_H

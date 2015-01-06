@@ -756,20 +756,11 @@ void updateFacebookAvatar(QNetworkAccessManager &network, CDTpContactPtr contact
     const QUrl avatarUrl(QLatin1String("http://graph.facebook.com/") % facebookId %
                          QLatin1String("/picture?type=") % avatarType);
 
-    // CDTpAvatarUpdate keeps a weak reference to CDTpContact, since the contact is
-    // also its parent. If we'd pass a CDTpContactPtr to the update, it'd keep a ref that
-    // keeps the CDTpContact alive. Then, if the update is the last object to hold
-    // a ref to the contact, the refcount of the contact will go to 0 when the update
-    // dtor is called (for example from deleteLater). At this point, the update will
-    // already be being deleted, but the dtor of CDTpContact will try to delete the
-    // update a second time, causing a double free.
-    QObject *const update = new CDTpAvatarUpdate(network.get(QNetworkRequest(avatarUrl)),
-                                                 contactWrapper.data(),
-                                                 QString::fromLatin1("%1-picture.jpg").arg(facebookId),
-                                                 avatarType,
-                                                 contactWrapper.data());
-
-    QObject::connect(update, SIGNAL(finished()), update, SLOT(deleteLater()));
+    // Initiate an avatar-update operation
+    CDTpAvatarUpdate::updateContact(contactWrapper.data(),
+                                    network.get(QNetworkRequest(avatarUrl)),
+                                    QString::fromLatin1("%1-picture.jpg").arg(facebookId),
+                                    avatarType);
 }
 
 void updateSocialAvatars(QNetworkAccessManager &network, CDTpContactPtr contactWrapper)
