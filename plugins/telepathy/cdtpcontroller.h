@@ -73,11 +73,11 @@ private:
     bool registerDBusObject();
 
 private:
-    CDTpStorage *mStorage;
+    CDTpStorage mStorage;
     Tp::AccountManagerPtr mAM;
     Tp::AccountSetPtr mAccountSet;
     QHash<QString, CDTpAccountPtr> mAccounts;
-    QSettings *mOfflineRosterBuffer;
+    QSettings mOfflineRosterBuffer;
 };
 
 class CDTpRemovalOperation : public Tp::PendingOperation
@@ -102,7 +102,7 @@ class CDTpInvitationOperation : public Tp::PendingOperation
     Q_OBJECT
 
 public:
-    CDTpInvitationOperation(CDTpStorage *storage,
+    CDTpInvitationOperation(CDTpStorage &storage,
                             CDTpAccountPtr accountWrapper,
                             const QStringList &contactIds,
                             uint contactLocalId);
@@ -114,7 +114,7 @@ private Q_SLOTS:
     void onPresenceSubscriptionRequested(Tp::PendingOperation *op);
 
 private:
-    CDTpStorage *mStorage;
+    CDTpStorage &mStorage;
     QStringList mContactIds;
     CDTpAccountPtr mAccountWrapper;
     uint mContactLocalId;

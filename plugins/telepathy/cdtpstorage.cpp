@@ -164,13 +164,17 @@ namespace {
 const int UPDATE_TIMEOUT = 250; // ms
 const int UPDATE_MAXIMUM_TIMEOUT = 2000; // ms
 
-QContactManager *manager()
+QMap<QString, QString> managerParameters()
 {
     QMap<QString, QString> parameters;
     parameters.insert(QString::fromLatin1("mergePresenceChanges"), QString::fromLatin1("false"));
+    return parameters;
+}
 
-    static QContactManager *manager = new QContactManager(QStringLiteral("org.nemomobile.contacts.sqlite"), parameters);
-    return manager;
+QContactManager *manager()
+{
+    static QContactManager manager(QStringLiteral("org.nemomobile.contacts.sqlite"), managerParameters());
+    return &manager;
 }
 
 QContactDetailFilter matchTelepathyFilter()
