@@ -32,24 +32,23 @@ using namespace Contactsd;
 const QString CDTpAvatarUpdate::Large = QLatin1String("large");
 const QString CDTpAvatarUpdate::Square = QLatin1String("square");
 
+void CDTpAvatarUpdate::updateContact(CDTpContact *contactWrapper, QNetworkReply *networkReply,
+                                     const QString &filename, const QString &avatarType)
+{
+    (void) new CDTpAvatarUpdate(networkReply, contactWrapper, filename, avatarType);
+}
+
 CDTpAvatarUpdate::CDTpAvatarUpdate(QNetworkReply *networkReply,
                                    CDTpContact *contactWrapper,
                                    const QString &filename,
-                                   const QString &avatarType,
-                                   QObject *parent)
-    : QObject(parent)
+                                   const QString &avatarType)
+    : QObject()
     , mNetworkReply(0)
     , mContactWrapper(contactWrapper)
     , mFilename(filename)
     , mAvatarType(avatarType)
-    , mCacheDir(CDTpPlugin::cacheFileName(QLatin1String("avatars")))
 {
     setNetworkReply(networkReply);
-}
-
-CDTpAvatarUpdate::~CDTpAvatarUpdate()
-{
-    setNetworkReply(0);
 }
 
 void CDTpAvatarUpdate::setNetworkReply(QNetworkReply *networkReply)
@@ -62,18 +61,37 @@ void CDTpAvatarUpdate::setNetworkReply(QNetworkReply *networkReply)
     mNetworkReply = networkReply;
 
     if (mNetworkReply) {
-        connect(mNetworkReply, SIGNAL(finished()), this, SLOT(onRequestFinished()));
+        if (mNetworkReply->isRunning()) {
+            connect(mNetworkReply, SIGNAL(finished()), this, SLOT(onRequestDone()));
+            connect(mNetworkReply, SIGNAL(error(QNetworkReply::NetworkError)), this, SLOT(onRequestDone()));
+        } else {
+            onRequestDone();
+        }
+    } else {
+        // This operation is complete
+        this->deleteLater();
     }
 }
 
-QString CDTpAvatarUpdate::writeAvatarFile(QFile &avatarFile)
+void CDTpAvatarUpdate::onRequestDone()
 {
-    if (not mCacheDir.exists() && not QDir::root().mkpath(mCacheDir.absolutePath())) {
-        warning() << "Could not create large avatar cache dir:" << mCacheDir.path();
+    QNetworkReply *newReply = 0;
+
+    if (mNetworkReply && mNetworkReply->error() == QNetworkReply::NoError) {
+        newReply = updateContactAvatar();
+    }
+
+    setNetworkReply(newReply);
+}
+
+QString CDTpAvatarUpdate::writeAvatarFile(QFile &avatarFile, const QDir &cacheDir)
+{
+    if (not cacheDir.exists() && not QDir::root().mkpath(cacheDir.absolutePath())) {
+        warning() << "Could not create large avatar cache dir:" << cacheDir.path();
         return QString();
     }
 
-    QTemporaryFile tempFile(mCacheDir.absoluteFilePath(QLatin1String("pinkpony")));
+    QTemporaryFile tempFile(cacheDir.absoluteFilePath(QLatin1String("pinkpony")));
     const QByteArray data = mNetworkReply->readAll();
 
     if (tempFile.open() && data.count() == tempFile.write(data)) {
@@ -101,15 +119,8 @@ static bool acceptFileSize(qint64 actualFileSize, qint64 expectedFileSize)
     return actualFileSize > 0;
 }
 
-void CDTpAvatarUpdate::onRequestFinished()
+QNetworkReply *CDTpAvatarUpdate::updateContactAvatar()
 {
-    if (mNetworkReply.isNull() || mNetworkReply->error() != QNetworkReply::NoError) {
-        mAvatarPath = QString();
-        setNetworkReply(0);
-        emit finished();
-        return;
-    }
-
     // Build filename from the image URL's SHA1 hash.
     const QUrl redirectionTarget = mNetworkReply->attribute(QNetworkRequest::RedirectionTargetAttribute).toUrl();
     const QString avatarUrl = (not redirectionTarget.isEmpty() ? mNetworkReply->url().resolved(redirectionTarget)
@@ -121,19 +132,20 @@ void CDTpAvatarUpdate::onRequestFinished()
         filename = QString::fromLatin1(avatarHash.toHex());
     }
 
-    QFile avatarFile(mCacheDir.absoluteFilePath(filename));
+    const QDir cacheDir(CDTpPlugin::cacheFileName(QLatin1String("avatars")));
+    QFile avatarFile(cacheDir.absoluteFilePath(filename));
 
     // Check for existing avatar file and its size to see if we need to fetch from network.
     const qint64 contentLength = mNetworkReply->header(QNetworkRequest::ContentLengthHeader).toLongLong();
 
+    QString avatarPath;
     if (avatarFile.exists() && acceptFileSize(avatarFile.size(), contentLength)) {
         // Seems we can reuse the existing avatar file.
-        mAvatarPath = avatarFile.fileName();
+        avatarPath = avatarFile.fileName();
     } else {
         // Follow redirections as done by Facebook's graph API.
         if (not redirectionTarget.isEmpty()) {
-            setNetworkReply(mNetworkReply->manager()->get(QNetworkRequest(redirectionTarget)));
-            return;
+            return mNetworkReply->manager()->get(QNetworkRequest(redirectionTarget));
         }
 
         // Facebook delivers a distinct gif image if no avatar is set. Ignore that bugger.
@@ -143,19 +155,19 @@ void CDTpAvatarUpdate::onRequestFinished()
         static const QLatin1String contentTypeImage = QLatin1String("image/");
 
         if (contentType.startsWith(contentTypeImage) && contentType != contentTypeImageGif) {
-            mAvatarPath = writeAvatarFile(avatarFile);
+            avatarPath = writeAvatarFile(avatarFile, cacheDir);
         }
     }
 
     // Update the contact if a new avatar is available.
-    if (not mAvatarPath.isEmpty() && not mContactWrapper.isNull()) {
+    if (not avatarPath.isEmpty() && not mContactWrapper.isNull()) {
         if (mAvatarType == Square) {
-            mContactWrapper->setSquareAvatarPath(mAvatarPath);
+            mContactWrapper->setSquareAvatarPath(avatarPath);
         } else if (mAvatarType == Large) {
-            mContactWrapper->setLargeAvatarPath(mAvatarPath);
+            mContactWrapper->setLargeAvatarPath(avatarPath);
         }
     }
 
-    setNetworkReply(0);
-    emit finished();
+    // No further work to do
+    return 0;
 }

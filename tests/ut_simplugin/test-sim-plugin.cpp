@@ -22,9 +22,7 @@
 #include <QContactPhoneNumber>
 #include <QContactSyncTarget>
 
-#ifdef USING_QTPIM
 QTCONTACTS_USE_NAMESPACE
-#endif
 
 namespace {
 

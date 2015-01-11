@@ -28,13 +28,8 @@
 #include <QContactSaveRequest>
 #include <QContactSyncTarget>
 #include <QContactOnlineAccount>
-#ifdef USING_QTPIM
 #include <QContactIdFilter>
 #include <QContactIdFetchRequest>
-#else
-#include <QContactLocalIdFilter>
-#include <QContactLocalIdFetchRequest>
-#endif
 
 #include <TelepathyQt/Debug>
 
@@ -47,9 +42,7 @@
 #include "buddymanagementinterface.h"
 #include "debug.h"
 
-#ifdef USING_QTPIM
 const int QContactOnlineAccount__FieldAccountPath = (QContactOnlineAccount::FieldSubTypes+1);
-#endif
 
 TestTelepathyPlugin::TestTelepathyPlugin(QObject *parent) : Test(parent),
         mNOnlyLocalContacts(0), mCheckLeakedResources(true)
@@ -78,7 +71,6 @@ void TestTelepathyPlugin::initTestCase()
     parameters.insert(QStringLiteral("mergePresenceChanges"), QStringLiteral("false"));
     mContactManager = new QContactManager(QStringLiteral("org.nemomobile.contacts.sqlite"), parameters);
 
-#ifdef USING_QTPIM
     connect(mContactManager,
             SIGNAL(contactsAdded(const QList<QContactId>&)),
             SLOT(contactsAdded(const QList<QContactId>&)));
@@ -88,17 +80,7 @@ void TestTelepathyPlugin::initTestCase()
     connect(mContactManager,
             SIGNAL(contactsRemoved(const QList<QContactId>&)),
             SLOT(contactsRemoved(const QList<QContactId>&)));
-#else
-    connect(mContactManager,
-            SIGNAL(contactsAdded(const QList<QContactLocalId>&)),
-            SLOT(contactsAdded(const QList<QContactLocalId>&)));
-    connect(mContactManager,
-            SIGNAL(contactsChanged(const QList<QContactLocalId>&)),
-            SLOT(contactsChanged(const QList<QContactLocalId>&)));
-    connect(mContactManager,
-            SIGNAL(contactsRemoved(const QList<QContactLocalId>&)),
-            SLOT(contactsRemoved(const QList<QContactLocalId>&)));
-#endif
+
     mContactIds += mContactManager->selfContactId();
 
     /* Create a fake AccountManager */
@@ -172,19 +154,15 @@ void TestTelepathyPlugin::cleanup()
     runExpectation(TestExpectationCleanupPtr(new TestExpectationCleanup(removed)));
 
     /* Remove remaining local contacts */
-    QList<ContactIdType> contactsToRemove = mContactIds;
+    QList<QContactId> contactsToRemove = mContactIds;
     contactsToRemove.removeOne(mContactManager->selfContactId());
     if (!contactsToRemove.isEmpty()) {
         QContactRemoveRequest *request = new QContactRemoveRequest();
         request->setContactIds(contactsToRemove);
         startRequest(request);
 
-#ifdef USING_QTPIM
         // Removing the telepathy self constituent will change the self aggregate
         int changed = 1;
-#else
-        int changed = 0;
-#endif
         removed = contactsToRemove.count();
         runExpectation(TestExpectationMassPtr(new TestExpectationMass(0, changed, removed)));
     }
@@ -451,9 +429,7 @@ void TestTelepathyPlugin::testRemoveBuddyDBusAPI()
     tp_cli_connection_call_disconnect(mConnection, -1, NULL, NULL, NULL, NULL);
 
     int count = mContactIds.count();
-#ifdef USING_QTPIM
     count *= 2; // Two contacts for each logical entity
-#endif
     TestExpectationDisconnectPtr exp3(new TestExpectationDisconnect(count));
     runExpectation(exp3);
 
@@ -494,9 +470,7 @@ void TestTelepathyPlugin::testSetOffline()
     tp_cli_connection_call_disconnect(mConnection, -1, NULL, NULL, NULL, NULL);
 
     int count = mContactIds.count();
-#ifdef USING_QTPIM
     count *= 2; // Two contacts for each logical entity
-#endif
     runExpectation(TestExpectationDisconnectPtr(new TestExpectationDisconnect(count)));
 }
 
@@ -599,9 +573,7 @@ void TestTelepathyPlugin::testAvatar()
 
 void TestTelepathyPlugin::testDisable()
 {
-#ifdef USING_QTPIM
     QSKIP("This test does not apply to qtpim using aggregation semantics");
-#endif
 
     /* Create a pure-im contact, it will have to be deleted */
     createContact("testdisable-im");
@@ -627,10 +599,8 @@ void TestTelepathyPlugin::testDisable()
     // self contact and testdisable-local gets updated, testdisable-im gets removed
     int changed = 2;
     int removed = 1;
-#ifdef USING_QTPIM
     changed *= 2; // Two contacts for each logical entity
     removed *= 2;
-#endif
     runExpectation(TestExpectationMassPtr(new TestExpectationMass(0, changed, removed)));
     mNOnlyLocalContacts++;
 
@@ -648,9 +618,7 @@ void TestTelepathyPlugin::testIRIEncode()
 
 void TestTelepathyPlugin::testBug253679()
 {
-#ifdef USING_QTPIM
     QSKIP("This test does not apply to qtpim using aggregation semantics");
-#endif
 
     const char *id = "testbug253679";
 
@@ -658,11 +626,7 @@ void TestTelepathyPlugin::testBug253679()
     QContact contact;
     QContactOnlineAccount onlineAccount;
     onlineAccount.setAccountUri(id);
-#ifdef USING_QTPIM
     onlineAccount.setValue(QContactOnlineAccount__FieldAccountPath, QLatin1String(ACCOUNT_PATH));
-#else
-    onlineAccount.setValue(QLatin1String("AccountPath"), QLatin1String(ACCOUNT_PATH));
-#endif
     contact.saveDetail(&onlineAccount);
 
     QContactSaveRequest *request = new QContactSaveRequest();
@@ -813,18 +777,14 @@ void TestTelepathyPlugin::testBenchmark()
             handles->len, (TpHandle *) handles->data, "wait");
 
     int added = N_CONTACTS;
-#ifdef USING_QTPIM
     added *= 2; // Two contacts for each logical entity
-#endif
     runExpectation(TestExpectationMassPtr(new TestExpectationMass(added, 0, 0)));
 
     /* Set account offline */
     tp_cli_connection_call_disconnect(mConnection, -1, NULL, NULL, NULL, NULL);
 
     int count = mContactIds.count();
-#ifdef USING_QTPIM
     count *= 2; // Two contacts for each logical entity
-#endif
     runExpectation(TestExpectationDisconnectPtr(new TestExpectationDisconnect(count)));
 }
 
@@ -876,28 +836,26 @@ void TestTelepathyPlugin::runExpectation(TestExpectationPtr exp)
 
     QCOMPARE(mLoop->exec(), 0);
 
-#ifdef USING_QTPIM
     // Wait for any further signals to be emitted from the contact manager
     QTest::qWait(500);
-#endif
 
     mExpectation = TestExpectationPtr();
 }
 
-void TestTelepathyPlugin::contactsAdded(const QList<ContactIdType>& contactIds)
+void TestTelepathyPlugin::contactsAdded(const QList<QContactId>& contactIds)
 {
     debug() << "Got contactsAdded";
-    Q_FOREACH (const ContactIdType &id, contactIds) {
+    Q_FOREACH (const QContactId &id, contactIds) {
         QVERIFY(!mContactIds.contains(id));
         mContactIds << id;
     }
     verify(EventAdded, contactIds);
 }
 
-void TestTelepathyPlugin::contactsChanged(const QList<ContactIdType>& contactIds)
+void TestTelepathyPlugin::contactsChanged(const QList<QContactId>& contactIds)
 {
     debug() << "Got contactsChanged";
-    Q_FOREACH (const ContactIdType &id, contactIds) {
+    Q_FOREACH (const QContactId &id, contactIds) {
         if (!mContactIds.contains(id)) {
             warning() << "Unknown contact ID changed:" << id;
             mContactIds << id;
@@ -906,10 +864,10 @@ void TestTelepathyPlugin::contactsChanged(const QList<ContactIdType>& contactIds
     verify(EventChanged, contactIds);
 }
 
-void TestTelepathyPlugin::contactsRemoved(const QList<ContactIdType>& contactIds)
+void TestTelepathyPlugin::contactsRemoved(const QList<QContactId>& contactIds)
 {
     debug() << "Got contactsRemoved";
-    Q_FOREACH (const ContactIdType &id, contactIds) {
+    Q_FOREACH (const QContactId &id, contactIds) {
         if (!mContactIds.contains(id)) {
             warning() << "Unknown contact ID removed:" << id;
         } else {
@@ -919,7 +877,7 @@ void TestTelepathyPlugin::contactsRemoved(const QList<ContactIdType>& contactIds
     verify(EventRemoved, contactIds);
 }
 
-void TestTelepathyPlugin::verify(Event event, const QList<ContactIdType> &contactIds)
+void TestTelepathyPlugin::verify(Event event, const QList<QContactId> &contactIds)
 {
     QVERIFY(mExpectation != 0);
     mExpectation->verify(event, contactIds);

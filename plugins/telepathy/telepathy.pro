@@ -29,7 +29,6 @@ CONFIG += c++11
 
 PKGCONFIG += Qt5Contacts
 PKGCONFIG += TelepathyQt5 qtcontacts-sqlite-qt5-extensions
-DEFINES *= USING_QTPIM
 
 system(qdbusxml2cpp -c BuddyManagementAdaptor -a buddymanagementadaptor.h:buddymanagementadaptor.cpp com.nokia.contacts.buddymanagement.xml)
 

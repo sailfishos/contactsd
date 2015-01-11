@@ -38,11 +38,7 @@
 #include "cdtpaccount.h"
 #include "cdtpcontact.h"
 
-#ifdef USING_QTPIM
 QTCONTACTS_USE_NAMESPACE
-#else
-QTM_USE_NAMESPACE
-#endif
 
 class CDTpStorage : public QObject
 {
@@ -90,12 +86,7 @@ private:
     bool initializeNewContact(QContact &newContact, CDTpContactPtr contactWrapper);
 
     void updateContactChanges(CDTpContactPtr contactWrapper, CDTpContact::Changes changes, QContact &existing, ContactChangeSet *saveList,
-#ifdef USING_QTPIM
-                              QList<QContactId> *removeList
-#else
-                              QList<QContactLocalId> *removeList
-#endif
-                              );
+                              QList<QContactId> *removeList);
     void updateContactChanges(CDTpContactPtr contactWrapper, CDTpContact::Changes changes);
 
 private:

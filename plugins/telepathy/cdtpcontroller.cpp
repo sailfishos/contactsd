@@ -41,14 +41,11 @@ const QLatin1String DBusObjectPath("/telepathy");
 static const QString offlineRemovals = QString::fromLatin1("OfflineRemovals");
 static const QString offlineInvitations = QString::fromLatin1("OfflineInvitations");
 
-CDTpController::CDTpController(QObject *parent) : QObject(parent)
+CDTpController::CDTpController(QObject *parent)
+    : QObject(parent)
+    , mOfflineRosterBuffer(QSettings::IniFormat, QSettings::UserScope, QLatin1String("Nokia"), QLatin1String("Contactsd"))
 {
-    debug() << "Creating storage";
-    mStorage = new CDTpStorage(this);
-    mOfflineRosterBuffer = new QSettings(QSettings::IniFormat,
-            QSettings::UserScope, QLatin1String("Nokia"),
-            QLatin1String("Contactsd"));
-    connect(mStorage,
+    connect(&mStorage,
             SIGNAL(error(int, const QString &)),
             SIGNAL(error(int, const QString &)));
 
@@ -86,9 +83,6 @@ CDTpController::CDTpController(QObject *parent) : QObject(parent)
 CDTpController::~CDTpController()
 {
     QDBusConnection::sessionBus().unregisterObject(DBusObjectPath);
-    if (mOfflineRosterBuffer) {
-        delete mOfflineRosterBuffer;
-    }
 }
 
 void CDTpController::onAccountManagerReady(Tp::PendingOperation *op)
@@ -138,7 +132,7 @@ void CDTpController::onAccountManagerReady(Tp::PendingOperation *op)
         insertAccount(account, false);
     }
 
-    mStorage->syncAccounts(mAccounts.values());
+    mStorage.syncAccounts(mAccounts.values());
 }
 
 void CDTpController::onAccountAdded(const Tp::AccountPtr &account)
@@ -149,7 +143,7 @@ void CDTpController::onAccountAdded(const Tp::AccountPtr &account)
     }
 
     CDTpAccountPtr accountWrapper = insertAccount(account, true);
-    mStorage->createAccount(accountWrapper);
+    mStorage.createAccount(accountWrapper);
 }
 
 void CDTpController::onAccountRemoved(const Tp::AccountPtr &account)
@@ -159,20 +153,20 @@ void CDTpController::onAccountRemoved(const Tp::AccountPtr &account)
         warning() << "Internal error, account was not in controller";
         return;
     }
-    mStorage->removeAccount(accountWrapper);
+    mStorage.removeAccount(accountWrapper);
 
     // Drop pending offline operations
     QString accountPath = accountWrapper->account()->objectPath();
 
-    mOfflineRosterBuffer->beginGroup(offlineRemovals);
-    mOfflineRosterBuffer->remove(accountPath);
-    mOfflineRosterBuffer->endGroup();
+    mOfflineRosterBuffer.beginGroup(offlineRemovals);
+    mOfflineRosterBuffer.remove(accountPath);
+    mOfflineRosterBuffer.endGroup();
 
-    mOfflineRosterBuffer->beginGroup(offlineInvitations);
-    mOfflineRosterBuffer->remove(accountPath);
-    mOfflineRosterBuffer->endGroup();
+    mOfflineRosterBuffer.beginGroup(offlineInvitations);
+    mOfflineRosterBuffer.remove(accountPath);
+    mOfflineRosterBuffer.endGroup();
 
-    mOfflineRosterBuffer->sync();
+    mOfflineRosterBuffer.sync();
 }
 
 CDTpAccountPtr CDTpController::insertAccount(const Tp::AccountPtr &account, bool newAccount)
@@ -180,9 +174,9 @@ CDTpAccountPtr CDTpController::insertAccount(const Tp::AccountPtr &account, bool
     debug() << "Creating wrapper for account" << account->objectPath();
 
     // Get the list of contact ids waiting to be removed from server
-    mOfflineRosterBuffer->beginGroup(offlineRemovals);
-    QStringList idsToRemove = mOfflineRosterBuffer->value(account->objectPath()).toStringList();
-    mOfflineRosterBuffer->endGroup();
+    mOfflineRosterBuffer.beginGroup(offlineRemovals);
+    QStringList idsToRemove = mOfflineRosterBuffer.value(account->objectPath()).toStringList();
+    mOfflineRosterBuffer.endGroup();
 
     CDTpAccountPtr accountWrapper = CDTpAccountPtr(new CDTpAccount(account, idsToRemove, newAccount, this));
     mAccounts.insert(account->objectPath(), accountWrapper);
@@ -195,19 +189,19 @@ CDTpAccountPtr CDTpController::insertAccount(const Tp::AccountPtr &account, bool
             SLOT(onRosterChanged(CDTpAccountPtr)));
     connect(accountWrapper.data(),
             SIGNAL(changed(CDTpAccountPtr, CDTpAccount::Changes)),
-            mStorage,
+            &mStorage,
             SLOT(updateAccount(CDTpAccountPtr, CDTpAccount::Changes)));
     connect(accountWrapper.data(),
             SIGNAL(rosterUpdated(CDTpAccountPtr,
                     const QList<CDTpContactPtr> &,
                     const QList<CDTpContactPtr> &)),
-            mStorage,
+            &mStorage,
             SLOT(syncAccountContacts(CDTpAccountPtr,
                     const QList<CDTpContactPtr> &,
                     const QList<CDTpContactPtr> &)));
     connect(accountWrapper.data(),
             SIGNAL(rosterContactChanged(CDTpContactPtr, CDTpContact::Changes)),
-            mStorage,
+            &mStorage,
             SLOT(updateContact(CDTpContactPtr, CDTpContact::Changes)));
     connect(accountWrapper.data(),
             SIGNAL(syncStarted(Tp::AccountPtr)),
@@ -232,7 +226,7 @@ void CDTpController::onSyncEnded(Tp::AccountPtr account, int contactsAdded, int 
 
 void CDTpController::onRosterChanged(CDTpAccountPtr accountWrapper)
 {
-    mStorage->syncAccountContacts(accountWrapper);
+    mStorage.syncAccountContacts(accountWrapper);
     maybeStartOfflineOperations(accountWrapper);
 }
 
@@ -245,9 +239,9 @@ void CDTpController::maybeStartOfflineOperations(CDTpAccountPtr accountWrapper)
     Tp::AccountPtr account = accountWrapper->account();
 
     // Start removal operation
-    mOfflineRosterBuffer->beginGroup(offlineRemovals);
-    QStringList idsToRemove = mOfflineRosterBuffer->value(account->objectPath()).toStringList();
-    mOfflineRosterBuffer->endGroup();
+    mOfflineRosterBuffer.beginGroup(offlineRemovals);
+    QStringList idsToRemove = mOfflineRosterBuffer.value(account->objectPath()).toStringList();
+    mOfflineRosterBuffer.endGroup();
     if (!idsToRemove.isEmpty()) {
         CDTpRemovalOperation *op = new CDTpRemovalOperation(accountWrapper, idsToRemove);
         connect(op,
@@ -256,9 +250,9 @@ void CDTpController::maybeStartOfflineOperations(CDTpAccountPtr accountWrapper)
     }
 
     // Start invitation operation
-    mOfflineRosterBuffer->beginGroup(offlineInvitations);
-    QStringList idsToInvite = mOfflineRosterBuffer->value(account->objectPath()).toStringList();
-    mOfflineRosterBuffer->endGroup();
+    mOfflineRosterBuffer.beginGroup(offlineInvitations);
+    QStringList idsToInvite = mOfflineRosterBuffer.value(account->objectPath()).toStringList();
+    mOfflineRosterBuffer.endGroup();
     if (!idsToInvite.isEmpty()) {
         // FIXME: We should also save the localId for offline operations
         CDTpInvitationOperation *op = new CDTpInvitationOperation(mStorage, accountWrapper, idsToInvite, 0);
@@ -326,7 +320,7 @@ void CDTpController::removeBuddies(const QString &accountPath, const QStringList
     }
 
     // Remove ids from storage
-    mStorage->removeAccountContacts(accountWrapper, imIds);
+    mStorage.removeAccountContacts(accountWrapper, imIds);
 
     // Add contact to account's avoid list
     accountWrapper->setContactsToAvoid(currentList);
@@ -363,8 +357,8 @@ void CDTpController::onRemovalFinished(Tp::PendingOperation *op)
 QStringList CDTpController::updateOfflineRosterBuffer(const QString group, const QString accountPath,
         const QStringList idsToAdd, const QStringList idsToRemove)
 {
-    mOfflineRosterBuffer->beginGroup(group);
-    QStringList currentList = mOfflineRosterBuffer->value(accountPath).toStringList();
+    mOfflineRosterBuffer.beginGroup(group);
+    QStringList currentList = mOfflineRosterBuffer.value(accountPath).toStringList();
     Q_FOREACH (const QString &id, idsToAdd) {
         if (!currentList.contains(id)) {
             currentList << id;
@@ -374,12 +368,12 @@ QStringList CDTpController::updateOfflineRosterBuffer(const QString group, const
         currentList.removeOne(id);
     }
     if (currentList.isEmpty()) {
-        mOfflineRosterBuffer->remove(accountPath);
+        mOfflineRosterBuffer.remove(accountPath);
     } else {
-        mOfflineRosterBuffer->setValue(accountPath, currentList);
+        mOfflineRosterBuffer.setValue(accountPath, currentList);
     }
-    mOfflineRosterBuffer->endGroup();
-    mOfflineRosterBuffer->sync();
+    mOfflineRosterBuffer.endGroup();
+    mOfflineRosterBuffer.sync();
 
     return currentList;
 }
@@ -440,7 +434,7 @@ void CDTpRemovalOperation::onContactsRemoved(Tp::PendingOperation *op)
     setFinished();
 }
 
-CDTpInvitationOperation::CDTpInvitationOperation(CDTpStorage *storage,
+CDTpInvitationOperation::CDTpInvitationOperation(CDTpStorage &storage,
                                                  CDTpAccountPtr accountWrapper,
                                                  const QStringList &contactIds,
                                                  uint contactLocalId)
@@ -473,7 +467,7 @@ void CDTpInvitationOperation::onContactsRetrieved(Tp::PendingOperation *op)
         // We still create the IMAddress on the contact if the request fails, so
         // that user has a feedback
         if (mContactLocalId != 0) {
-            mStorage->createAccountContacts(mAccountWrapper, mContactIds, mContactLocalId);
+            mStorage.createAccountContacts(mAccountWrapper, mContactIds, mContactLocalId);
         }
 
         setFinishedWithError(op->errorName(), op->errorMessage());
@@ -494,7 +488,7 @@ void CDTpInvitationOperation::onContactsRetrieved(Tp::PendingOperation *op)
             resolvedIds.append(id);
         }
 
-        mStorage->createAccountContacts(mAccountWrapper, resolvedIds, mContactLocalId);
+        mStorage.createAccountContacts(mAccountWrapper, resolvedIds, mContactLocalId);
     }
 
     PendingOperation *call = pcontacts->manager()->requestPresenceSubscription(pcontacts->contacts());

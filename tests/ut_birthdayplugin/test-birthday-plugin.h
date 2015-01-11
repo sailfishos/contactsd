@@ -32,11 +32,7 @@
 #include <QContact>
 #include <QContactManager>
 
-#ifdef USING_QTPIM
 QTCONTACTS_USE_NAMESPACE
-#else
-QTM_USE_NAMESPACE
-#endif
 
 class TestBirthdayPlugin : public QObject
 {
@@ -70,11 +66,7 @@ private:
 
 private:
     QContactManager *mManager;
-#ifdef USING_QTPIM
     QSet<QContactId> mContactIDs;
-#else
-    QSet<QContactLocalId> mContactIDs;
-#endif
 };
 
 #endif // TEST_BIRTHDAYPLUGIN_H

@@ -54,12 +54,6 @@ static void loopWait(int ms)
     loop.exec();
 }
 
-#ifdef USING_QTPIM
-QContactId apiId(const QContact &contact) { return contact.id(); }
-#else
-QContactLocalId apiId(const QContact &contact) { return contact.localId(); }
-#endif
-
 
 TestBirthdayPlugin::TestBirthdayPlugin(QObject *parent) :
     QObject(parent),
@@ -110,7 +104,7 @@ void TestBirthdayPlugin::testAddAndRemoveBirthday()
     QCOMPARE(countCalendarEvents(eventList, contact), 1);
 
     // Delete the contact and see if the birthday is also deleted.
-    QVERIFY2(mManager->removeContact(apiId(contact)), "Unable to delete test contact from tracker database");
+    QVERIFY2(mManager->removeContact(contact.id()), "Unable to delete test contact from tracker database");
 
     // Wait until calendar event gets to calendar.
     loopWait(calendarTimeout);
@@ -208,7 +202,7 @@ void TestBirthdayPlugin::testChangeName()
     contactName.setFirstName(newContactID);
     QVERIFY(contact.saveDetail(&contactName));
     // TODO: Should it be necessary to refetch the contact to get the synthesised displayLabel?
-    contact = mManager->contact(apiId(contact));
+    contact = mManager->contact(contact.id());
     QVERIFY2(saveContact(contact), "Unable to update test contact in tracker");
 
     // Wait until calendar event gets to calendar.
@@ -358,11 +352,7 @@ KCalCore::Event::List TestBirthdayPlugin::findCalendarEvents(const KCalCore::Eve
 
     Q_FOREACH(const KCalCore::Event::Ptr event, eventList) {
         if(event->dtStart().date() == contact.detail<QContactBirthday>().date()) {
-#ifdef USING_QTPIM
             if(event->summary() == contact.detail<QContactDisplayLabel>().label()) {
-#else
-            if(event->summary() == contact.displayLabel()) {
-#endif
                 matches += event;
             }
         }
@@ -376,7 +366,7 @@ bool TestBirthdayPlugin::saveContact(QContact &contact)
     const bool success = mManager->saveContact(&contact);
 
     if (success) {
-        mContactIDs.insert(apiId(contact));
+        mContactIDs.insert(contact.id());
     }
 
     return success;
