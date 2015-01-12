@@ -43,6 +43,7 @@
 #include <QContactBirthday>
 #include <QContactEmailAddress>
 #include <QContactGender>
+#include <QContactGlobalPresence>
 #include <QContactName>
 #include <QContactNickname>
 #include <QContactNote>
@@ -57,6 +58,7 @@
 #include "cdtpstorage.h"
 #include "cdtpavatarupdate.h"
 #include "cdtpplugin.h"
+#include "cdtpdevicepresence.h"
 #include "debug.h"
 
 #include <QElapsedTimer>
@@ -295,6 +297,7 @@ QContact selfContact()
     static QContactId selfLocalId(selfContactLocalId());
     static QContactFetchHint hint(contactFetchHint(DetailList() << detailType<QContactOnlineAccount>()
                                                                 << detailType<QContactPresence>()
+                                                                << detailType<QContactGlobalPresence>()
                                                                 << detailType<QContactAvatar>()));
 
     return manager()->contact(selfLocalId, hint);
@@ -351,6 +354,7 @@ DetailList contactChangesList(CDTpContact::Changes changes)
         }
         if (changes & CDTpContact::Presence) {
             rv.append(detailType<QContactPresence>());
+            rv.append(detailType<QContactGlobalPresence>());
         }
         if (changes & CDTpContact::Capabilities) {
             rv.append(detailType<QContactOnlineAccount>());
@@ -392,6 +396,39 @@ bool storeContact(QContact &contact, const QString &location, CDTpContact::Chang
             output(debug(), contact);
 #endif
             return false;
+        }
+    }
+    return true;
+}
+
+bool storeSelfContact(CDTpDevicePresence *devicePresence, QContact &self, const QString &location, CDTpContact::Changes changes = CDTpContact::All, bool updateAccountList = false)
+{
+    if (!storeContact(self, location, changes)) {
+        return false;
+    }
+
+    if ((changes & CDTpContact::Presence) || updateAccountList) {
+        // See if the global presence has been updated
+        const QContactPresence::PresenceState previousState(self.detail<QContactGlobalPresence>().presenceState());
+
+        DetailList types(DetailList() << detailType<QContactGlobalPresence>());
+        if (updateAccountList) {
+            types << detailType<QContactOnlineAccount>();
+        }
+
+        const QContact updated(manager()->contact(self.id(), contactFetchHint(types)));
+        const QContactPresence::PresenceState updatedState(updated.detail<QContactGlobalPresence>().presenceState());
+
+        if (updatedState != previousState) {
+            emit devicePresence->globalUpdate(updatedState);
+        }
+        if (updateAccountList) {
+            // Ensure that listeners are aware of any invalidated accounts
+            QStringList accountPaths;
+            foreach (const QContactOnlineAccount &qcoa, updated.details<QContactOnlineAccount>()) {
+                accountPaths.append(qcoa.value<QString>(QContactOnlineAccount__FieldAccountPath));
+            }
+            emit devicePresence->accountList(accountPaths);
         }
     }
     return true;
@@ -786,7 +823,20 @@ bool onlineAccountEnabled(const QContactOnlineAccount &qcoa)
     return (qcoa.value(QContactOnlineAccount__FieldEnabled).toString() == asString(true));
 }
 
-CDTpContact::Changes updateAccountDetails(QContact &self, QContactOnlineAccount &qcoa, QContactPresence &presence, CDTpAccountPtr accountWrapper, CDTpAccount::Changes changes)
+void reportAccountPresence(CDTpDevicePresence *devicePresence, const QContactOnlineAccount &qcoa, const QContactPresence &presence)
+{
+    emit devicePresence->update(qcoa.value<QString>(QContactOnlineAccount__FieldAccountPath),
+                                qcoa.detailUri(),
+                                qcoa.serviceProvider(),
+                                qcoa.value<QString>(QContactOnlineAccount__FieldServiceProviderDisplayName),
+                                qcoa.value<QString>(QContactOnlineAccount__FieldAccountDisplayName),
+                                qcoa.value<QString>(QContactOnlineAccount__FieldAccountIconPath),
+                                presence.presenceState(),
+                                presence.customMessage(),
+                                qcoa.value<QString>(QContactOnlineAccount__FieldEnabled) == asString(true));
+}
+
+CDTpContact::Changes updateAccountDetails(CDTpDevicePresence *devicePresence, QContact &self, QContactOnlineAccount &qcoa, QContactPresence &presence, CDTpAccountPtr accountWrapper, CDTpAccount::Changes changes)
 {
     CDTpContact::Changes selfChanges = 0;
 
@@ -881,6 +931,9 @@ CDTpContact::Changes updateAccountDetails(QContact &self, QContactOnlineAccount 
         if (!storeContactDetail(self, qcoa, SRC_LOC)) {
             warning() << SRC_LOC << "Unable to save details for self account:" << accountPath;
         }
+
+        // Report the current presence state of this account
+        reportAccountPresence(devicePresence, qcoa, presence);
     }
 
     return selfChanges;
@@ -1690,7 +1743,10 @@ void addIconPath(QContactOnlineAccount &qcoa, Tp::AccountPtr account)
 
 CDTpStorage::CDTpStorage(QObject *parent)
     : QObject(parent)
+    , mDevicePresence(new CDTpDevicePresence)
 {
+    connect(mDevicePresence, SIGNAL(requestUpdate()), this, SLOT(reportPresenceStates()));
+
     mUpdateTimer.setInterval(UPDATE_TIMEOUT);
     mUpdateTimer.setSingleShot(true);
     connect(&mUpdateTimer, SIGNAL(timeout()), SLOT(onUpdateQueueTimeout()));
@@ -1782,9 +1838,9 @@ void CDTpStorage::addNewAccount(QContact &self, CDTpAccountPtr accountWrapper)
     }
 
     // Store any information from the account
-    CDTpContact::Changes selfChanges = updateAccountDetails(self, newAccount, presence, accountWrapper, CDTpAccount::All);
+    CDTpContact::Changes selfChanges = updateAccountDetails(mDevicePresence, self, newAccount, presence, accountWrapper, CDTpAccount::All);
 
-    storeContact(self, SRC_LOC, selfChanges);
+    storeSelfContact(mDevicePresence, self, SRC_LOC, selfChanges);
 }
 
 void CDTpStorage::removeExistingAccount(QContact &self, QContactOnlineAccount &existing)
@@ -2002,9 +2058,9 @@ void CDTpStorage::updateAccountChanges(QContact &self, QContactOnlineAccount &qc
         warning() << SRC_LOC << "Unable to find presence to match account:" << accountPath;
     }
 
-    CDTpContact::Changes selfChanges = updateAccountDetails(self, qcoa, presence, accountWrapper, changes);
+    CDTpContact::Changes selfChanges = updateAccountDetails(mDevicePresence, self, qcoa, presence, accountWrapper, changes);
 
-    if (!storeContact(self, SRC_LOC, selfChanges)) {
+    if (!storeSelfContact(mDevicePresence, self, SRC_LOC, selfChanges)) {
         warning() << SRC_LOC << "Unable to save self contact - error:" << manager()->error();
     }
 
@@ -2188,7 +2244,7 @@ void CDTpStorage::syncAccounts(const QList<CDTpAccountPtr> &accounts)
         }
     }
 
-    storeContact(self, SRC_LOC);
+    storeSelfContact(mDevicePresence, self, SRC_LOC, CDTpContact::All, true);
 }
 
 void CDTpStorage::createAccount(CDTpAccountPtr accountWrapper)
@@ -2287,7 +2343,7 @@ void CDTpStorage::removeAccount(CDTpAccountPtr accountWrapper)
         if (existingPath == accountPath) {
             removeExistingAccount(self, existingAccount);
 
-            storeContact(self, SRC_LOC);
+            storeSelfContact(mDevicePresence, self, SRC_LOC, CDTpContact::All, true);
             return;
         }
     }
@@ -2512,6 +2568,30 @@ void CDTpStorage::cancelQueuedUpdates(const QList<CDTpContactPtr> &contacts)
     foreach (const CDTpContactPtr &contactWrapper, contacts) {
         mUpdateQueue.remove(contactWrapper);
     }
+}
+
+void CDTpStorage::reportPresenceStates()
+{
+    QContact self(selfContact());
+    if (self.isEmpty()) {
+        warning() << SRC_LOC << "Unable to retrieve self contact - error:" << manager()->error();
+        return;
+    }
+
+    emit mDevicePresence->globalUpdate(self.detail<QContactGlobalPresence>().presenceState());
+
+    QStringList accountPaths;
+    foreach (const QContactOnlineAccount &qcoa, self.details<QContactOnlineAccount>()) {
+        QContactPresence presence(findPresenceForAccount(self, qcoa));
+        if (presence.isEmpty()) {
+            warning() << SRC_LOC << "Unable to find presence to match account:" << qcoa.detailUri();
+        }
+        reportAccountPresence(mDevicePresence, qcoa, presence);
+
+        accountPaths.append(qcoa.value<QString>(QContactOnlineAccount__FieldAccountPath));
+    }
+
+    emit mDevicePresence->accountList(accountPaths);
 }
 
 // Instantiate the QContactOriginMetadata functions

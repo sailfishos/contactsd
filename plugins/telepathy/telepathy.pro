@@ -30,7 +30,8 @@ CONFIG += c++11
 PKGCONFIG += Qt5Contacts
 PKGCONFIG += TelepathyQt5 qtcontacts-sqlite-qt5-extensions
 
-system(qdbusxml2cpp -c BuddyManagementAdaptor -a buddymanagementadaptor.h:buddymanagementadaptor.cpp com.nokia.contacts.buddymanagement.xml)
+system(qdbusxml2cpp -c BuddyManagementAdaptor -a buddymanagementadaptor com.nokia.contacts.buddymanagement.xml)
+system(qdbusxml2cpp -c DevicePresenceAdaptor -a devicepresenceadaptor org.nemomobile.DevicePresenceIf.xml)
 
 CONFIG(coverage):{
 QMAKE_CXXFLAGS += -c -g  --coverage -ftest-coverage -fprofile-arcs
@@ -49,9 +50,11 @@ HEADERS  = cdtpaccount.h \
     types.h \
     cdtpcontact.h \
     cdtpcontroller.h \
+    cdtpdevicepresence.h \
     cdtpplugin.h \
     cdtpstorage.h \
     buddymanagementadaptor.h \
+    devicepresenceadaptor.h \
     cdtpavatarupdate.h
 
 SOURCES  = cdtpaccount.cpp \
@@ -59,9 +62,11 @@ SOURCES  = cdtpaccount.cpp \
     cdtpaccountcachewriter.cpp \
     cdtpcontact.cpp \
     cdtpcontroller.cpp \
+    cdtpdevicepresence.cpp \
     cdtpplugin.cpp \
     cdtpstorage.cpp \
     buddymanagementadaptor.cpp \
+    devicepresenceadaptor.cpp \
     cdtpavatarupdate.cpp
 
 VERSIONED_PACKAGENAME=contactsd-1.0
@@ -75,4 +80,5 @@ xml.path = $$INCLUDEDIR/$${VERSIONED_PACKAGENAME}
 INSTALLS += target xml
 
 OTHER_FILES += \
+    org.nemomobile.DevicePresenceIf.xml \
     com.nokia.contacts.buddymanagement.xml
