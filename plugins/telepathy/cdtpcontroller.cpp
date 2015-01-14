@@ -132,6 +132,7 @@ void CDTpController::onAccountManagerReady(Tp::PendingOperation *op)
         insertAccount(account, false);
     }
 
+    mStorage.reportPresenceStates();
     mStorage.syncAccounts(mAccounts.values());
 }
 

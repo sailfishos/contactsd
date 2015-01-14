@@ -40,6 +40,7 @@
 
 QTCONTACTS_USE_NAMESPACE
 
+class CDTpDevicePresence;
 class CDTpStorage : public QObject
 {
     Q_OBJECT
@@ -63,6 +64,7 @@ public Q_SLOTS:
             const QList<CDTpContactPtr> &contactsAdded,
             const QList<CDTpContactPtr> &contactsRemoved);
     void updateContact(CDTpContactPtr contactWrapper, CDTpContact::Changes changes);
+    void reportPresenceStates();
 
 public:
     void createAccountContacts(CDTpAccountPtr accountWrapper, const QStringList &imIds, uint localId);
@@ -95,6 +97,7 @@ private:
     QTimer mUpdateTimer;
     QElapsedTimer mWaitTimer;
     QMap<QString, CDTpAccount::Changes> m_accountPendingChanges;
+    CDTpDevicePresence *mDevicePresence;
 };
 
 #endif // CDTPSTORAGE_H
