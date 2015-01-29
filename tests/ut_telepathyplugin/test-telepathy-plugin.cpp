@@ -68,7 +68,7 @@ void TestTelepathyPlugin::initTestCase()
 
     /* Create a QContactManager and track added/changed contacts */
     QMap<QString, QString> parameters;
-    parameters.insert(QStringLiteral("mergePresenceChanges"), QStringLiteral("false"));
+    parameters.insert(QStringLiteral("mergePresenceChanges"), QStringLiteral("true"));
     mContactManager = new QContactManager(QStringLiteral("org.nemomobile.contacts.sqlite"), parameters);
 
     connect(mContactManager,
@@ -226,6 +226,9 @@ void TestTelepathyPlugin::testSelfContact()
 
 void TestTelepathyPlugin::testAuthorization()
 {
+#ifdef USING_QTPIM
+    QSKIP("Presence authorization not supported by qtpim");
+#endif
     TpHandle handle;
 
     /* Create a new contact "romeo" */
