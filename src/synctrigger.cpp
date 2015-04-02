@@ -111,6 +111,7 @@ void SyncTrigger::triggerSync(const QStringList &syncTargets, int syncPolicy, in
         if (notTemplate && isEnabled && isTarget && isContacts
                 && (isUpsync || directionPolicy == SyncTrigger::AnyDirection)
                 && (alwaysUpToDate || syncPolicy == SyncTrigger::ForceSync)) {
+            debug() << "SyncTrigger: profile meets criteria, triggering:" << profileId;
             QDBusMessage message = QDBusMessage::createMethodCall(
                     QStringLiteral("com.meego.msyncd"),
                     QStringLiteral("/synchronizer"),
