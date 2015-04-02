@@ -51,10 +51,10 @@ const QString aggregateSyncTarget(QStringLiteral("aggregate"));
 const QString oobIdsKey(QStringLiteral("privilegedIds"));
 const QString avatarPathsKey(QStringLiteral("avatarPaths"));
 
-// Delay 500ms for accumulate futher changes when a contact is updated
-// Wait 10s for further changes when a contact presence is updated
-const int syncDelay = 500;
-const int presenceSyncDelay = 10000;
+// Delay 10s for accumulate futher changes when a contact is updated
+// Wait 20s for further changes when a contact presence is updated
+const int syncDelay = 10000;
+const int presenceSyncDelay = 20000;
 
 QMap<QString, QString> privilegedManagerParameters()
 {
@@ -946,6 +946,7 @@ CDExporterController::CDExporterController(QObject *parent)
     , m_disabledConf(QStringLiteral("/org/nemomobile/contacts/export/disabled"))
     , m_debugConf(QStringLiteral("/org/nemomobile/contacts/export/debug"))
     , m_importConf(QStringLiteral("/org/nemomobile/contacts/export/import"))
+    , m_syncAllTargets(false)
 {
     // Use a timer to delay reaction, so we don't sync until sequential changes have completed
     m_syncTimer.setSingleShot(true);
@@ -979,18 +980,36 @@ CDExporterController::~CDExporterController()
 void CDExporterController::onPrivilegedContactsAdded(const QList<QContactId> &addedIds)
 {
     Q_UNUSED(addedIds)
+    // Unconditionally trigger sync if we have contact additions.
+    // This will allow sync adapters to set up links between any local
+    // contact (ie, added) and the remote copy of that contact.
+    // From that point on, changes to the contact will be reported via
+    // the syncContactsChanged() signal, because the link will exist.
+    m_syncAllTargets = true;
     scheduleSync(DataChange);
 }
 
 void CDExporterController::onPrivilegedContactsChanged(const QList<QContactId> &changedIds)
 {
     Q_UNUSED(changedIds)
+    // Unconditionally trigger sync if we have contact modifications,
+    // just in case a contact has been upsynced and no significant
+    // modifications have been made server-side (ie, no sync-target
+    // specific constituent exists on the device).
+    // Note that in the future, with QContactCollection support,
+    // we should be able to accurately detect which changes require
+    // synchronisation; but for now, just upsync unconditionally.
+    m_syncAllTargets = true;
     scheduleSync(DataChange);
 }
 
 void CDExporterController::onPrivilegedContactsPresenceChanged(const QList<QContactId> &changedIds)
 {
     Q_UNUSED(changedIds)
+    // Unconditionally trigger sync if we have contact deletions,
+    // just in case it was previously upsynced but no sync-target
+    // specific constituent existed on device.
+    m_syncAllTargets = true;
     scheduleSync(PresenceChange);
 }
 
@@ -1044,7 +1063,7 @@ void CDExporterController::onSyncTimeout()
     }
 
     // And trigger a sync to external Contacts sync sources
-    if (!m_syncTargetsNeedingSync.isEmpty()) {
+    if (!m_syncTargetsNeedingSync.isEmpty() || m_syncAllTargets) {
         qWarning() << "CDExport: triggering contacts sync" << QStringList(m_syncTargetsNeedingSync.toList()).join(QStringLiteral(":"));
         QDBusMessage message = QDBusMessage::createMethodCall(
                 QStringLiteral("com.nokia.contactsd"),
@@ -1052,11 +1071,14 @@ void CDExporterController::onSyncTimeout()
                 QStringLiteral("com.nokia.contactsd"),
                 QStringLiteral("triggerSync"));
         message.setArguments(QVariantList()
-                << QVariant::fromValue<QStringList>(QStringList(m_syncTargetsNeedingSync.toList()))
+                << QVariant::fromValue<QStringList>(m_syncAllTargets ? QStringList() : QStringList(m_syncTargetsNeedingSync.toList()))
                 << QVariant::fromValue<qint32>(1)   // only if AlwaysUpToDate set in profile
                 << QVariant::fromValue<qint32>(1)); // only if Upsync or TwoWay direction
         QDBusConnection::sessionBus().asyncCall(message);
         m_syncTargetsNeedingSync.clear();
+        m_syncAllTargets = false;
+    } else {
+        qWarning() << "CDExport: sync triggered but no sync targets needing sync";
     }
 }
 
@@ -1064,7 +1086,10 @@ void CDExporterController::scheduleSync(ChangeType type)
 {
     // Something has changed that needs to be exported
     if (m_disabledConf.value().toInt() == 0) {
+        qDebug() << "CDExport: sync scheduled";
         m_syncTimer.start(type == PresenceChange ? presenceSyncDelay : syncDelay);
+    } else {
+        qDebug() << "CDExport: sync would be scheduled but disabled; ignoring";
     }
 }
 
