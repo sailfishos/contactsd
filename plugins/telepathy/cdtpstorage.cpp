@@ -917,6 +917,15 @@ CDTpContact::Changes updateAccountDetails(CDTpDevicePresence *devicePresence, QC
         selfChanges |= CDTpContact::Capabilities;
     }
 
+    // If this account is not enabled, ensure the presence indicates unknown state
+    if (!account->isEnabled()) {
+        if (presence.presenceState() != QContactPresence::PresenceUnknown) {
+            presence.setPresenceState(QContactPresence::PresenceUnknown);
+            presence.setTimestamp(QDateTime::currentDateTime());
+            selfChanges |= CDTpContact::Presence;
+        }
+    }
+
     if (selfChanges & CDTpContact::Presence) {
         if (!storeContactDetail(self, presence, SRC_LOC)) {
             warning() << SRC_LOC << "Unable to save presence for self account:" << accountPath;
