@@ -1,6 +1,6 @@
 Name: contactsd
 Version: 1.2.65
-Release: 2
+Release: 3
 Summary: Telepathy <> QtContacts bridge for contacts
 Group: System/Libraries
 URL: https://github.com/nemomobile/contactsd
