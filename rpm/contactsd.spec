@@ -108,7 +108,7 @@ ln -s ../contactsd.service %{buildroot}%{_libdir}/systemd/user/post-user-session
 %post
 if [ "$1" -ge 1 ]; then
 systemctl-user daemon-reload || :
-systemctl-user restart contactsd.service || :
+systemctl-user try-restart contactsd.service || :
 fi
 
 %postun
