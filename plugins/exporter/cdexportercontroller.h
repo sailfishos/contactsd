@@ -63,6 +63,9 @@ private:
     MGConfItem m_debugConf;
     MGConfItem m_importConf;
 
+    uint m_lastSyncTimestamp;
+    int m_adaptiveSyncDelay;
+
     bool m_syncAllTargets;
 };
 
