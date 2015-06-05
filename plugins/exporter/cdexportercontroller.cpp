@@ -946,6 +946,8 @@ CDExporterController::CDExporterController(QObject *parent)
     , m_disabledConf(QStringLiteral("/org/nemomobile/contacts/export/disabled"))
     , m_debugConf(QStringLiteral("/org/nemomobile/contacts/export/debug"))
     , m_importConf(QStringLiteral("/org/nemomobile/contacts/export/import"))
+    , m_lastSyncTimestamp(0)
+    , m_adaptiveSyncDelay(syncDelay)
     , m_syncAllTargets(false)
 {
     // Use a timer to delay reaction, so we don't sync until sequential changes have completed
@@ -1055,6 +1057,7 @@ void CDExporterController::onSyncTimeout()
 {
     const bool importChanges(m_importConf.value().toInt() > 0);
     const bool debug(m_debugConf.value().toInt() > 0);
+    m_lastSyncTimestamp = QDateTime::currentDateTimeUtc().toTime_t();
 
     // Perform a sync between the privileged and non-privileged managers
     SyncAdapter adapter(m_privilegedManager, m_nonprivilegedManager);
@@ -1086,8 +1089,23 @@ void CDExporterController::scheduleSync(ChangeType type)
 {
     // Something has changed that needs to be exported
     if (m_disabledConf.value().toInt() == 0) {
-        qDebug() << "CDExport: sync scheduled";
-        m_syncTimer.start(type == PresenceChange ? presenceSyncDelay : syncDelay);
+        if (type == PresenceChange) {
+            qDebug() << "CDExport: sync scheduled due to presence changes after delay:" << presenceSyncDelay;
+            m_syncTimer.start(presenceSyncDelay);
+        } else if (!m_syncTimer.isActive()){
+            // do an adaptive back-off when scheduling syncs, to avoid performing too many syncs.
+            uint syncDelayEnvelope = syncDelay * 3; // by default, 30 seconds.
+            uint currTimestamp = QDateTime::currentDateTimeUtc().toTime_t();
+            if (currTimestamp < (m_lastSyncTimestamp + syncDelayEnvelope)) {
+                // this sync was triggered too soon after the last one; back off, out to ~10 minutes.
+                m_adaptiveSyncDelay = qMin(syncDelay * 4 * 4 * 4, m_adaptiveSyncDelay * 4);
+            } else {
+                // this sync was triggered a reasonable period of time after the last one.
+                m_adaptiveSyncDelay = qMax(syncDelay, m_adaptiveSyncDelay/16);
+            }
+            qDebug() << "CDExport: sync scheduled due to persistent changes after delay:" << m_adaptiveSyncDelay;
+            m_syncTimer.start(m_adaptiveSyncDelay);
+        }
     } else {
         qDebug() << "CDExport: sync would be scheduled but disabled; ignoring";
     }
