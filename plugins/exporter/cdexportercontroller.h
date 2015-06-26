@@ -49,6 +49,7 @@ private slots:
     void onSyncContactsChanged(const QStringList &syncTargets);
 
     void onSyncTimeout();
+    void onExportTimeout();
 
 private:
     enum ChangeType { PresenceChange, DataChange };
@@ -57,6 +58,7 @@ private:
     QContactManager m_privilegedManager;
     QContactManager m_nonprivilegedManager;
     QTimer m_syncTimer;
+    QTimer m_exportTimer;
     QSet<QString> m_syncTargetsNeedingSync;
 
     MGConfItem m_disabledConf;

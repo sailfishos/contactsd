@@ -951,6 +951,8 @@ CDExporterController::CDExporterController(QObject *parent)
     , m_syncAllTargets(false)
 {
     // Use a timer to delay reaction, so we don't sync until sequential changes have completed
+    m_exportTimer.setSingleShot(true);
+    connect(&m_exportTimer, SIGNAL(timeout()), this, SLOT(onExportTimeout()));
     m_syncTimer.setSingleShot(true);
     connect(&m_syncTimer, SIGNAL(timeout()), this, SLOT(onSyncTimeout()));
 
@@ -968,8 +970,8 @@ CDExporterController::CDExporterController(QObject *parent)
     connect(&m_nonprivilegedManager, SIGNAL(contactsRemoved(QList<QContactId>)), this, SLOT(onNonprivilegedContactsRemoved(QList<QContactId>)));
 
     if (m_disabledConf.value().toInt() == 0) {
-        // Do an initial sync
-        m_syncTimer.start(1);
+        // Do an initial sync with the export database.
+        m_exportTimer.start(1);
     } else {
         qWarning() << "Contacts database export is disabled";
     }
@@ -1052,22 +1054,23 @@ void CDExporterController::onSyncContactsChanged(const QStringList &syncTargets)
     }
 }
 
-
-void CDExporterController::onSyncTimeout()
+void CDExporterController::onExportTimeout()
 {
+    // Perform a sync between the privileged and non-privileged managers
     const bool importChanges(m_importConf.value().toInt() > 0);
     const bool debug(m_debugConf.value().toInt() > 0);
-    m_lastSyncTimestamp = QDateTime::currentDateTimeUtc().toTime_t();
-
-    // Perform a sync between the privileged and non-privileged managers
     SyncAdapter adapter(m_privilegedManager, m_nonprivilegedManager);
     if (!adapter.sync(importChanges, debug)) {
         qWarning() << "Unable to synchronize database changes!";
     }
+}
 
-    // And trigger a sync to external Contacts sync sources
+void CDExporterController::onSyncTimeout()
+{
+    // Trigger a sync to external Contacts sync sources
+    m_lastSyncTimestamp = QDateTime::currentDateTimeUtc().toTime_t();
     if (!m_syncTargetsNeedingSync.isEmpty() || m_syncAllTargets) {
-        qWarning() << "CDExport: triggering contacts sync" << QStringList(m_syncTargetsNeedingSync.toList()).join(QStringLiteral(":"));
+        qWarning() << "CDExport: triggering contacts remote sync:" << QStringList(m_syncTargetsNeedingSync.toList()).join(QStringLiteral(":"));
         QDBusMessage message = QDBusMessage::createMethodCall(
                 QStringLiteral("com.nokia.contactsd"),
                 QStringLiteral("/SyncTrigger"),
@@ -1081,30 +1084,37 @@ void CDExporterController::onSyncTimeout()
         m_syncTargetsNeedingSync.clear();
         m_syncAllTargets = false;
     } else {
-        qWarning() << "CDExport: sync triggered but no sync targets needing sync";
+        qWarning() << "CDExport: remote sync triggered but no sync targets needing sync";
     }
 }
 
 void CDExporterController::scheduleSync(ChangeType type)
 {
-    // Something has changed that needs to be exported
+    // Something has changed that needs to be exported to the non-privileged db, and possibly synced remotely.
     if (m_disabledConf.value().toInt() == 0) {
         if (type == PresenceChange) {
-            qDebug() << "CDExport: sync scheduled due to presence changes after delay:" << presenceSyncDelay;
-            m_syncTimer.start(presenceSyncDelay);
-        } else if (!m_syncTimer.isActive()){
-            // do an adaptive back-off when scheduling syncs, to avoid performing too many syncs.
-            uint syncDelayEnvelope = syncDelay * 3; // by default, 30 seconds.
-            uint currTimestamp = QDateTime::currentDateTimeUtc().toTime_t();
-            if (currTimestamp < (m_lastSyncTimestamp + syncDelayEnvelope)) {
-                // this sync was triggered too soon after the last one; back off, out to ~10 minutes.
-                m_adaptiveSyncDelay = qMin(syncDelay * 4 * 4 * 4, m_adaptiveSyncDelay * 4);
-            } else {
-                // this sync was triggered a reasonable period of time after the last one.
-                m_adaptiveSyncDelay = qMax(syncDelay, m_adaptiveSyncDelay/16);
+            qDebug() << "CDExport: export sync scheduled due to presence changes after delay:" << presenceSyncDelay;
+            m_exportTimer.start(presenceSyncDelay);
+            // note: we never trigger remote syncs due to presence changes.
+        } else {
+            // trigger export sync and remote sync separately.
+            qDebug() << "CDExport: export sync scheduled due to persistent changes after delay:" << syncDelay;
+            m_exportTimer.start(syncDelay); // coalesce changes over 10 seconds for export sync
+            // adaptively rate-limit remote sync triggering depending on change-frequency.
+            if (!m_syncTimer.isActive()){
+                // do an adaptive back-off when scheduling syncs, to avoid performing too many syncs.
+                uint syncDelayEnvelope = syncDelay * 3; // by default, 30 seconds.
+                uint currTimestamp = QDateTime::currentDateTimeUtc().toTime_t();
+                if (currTimestamp < (m_lastSyncTimestamp + syncDelayEnvelope)) {
+                    // this sync was triggered too soon after the last one; back off, out to ~10 minutes.
+                    m_adaptiveSyncDelay = qMin(syncDelay * 4 * 4 * 4, m_adaptiveSyncDelay * 4);
+                } else {
+                    // this sync was triggered a reasonable period of time after the last one.
+                    m_adaptiveSyncDelay = qMax(syncDelay, m_adaptiveSyncDelay/16);
+                }
+                qDebug() << "CDExport: remote sync scheduled due to persistent changes after delay:" << m_adaptiveSyncDelay;
+                m_syncTimer.start(m_adaptiveSyncDelay);
             }
-            qDebug() << "CDExport: sync scheduled due to persistent changes after delay:" << m_adaptiveSyncDelay;
-            m_syncTimer.start(m_adaptiveSyncDelay);
         }
     } else {
         qDebug() << "CDExport: sync would be scheduled but disabled; ignoring";
