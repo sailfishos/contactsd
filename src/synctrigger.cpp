@@ -102,8 +102,9 @@ void SyncTrigger::triggerSync(const QStringList &syncTargets, int syncPolicy, in
         }
 
         // in the future, we should inspect the sync profile for deltasync flag
-        if (!profileId.toLower().startsWith(QStringLiteral("google"))) {
-            isTarget = false; // we currently only support automatic sync with Google
+        if (!profileId.toLower().startsWith(QStringLiteral("google"))
+                && !profileId.toLower().startsWith(QStringLiteral("carddav"))) {
+            isTarget = false; // we currently only support automatic sync with Google and CardDAV
         }
 
         delete profile;

@@ -1105,7 +1105,7 @@ void CDExporterController::scheduleSync(ChangeType type)
                 // do an adaptive back-off when scheduling syncs, to avoid performing too many syncs.
                 uint syncDelayEnvelope = syncDelay * 3; // by default, 30 seconds.
                 uint currTimestamp = QDateTime::currentDateTimeUtc().toTime_t();
-                if (currTimestamp < (m_lastSyncTimestamp + syncDelayEnvelope)) {
+                if (currTimestamp < (m_lastSyncTimestamp + (syncDelayEnvelope/1000))) {
                     // this sync was triggered too soon after the last one; back off, out to ~10 minutes.
                     m_adaptiveSyncDelay = qMin(syncDelay * 4 * 4 * 4, m_adaptiveSyncDelay * 4);
                 } else {
