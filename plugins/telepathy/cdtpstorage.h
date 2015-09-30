@@ -35,6 +35,8 @@
 #include <QUrl>
 #include <QNetworkAccessManager>
 
+#include <MGConfItem>
+
 #include "cdtpaccount.h"
 #include "cdtpcontact.h"
 
@@ -47,6 +49,11 @@ class CDTpStorage : public QObject
 
 public:
     typedef QMap<CDTpContact::Changes, QList<QContact> > ContactChangeSet;
+
+    enum DisplayLabelOrder {
+        FirstNameFirst = 0,
+        LastNameFirst
+    };
 
     CDTpStorage(QObject *parent = 0);
     ~CDTpStorage();
@@ -72,6 +79,7 @@ public:
 
 private Q_SLOTS:
     void onUpdateQueueTimeout();
+    void displayLabelOrderChanged();
 
     void addNewAccount();
     void updateAccount();
@@ -98,6 +106,8 @@ private:
     QElapsedTimer mWaitTimer;
     QMap<QString, CDTpAccount::Changes> m_accountPendingChanges;
     CDTpDevicePresence *mDevicePresence;
+    DisplayLabelOrder mDisplayLabelOrder;
+    MGConfItem mDisplayLabelOrderConf;
 };
 
 #endif // CDTPSTORAGE_H

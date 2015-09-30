@@ -41,6 +41,7 @@
 #include <QContactAddress>
 #include <QContactAvatar>
 #include <QContactBirthday>
+#include <QContactDisplayLabel>
 #include <QContactEmailAddress>
 #include <QContactGender>
 #include <QContactGlobalPresence>
@@ -210,13 +211,17 @@ QContactFetchHint contactFetchHint(const DetailList &detailTypes = DetailList())
     return hint;
 }
 
+QContactId selfContactAggregateId()
+{
+    return manager()->selfContactId();
+}
+
 QContactId selfContactLocalId()
 {
     QContactManager *mgr(manager());
 
     // Check that there is a self contact
-    QContactId selfId;
-    selfId = mgr->selfContactId();
+    QContactId selfId(selfContactAggregateId());
 
     // Find the telepathy contact aggregated by the real self contact
     QContactRelationshipFilter relationshipFilter;
@@ -301,6 +306,14 @@ QContact selfContact()
                                                                 << detailType<QContactAvatar>()));
 
     return manager()->contact(selfLocalId, hint);
+}
+
+QContact selfDetailsContact()
+{
+    static QContactFetchHint hint(contactFetchHint(DetailList() << detailType<QContactName>()
+                                                                << detailType<QContactDisplayLabel>()
+                                                                << detailType<QContactNickname>()));
+    return manager()->contact(selfContactAggregateId(), hint);
 }
 
 template<typename Debug>
@@ -399,6 +412,119 @@ bool storeContact(QContact &contact, const QString &location, CDTpContact::Chang
         }
     }
     return true;
+}
+
+QChar::Script nameScript(const QString &name)
+{
+    QChar::Script script(QChar::Script_Unknown);
+
+    if (!name.isEmpty()) {
+        QString::const_iterator it = name.begin(), end = name.end();
+        for ( ; it != end; ++it) {
+            const QChar::Category charCategory((*it).category());
+            if (charCategory >= QChar::Letter_Uppercase && charCategory <= QChar::Letter_Other) {
+                const QChar::Script charScript((*it).script());
+                if (script == QChar::Script_Unknown) {
+                    script = charScript;
+                } else if (charScript != script) {
+                    return QChar::Script_Unknown;
+                }
+            }
+        }
+    }
+
+    return script;
+}
+
+QChar::Script nameScript(const QString &firstName, const QString &lastName)
+{
+    if (firstName.isEmpty()) {
+        return nameScript(lastName);
+    } else if (lastName.isEmpty()) {
+        return nameScript(firstName);
+    }
+
+    QChar::Script firstScript(nameScript(firstName));
+    if (firstScript != QChar::Script_Unknown) {
+        QChar::Script lastScript(nameScript(lastName));
+        if (lastScript == firstScript) {
+            return lastScript;
+        }
+    }
+
+    return QChar::Script_Unknown;
+}
+
+bool nameScriptImpliesFamilyFirst(const QString &firstName, const QString &lastName)
+{
+    switch (nameScript(firstName, lastName)) {
+        // These scripts are used by cultures that conform to the family-name-first naming convention:
+        case QChar::Script_Han:
+        case QChar::Script_Lao:
+        case QChar::Script_Hangul:
+        case QChar::Script_Khmer:
+        case QChar::Script_Mongolian:
+        case QChar::Script_Hiragana:
+        case QChar::Script_Katakana:
+        case QChar::Script_Bopomofo:
+        case QChar::Script_Yi:
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool needsSpaceBetweenNames(const QString &first, const QString &second)
+{
+    if (first.isEmpty() || second.isEmpty()) {
+        return false;
+    }
+    return first[first.length()-1].script() != QChar::Script_Han
+            || second[0].script() != QChar::Script_Han;
+}
+
+QString generateDisplayLabel(const QContactName &nameDetail, CDTpStorage::DisplayLabelOrder order)
+{
+    // Simplified version of the SeasideCache displayLabel generator
+    QString rv;
+
+    QString nameStr1(nameDetail.firstName());
+    QString nameStr2(nameDetail.lastName());
+
+    const bool familyNameFirst(order == CDTpStorage::LastNameFirst || nameScriptImpliesFamilyFirst(nameStr1, nameStr2));
+    if (familyNameFirst) {
+        nameStr1 = nameDetail.lastName();
+        nameStr2 = nameDetail.firstName();
+    }
+
+    if (!nameStr1.isEmpty())
+        rv.append(nameStr1);
+
+    if (!nameStr2.isEmpty()) {
+        if (needsSpaceBetweenNames(nameStr1, nameStr2)) {
+            rv.append(QLatin1Char(' '));
+        }
+        rv.append(nameStr2);
+    }
+
+    return rv;
+}
+
+void reportSelfDetails(CDTpDevicePresence *devicePresence, const QContact &contact, CDTpStorage::DisplayLabelOrder order)
+{
+    const QContactName nameDetail(contact.detail<QContactName>());
+
+    QStringList nicknames;
+    foreach (const QContactNickname &nickname, contact.details<QContactNickname>()) {
+        nicknames.append(nickname.nickname());
+    }
+
+    QString displayLabel(generateDisplayLabel(nameDetail, order));
+    if (displayLabel.isEmpty()) {
+        displayLabel = contact.detail<QContactDisplayLabel>().label();
+    }
+
+    emit devicePresence->selfUpdate(displayLabel, nameDetail.firstName(), nameDetail.lastName(), nicknames);
 }
 
 bool storeSelfContact(CDTpDevicePresence *devicePresence, QContact &self, const QString &location, CDTpContact::Changes changes = CDTpContact::All, bool updateAccountList = false)
@@ -1753,8 +1879,16 @@ void addIconPath(QContactOnlineAccount &qcoa, Tp::AccountPtr account)
 CDTpStorage::CDTpStorage(QObject *parent)
     : QObject(parent)
     , mDevicePresence(new CDTpDevicePresence)
+    , mDisplayLabelOrder(FirstNameFirst)
+    , mDisplayLabelOrderConf(QStringLiteral("/org/nemomobile/contacts/display_label_order"))
 {
     connect(mDevicePresence, SIGNAL(requestUpdate()), this, SLOT(reportPresenceStates()));
+
+    connect(&mDisplayLabelOrderConf, SIGNAL(valueChanged()), this, SLOT(displayLabelOrderChanged()));
+
+    QVariant displayLabelOrder = mDisplayLabelOrderConf.value();
+    if (displayLabelOrder.isValid())
+        mDisplayLabelOrder = static_cast<DisplayLabelOrder>(displayLabelOrder.toInt());
 
     mUpdateTimer.setInterval(UPDATE_TIMEOUT);
     mUpdateTimer.setSingleShot(true);
@@ -2601,6 +2735,27 @@ void CDTpStorage::reportPresenceStates()
     }
 
     emit mDevicePresence->accountList(accountPaths);
+
+    // Retrieve the aggregate self contact to report name details
+    self = selfDetailsContact();
+    reportSelfDetails(mDevicePresence, self, mDisplayLabelOrder);
+}
+
+void CDTpStorage::displayLabelOrderChanged()
+{
+    QVariant displayLabelOrder = mDisplayLabelOrderConf.value();
+    if (displayLabelOrder.isValid() && displayLabelOrder.toInt() != mDisplayLabelOrder) {
+        mDisplayLabelOrder = static_cast<DisplayLabelOrder>(displayLabelOrder.toInt());
+
+        // Update our self details
+        QContact self(selfDetailsContact());
+        if (self.isEmpty()) {
+            warning() << SRC_LOC << "Unable to retrieve self contact - error:" << manager()->error();
+            return;
+        }
+
+        reportSelfDetails(mDevicePresence, self, mDisplayLabelOrder);
+    }
 }
 
 // Instantiate the QContactOriginMetadata functions
