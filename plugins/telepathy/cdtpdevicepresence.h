@@ -48,6 +48,10 @@ signals:
                 int presenceState,
                 const QString &presenceMessage,
                 bool enabled);
+    void selfUpdate(const QString &displayName,
+                    const QString &firstName,
+                    const QString &lastName,
+                    const QStringList &nicknames);
 };
 
 #endif // CDTPDEVICEPRESENCE_H

@@ -19,6 +19,12 @@
         <signal name="globalUpdate">
             <arg name="presenceState" type="i"/>
         </signal>
+        <signal name="selfUpdate">
+            <arg name="displayLabel" type="s"/>
+            <arg name="firstName" type="s"/>
+            <arg name="lastName" type="s"/>
+            <arg name="nicknames" type="as"/>
+        </signal>
         <method name="requestUpdate">
         </method>
     </interface>
