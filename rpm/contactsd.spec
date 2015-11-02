@@ -1,9 +1,9 @@
 Name: contactsd
-Version: 1.2.69
+Version: 1.3.0
 Release: 1
 Summary: Telepathy <> QtContacts bridge for contacts
 Group: System/Libraries
-URL: https://github.com/nemomobile/contactsd
+URL: https://git.merproject.org/mer-core/contactsd
 License: LGPLv2
 Source0: %{name}-%{version}.tar.bz2
 Requires: systemd
