@@ -4,7 +4,7 @@ Release: 1
 Summary: Telepathy <> QtContacts bridge for contacts
 Group: System/Libraries
 URL: https://git.merproject.org/mer-core/contactsd
-License: LGPLv2
+License: LGPLv2.1+ and (LGPLv2.1 or LGPLv2.1 with Nokia Qt LGPL Exception v1.1)
 Source0: %{name}-%{version}.tar.bz2
 Requires: systemd
 Requires: systemd-user-session-targets
