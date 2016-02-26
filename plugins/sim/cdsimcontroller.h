@@ -28,7 +28,7 @@
 #include <qofonophonebook.h>
 #include <qofonosimmanager.h>
 #include <qofonomessagewaiting.h>
-#include <qofonoextsimsettings.h>
+#include <qofonoextsiminfo.h>
 
 #include <MGConfItem>
 
@@ -122,7 +122,7 @@ public:
     QOfonoSimManager m_simManager;
     QOfonoPhonebook m_phonebook;
     QOfonoMessageWaiting m_messageWaiting;
-    QOfonoExtSimSettings m_simSettings;
+    QOfonoExtSimInfo m_simInfo;
     MGConfItem *m_voicemailConf;
     QVersitReader m_contactReader;
     QList<QContact> m_simContacts;
