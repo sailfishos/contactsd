@@ -67,7 +67,7 @@ CDSimModemData::CDSimModemData(CDSimController *controller, const QString &modem
     if (controller->m_active) {
         // Start reading the SIM contacts
         m_simManager.setModemPath(m_modemPath);
-        m_simSettings.setModemPath(m_modemPath);
+        m_simInfo.setModemPath(m_modemPath);
         m_phonebook.setModemPath(m_modemPath);
         m_messageWaiting.setModemPath(m_modemPath);
     }
@@ -632,7 +632,7 @@ void CDSimModemData::voicemailConfigurationChanged()
             //% "Voicemail System"
             QString name(qtTrId("qtn_sim_voicemail_contact"));
 
-            const QString simName(m_simSettings.displayName());
+            const QString simName(m_simInfo.serviceProviderName());
             if (!simName.isEmpty()) {
                 name.append(QString(QStringLiteral(" (%1)")).arg(simName));
             }
