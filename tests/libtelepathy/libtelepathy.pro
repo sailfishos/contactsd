@@ -26,7 +26,7 @@ TEMPLATE = lib
 CONFIG -= warn_on qt
 CONFIG += link_pkgconfig
 CONFIG += staticlib
-PKGCONFIG += telepathy-glib
+PKGCONFIG += telepathy-glib dbus-glib-1 gio-2.0
 
 HEADERS += \
     contacts-conn.h \

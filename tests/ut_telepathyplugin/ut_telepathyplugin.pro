@@ -36,12 +36,10 @@ CONFIG += test qt
 QT += testlib dbus
 QT -= gui
 CONFIG += link_pkgconfig
-PKGCONFIG += telepathy-glib
 DEFINES += QT_NO_KEYWORDS
 DEFINES += ENABLE_DEBUG
 
-PKGCONFIG += Qt5Contacts
-PKGCONFIG += TelepathyQt5
+PKGCONFIG += Qt5Contacts TelepathyQt5 telepathy-glib dbus-glib-1 gio-2.0
 
 system(cp $$PWD/../../plugins/telepathy/com.nokia.contacts.buddymanagement.xml .)
 system(qdbusxml2cpp -c BuddyManagementInterface -p buddymanagementinterface.h:buddymanagementinterface.cpp com.nokia.contacts.buddymanagement.xml)
