@@ -916,7 +916,7 @@ QString saveAccountAvatar(CDTpAccountPtr accountWrapper)
 
 void updateFacebookAvatar(QNetworkAccessManager &network, CDTpContactPtr contactWrapper, const QString &facebookId, const QString &avatarType)
 {
-    const QUrl avatarUrl(QLatin1String("http://graph.facebook.com/") % facebookId %
+    const QUrl avatarUrl(QLatin1String("http://graph.facebook.com/v2.6/") % facebookId %
                          QLatin1String("/picture?type=") % avatarType);
 
     // Initiate an avatar-update operation
