@@ -97,6 +97,7 @@ Translation source for contactsd
 
 %build
 export QT_SELECT=5
+export VERSION=%{version}
 ./configure --bindir %{_bindir} --libdir %{_libdir} --includedir %{_includedir}
 %qmake5
 make %{?_smp_mflags}
