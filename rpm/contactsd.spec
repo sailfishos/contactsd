@@ -6,6 +6,7 @@ Group: System/Libraries
 URL: https://git.merproject.org/mer-core/contactsd
 License: LGPLv2.1+ and (LGPLv2.1 or LGPLv2.1 with Nokia Qt LGPL Exception v1.1)
 Source0: %{name}-%{version}.tar.bz2
+Source1: %{name}.privileges
 Requires: systemd
 Requires: systemd-user-session-targets
 BuildRequires: pkgconfig(Qt5Core)
@@ -48,6 +49,7 @@ information), and store it to QtContacts.
 %{_libdir}/contactsd-1.0/plugins/*.so
 %{_datadir}/translations/contactsd.qm
 %{_datadir}/translations/contactsd_eng_en.qm
+%{_datadir}/mapplauncherd/privileges.d/*
 # we currently don't have a backup framework
 %exclude /usr/share/backup-framework/applications/contactsd.conf
 
@@ -108,6 +110,9 @@ make %{?_smp_mflags}
 
 mkdir -p %{buildroot}%{_libdir}/systemd/user/post-user-session.target.wants
 ln -s ../contactsd.service %{buildroot}%{_libdir}/systemd/user/post-user-session.target.wants/
+
+mkdir -p %{buildroot}%{_datadir}/mapplauncherd/privileges.d
+install -m 644 -p %{SOURCE1} %{buildroot}%{_datadir}/mapplauncherd/privileges.d
 
 %post
 if [ "$1" -ge 1 ]; then
