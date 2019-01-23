@@ -37,21 +37,20 @@ Requires: libqofono-qt5 >= 0.67
 Requires: mapplauncherd-qt5
 
 %description
-contactsd is a service for collecting and observing changes in roster list
+%{name} is a service for collecting and observing changes in roster list
 from all the users telepathy accounts (buddies, their status and presence
 information), and store it to QtContacts.
 
 %files
 %defattr(-,root,root,-)
-%{_libdir}/systemd/user/contactsd.service
-%{_libdir}/systemd/user/post-user-session.target.wants/contactsd.service
-%{_bindir}/contactsd
-%{_libdir}/contactsd-1.0/plugins/*.so
-%{_datadir}/translations/contactsd.qm
-%{_datadir}/translations/contactsd_eng_en.qm
+%{_libdir}/systemd/user/%{name}.service
+%{_libdir}/systemd/user/post-user-session.target.wants/%{name}.service
+%{_bindir}/%{name}
+%{_libdir}/%{name}-1.0
+%{_datadir}/translations/*.qm
 %{_datadir}/mapplauncherd/privileges.d/*
 # we currently don't have a backup framework
-%exclude /usr/share/backup-framework/applications/contactsd.conf
+%exclude /usr/share/backup-framework/applications/%{name}.conf
 
 
 %package devel
@@ -64,8 +63,7 @@ Requires: %{name} = %{version}-%{release}
 
 %files devel
 %defattr(-,root,root,-)
-%{_includedir}/contactsd-1.0/*
-%dir %{_includedir}/contactsd-1.0
+%{_includedir}/%{name}-1.0
 %{_libdir}/pkgconfig/*.pc
 
 
@@ -83,15 +81,15 @@ Requires: blts-tools
 /opt/tests/%{name}
 
 %package ts-devel
-Summary: Translation source for contactsd
+Summary: Translation source for %{name}
 Group: System/Applications
 
 %description ts-devel
-Translation source for contactsd
+Translation source for %{name}
 
 %files ts-devel
 %defattr(-,root,root,-)
-%{_datadir}/translations/source/contactsd.ts
+%{_datadir}/translations/source/*.ts
 
 
 %prep
@@ -109,7 +107,7 @@ make %{?_smp_mflags}
 %qmake5_install
 
 mkdir -p %{buildroot}%{_libdir}/systemd/user/post-user-session.target.wants
-ln -s ../contactsd.service %{buildroot}%{_libdir}/systemd/user/post-user-session.target.wants/
+ln -s ../%{name}.service %{buildroot}%{_libdir}/systemd/user/post-user-session.target.wants/
 
 mkdir -p %{buildroot}%{_datadir}/mapplauncherd/privileges.d
 install -m 644 -p %{SOURCE1} %{buildroot}%{_datadir}/mapplauncherd/privileges.d
@@ -117,12 +115,12 @@ install -m 644 -p %{SOURCE1} %{buildroot}%{_datadir}/mapplauncherd/privileges.d
 %post
 if [ "$1" -ge 1 ]; then
 systemctl-user daemon-reload || :
-systemctl-user try-restart contactsd.service || :
+systemctl-user try-restart %{name}.service || :
 fi
 
 %postun
 if [ "$1" -eq 0 ]; then
-systemctl-user stop contactsd.service || :
+systemctl-user stop %{name}.service || :
 systemctl-user daemon-reload || :
 fi
 
