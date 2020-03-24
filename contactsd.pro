@@ -30,7 +30,9 @@ confclean.commands += \
     $(DEL_FILE) $$TOP_BUILDDIR/$${PKGCONFIG_FILE}
 QMAKE_EXTRA_TARGETS += confclean
 
-OTHER_FILES += configure
+OTHER_FILES += \
+    configure \
+    rpm/*
 
 # Run configure script when building the project from tools like QtCreator
 isEmpty(CONFIGURED):system('$$PWD/configure')
