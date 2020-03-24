@@ -27,6 +27,7 @@ BuildRequires: pkgconfig(qofonoext)
 BuildRequires: pkgconfig(qtcontacts-sqlite-qt5-extensions) >= 0.1.64
 BuildRequires: pkgconfig(dbus-glib-1)
 BuildRequires: pkgconfig(gio-2.0)
+BuildRequires: pkgconfig(accounts-qt5)
 # pkgconfig(buteosyncfw5) is not correctly versioned, use the provider package instead:
 #BuildRequires: pkgconfig(buteosyncfw5) >= 0.6.33
 BuildRequires: buteo-syncfw-qt5-devel >= 0.6.33
