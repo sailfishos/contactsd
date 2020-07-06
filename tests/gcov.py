@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 # This file is part of Contacts daemon
 #
@@ -46,7 +46,7 @@ for line in lines:
         if last[-6:-2] != ".cpp":
             continue
         
-        print last[:-1], ":", line[:-1]
+        print(last[:-1], ":", line[:-1])
         continue
 
     if mode == 0:
