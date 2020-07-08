@@ -2,7 +2,6 @@ Name: contactsd
 Version: 1.3.4
 Release: 1
 Summary: Telepathy <> QtContacts bridge for contacts
-Group: System/Libraries
 URL: https://git.merproject.org/mer-core/contactsd
 License: LGPLv2.1+ and (LGPLv2.1 or LGPLv2.1 with Nokia Qt LGPL Exception v1.1)
 Source0: %{name}-%{version}.tar.bz2
@@ -34,6 +33,7 @@ BuildRequires: buteo-syncfw-qt5-devel >= 0.6.33
 BuildRequires: pkgconfig(qt5-boostable)
 BuildRequires: qt5-qttools
 BuildRequires: qt5-qttools-linguist
+BuildRequires: systemd
 Requires: libqofono-qt5 >= 0.67
 Requires: mapplauncherd-qt5
 
@@ -44,8 +44,8 @@ information), and store it to QtContacts.
 
 %files
 %defattr(-,root,root,-)
-%{_libdir}/systemd/user/%{name}.service
-%{_libdir}/systemd/user/post-user-session.target.wants/%{name}.service
+%{_userunitdir}/%{name}.service
+%{_userunitdir}/post-user-session.target.wants/%{name}.service
 %{_bindir}/%{name}
 %{_libdir}/%{name}-1.0
 %{_datadir}/translations/*.qm
@@ -107,8 +107,8 @@ make %{?_smp_mflags}
 %install
 %qmake5_install
 
-mkdir -p %{buildroot}%{_libdir}/systemd/user/post-user-session.target.wants
-ln -s ../%{name}.service %{buildroot}%{_libdir}/systemd/user/post-user-session.target.wants/
+mkdir -p %{buildroot}%{_userunitdir}/post-user-session.target.wants
+ln -s ../%{name}.service %{buildroot}%{_userunitdir}/post-user-session.target.wants/
 
 mkdir -p %{buildroot}%{_datadir}/mapplauncherd/privileges.d
 install -m 644 -p %{SOURCE1} %{buildroot}%{_datadir}/mapplauncherd/privileges.d
