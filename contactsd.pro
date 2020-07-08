@@ -15,7 +15,7 @@ pkgconfig.files=$${PKGCONFIG_FILE}
 backupconf.path=$$PREFIX/share/backup-framework/applications/
 backupconf.files=$${PACKAGENAME}.conf
 
-systemdservice.path=$$LIBDIR/systemd/user/
+systemdservice.path=/usr/lib/systemd/user/
 systemdservice.files=$${PACKAGENAME}.service
 
 INSTALLS += pkgconfig backupconf systemdservice
