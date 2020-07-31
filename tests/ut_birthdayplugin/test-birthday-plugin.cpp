@@ -33,6 +33,7 @@
 
 #include <QContactBirthday>
 #include <QContactName>
+#include <QContactDisplayLabel>
 
 using namespace ML10N;
 

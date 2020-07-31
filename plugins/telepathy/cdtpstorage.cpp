@@ -228,7 +228,7 @@ QContactId selfContactLocalId()
     relationshipFilter.setRelationshipType(QContactRelationship::Aggregates());
     QContact relatedContact;
     relatedContact.setId(selfId);
-    relationshipFilter.setRelatedContact(relatedContact);
+    relationshipFilter.setRelatedContactId(relatedContact.id());
     relationshipFilter.setRelatedContactRole(QContactRelationship::First);
 
     QContactIntersectionFilter selfFilter;
@@ -260,8 +260,8 @@ QContactId selfContactLocalId()
             QContactRelationship relationship;
             relationship.setRelationshipType(QContactRelationship::Aggregates());
             relatedContact.setId(selfId);
-            relationship.setFirst(relatedContact);
-            relationship.setSecond(tpSelf);
+            relationship.setFirst(relatedContact.id());
+            relationship.setSecond(tpSelf.id());
 
             if (!mgr->saveRelationship(&relationship)) {
                 warning() << "Unable to save relationship for self contact - error:" << mgr->error();
@@ -271,7 +271,7 @@ QContactId selfContactLocalId()
             // Find the aggregate contact created by saving our self contact
             relationshipFilter.setRelationshipType(QContactRelationship::Aggregates());
             relatedContact.setId(tpSelf.id());
-            relationshipFilter.setRelatedContact(relatedContact);
+            relationshipFilter.setRelatedContactId(relatedContact.id());
             relationshipFilter.setRelatedContactRole(QContactRelationship::Second);
 
             foreach (const QContact &aggregator, mgr->contacts(relationshipFilter)) {
@@ -281,8 +281,8 @@ QContactId selfContactLocalId()
                 // Remove the relationship between these contacts (which removes the childless aggregate)
                 QContactRelationship relationship;
                 relationship.setRelationshipType(QContactRelationship::Aggregates());
-                relationship.setFirst(aggregator);
-                relationship.setSecond(tpSelf);
+                relationship.setFirst(aggregator.id());
+                relationship.setSecond(tpSelf.id());
 
                 if (!mgr->removeRelationship(relationship)) {
                     warning() << "Unable to remove relationship for self contact - error:" << mgr->error();
@@ -1628,7 +1628,7 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
                         Dictionary::const_iterator it = genderTypes().find(type.toLower());
                         if (it != addressTypes().constEnd()) {
                             QContactGender genderDetail;
-                            genderDetail.setGender(static_cast<QContactGender::GenderField>(*it));
+                            genderDetail.setGender(static_cast<QContactGender::GenderType>(*it));
 
                             newGender = genderDetail;
                         } else {

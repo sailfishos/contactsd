@@ -34,6 +34,7 @@
 #include <QContactFetchRequest>
 #include <QContactSyncTarget>
 #include <QContactIdFilter>
+#include <QContactDisplayLabel>
 
 QTCONTACTS_USE_NAMESPACE
 
