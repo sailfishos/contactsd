@@ -63,6 +63,7 @@ Q_SIGNALS:
 
 public Q_SLOTS:
     void syncAccounts(const QList<CDTpAccountPtr> &accounts);
+    void syncAccountsForSelfContact(const QList<CDTpAccountPtr> &accounts, QContact &self);
     void createAccount(CDTpAccountPtr accountWrapper);
     void updateAccount(CDTpAccountPtr accountWrapper, CDTpAccount::Changes changes);
     void removeAccount(CDTpAccountPtr accountWrapper);
@@ -72,6 +73,7 @@ public Q_SLOTS:
             const QList<CDTpContactPtr> &contactsRemoved);
     void updateContact(CDTpContactPtr contactWrapper, CDTpContact::Changes changes);
     void reportPresenceStates();
+    void reportPresenceState(QContact &self);
 
 public:
     void createAccountContacts(CDTpAccountPtr accountWrapper, const QStringList &imIds, uint localId);

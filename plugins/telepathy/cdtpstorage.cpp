@@ -1,6 +1,8 @@
 /** This file is part of Contacts daemon
  **
  ** Copyright (c) 2010-2011 Nokia Corporation and/or its subsidiary(-ies).
+ ** Copyright (c) 2012 - 2019 Jolla Ltd.
+ ** Copyright (c) 2020 Open Mobile Platform LLC.
  **
  ** Contact:  Nokia Corporation (info@qt.nokia.com)
  **
@@ -27,6 +29,8 @@
 #include <TelepathyQt/ConnectionCapabilities>
 
 #include <qtcontacts-extensions.h>
+#include <qtcontacts-extensions_manager_impl.h>
+#include <contactmanagerengine.h>
 #include <QContactOriginMetadata>
 
 #include <QContact>
@@ -37,6 +41,7 @@
 #include <QContactRelationshipFilter>
 #include <QContactUnionFilter>
 #include <QContactIdFilter>
+#include <QContactCollectionFilter>
 
 #include <QContactAddress>
 #include <QContactAvatar>
@@ -52,7 +57,6 @@
 #include <QContactOrganization>
 #include <QContactPhoneNumber>
 #include <QContactPresence>
-#include <QContactSyncTarget>
 #include <QContactRelationship>
 #include <QContactUrl>
 
@@ -77,6 +81,8 @@ using namespace Contactsd;
 typedef QList<QContactDetail::DetailType> DetailList;
 
 namespace {
+
+const QString telepathyCollectionName = QStringLiteral("telepathy");
 
 template<int N>
 const QString &sourceLocation(const char *f)
@@ -180,19 +186,88 @@ QContactManager *manager()
     return &manager;
 }
 
-QContactDetailFilter matchTelepathyFilter()
-{
-    QContactDetailFilter filter;
-    filter.setDetailType(QContactSyncTarget::Type, QContactSyncTarget::FieldSyncTarget);
-    filter.setValue(QLatin1String("telepathy"));
-    filter.setMatchFlags(QContactFilter::MatchExactly);
-    return filter;
-}
-
 template<typename T>
 DetailList::value_type detailType()
 {
     return T::Type;
+}
+
+bool matchesTelepathyCollectionId(const QContactCollection &collection, int matchAccountId = 0)
+{
+    const QString name = collection.metaData(QContactCollection::KeyName).toString();
+    const QString appName = collection.extendedMetaData(COLLECTION_EXTENDEDMETADATA_KEY_APPLICATIONNAME).toString();
+    const int accountId = collection.extendedMetaData(COLLECTION_EXTENDEDMETADATA_KEY_ACCOUNTID).toInt();
+
+    return name == telepathyCollectionName
+            && appName == QCoreApplication::applicationName()
+            && (matchAccountId == 0 || matchAccountId == accountId);
+}
+
+QList<QContactCollection> allTelepathyCollections()
+{
+    QList<QContactCollection> telepathyCollections;
+
+    const QList<QContactCollection> collections = manager()->collections();
+    for (const QContactCollection &collection : collections) {
+        if (matchesTelepathyCollectionId(collection)) {
+            debug() << "Found telepathy collection" << collection.id();
+            telepathyCollections.append(collection);
+        }
+    }
+
+    return telepathyCollections;
+}
+
+QContactCollectionId telepathyCollectionId(int accountId)
+{
+    const QList<QContactCollection> collections = manager()->collections();
+    QContactCollectionId matchedCollectionId;
+
+    for (const QContactCollection &collection : collections) {
+        if (matchesTelepathyCollectionId(collection, accountId)) {
+            debug() << "Found telepathy collection" << collection.id()
+                    << "for accountId:" << accountId;
+            matchedCollectionId = collection.id();
+            break;
+        }
+    }
+
+    if (!matchedCollectionId.isNull()) {
+        return matchedCollectionId;
+    }
+
+    QContactCollection collection;
+    collection.setMetaData(QContactCollection::KeyName, telepathyCollectionName);
+    collection.setMetaData(QContactCollection::KeyDescription, QStringLiteral("Telepathy contacts"));
+    collection.setMetaData(QContactCollection::KeyColor, QStringLiteral("darkblue"));
+    collection.setMetaData(QContactCollection::KeySecondaryColor, QStringLiteral("blue"));
+    collection.setMetaData(QContactCollection::KeyImage, QStringLiteral("image://theme/graphic-service-xmpp"));
+    collection.setExtendedMetaData(COLLECTION_EXTENDEDMETADATA_KEY_APPLICATIONNAME, QCoreApplication::applicationName());
+    collection.setExtendedMetaData(COLLECTION_EXTENDEDMETADATA_KEY_READONLY, true);
+    collection.setExtendedMetaData(COLLECTION_EXTENDEDMETADATA_KEY_ACCOUNTID, accountId);
+
+    if (manager()->saveCollection(&collection)) {
+        debug() << "Created telepathy collection for account:" << accountId;
+        return collection.id();
+    }
+
+    warning() << "Unable to create telepathy collection for account!" << accountId
+              << "error was:" << manager()->error();
+    return QContactCollectionId();
+}
+
+QContactCollectionId telepathyCollectionId(const QString &accountPath)
+{
+    const int i = accountPath.lastIndexOf(QLatin1Char('_'));
+    if (i >= 0) {
+        int accountId = accountPath.mid(i + 1).toInt();
+        if (accountId > 0) {
+            return telepathyCollectionId(accountId);
+        }
+    }
+
+    warning() << "telepathy accountPath does not contain valid account id:" << accountPath;
+    return QContactCollectionId();
 }
 
 QContactFetchHint contactFetchHint(const DetailList &detailTypes = DetailList())
@@ -216,7 +291,7 @@ QContactId selfContactAggregateId()
     return manager()->selfContactId();
 }
 
-QContactId selfContactLocalId()
+QContactId selfContactLocalId(const QContactCollectionId &collectionId)
 {
     QContactManager *mgr(manager());
 
@@ -231,8 +306,11 @@ QContactId selfContactLocalId()
     relationshipFilter.setRelatedContactId(relatedContact.id());
     relationshipFilter.setRelatedContactRole(QContactRelationship::First);
 
+    QContactCollectionFilter collectionFilter;
+    collectionFilter.setCollectionId(collectionId);
+
     QContactIntersectionFilter selfFilter;
-    selfFilter << matchTelepathyFilter();
+    selfFilter << collectionFilter;
     selfFilter << relationshipFilter;
 
     QList<QContactId> selfContactIds = mgr->contactIds(selfFilter);
@@ -240,66 +318,61 @@ QContactId selfContactLocalId()
         if (selfContactIds.count() > 1) {
             warning() << "Invalid number of telepathy self contacts!" << selfContactIds.count();
         }
+        debug() << "Found self contact" << selfContactIds.first() << "for collection:" << collectionId;
         return selfContactIds.first();
     }
 
     // Create a new self contact for telepathy
-    debug() << "Creating self contact";
+    debug() << "Creating self contact for collection:" << collectionId;
     QContact tpSelf;
+    tpSelf.setCollectionId(collectionId);
 
-    QContactSyncTarget syncTarget;
-    syncTarget.setSyncTarget(QLatin1String("telepathy"));
-
-    if (!tpSelf.saveDetail(&syncTarget)) {
-        warning() << SRC_LOC << "Unable to add sync target to self contact";
+    if (!mgr->saveContact(&tpSelf)) {
+        warning() << "Unable to save empty contact as self contact - error:" << mgr->error();
     } else {
-        if (!mgr->saveContact(&tpSelf)) {
-            warning() << "Unable to save empty contact as self contact - error:" << mgr->error();
-        } else {
-            // Now connect our contact to the real self contact
+        // Now connect our contact to the real self contact
+        QContactRelationship relationship;
+        relationship.setRelationshipType(QContactRelationship::Aggregates());
+        relatedContact.setId(selfId);
+        relationship.setFirst(relatedContact.id());
+        relationship.setSecond(tpSelf.id());
+
+        if (!mgr->saveRelationship(&relationship)) {
+            warning() << "Unable to save relationship for self contact - error:" << mgr->error();
+            qFatal("Cannot proceed with invalid self contact!");
+        }
+
+        // Find the aggregate contact created by saving our self contact
+        relationshipFilter.setRelationshipType(QContactRelationship::Aggregates());
+        relatedContact.setId(tpSelf.id());
+        relationshipFilter.setRelatedContactId(relatedContact.id());
+        relationshipFilter.setRelatedContactRole(QContactRelationship::Second);
+
+        foreach (const QContact &aggregator, mgr->contacts(relationshipFilter)) {
+            if (aggregator.id() == tpSelf.id())
+                continue;
+
+            // Remove the relationship between these contacts (which removes the childless aggregate)
             QContactRelationship relationship;
             relationship.setRelationshipType(QContactRelationship::Aggregates());
-            relatedContact.setId(selfId);
-            relationship.setFirst(relatedContact.id());
+            relationship.setFirst(aggregator.id());
             relationship.setSecond(tpSelf.id());
 
-            if (!mgr->saveRelationship(&relationship)) {
-                warning() << "Unable to save relationship for self contact - error:" << mgr->error();
-                qFatal("Cannot proceed with invalid self contact!");
+            if (!mgr->removeRelationship(relationship)) {
+                warning() << "Unable to remove relationship for self contact - error:" << mgr->error();
             }
-
-            // Find the aggregate contact created by saving our self contact
-            relationshipFilter.setRelationshipType(QContactRelationship::Aggregates());
-            relatedContact.setId(tpSelf.id());
-            relationshipFilter.setRelatedContactId(relatedContact.id());
-            relationshipFilter.setRelatedContactRole(QContactRelationship::Second);
-
-            foreach (const QContact &aggregator, mgr->contacts(relationshipFilter)) {
-                if (aggregator.id() == tpSelf.id())
-                    continue;
-
-                // Remove the relationship between these contacts (which removes the childless aggregate)
-                QContactRelationship relationship;
-                relationship.setRelationshipType(QContactRelationship::Aggregates());
-                relationship.setFirst(aggregator.id());
-                relationship.setSecond(tpSelf.id());
-
-                if (!mgr->removeRelationship(relationship)) {
-                    warning() << "Unable to remove relationship for self contact - error:" << mgr->error();
-                }
-            }
-
-            return tpSelf.id();
         }
+
+        return tpSelf.id();
     }
 
     return QContactId();
 }
 
-QContact selfContact()
+QContact selfContact(const QContactCollectionId &collectionId)
 {
     // For the self contact, we only care about accounts/presence/avatars
-    static QContactId selfLocalId(selfContactLocalId());
+    static QContactId selfLocalId(selfContactLocalId(collectionId));
     static QContactFetchHint hint(contactFetchHint(DetailList() << detailType<QContactOnlineAccount>()
                                                                 << detailType<QContactPresence>()
                                                                 << detailType<QContactGlobalPresence>()
@@ -646,13 +719,20 @@ QList<QContactId> findContactIdsForAccount(const QString &accountPath)
 {
     QContactIntersectionFilter filter;
     filter << QContactOriginMetadata::matchGroupId(accountPath);
-    filter << matchTelepathyFilter();
+
+    QContactCollectionFilter collectionFilter;
+    collectionFilter.setCollectionId(telepathyCollectionId(accountPath));
+    filter << collectionFilter;
+
     return manager()->contactIds(filter);
 }
 
-QHash<QString, QContact> findExistingContacts(const QStringList &contactAddresses)
+QHash<QString, QContact> findExistingContacts(const QStringList &contactAddresses, const QContactCollectionId &collectionId)
 {
     QHash<QString, QContact> rv;
+
+    QContactCollectionFilter collectionFilter;
+    collectionFilter.setCollectionId(collectionId);
 
     // If there is a large number of contacts, do a two-step fetch
     const int maxDirectMatches = 10;
@@ -662,7 +742,7 @@ QHash<QString, QContact> findExistingContacts(const QStringList &contactAddresse
 
         // First fetch all telepathy contacts, ID data only
         QContactFetchHint idHint(contactFetchHint(DetailList() << detailType<QContactOriginMetadata>()));
-        foreach (const QContact &contact, manager()->contacts(matchTelepathyFilter(), QList<QContactSortOrder>(), idHint)) {
+        foreach (const QContact &contact, manager()->contacts(collectionFilter, QList<QContactSortOrder>(), idHint)) {
             const QString &address = stringValue(contact.detail<QContactOriginMetadata>(), QContactOriginMetadata::FieldId);
             if (addressSet.contains(address)) {
                 ids.append(contact.id());
@@ -677,7 +757,7 @@ QHash<QString, QContact> findExistingContacts(const QStringList &contactAddresse
     } else {
         // Just query the ones we need
         QContactIntersectionFilter filter;
-        filter << matchTelepathyFilter();
+        filter << collectionFilter;
 
         QContactUnionFilter addressFilter;
         foreach (const QString &address, contactAddresses) {
@@ -694,16 +774,19 @@ QHash<QString, QContact> findExistingContacts(const QStringList &contactAddresse
     return rv;
 }
 
-QHash<QString, QContact> findExistingContacts(const QSet<QString> &contactAddresses)
+QHash<QString, QContact> findExistingContacts(const QSet<QString> &contactAddresses, const QContactCollectionId &collectionId)
 {
-    return findExistingContacts(contactAddresses.toList());
+    return findExistingContacts(contactAddresses.toList(), collectionId);
 }
 
-QContact findExistingContact(const QString &contactAddress)
+QContact findExistingContact(const QString &contactAddress, const QContactCollectionId &collectionId)
 {
     QContactIntersectionFilter filter;
     filter << QContactOriginMetadata::matchId(contactAddress);
-    filter << matchTelepathyFilter();
+
+    QContactCollectionFilter collectionFilter;
+    collectionFilter.setCollectionId(collectionId);
+    filter << collectionFilter;
 
     QContactFetchHint hint(contactFetchHint());
     foreach (const QContact &contact, manager()->contacts(filter, QList<QContactSortOrder>(), hint)) {
@@ -789,16 +872,6 @@ QString imPresence(const QString &accountPath, const QString &contactId = QStrin
 QString imPresence(Tp::AccountPtr account, const QString &contactId = QString())
 {
     return imPresence(imAccount(account), contactId);
-}
-
-QString imPresence(CDTpAccountPtr accountWrapper, const QString &contactId = QString())
-{
-    return imPresence(accountWrapper->account(), contactId);
-}
-
-QString imPresence(CDTpContactPtr contactWrapper)
-{
-    return imPresence(contactWrapper->accountWrapper(), contactWrapper->contact()->id());
 }
 
 QContactPresence::PresenceState qContactPresenceState(Tp::ConnectionPresenceType presenceType)
@@ -1292,10 +1365,6 @@ bool invalidDetail(const QContactName &name)
            name.middleName().isEmpty() &&
            name.lastName().isEmpty() &&
            name.suffix().isEmpty();
-}
-bool invalidDetail(const QContactNickname &nickname)
-{
-    return nickname.nickname().isEmpty();
 }
 bool invalidDetail(const QContactNote &note)
 {
@@ -1931,7 +2000,9 @@ void CDTpStorage::addNewAccount()
     // Disconnect the signal
     disconnect(account, SIGNAL(readyChanged()), this, SLOT(addNewAccount()));
 
-    QContact self(selfContact());
+    // Create a new contact collection for this account
+    const QContactCollectionId collectionId = telepathyCollectionId(imAccount(account));
+    QContact self(selfContact(collectionId));
 
     debug() << "New account" << imAccount(account) << "is ready, calling delayed addNewAccount";
     addNewAccount(self, CDTpAccountPtr(account));
@@ -1988,29 +2059,24 @@ void CDTpStorage::addNewAccount(QContact &self, CDTpAccountPtr accountWrapper)
 
 void CDTpStorage::removeExistingAccount(QContact &self, QContactOnlineAccount &existing)
 {
+    Q_UNUSED(self)
+
     const QString accountPath(stringValue(existing, QContactOnlineAccount__FieldAccountPath));
 
-    // Remove any contacts derived from this account
-    if (!manager()->removeContacts(findContactIdsForAccount(accountPath))) {
-        warning() << SRC_LOC << "Unable to remove linked contacts for account:" << accountPath << "error:" << manager()->error();
-    }
+    debug() << "Remove account for path" << accountPath
+            << " and collection id" << telepathyCollectionId(accountPath);
 
-    // Remove any details linked from the account
-    QStringList linkedUris(existing.linkedDetailUris());
-
-    foreach (QContactDetail detail, self.details()) {
-        const QString &uri(detail.detailUri());
-        if (!uri.isEmpty()) {
-            if (linkedUris.contains(uri)) {
-                if (!self.removeDetail(&detail)) {
-                    warning() << SRC_LOC << "Unable to remove linked detail with URI:" << uri;
-                }
-            }
-        }
-    }
-
-    if (!self.removeDetail(&existing)) {
-        warning() << SRC_LOC << "Unable to remove obsolete account:" << accountPath;
+    // Delete the collection and its contacts.
+    QtContactsSqliteExtensions::ContactManagerEngine *cme = QtContactsSqliteExtensions::contactManagerEngine(*manager());
+    QContactManager::Error error = QContactManager::NoError;
+    if (!cme->storeChanges(nullptr,
+                          nullptr,
+                          QList<QContactCollectionId>() << telepathyCollectionId(accountPath),
+                          QtContactsSqliteExtensions::ContactManagerEngine::PreserveLocalChanges,
+                          true,
+                          &error)) {
+        warning() << SRC_LOC << "Unable to remove linked contacts for account:" << accountPath
+                  << "error:" << error;
     }
 }
 
@@ -2024,13 +2090,8 @@ bool CDTpStorage::initializeNewContact(QContact &newContact, CDTpAccountPtr acco
 
     debug() << "Creating new contact - address:" << contactAddress;
 
-    // This contact is synchronized with telepathy
-    QContactSyncTarget syncTarget;
-    syncTarget.setSyncTarget(QLatin1String("telepathy"));
-    if (!storeContactDetail(newContact, syncTarget, SRC_LOC)) {
-        warning() << SRC_LOC << "Unable to add sync target to contact:" << contactAddress;
-        return false;
-    }
+    // This contact belongs to a telepathy address book
+    newContact.setCollectionId(telepathyCollectionId(accountPath));
 
     // Create a metadata field to link the contact with the telepathy data
     QContactOriginMetadata metadata;
@@ -2105,7 +2166,8 @@ void CDTpStorage::updateContactChanges(CDTpContactPtr contactWrapper, CDTpContac
     ContactChangeSet saveSet;
     QList<QContactId> removeList;
 
-    QContact existing = findExistingContact(imAddress(contactWrapper));
+    QContact existing = findExistingContact(imAddress(contactWrapper),
+                                            telepathyCollectionId(imAccount(contactWrapper)));
     updateContactChanges(contactWrapper, changes, existing, &saveSet, &removeList);
 
     updateContacts(SRC_LOC, &saveSet, &removeList);
@@ -2235,7 +2297,8 @@ void CDTpStorage::updateAccountChanges(QContact &self, QContactOnlineAccount &qc
         }
 
         // Retrieve the existing contacts in a single batch
-        QHash<QString, QContact> existingContacts = findExistingContacts(contactAddresses);
+        QHash<QString, QContact> existingContacts = findExistingContacts(
+                    contactAddresses, telepathyCollectionId(imAccount(accountWrapper)));
 
         ContactChangeSet saveSet;
         QList<QContactId> removeList;
@@ -2339,16 +2402,24 @@ void CDTpStorage::updateAccountChanges(QContact &self, QContactOnlineAccount &qc
 
 void CDTpStorage::syncAccounts(const QList<CDTpAccountPtr> &accounts)
 {
-    QContact self(selfContact());
-    if (self.isEmpty()) {
-        warning() << SRC_LOC << "Unable to retrieve self contact - error:" << manager()->error();
-        return;
-    }
+    qWarning() << "CDTpStorage: syncAccounts:" << accounts.count();
 
+    for (CDTpAccountPtr accountWrapper : accounts) {
+        QContact self(selfContact(telepathyCollectionId(imAccount(accountWrapper))));
+        if (self.isEmpty()) {
+            warning() << SRC_LOC << "Unable to retrieve self contact - error:" << manager()->error();
+            return;
+        }
+        syncAccountsForSelfContact(accounts, self);
+    }
+}
+
+void CDTpStorage::syncAccountsForSelfContact(const QList<CDTpAccountPtr> &accounts, QContact &self)
+{
     // Find the list of paths for the accounts we now have
     QStringList accountPaths = forEachItem(accounts, extractAccountPath);
 
-    qWarning() << "CDTpStorage: syncAccounts:" << accountPaths;
+    qWarning() << "CDTpStorage: syncAccountsForSelfContact:" << accountPaths;
 
     QSet<int> existingIndices;
     QSet<QString> removalPaths;
@@ -2392,7 +2463,7 @@ void CDTpStorage::syncAccounts(const QList<CDTpAccountPtr> &accounts)
 
 void CDTpStorage::createAccount(CDTpAccountPtr accountWrapper)
 {
-    QContact self(selfContact());
+    QContact self(selfContact(telepathyCollectionId(imAccount(accountWrapper))));
     if (self.isEmpty()) {
         warning() << SRC_LOC << "Unable to retrieve self contact:" << manager()->error();
         return;
@@ -2423,7 +2494,8 @@ void CDTpStorage::createAccount(CDTpAccountPtr accountWrapper)
     }
 
     // Retrieve the existing contacts in a single batch
-    QHash<QString, QContact> existingContacts = findExistingContacts(contactAddresses);
+    QHash<QString, QContact> existingContacts = findExistingContacts(
+                contactAddresses, telepathyCollectionId(imAccount(accountWrapper)));
 
     ContactChangeSet saveSet;
     QList<QContactId> removeList;
@@ -2446,7 +2518,7 @@ void CDTpStorage::createAccount(CDTpAccountPtr accountWrapper)
 
 void CDTpStorage::updateAccount(CDTpAccountPtr accountWrapper, CDTpAccount::Changes changes)
 {
-    QContact self(selfContact());
+    QContact self(selfContact(telepathyCollectionId(imAccount(accountWrapper))));
     if (self.isEmpty()) {
         warning() << SRC_LOC << "Unable to retrieve self contact:" << manager()->error();
         return;
@@ -2471,7 +2543,7 @@ void CDTpStorage::removeAccount(CDTpAccountPtr accountWrapper)
 {
     cancelQueuedUpdates(accountContacts(accountWrapper));
 
-    QContact self(selfContact());
+    QContact self(selfContact(telepathyCollectionId(imAccount(accountWrapper))));
     if (self.isEmpty()) {
         warning() << SRC_LOC << "Unable to retrieve self contact:" << manager()->error();
         return;
@@ -2497,7 +2569,7 @@ void CDTpStorage::removeAccount(CDTpAccountPtr accountWrapper)
 // This is called when account goes online/offline
 void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper)
 {
-    QContact self(selfContact());
+    QContact self(selfContact(telepathyCollectionId(imAccount(accountWrapper))));
     if (self.isEmpty()) {
         warning() << SRC_LOC << "Unable to retrieve self contact:" << manager()->error();
         return;
@@ -2550,7 +2622,8 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper, const QList
     }
 
     // Retrieve the existing contacts in a single batch
-    QHash<QString, QContact> existingContacts = findExistingContacts(contactAddresses);
+    QHash<QString, QContact> existingContacts = findExistingContacts(
+                contactAddresses, telepathyCollectionId(imAccount(accountWrapper)));
 
     ContactChangeSet saveSet;
     QList<QContactId> removeList;
@@ -2672,8 +2745,12 @@ void CDTpStorage::onUpdateQueueTimeout()
 
     mUpdateQueue.clear();
 
-    // Retrieve the existing contacts in a single batch
-    QHash<QString, QContact> existingContacts = findExistingContacts(contactAddresses);
+    // Retrieve the existing contacts
+    QHash<QString, QContact> existingContacts;
+    const QList<QContactCollection> telepathyCollections = allTelepathyCollections();
+    for (const QContactCollection &collection : telepathyCollections) {
+        existingContacts.unite(findExistingContacts(contactAddresses, collection.id()));
+    }
 
     ContactChangeSet saveSet;
     QList<QContactId> removeList;
@@ -2715,12 +2792,20 @@ void CDTpStorage::cancelQueuedUpdates(const QList<CDTpContactPtr> &contacts)
 
 void CDTpStorage::reportPresenceStates()
 {
-    QContact self(selfContact());
-    if (self.isEmpty()) {
-        warning() << SRC_LOC << "Unable to retrieve self contact - error:" << manager()->error();
-        return;
-    }
+    const QList<QContactCollection> telepathyCollections = allTelepathyCollections();
 
+    for (const QContactCollection &collection : telepathyCollections) {
+        QContact self(selfContact(collection.id()));
+        if (self.isEmpty()) {
+            warning() << SRC_LOC << "Unable to retrieve self contact - error:" << manager()->error();
+        } else {
+            reportPresenceState(self);
+        }
+    }
+}
+
+void CDTpStorage::reportPresenceState(QContact &self)
+{
     emit mDevicePresence->globalUpdate(self.detail<QContactGlobalPresence>().presenceState());
 
     QStringList accountPaths;

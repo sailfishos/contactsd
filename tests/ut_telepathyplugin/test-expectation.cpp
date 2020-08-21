@@ -33,13 +33,13 @@
 #include <QContactOnlineAccount>
 #include <QContactPhoneNumber>
 #include <QContactPresence>
-#include <QContactSyncTarget>
 #include <QContactTag>
+
+#include <qtcontacts-extensions.h>
+#include <qtcontacts-extensions_impl.h>
 
 #include "test-expectation.h"
 #include "debug.h"
-
-const int QContactOnlineAccount__FieldAccountPath = (QContactOnlineAccount::FieldSubTypes+1);
 
 // --- TestExpectation ---
 
@@ -161,7 +161,6 @@ void TestExpectationCleanup::verify(Event event, const QList<QContact> &contacts
             continue;
         }
 
-        QContactSyncTarget detail = contact.detail<QContactSyncTarget>();
         mNContacts--;
     }
 
@@ -202,7 +201,7 @@ void TestExpectationContact::verify(Event event, const QList<QContact> &contacts
 
     mContact = QContact();
     Q_FOREACH (const QContact &contact, contacts) {
-        if (mSyncTarget.isEmpty() || mSyncTarget == contact.detail<QContactSyncTarget>().syncTarget()) {
+        if (contact.collectionId().isNull() || mCollectionId == contact.collectionId()) {
             mContact = contact;
         }
     }
@@ -333,8 +332,8 @@ void TestExpectationContact::verify(const QContact &contact)
     }
 
     if (mFlags & VerifyGenerator) {
-        QContactSyncTarget detail = contact.detail<QContactSyncTarget>();
-        QVERIFY((detail.syncTarget() == mGenerator) || (detail.syncTarget() == "aggregate"));
+        QContactCollectionId aggregateCollectionId = QtContactsSqliteExtensions::aggregateCollectionId(contactManager()->managerUri());
+        QVERIFY(contact.collectionId() == mGenerator || contact.collectionId() == aggregateCollectionId);
     }
 }
 
@@ -418,7 +417,7 @@ TestExpectationDisconnect::TestExpectationDisconnect(int nContacts) :
 void TestExpectationDisconnect::verify(Event event, const QList<QContact> &contacts)
 {
     Q_FOREACH (const QContact &contact, contacts) {
-        if (contact.detail<QContactSyncTarget>().syncTarget() != "aggregate") {
+        if (contact.collectionId() == QtContactsSqliteExtensions::aggregateCollectionId(contactManager()->managerUri())) {
             mNContacts--;
         } else {
             if (contact.id() == contactManager()->selfContactId()) {

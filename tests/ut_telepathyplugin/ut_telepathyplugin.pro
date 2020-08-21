@@ -39,7 +39,7 @@ CONFIG += link_pkgconfig
 DEFINES += QT_NO_KEYWORDS
 DEFINES += ENABLE_DEBUG
 
-PKGCONFIG += Qt5Contacts TelepathyQt5 telepathy-glib dbus-glib-1 gio-2.0
+PKGCONFIG += Qt5Contacts qtcontacts-sqlite-qt5-extensions TelepathyQt5 telepathy-glib dbus-glib-1 gio-2.0
 
 system(cp $$PWD/../../plugins/telepathy/com.nokia.contacts.buddymanagement.xml .)
 system(qdbusxml2cpp -c BuddyManagementInterface -p buddymanagementinterface.h:buddymanagementinterface.cpp com.nokia.contacts.buddymanagement.xml)
