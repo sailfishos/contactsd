@@ -1,8 +1,7 @@
 /** This file is part of Contacts daemon
  **
- ** Copyright (c) 2014 Jolla Ltd
- **
- ** Contact:  Chris Adams (chris.adams@jolla.com)
+ ** Copyright (c) 2014 - 2019 Jolla Ltd
+ ** Copyright (c) 2020 Open Mobile Platform LLC.
  **
  ** GNU Lesser General Public License Usage
  ** This file may be used under the terms of the GNU Lesser General Public License
@@ -60,10 +59,10 @@ bool SyncTrigger::registerTriggerService()
     return true;
 }
 
-void SyncTrigger::triggerSync(const QStringList &syncTargets, int syncPolicy, int directionPolicy)
+void SyncTrigger::triggerSync(const QStringList &accountProviders, int syncPolicy, int directionPolicy)
 {
     // TODO: in the future, handle AdaptivePolicy by coalescing triggered syncs into time segments.
-    debug() << "triggering sync:" << syncTargets << syncPolicy << directionPolicy;
+    debug() << "triggering sync:" << accountProviders << syncPolicy << directionPolicy;
 
     // We trigger sync with a particular Buteo sync profile if:
     //  - the profile is a per-account (not template) profile
@@ -88,13 +87,13 @@ void SyncTrigger::triggerSync(const QStringList &syncTargets, int syncPolicy, in
         bool alwaysUpToDate = profile->key(Buteo::KEY_SYNC_ALWAYS_UP_TO_DATE, QStringLiteral("false")) == QStringLiteral("true");
 
         // By convention, the template profile name should be of the form:
-        // "syncTarget.dataType" -- eg, "google.Contacts"
+        // "accountProvider.dataType" -- eg, "google.Contacts"
         // And per-account profiles should be suffixed with "-accountId"
         bool isContacts = profileId.toLower().contains(QStringLiteral("contacts"));
-        bool isTarget = syncTargets.isEmpty();
+        bool isTarget = accountProviders.isEmpty();
         if (!isTarget) {
-            Q_FOREACH (const QString &syncTarget, syncTargets) {
-                if (profileId.toLower().startsWith(syncTarget.toLower())) {
+            Q_FOREACH (const QString &accountProvider, accountProviders) {
+                if (profileId.toLower().startsWith(accountProvider.toLower())) {
                     isTarget = true;
                     break;
                 }
@@ -124,10 +123,10 @@ void SyncTrigger::triggerSync(const QStringList &syncTargets, int syncPolicy, in
     }
 
     // And we trigger exchange separately if the "mfe" or "exchange" or "activesync" target is specified.
-    if (syncTargets.isEmpty()
-            || syncTargets.contains(QStringLiteral("mfe"), Qt::CaseInsensitive)
-            || syncTargets.contains(QStringLiteral("exchange"), Qt::CaseInsensitive)
-            || syncTargets.contains(QStringLiteral("activesync"), Qt::CaseInsensitive)) {
+    if (accountProviders.isEmpty()
+            || accountProviders.contains(QStringLiteral("mfe"), Qt::CaseInsensitive)
+            || accountProviders.contains(QStringLiteral("exchange"), Qt::CaseInsensitive)
+            || accountProviders.contains(QStringLiteral("activesync"), Qt::CaseInsensitive)) {
         QDBusMessage message = QDBusMessage::createMethodCall(
                 QStringLiteral("com.nokia.asdbus"),
                 QStringLiteral("/com/nokia/asdbus"),

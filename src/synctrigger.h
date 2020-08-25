@@ -1,8 +1,7 @@
 /** This file is part of Contacts daemon
  **
- ** Copyright (c) 2014 Jolla Ltd
- **
- ** Contact:  Chris Adams (chris.adams@jolla.com)
+ ** Copyright (c) 2014 - 2019 Jolla Ltd
+ ** Copyright (c) 2020 Open Mobile Platform LLC.
  **
  ** GNU Lesser General Public License Usage
  ** This file may be used under the terms of the GNU Lesser General Public License
@@ -49,7 +48,7 @@ public:
     };
 
 public Q_SLOTS:
-    Q_NOREPLY void triggerSync(const QStringList &syncTargets = QStringList(), int syncPolicy = ForceSync, int directionPolicy = AnyDirection);
+    Q_NOREPLY void triggerSync(const QStringList &accountProviders = QStringList(), int syncPolicy = ForceSync, int directionPolicy = AnyDirection);
 
 private:
     QDBusConnection *mDBusConnection;
