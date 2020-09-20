@@ -1,14 +1,12 @@
+include(../contacts-extensions.pri)
+
 TEMPLATE = lib
 QT -= gui
 QT += dbus
-QT += contacts-private
 
 CONFIG += plugin
 
-CONFIG += link_pkgconfig
-PKGCONFIG += buteosyncfw5
-PKGCONFIG += mlite5
-PKGCONFIG += qtcontacts-sqlite-qt5-extensions
+PKGCONFIG += buteosyncfw5 accounts-qt5
 DEFINES *= QTCONTACTS_SQLITE_PERFORM_AGGREGATION
 
 DEFINES -= QT_NO_CAST_TO_ASCII
@@ -17,7 +15,7 @@ DEFINES -= QT_NO_CAST_FROM_ASCII
 INCLUDEPATH += $$TOP_SOURCEDIR/src
 DEFINES += ENABLE_DEBUG
 
-HEADERS  = \
+HEADERS += \
     cdexportercontroller.h \
     cdexporterplugin.h
 
