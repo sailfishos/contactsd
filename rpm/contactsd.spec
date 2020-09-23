@@ -1,5 +1,5 @@
 Name: contactsd
-Version: 1.3.4
+Version: 1.4.0
 Release: 1
 Summary: Telepathy <> QtContacts bridge for contacts
 URL: https://git.merproject.org/mer-core/contactsd
@@ -23,7 +23,7 @@ BuildRequires: pkgconfig(libkcalcoren-qt5)
 BuildRequires: pkgconfig(telepathy-glib)
 BuildRequires: pkgconfig(qofono-qt5)
 BuildRequires: pkgconfig(qofonoext)
-BuildRequires: pkgconfig(qtcontacts-sqlite-qt5-extensions) >= 0.1.64
+BuildRequires: pkgconfig(qtcontacts-sqlite-qt5-extensions) >= 0.3.0
 BuildRequires: pkgconfig(dbus-glib-1)
 BuildRequires: pkgconfig(gio-2.0)
 BuildRequires: pkgconfig(accounts-qt5)
