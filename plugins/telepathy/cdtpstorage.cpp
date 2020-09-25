@@ -1714,7 +1714,7 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
                     }
 
                     if (!formattedName.isEmpty()) {
-                        nameDetail.setValue(QContactName__FieldCustomLabel, formattedName);
+                        nameDetail.setValue(QContactName::FieldCustomLabel, formattedName);
                     }
 
                     newName = nameDetail;
@@ -1776,7 +1776,7 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
             if ((oldName.firstName() != newName.firstName()) ||
                 (oldName.middleName() != newName.middleName()) ||
                 (oldName.lastName() != newName.lastName()) ||
-                (oldName.value<QString>(QContactName__FieldCustomLabel) != newName.value<QString>(QContactName__FieldCustomLabel)) ||
+                (oldName.value<QString>(QContactName::FieldCustomLabel) != newName.value<QString>(QContactName::FieldCustomLabel)) ||
                 (oldName.prefix() != newName.prefix()) ||
                 (oldName.suffix() != newName.suffix())) {
                 changed |= replaceDetails(existing, newName, contactAddress, SRC_LOC);
@@ -2139,7 +2139,7 @@ bool CDTpStorage::initializeNewContact(QContact &newContact, CDTpAccountPtr acco
 
         decomposeNameDetails(alias, &name);
 
-        name.setValue(QContactName__FieldCustomLabel, alias);
+        name.setValue(QContactName::FieldCustomLabel, alias);
 
         if (!storeContactDetail(newContact, name, SRC_LOC)) {
             warning() << SRC_LOC << "Unable to save name to contact for:" << contactAddress;
