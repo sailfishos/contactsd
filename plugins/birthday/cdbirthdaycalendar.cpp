@@ -25,6 +25,8 @@
 
 #include <QContactName>
 #include <QContactBirthday>
+#include <QContactDisplayLabel>
+#include <QContactId>
 
 #include <MLocale>
 

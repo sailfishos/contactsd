@@ -17,7 +17,7 @@
 #include "cdsimplugin.h"
 #include "debug.h"
 
-#include <qofonomanager.h>
+#include <qofonoextmodemmanager.h>
 
 using namespace Contactsd;
 
@@ -39,8 +39,9 @@ void CDSimPlugin::init()
     // Associate CDSimController with the default modem
     // NB: Expect this to happen asynchronously, as a result of receiving
     // defaultModemChanged signal.
-    QOfonoManager* ofonoManager = new QOfonoManager(mController);
-    connect(ofonoManager, SIGNAL(modemsChanged(QStringList)), mController, SLOT(setModemPaths(QStringList)));
+    QOfonoExtModemManager* modemManager = new QOfonoExtModemManager(mController);
+    connect(modemManager, &QOfonoExtModemManager::availableModemsChanged,
+            mController, &CDSimController::setModemPaths);
 }
 
 CDSimPlugin::MetaData CDSimPlugin::metaData()

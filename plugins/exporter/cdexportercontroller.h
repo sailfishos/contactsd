@@ -1,8 +1,7 @@
 /** This file is part of Contacts daemon
  **
- ** Copyright (c) 2014 Jolla Ltd.
- **
- ** Contact: Matt Vogt <matthew.vogt@jollamobile.com>
+ ** Copyright (c) 2014 - 2019 Jolla Ltd
+ ** Copyright (c) 2020 Open Mobile Platform LLC.
  **
  ** GNU Lesser General Public License Usage
  ** This file may be used under the terms of the GNU Lesser General Public License
@@ -17,14 +16,12 @@
 #define CDEXPORTERCONTROLLER_H
 
 #include <QObject>
-#include <QTimer>
-#include <QSet>
-#include <QStringList>
-#include <QString>
 
 #include <QContactManager>
 
-#include <MGConfItem>
+namespace Accounts {
+    class Manager;
+}
 
 QTCONTACTS_USE_NAMESPACE
 
@@ -33,42 +30,14 @@ class CDExporterController : public QObject
     Q_OBJECT
 
 public:
-    explicit CDExporterController(QObject *parent = 0);
+    explicit CDExporterController(QObject *parent = nullptr);
     ~CDExporterController();
 
-private slots:
-    void onPrivilegedContactsAdded(const QList<QContactId> &addedIds);
-    void onPrivilegedContactsChanged(const QList<QContactId> &changedIds);
-    void onPrivilegedContactsPresenceChanged(const QList<QContactId> &changedIds);
-    void onPrivilegedContactsRemoved(const QList<QContactId> &removedIds);
-
-    void onNonprivilegedContactsAdded(const QList<QContactId> &addedIds);
-    void onNonprivilegedContactsChanged(const QList<QContactId> &changedIds);
-    void onNonprivilegedContactsRemoved(const QList<QContactId> &removedIds);
-
-    void onSyncContactsChanged(const QStringList &syncTargets);
-
-    void onSyncTimeout();
-    void onExportTimeout();
-
 private:
-    enum ChangeType { PresenceChange, DataChange };
-    void scheduleSync(ChangeType type);
+    void collectionContactsChanged(const QList<QContactCollectionId> &collectionIds);
 
     QContactManager m_privilegedManager;
-    QContactManager m_nonprivilegedManager;
-    QTimer m_syncTimer;
-    QTimer m_exportTimer;
-    QSet<QString> m_syncTargetsNeedingSync;
-
-    MGConfItem m_disabledConf;
-    MGConfItem m_debugConf;
-    MGConfItem m_importConf;
-
-    uint m_lastSyncTimestamp;
-    int m_adaptiveSyncDelay;
-
-    bool m_syncAllTargets;
+    Accounts::Manager *m_manager = nullptr;
 };
 
 #endif // CDEXPORTERCONTROLLER_H

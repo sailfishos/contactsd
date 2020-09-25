@@ -1,8 +1,7 @@
 /** This file is part of Contacts daemon
  **
- ** Copyright (c) 2013-2014 Jolla Ltd.
- **
- ** Contact: Matt Vogt <matthew.vogt@jollamobile.com>
+ ** Copyright (c) 2013-2019 Jolla Ltd.
+ ** Copyright (c) 2020 Open Mobile Platform LLC.
  **
  ** GNU Lesser General Public License Usage
  ** This file may be used under the terms of the GNU Lesser General Public License
@@ -20,7 +19,8 @@
 
 #include <QContactManager>
 #include <QContact>
-#include <QContactDetailFilter>
+#include <QContactCollection>
+#include <QContactFilter>
 
 #include <QVersitReader>
 
@@ -41,10 +41,12 @@ class CDSimController : public QObject
     Q_OBJECT
 
 public:
-    explicit CDSimController(QObject *parent = 0, const QString &syncTarget = QString::fromLatin1("sim"), bool active = true);
+    explicit CDSimController(QObject *parent = 0, bool active = true);
     ~CDSimController();
 
     QContactManager &contactManager();
+    QContactCollection contactCollection(const QString &modemPath) const;
+    int modemIndex(const QString &modemPath) const;
 
     bool busy() const;
 
@@ -59,9 +61,7 @@ public Q_SLOTS:
 private:
     void updateBusy();
     void timerEvent(QTimerEvent *event);
-    void removeObsoleteSimContacts();
-
-    QContactDetailFilter simSyncTargetFilter() const;
+    void removeObsoleteSimCollections();
 
 private:
     friend class CDSimModemData;
@@ -69,7 +69,6 @@ private:
 
     QContactManager m_manager;
     bool m_transientImport;
-    QString m_simSyncTarget;
     bool m_busy;
     bool m_active;
     MGConfItem m_transientImportConf;
@@ -77,6 +76,7 @@ private:
 
     QMap<QString, CDSimModemData *> m_modems;
     QSet<QString> m_absentModemPaths;
+    QStringList m_availableModems;
 };
 
 class CDSimModemData : public QObject
@@ -91,12 +91,16 @@ public:
     QContactManager &manager() const;
 
     QString modemIdentifier() const;
-    QContactFilter modemFilter(const QString &cardIdentifier) const;
+    QString modemPath() const;
+    QContactCollection contactCollection() const;
+    QList<QContact> fetchContacts() const;
 
     bool ready() const;
     void setReady(bool ready);
 
     void updateBusy();
+
+    static bool removeCollections(QContactManager *manager, const QList<QContactCollectionId> &collectionIds);
 
 Q_SIGNALS:
     void readyChanged(bool ready);
@@ -115,6 +119,7 @@ public:
     void ensureSimContactsPresent();
     void updateVoicemailConfiguration();
     void performTransientImport();
+    void initCollection();
 
     void timerEvent(QTimerEvent *event);
 
@@ -126,6 +131,7 @@ public:
     MGConfItem *m_voicemailConf;
     QVersitReader m_contactReader;
     QList<QContact> m_simContacts;
+    QContactCollection m_collection;
     QBasicTimer m_retryTimer;
     bool m_ready;
     int m_retries;

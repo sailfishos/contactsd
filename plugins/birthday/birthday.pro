@@ -27,7 +27,7 @@ CONFIG += plugin
 
 CONFIG += link_pkgconfig
 PKGCONFIG += mlocale5 libmkcal-qt5 libkcalcoren-qt5
-PKGCONFIG += Qt5Contacts
+PKGCONFIG += Qt5Contacts qtcontacts-sqlite-qt5-extensions
 
 CONFIG(coverage):{
 QMAKE_CXXFLAGS += -c -g  --coverage -ftest-coverage -fprofile-arcs

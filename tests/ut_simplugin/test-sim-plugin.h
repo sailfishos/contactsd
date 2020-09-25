@@ -54,7 +54,11 @@ private Q_SLOTS:
     void cleanup();
 
 private:
+    QList<QContact> getAllSimContacts(const QContactManager &m);
+    QContact createTestContact();
+
     CDSimController *m_controller;
+    QContactCollection m_collection;
 };
 
 #endif // TEST_SIM_PLUGIN_H

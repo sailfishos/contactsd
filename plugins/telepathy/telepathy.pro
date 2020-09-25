@@ -20,6 +20,8 @@
 # Alternatively, this file may be used in accordance with the terms and
 # conditions contained in a signed written agreement between you and Nokia.
 
+include(../contacts-extensions.pri)
+
 TEMPLATE = lib
 QT -= gui
 QT += dbus network
@@ -27,8 +29,7 @@ QT += dbus network
 CONFIG += plugin link_pkgconfig
 CONFIG += c++11
 
-PKGCONFIG += Qt5Contacts
-PKGCONFIG += TelepathyQt5 qtcontacts-sqlite-qt5-extensions mlite5
+PKGCONFIG += Qt5Contacts TelepathyQt5 mlite5
 
 system(qdbusxml2cpp -c BuddyManagementAdaptor -a buddymanagementadaptor com.nokia.contacts.buddymanagement.xml)
 system(qdbusxml2cpp -c DevicePresenceAdaptor -a devicepresenceadaptor org.nemomobile.DevicePresenceIf.xml)

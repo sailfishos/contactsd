@@ -138,7 +138,7 @@ public:
     void setEvent(const Event &event) { mEvent = event; };
     void resetVerifyFlags() { mFlags = 0; };
 
-    void skipUnlessGeneratorIs(const QString &generator) { mSyncTarget = generator; };
+    void skipUnlessGeneratorIs(const QContactCollectionId &generator) { mCollectionId = generator; };
 
     void verifyAlias(const QString &alias) { mAlias = alias; mFlags |= VerifyAlias; };
     void verifyPresence(TpTestsContactsConnectionPresenceStatusIndex presence) { mPresence = presence; mFlags |= VerifyPresence; };
@@ -149,7 +149,7 @@ public:
         mContactId = contact.id();
         mFlags |= VerifyContactId;
     };
-    void verifyGenerator(const QString &generator) {
+    void verifyGenerator(const QContactCollectionId &generator) {
         mGenerator = generator;
         mFlags |= VerifyGenerator;
         skipUnlessGeneratorIs(mGenerator);
@@ -187,8 +187,8 @@ private:
     QString mPublishState;
     GPtrArray *mContactInfo;
     QContactId mContactId;
-    QString mGenerator;
-    QString mSyncTarget;
+    QContactCollectionId mGenerator;
+    QContactCollectionId mCollectionId;
 
     QContact mContact;
 };

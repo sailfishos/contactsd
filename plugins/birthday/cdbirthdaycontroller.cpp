@@ -1,8 +1,8 @@
 /** This file is part of Contacts daemon
  **
  ** Copyright (c) 2010-2011 Nokia Corporation and/or its subsidiary(-ies).
- **
- ** Contact:  Nokia Corporation (info@qt.nokia.com)
+ ** Copyright (c) 2012 - 2019 Jolla Ltd.
+ ** Copyright (c) 2020 Open Mobile Platform LLC.
  **
  ** GNU Lesser General Public License Usage
  ** This file may be used under the terms of the GNU Lesser General Public License
@@ -32,8 +32,12 @@
 #include <QContactBirthday>
 #include <QContactDetailFilter>
 #include <QContactFetchRequest>
-#include <QContactSyncTarget>
 #include <QContactIdFilter>
+#include <QContactDisplayLabel>
+#include <QContactCollectionFilter>
+
+#include <qtcontacts-extensions.h>
+#include <qtcontacts-extensions_impl.h>
 
 QTCONTACTS_USE_NAMESPACE
 
@@ -71,12 +75,12 @@ CDBirthdayController::CDBirthdayController(QObject *parent)
     , mSyncMode(Incremental)
     , mUpdateAllPending(false)
 {
-    connect(&mManager, SIGNAL(contactsAdded(QList<QContactId>)),
-            SLOT(contactsChanged(QList<QContactId>)));
-    connect(&mManager, SIGNAL(contactsChanged(QList<QContactId>)),
-            SLOT(contactsChanged(QList<QContactId>)));
-    connect(&mManager, SIGNAL(contactsRemoved(QList<QContactId>)),
-            SLOT(contactsRemoved(QList<QContactId>)));
+    connect(&mManager, &QContactManager::contactsAdded,
+            this, &CDBirthdayController::contactsChanged);
+    connect(&mManager, &QContactManager::contactsChanged,
+            this, &CDBirthdayController::contactsChanged);
+    connect(&mManager, &QContactManager::contactsRemoved,
+            this, &CDBirthdayController::contactsRemoved);
 
     connect(&mManager, SIGNAL(dataChanged()), SLOT(updateAllBirthdays()));
 
@@ -91,8 +95,7 @@ CDBirthdayController::~CDBirthdayController()
 {
 }
 
-void
-CDBirthdayController::contactsChanged(const QList<QContactId>& contacts)
+void CDBirthdayController::contactsChanged(const QList<QContactId>& contacts)
 {
     foreach (const QContactId &id, contacts)
         mUpdatedContacts.insert(id);
@@ -208,9 +211,9 @@ CDBirthdayController::fetchContacts(const QContactFilter &filter, SyncMode mode)
     mRequest->setFetchHint(fetchHint);
 
     // Only fetch aggregate contacts
-    QContactDetailFilter syncTargetFilter(detailFilter<QContactSyncTarget>(QContactSyncTarget::FieldSyncTarget));
-    syncTargetFilter.setValue(QStringLiteral("aggregate"));
-    mRequest->setFilter(filter & syncTargetFilter);
+    QContactCollectionFilter aggregateFilter;
+    aggregateFilter.setCollectionId(QtContactsSqliteExtensions::aggregateCollectionId(mManager.managerUri()));
+    mRequest->setFilter(filter & aggregateFilter);
 
     connect(mRequest.data(), SIGNAL(stateChanged(QContactAbstractRequest::State)),
             SLOT(onRequestStateChanged(QContactAbstractRequest::State)));

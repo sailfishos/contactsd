@@ -1,8 +1,8 @@
 /** This file is part of Contacts daemon
  **
  ** Copyright (c) 2010-2011 Nokia Corporation and/or its subsidiary(-ies).
- **
- ** Contact:  Nokia Corporation (info@qt.nokia.com)
+ ** Copyright (c) 2012 - 2019 Jolla Ltd.
+ ** Copyright (c) 2020 Open Mobile Platform LLC.
  **
  ** GNU Lesser General Public License Usage
  ** This file may be used under the terms of the GNU Lesser General Public License
@@ -26,10 +26,10 @@
 #include <QContactFetchRequest>
 #include <QContactRemoveRequest>
 #include <QContactSaveRequest>
-#include <QContactSyncTarget>
 #include <QContactOnlineAccount>
 #include <QContactIdFilter>
 #include <QContactIdFetchRequest>
+#include <QContactCollection>
 
 #include <TelepathyQt/Debug>
 
@@ -42,7 +42,11 @@
 #include "buddymanagementinterface.h"
 #include "debug.h"
 
+namespace {
+
 const int QContactOnlineAccount__FieldAccountPath = (QContactOnlineAccount::FieldSubTypes+1);
+
+}
 
 TestTelepathyPlugin::TestTelepathyPlugin(QObject *parent) : Test(parent),
         mNOnlyLocalContacts(0), mCheckLeakedResources(true)
@@ -71,15 +75,12 @@ void TestTelepathyPlugin::initTestCase()
     parameters.insert(QStringLiteral("mergePresenceChanges"), QStringLiteral("true"));
     mContactManager = new QContactManager(QStringLiteral("org.nemomobile.contacts.sqlite"), parameters);
 
-    connect(mContactManager,
-            SIGNAL(contactsAdded(const QList<QContactId>&)),
-            SLOT(contactsAdded(const QList<QContactId>&)));
-    connect(mContactManager,
-            SIGNAL(contactsChanged(const QList<QContactId>&)),
-            SLOT(contactsChanged(const QList<QContactId>&)));
-    connect(mContactManager,
-            SIGNAL(contactsRemoved(const QList<QContactId>&)),
-            SLOT(contactsRemoved(const QList<QContactId>&)));
+    connect(mContactManager, &QContactManager::contactsAdded,
+            this, &TestTelepathyPlugin::contactsAdded);
+    connect(mContactManager, &QContactManager::contactsChanged,
+            this, &TestTelepathyPlugin::contactsChanged);
+    connect(mContactManager, &QContactManager::contactsRemoved,
+            this, &TestTelepathyPlugin::contactsRemoved);
 
     mContactIds += mContactManager->selfContactId();
 
@@ -585,16 +586,14 @@ void TestTelepathyPlugin::testDisable()
     TestExpectationContactPtr exp = createContact("testdisable-local");
 
     QContact contact = exp->contact();
-    QContactSyncTarget detail = contact.detail<QContactSyncTarget>();
-    detail.setSyncTarget(QString::fromLatin1("addressbook"));
-    contact.saveDetail(&detail);
+    contact.setCollectionId(collectionIdForName(QStringLiteral("addressbook")));
 
     QContactSaveRequest *request = new QContactSaveRequest();
     request->setContact(contact);
     startRequest(request);
 
     exp->setEvent(EventChanged);
-    exp->verifyGenerator("addressbook");
+    exp->verifyGenerator(collectionIdForName(QStringLiteral("addressbook")));
     runExpectation(exp);
 
     tp_tests_simple_account_set_enabled (mAccount, FALSE);
@@ -637,7 +636,7 @@ void TestTelepathyPlugin::testBug253679()
     startRequest(request);
 
     TestExpectationContactPtr exp(new TestExpectationContact(EventAdded, id));
-    exp->verifyGenerator("addressbook");
+    exp->verifyGenerator(collectionIdForName(QStringLiteral("addressbook")));
     runExpectation(exp);
 
     /* Now add the same OnlineAccount in our telepathy account, we expect this
@@ -695,7 +694,7 @@ void TestTelepathyPlugin::testMergedContact()
     TestExpectationContactPtr exp4(new TestExpectationContact(EventChanged));
     exp4->verifyContactId(contact1);
     exp4->verifyPresence(presence);
-    exp4->skipUnlessGeneratorIs("telepathy");
+    exp4->skipUnlessGeneratorIs(collectionIdForName(QStringLiteral("telepathy")));
     runExpectation(exp4);
 
 #if 0
@@ -728,6 +727,17 @@ void TestTelepathyPlugin::startRequest(QContactAbstractRequest *request)
             SLOT(requestStateChanged(QContactAbstractRequest::State)));
     request->setManager(mContactManager);
     QVERIFY(request->start());
+}
+
+QContactCollectionId TestTelepathyPlugin::collectionIdForName(const QString &name)
+{
+    const QList<QContactCollection> collections = mContactManager->collections();
+    for (const QContactCollection &collection : collections) {
+        if (collection.metaData(QContactCollection::KeyName).toString() == name) {
+            return collection.id();
+        }
+    }
+    return QContactCollectionId();
 }
 
 void TestTelepathyPlugin::requestStateChanged(QContactAbstractRequest::State newState)
@@ -815,7 +825,7 @@ TestExpectationContactPtr TestTelepathyPlugin::createContact(const gchar *id,
         exp->verifyAuthorization("Requested", "No");
     }
     exp->verifyPresence(TP_TESTS_CONTACTS_CONNECTION_STATUS_UNKNOWN);
-    exp->verifyGenerator("telepathy");
+    exp->verifyGenerator(collectionIdForName(QStringLiteral("telepathy")));
     runExpectation(exp);
 
     return exp;
@@ -855,7 +865,7 @@ void TestTelepathyPlugin::contactsAdded(const QList<QContactId>& contactIds)
     verify(EventAdded, contactIds);
 }
 
-void TestTelepathyPlugin::contactsChanged(const QList<QContactId>& contactIds)
+void TestTelepathyPlugin::contactsChanged(const QList<QContactId>& contactIds, const QList<QContactDetail::DetailType> &)
 {
     debug() << "Got contactsChanged";
     Q_FOREACH (const QContactId &id, contactIds) {

@@ -57,7 +57,7 @@ public:
 
 protected Q_SLOTS:
     void contactsAdded(const QList<QContactId>& contactIds);
-    void contactsChanged(const QList<QContactId>& contactIds);
+    void contactsChanged(const QList<QContactId>& contactIds, const QList<QContactDetail::DetailType> &typesChanged);
     void contactsRemoved(const QList<QContactId>& contactIds);
     void onContactsFetched();
     void requestStateChanged(QContactAbstractRequest::State newState);
@@ -99,6 +99,7 @@ private:
     void verify(Event event, const QList<QContactId> &contactIds);
     void runExpectation(TestExpectationPtr expectation);
     void startRequest(QContactAbstractRequest *request);
+    QContactCollectionId collectionIdForName(const QString &name);
 
 private:
     QContactManager *mContactManager;

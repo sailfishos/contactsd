@@ -17,39 +17,15 @@
 
 #include <test-common.h>
 
-#include <QContactDetailFilter>
+#include <QContactCollectionFilter>
 #include <QContactNickname>
-#include <QContactOriginMetadata>
 #include <QContactPhoneNumber>
-#include <QContactSyncTarget>
 
 QTCONTACTS_USE_NAMESPACE
 
 namespace {
 
-QList<QContact> getAllSimContacts(const QContactManager &m)
-{
-    QContactDetailFilter stFilter;
-    stFilter.setDetailType(QContactSyncTarget::Type, QContactSyncTarget::FieldSyncTarget);
-    stFilter.setValue(QStringLiteral("sim-test"));
-
-    return m.contacts(stFilter);
-}
-
-QContact createTestContact()
-{
-    QContact rv;
-
-    QContactSyncTarget st;
-    st.setSyncTarget(QStringLiteral("sim-test"));
-    rv.saveDetail(&st);
-
-    QContactOriginMetadata md;
-    md.setGroupId(QStringLiteral("dummy-cardId"));
-    rv.saveDetail(&md);
-
-    return rv;
-}
+const QString DummyModemPath = QStringLiteral("dummy-cardId");
 
 }
 
@@ -61,14 +37,33 @@ TestSimPlugin::TestSimPlugin(QObject *parent) :
 {
 }
 
+QList<QContact> TestSimPlugin::getAllSimContacts(const QContactManager &m)
+{
+    QContactCollectionFilter filter;
+    filter.setCollectionId(m_collection.id());
+
+    return m.contacts(filter);
+}
+
+QContact TestSimPlugin::createTestContact()
+{
+    QContact rv;
+    rv.setCollectionId(m_collection.id());
+
+    return rv;
+}
+
 void TestSimPlugin::init()
 {
 }
 
 void TestSimPlugin::initTestCase()
 {
-    m_controller = new CDSimController(this, QStringLiteral("sim-test"), false);
-    m_controller->setModemPaths(QStringList() << "dummy-cardId");
+    m_controller = new CDSimController(this, false);
+    m_controller->setModemPaths(QStringList() << DummyModemPath);
+
+    m_controller->m_modems.first()->setReady(true);
+    m_collection = m_controller->contactCollection(DummyModemPath);
 }
 
 void TestSimPlugin::testAdd()
@@ -584,7 +579,6 @@ void TestSimPlugin::testClear()
     gump.saveDetail(&n);
 
     QContact whittaker(createTestContact());
-
     n.setNickname("Forrest Whittaker");
     whittaker.saveDetail(&n);
 
@@ -605,6 +599,10 @@ void TestSimPlugin::testClear()
 
 void TestSimPlugin::cleanupTestCase()
 {
+    if (CDSimModemData::removeCollections(&m_controller->contactManager(),
+                                          QList<QContactCollectionId>() << m_collection.id())) {
+        qDebug() << "Remove test collection";
+    }
 }
 
 void TestSimPlugin::cleanup()
