@@ -2,8 +2,8 @@ Name: contactsd
 Version: 1.4.1
 Release: 1
 Summary: Telepathy <> QtContacts bridge for contacts
-URL: https://git.merproject.org/mer-core/contactsd
-License: LGPLv2.1+ and (LGPLv2.1 or LGPLv2.1 with Nokia Qt LGPL Exception v1.1)
+URL: https://git.sailfishos.org/mer-core/contactsd
+License: LGPLv2+ and (LGPLv2 or LGPLv2 with Nokia Qt LGPL Exception v1.1)
 Source0: %{name}-%{version}.tar.bz2
 Source1: %{name}.privileges
 Requires: systemd
@@ -44,6 +44,8 @@ information), and store it to QtContacts.
 
 %files
 %defattr(-,root,root,-)
+%license LICENSE.LGPL
+%license LGPL_EXCEPTION.txt
 %{_userunitdir}/%{name}.service
 %{_userunitdir}/post-user-session.target.wants/%{name}.service
 %{_bindir}/%{name}
@@ -56,7 +58,6 @@ information), and store it to QtContacts.
 
 %package devel
 Summary: Development files for %{name}
-Group: Development/Libraries
 Requires: %{name} = %{version}-%{release}
 
 %description devel
@@ -70,7 +71,6 @@ Requires: %{name} = %{version}-%{release}
 
 %package tests
 Summary: Tests for %{name}
-Group: Development/Libraries
 Requires: %{name} = %{version}-%{release}
 Requires: blts-tools
 
@@ -83,7 +83,6 @@ Requires: blts-tools
 
 %package ts-devel
 Summary: Translation source for %{name}
-Group: System/Applications
 
 %description ts-devel
 Translation source for %{name}
