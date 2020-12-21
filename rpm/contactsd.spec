@@ -1,5 +1,5 @@
 Name: contactsd
-Version: 1.4.1
+Version: 1.4.2
 Release: 1
 Summary: Telepathy <> QtContacts bridge for contacts
 URL: https://git.sailfishos.org/mer-core/contactsd
