@@ -82,7 +82,7 @@ private:
     static QContactId localContactId(const QString &calendarEventId);
     static QString calendarEventId(const QContactId &contactId);
 
-    KCalCore::Event::Ptr calendarEvent(const QContactId &contactId);
+    KCalendarCore::Event::Ptr calendarEvent(const QContactId &contactId);
     void setReadOnly(bool readOnly, bool save = false);
 
 private Q_SLOTS:

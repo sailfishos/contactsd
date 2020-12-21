@@ -26,7 +26,7 @@ QT -= gui
 CONFIG += plugin
 
 CONFIG += link_pkgconfig
-PKGCONFIG += mlocale5 libmkcal-qt5 libkcalcoren-qt5
+PKGCONFIG += mlocale5 libmkcal-qt5 KF5CalendarCore
 PKGCONFIG += Qt5Contacts qtcontacts-sqlite-qt5-extensions
 
 CONFIG(coverage):{

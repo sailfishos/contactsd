@@ -5,7 +5,7 @@ QT += contacts-private
 CONFIG += plugin
 
 CONFIG += link_pkgconfig
-PKGCONFIG += accounts-qt5 libkcalcoren-qt5 libmkcal-qt5
+PKGCONFIG += accounts-qt5 KF5CalendarCore libmkcal-qt5
 
 DEFINES -= QT_NO_CAST_TO_ASCII
 DEFINES -= QT_NO_CAST_FROM_ASCII
