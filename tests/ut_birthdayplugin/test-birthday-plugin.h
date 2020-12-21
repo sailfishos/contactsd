@@ -27,7 +27,7 @@
 #include <QObject>
 #include <QtTest/QtTest>
 
-#include <event.h>
+#include <KCalendarCore/Event>
 
 #include <QContact>
 #include <QContactManager>
@@ -58,9 +58,9 @@ private Q_SLOTS:
     void cleanup();
 
 private:
-    int countCalendarEvents(const KCalCore::Event::List &eventList,
+    int countCalendarEvents(const KCalendarCore::Event::List &eventList,
                             const QContact &contact) const;
-    KCalCore::Event::List findCalendarEvents(const KCalCore::Event::List &eventList,
+    KCalendarCore::Event::List findCalendarEvents(const KCalendarCore::Event::List &eventList,
                                              const QContact &contact) const;
     bool saveContact(QContact &contact);
 

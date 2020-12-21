@@ -30,7 +30,7 @@
 
 #include <MLocale>
 
-#include <recurrencerule.h>
+#include <KCalendarCore/RecurrenceRule>
 
 #include "cdbirthdaycalendar.h"
 #include "debug.h"
@@ -49,7 +49,7 @@ CDBirthdayCalendar::CDBirthdayCalendar(SyncMode syncMode, QObject *parent) :
     mCalendar(0),
     mStorage(0)
 {
-    mCalendar = mKCal::ExtendedCalendar::Ptr(new mKCal::ExtendedCalendar(KDateTime::Spec::LocalZone()));
+    mCalendar = mKCal::ExtendedCalendar::Ptr(new mKCal::ExtendedCalendar(QTimeZone::systemTimeZone()));
     mStorage = mKCal::ExtendedCalendar::defaultStorage(mCalendar);
 
     MLocale * const locale = new MLocale(this);
@@ -127,7 +127,7 @@ CDBirthdayCalendar::birthdays()
 
     QHash<QContactId, CalendarBirthday> result;
 
-    foreach(const KCalCore::Event::Ptr event, mCalendar->events()) {
+    foreach(const KCalendarCore::Event::Ptr event, mCalendar->events()) {
         const QString eventUid = event->uid();
         const QContactId contactId = localContactId(eventUid);
 
@@ -164,11 +164,11 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
     // NOTE: controller is assuming name as summary and uses that to detect changes
 
     // Retrieve birthday event.
-    KCalCore::Event::Ptr event = calendarEvent(contact.id());
+    KCalendarCore::Event::Ptr event = calendarEvent(contact.id());
 
     if (event.isNull()) {
         // Add a new event.
-        event = KCalCore::Event::Ptr(new KCalCore::Event());
+        event = KCalendarCore::Event::Ptr(new KCalendarCore::Event());
         event->startUpdates();
         event->setUid(calendarEventId(contact.id()));
 
@@ -189,16 +189,15 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
     event->setSummary(displayLabel);
 
     // Event has only date information, no time.
-    event->setDtStart(KDateTime(contactBirthday, QTime(), KDateTime::ClockTime));
-    event->setHasEndDate(false);
+    event->setDtStart(QDateTime(contactBirthday));
     event->setAllDay(true);
 
     // Must always set the recurrence as it depends on the event date.
-    KCalCore::Recurrence *const recurrence = event->recurrence();
+    KCalendarCore::Recurrence *const recurrence = event->recurrence();
 
     if (contactBirthday.month() != 2 || contactBirthday.day() < 29) {
         // Simply setup yearly recurrence for trivial dates.
-        recurrence->setStartDateTime(event->dtStart());
+        recurrence->setStartDateTime(event->dtStart(), true);
         recurrence->setYearly(1); /* every year */
     } else {
         // For birthdays on February 29th the event shall occur on the
@@ -212,29 +211,29 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
         // NOTE2: Using setByYearDays() instead of just setting proper
         // start dates, since libmkcal fails to store the start dates
         // of recurrence rules.
-        KCalCore::RecurrenceRule *rule;
+        KCalendarCore::RecurrenceRule *rule;
 
         // 1. Include February 29th in leap years.
-        rule = new KCalCore::RecurrenceRule;
+        rule = new KCalendarCore::RecurrenceRule;
         rule->setStartDt(event->dtStart());
         rule->setByYearDays(QList<int>() << 60); // Feb 29th
-        rule->setRecurrenceType(KCalCore::RecurrenceRule::rYearly);
+        rule->setRecurrenceType(KCalendarCore::RecurrenceRule::rYearly);
         rule->setFrequency(4); // every 4th year
         recurrence->addRRule(rule);
 
         // 2. Include February 28th starting from year after birth.
-        rule = new KCalCore::RecurrenceRule;
+        rule = new KCalendarCore::RecurrenceRule;
         rule->setStartDt(event->dtStart());
         rule->setByYearDays(QList<int>() << 59); // Feb 28th
-        rule->setRecurrenceType(KCalCore::RecurrenceRule::rYearly);
+        rule->setRecurrenceType(KCalendarCore::RecurrenceRule::rYearly);
         rule->setFrequency(1); // every year
         recurrence->addRRule(rule);
 
         // 3. Exclude February 28th in leap years.
-        rule = new KCalCore::RecurrenceRule;
+        rule = new KCalendarCore::RecurrenceRule;
         rule->setStartDt(event->dtStart());
         rule->setByYearDays(QList<int>() << 59); // Feb 28th
-        rule->setRecurrenceType(KCalCore::RecurrenceRule::rYearly);
+        rule->setRecurrenceType(KCalendarCore::RecurrenceRule::rYearly);
         rule->setFrequency(4); // every 4th year
         recurrence->addExRule(rule);
 
@@ -245,11 +244,11 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
 
     // We don't want any alarms for birthday events.
     // To set an alarm for birthday events, uncomment the code below.
-    //KCalCore::Alarm::Ptr alarm = event->newAlarm();
-    //alarm->setType(KCalCore::Alarm::Audio);
+    //KCalendarCore::Alarm::Ptr alarm = event->newAlarm();
+    //alarm->setType(KCalendarCore::Alarm::Audio);
     //alarm->setEnabled(true);
     //alarm->setDisplayAlarm(event->summary());
-    //alarm->setStartOffset(KCalCore::Duration(-36 * 3600 /* seconds */));
+    //alarm->setStartOffset(KCalendarCore::Duration(-36 * 3600 /* seconds */));
 
     event->setReadOnly(true);
     event->endUpdates();
@@ -259,7 +258,7 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
 
 void CDBirthdayCalendar::deleteBirthday(const QContactId &contactId)
 {
-    KCalCore::Event::Ptr event = calendarEvent(contactId);
+    KCalendarCore::Event::Ptr event = calendarEvent(contactId);
 
     if (event.isNull()) {
         debug() << Q_FUNC_INFO << "Not found in calendar:" << contactId;
@@ -282,7 +281,7 @@ void CDBirthdayCalendar::save()
 
 CalendarBirthday CDBirthdayCalendar::birthday(const QContactId &contactId)
 {
-    KCalCore::Event::Ptr event = calendarEvent(contactId);
+    KCalendarCore::Event::Ptr event = calendarEvent(contactId);
 
     if (event.isNull()) {
         return CalendarBirthday();
@@ -326,16 +325,16 @@ QString CDBirthdayCalendar::calendarEventId(const QContactId &contactId)
     return calIdExtension + QString::number(numericContactId(contactId));
 }
 
-KCalCore::Event::Ptr CDBirthdayCalendar::calendarEvent(const QContactId &contactId)
+KCalendarCore::Event::Ptr CDBirthdayCalendar::calendarEvent(const QContactId &contactId)
 {
     const QString eventId = calendarEventId(contactId);
 
     if (not mStorage->load(eventId)) {
         warning() << Q_FUNC_INFO << "Unable to load event from calendar";
-        return KCalCore::Event::Ptr();
+        return KCalendarCore::Event::Ptr();
     }
 
-    KCalCore::Event::Ptr event = mCalendar->event(eventId);
+    KCalendarCore::Event::Ptr event = mCalendar->event(eventId);
 
     if (event.isNull()) {
         debug() << Q_FUNC_INFO << "Not found in calendar:" << contactId;

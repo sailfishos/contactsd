@@ -93,7 +93,7 @@ void TestBirthdayPlugin::testAddAndRemoveBirthday()
 
     // Open calendar database, which should have been created by the birthday plugin.
     mKCal::ExtendedCalendar::Ptr calendar =
-        mKCal::ExtendedCalendar::Ptr(new mKCal::ExtendedCalendar(KDateTime::Spec::LocalZone()));
+        mKCal::ExtendedCalendar::Ptr(new mKCal::ExtendedCalendar(QTimeZone::systemTimeZone()));
     mKCal::ExtendedStorage::Ptr storage =
         mKCal::ExtendedCalendar::defaultStorage(calendar);
     storage->open();
@@ -101,7 +101,7 @@ void TestBirthdayPlugin::testAddAndRemoveBirthday()
 
     // Check calendar database for contact.
     QVERIFY2(storage->loadNotebookIncidences(calNotebookId), "Unable to load events from notebook");
-    KCalCore::Event::List eventList = calendar->events();
+    KCalendarCore::Event::List eventList = calendar->events();
     QCOMPARE(countCalendarEvents(eventList, contact), 1);
 
     // Delete the contact and see if the birthday is also deleted.
@@ -139,7 +139,7 @@ void TestBirthdayPlugin::testChangeBirthday()
 
     // Open calendar database.
     mKCal::ExtendedCalendar::Ptr calendar =
-        mKCal::ExtendedCalendar::Ptr(new mKCal::ExtendedCalendar(KDateTime::Spec::LocalZone()));
+        mKCal::ExtendedCalendar::Ptr(new mKCal::ExtendedCalendar(QTimeZone::systemTimeZone()));
     mKCal::ExtendedStorage::Ptr storage =
         mKCal::ExtendedCalendar::defaultStorage(calendar);
     storage->open();
@@ -147,7 +147,7 @@ void TestBirthdayPlugin::testChangeBirthday()
 
     // Check calendar database for contact.
     QVERIFY2(storage->loadNotebookIncidences(calNotebookId), "Unable to load events from notebook");
-    KCalCore::Event::List eventList = calendar->events();
+    KCalendarCore::Event::List eventList = calendar->events();
     QCOMPARE(countCalendarEvents(eventList, contact), 1);
 
     // Change the contact and see if the birthday is updated.
@@ -187,7 +187,7 @@ void TestBirthdayPlugin::testChangeName()
 
     // Open calendar database.
     mKCal::ExtendedCalendar::Ptr calendar =
-        mKCal::ExtendedCalendar::Ptr(new mKCal::ExtendedCalendar(KDateTime::Spec::LocalZone()));
+        mKCal::ExtendedCalendar::Ptr(new mKCal::ExtendedCalendar(QTimeZone::systemTimeZone()));
     mKCal::ExtendedStorage::Ptr storage =
         mKCal::ExtendedCalendar::defaultStorage(calendar);
     storage->open();
@@ -195,7 +195,7 @@ void TestBirthdayPlugin::testChangeName()
 
     // Check calendar database for contact.
     QVERIFY2(storage->loadNotebookIncidences(calNotebookId), "Unable to load events from notebook");
-    KCalCore::Event::List eventList = calendar->events();
+    KCalendarCore::Event::List eventList = calendar->events();
     QCOMPARE(countCalendarEvents(eventList, contact), 1);
 
     // Change the contact name and see if the calendar is updated.
@@ -221,7 +221,7 @@ void TestBirthdayPlugin::testChangeName()
 void TestBirthdayPlugin::testLocaleChange()
 {
     // Is this the infrastructure for this tets still available?
-    QSKIP("MeegoTouch language setting change is not reflected in KCalCore...");
+    QSKIP("MeegoTouch language setting change is not reflected in KCalendarCore...");
 
     MGConfItem store(QLatin1String("/meegotouch/i18n/language"));
     store.set(QLatin1String("en"));
@@ -242,7 +242,7 @@ void TestBirthdayPlugin::testLocaleChange()
 
     // Open calendar database, which should have been created by the birthday plugin.
     mKCal::ExtendedCalendar::Ptr calendar =
-        mKCal::ExtendedCalendar::Ptr(new mKCal::ExtendedCalendar(KDateTime::Spec::LocalZone()));
+        mKCal::ExtendedCalendar::Ptr(new mKCal::ExtendedCalendar(QTimeZone::systemTimeZone()));
     mKCal::ExtendedStorage::Ptr storage =
         mKCal::ExtendedCalendar::defaultStorage(calendar);
     storage->open();
@@ -294,7 +294,7 @@ void TestBirthdayPlugin::testLeapYears()
 
     // Open calendar database.
     mKCal::ExtendedCalendar::Ptr calendar =
-        mKCal::ExtendedCalendar::Ptr(new mKCal::ExtendedCalendar(KDateTime::Spec::LocalZone()));
+        mKCal::ExtendedCalendar::Ptr(new mKCal::ExtendedCalendar(QTimeZone::systemTimeZone()));
     mKCal::ExtendedStorage::Ptr storage =
         mKCal::ExtendedCalendar::defaultStorage(calendar);
 
@@ -303,18 +303,18 @@ void TestBirthdayPlugin::testLeapYears()
 
     // Check calendar database for contact.
     QVERIFY(storage->loadNotebookIncidences(calNotebookId));
-    const KCalCore::Event::List eventList = findCalendarEvents(calendar->events(), contact);
+    const KCalendarCore::Event::List eventList = findCalendarEvents(calendar->events(), contact);
     QCOMPARE(eventList.count(), 1);
 
-    const KCalCore::Event::Ptr event = eventList.first();
+    const KCalendarCore::Event::Ptr event = eventList.first();
     QCOMPARE(event->summary(), contactID);
     QCOMPARE(event->dtStart().date(), contactBirthDate);
     QCOMPARE(event->allDay(), true);
 
     // Check number of recurrences and their values.
-    const KDateTime first(QDate(2000, 1, 1), QTime(), KDateTime::ClockTime);
-    const KDateTime last(QDate(2020, 12, 31), QTime(), KDateTime::ClockTime);
-    const KCalCore::DateTimeList instances = event->recurrence()->timesInInterval(first, last);
+    const QDateTime first(QDate(2000, 1, 1));
+    const QDateTime last(QDate(2020, 12, 31));
+    const KCalendarCore::DateTimeList instances = event->recurrence()->timesInInterval(first, last);
 
     QCOMPARE(instances.length(), 13);
 
@@ -340,18 +340,18 @@ void TestBirthdayPlugin::cleanup()
     mManager = 0;
 }
 
-int TestBirthdayPlugin::countCalendarEvents(const KCalCore::Event::List &eventList,
+int TestBirthdayPlugin::countCalendarEvents(const KCalendarCore::Event::List &eventList,
                                             const QContact &contact) const
 {
     return findCalendarEvents(eventList, contact).count();
 }
 
-KCalCore::Event::List TestBirthdayPlugin::findCalendarEvents(const KCalCore::Event::List &eventList,
+KCalendarCore::Event::List TestBirthdayPlugin::findCalendarEvents(const KCalendarCore::Event::List &eventList,
                                                              const QContact &contact) const
 {
-    KCalCore::Event::List matches;
+    KCalendarCore::Event::List matches;
 
-    Q_FOREACH(const KCalCore::Event::Ptr event, eventList) {
+    Q_FOREACH(const KCalendarCore::Event::Ptr event, eventList) {
         if(event->dtStart().date() == contact.detail<QContactBirthday>().date()) {
             if(event->summary() == contact.detail<QContactDisplayLabel>().label()) {
                 matches += event;

@@ -35,7 +35,7 @@ QT += testlib
 DEFINES += ENABLE_DEBUG
 
 PKGCONFIG += Qt5Contacts
-PKGCONFIG += mlite5 mlocale5 libmkcal-qt5 libkcalcoren-qt5
+PKGCONFIG += mlite5 mlocale5 libmkcal-qt5 KF5CalendarCore
 
 CONFIG(coverage):{
 QMAKE_CXXFLAGS +=  -ftest-coverage -fprofile-arcs

@@ -33,7 +33,7 @@ namespace {
 void updateNotebooks(AccountId id, bool enabled)
 {
     mKCal::ExtendedCalendar::Ptr calendar = mKCal::ExtendedCalendar::Ptr(
-                new mKCal::ExtendedCalendar(KDateTime::Spec::LocalZone()));
+                new mKCal::ExtendedCalendar(QTimeZone::systemTimeZone()));
     mKCal::ExtendedStorage::Ptr storage = calendar->defaultStorage(calendar);
     storage->open();
 
