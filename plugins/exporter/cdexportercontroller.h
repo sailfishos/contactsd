@@ -16,12 +16,13 @@
 #define CDEXPORTERCONTROLLER_H
 
 #include <QObject>
+#include <QMultiHash>
+#include <QHash>
 
 #include <QContactManager>
 
-namespace Accounts {
-    class Manager;
-}
+#include <Accounts/Account>
+#include <Accounts/Manager>
 
 QTCONTACTS_USE_NAMESPACE
 
@@ -33,11 +34,16 @@ public:
     explicit CDExporterController(QObject *parent = nullptr);
     ~CDExporterController();
 
-private:
+private Q_SLOTS:
+    void accountUpdated(const Accounts::AccountId &accountId);
+    void collectionsAdded(const QList<QContactCollectionId> &collectionIds);
     void collectionContactsChanged(const QList<QContactCollectionId> &collectionIds);
 
+private:
     QContactManager m_privilegedManager;
     Accounts::Manager *m_manager = nullptr;
+    QMultiHash<Accounts::AccountId, QContactCollectionId> m_accountCollections;
+    QHash<QContactCollectionId, Accounts::AccountId> m_collectionAccount;
 };
 
 #endif // CDEXPORTERCONTROLLER_H
