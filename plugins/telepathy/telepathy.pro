@@ -29,7 +29,7 @@ QT += dbus network
 CONFIG += plugin link_pkgconfig
 CONFIG += c++11
 
-PKGCONFIG += Qt5Contacts TelepathyQt5 mlite5
+PKGCONFIG += Qt5Contacts TelepathyQt5 mlite5 contactcache-qt5
 
 system(qdbusxml2cpp -c BuddyManagementAdaptor -a buddymanagementadaptor com.nokia.contacts.buddymanagement.xml)
 system(qdbusxml2cpp -c DevicePresenceAdaptor -a devicepresenceadaptor org.nemomobile.DevicePresenceIf.xml)

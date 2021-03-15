@@ -24,6 +24,7 @@ BuildRequires: pkgconfig(telepathy-glib)
 BuildRequires: pkgconfig(qofono-qt5)
 BuildRequires: pkgconfig(qofonoext)
 BuildRequires: pkgconfig(qtcontacts-sqlite-qt5-extensions) >= 0.3.0
+BuildRequires: pkgconfig(contactcache-qt5)
 BuildRequires: pkgconfig(dbus-glib-1)
 BuildRequires: pkgconfig(gio-2.0)
 BuildRequires: pkgconfig(accounts-qt5)
