@@ -28,6 +28,8 @@
 #include <QContactDisplayLabel>
 #include <QContactId>
 
+#include <seasidecache.h>
+
 #include <MLocale>
 
 #include <KCalendarCore/RecurrenceRule>
@@ -301,29 +303,6 @@ CalendarBirthday CDBirthdayCalendar::birthday(const QContactId &contactId)
     return CalendarBirthday(event->dtStart().date(), event->summary());
 }
 
-quint32 numericContactId(const QContactId &id)
-{
-    // Note: only works with the qtcontacts-sqlite backend
-    if (!id.isNull()) {
-        QStringList components = id.toString().split(QChar::fromLatin1(':'));
-        const QString &idComponent = components.isEmpty() ? QString() : components.last();
-        if (idComponent.startsWith(QString::fromLatin1("sql-"))) {
-            return idComponent.mid(4).toUInt();
-        }
-    }
-    return 0;
-}
-
-QContactId fromNumericContactId(quint32 id)
-{
-    if (id == 0) {
-        return QContactId();
-    }
-    // Note: only works with the qtcontacts-sqlite backend
-    static const QString idStr(QStringLiteral("qtcontacts:org.nemomobile.contacts.sqlite::sql-%1"));
-    return QContactId::fromString(idStr.arg(id));
-}
-
 QContactId CDBirthdayCalendar::localContactId(const QString &calendarEventId)
 {
     quint32 numericId = 0;
@@ -332,12 +311,12 @@ QContactId CDBirthdayCalendar::localContactId(const QString &calendarEventId)
         numericId = calendarEventId.mid(calIdExtension.length()).toUInt();
     }
 
-    return fromNumericContactId(numericId);
+    return SeasideCache::apiId(numericId);
 }
 
 QString CDBirthdayCalendar::calendarEventId(const QContactId &contactId)
 {
-    quint32 id = numericContactId(contactId);
+    quint32 id = SeasideCache::internalId(contactId);
     if (id == 0) {
         return QString();
     }
