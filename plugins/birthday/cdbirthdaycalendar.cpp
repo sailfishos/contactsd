@@ -182,7 +182,6 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
     if (event.isNull()) {
         // Add a new event.
         event = KCalendarCore::Event::Ptr(new KCalendarCore::Event());
-        event->startUpdates();
         event->setUid(eventId);
 
         // Ensure events appear as birthdays in the calendar, NB#259710.
@@ -195,8 +194,8 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
     } else {
         // Update the existing event.
         event->setReadOnly(false);
-        event->startUpdates();
     }
+    event->startUpdates();
 
     // Transfer birthday details from contact to calendar event.
     event->setSummary(displayLabel);
