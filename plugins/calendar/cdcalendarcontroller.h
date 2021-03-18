@@ -18,6 +18,7 @@
 #include <QObject>
 #include <Accounts/Manager>
 #include <extendedstorage.h>
+#include <extendedcalendar.h>
 
 class CDCalendarController : public QObject
 {
@@ -35,10 +36,13 @@ private:
     Accounts::Manager * SetupManager(
             const QString &service,
             void (CDCalendarController::*enabledEvent)(Accounts::AccountId id));
+    void updateNotebooks(Accounts::AccountId id, bool enabled);
 
 private:
     Accounts::Manager *m_manager_caldav;
     Accounts::Manager *m_manager_sync;
+    mKCal::ExtendedCalendar::Ptr m_calendar;
+    mKCal::ExtendedStorage::Ptr m_storage;
 };
 
 #endif // CDCALENDARCONTROLLER_H

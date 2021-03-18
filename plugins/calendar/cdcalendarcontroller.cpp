@@ -21,39 +21,6 @@
 using namespace Contactsd;
 using namespace Accounts;
 
-namespace {
-// Anonymous namespace
-
-/*!
-    \brief Enable/disable all mKCal notebooks related to the account id
-
-    Sets the \a enabled status for all notebooks associated with the given
-    account \a id.
-*/
-void updateNotebooks(AccountId id, bool enabled)
-{
-    mKCal::ExtendedCalendar::Ptr calendar = mKCal::ExtendedCalendar::Ptr(
-                new mKCal::ExtendedCalendar(QTimeZone::systemTimeZone()));
-    mKCal::ExtendedStorage::Ptr storage = calendar->defaultStorage(calendar);
-    storage->open();
-
-    const mKCal::Notebook::List notebooks = storage->notebooks();
-    for (const mKCal::Notebook::Ptr notebook : notebooks) {
-        const QString accountStr = notebook->account();
-        bool ok = false;
-        AccountId accountInt = accountStr.toULong(&ok);
-        if (ok && accountInt == id) {
-            bool visible = notebook->isVisible();
-            if (visible != enabled) {
-                notebook->setIsVisible(enabled);
-                storage->updateNotebook(notebook);
-            }
-        }
-    }
-}
-
-} // Anonymous namespace
-
 /*!
     \brief Creates and connects an Account Manager
 
@@ -194,4 +161,34 @@ void CDCalendarController::enabledEventSync(AccountId id)
 
     // Update the mKCal notebook with the result
     updateNotebooks(id, enabled);
+}
+
+/*!
+    \brief Enable/disable all mKCal notebooks related to the account id
+
+    Sets the \a enabled status for all notebooks associated with the given
+    account \a id.
+*/
+void CDCalendarController::updateNotebooks(AccountId id, bool enabled)
+{
+    if (!m_calendar) {
+        m_calendar = mKCal::ExtendedCalendar::Ptr(
+                new mKCal::ExtendedCalendar(QTimeZone::systemTimeZone()));
+        m_storage = m_calendar->defaultStorage(m_calendar);
+        m_storage->open();
+    }
+
+    const mKCal::Notebook::List notebooks = m_storage->notebooks();
+    for (const mKCal::Notebook::Ptr notebook : notebooks) {
+        const QString accountStr = notebook->account();
+        bool ok = false;
+        AccountId accountInt = accountStr.toULong(&ok);
+        if (ok && accountInt == id) {
+            bool visible = notebook->isVisible();
+            if (visible != enabled) {
+                notebook->setIsVisible(enabled);
+                m_storage->updateNotebook(notebook);
+            }
+        }
+    }
 }
