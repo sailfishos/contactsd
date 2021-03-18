@@ -41,13 +41,13 @@ CDTpPlugin::~CDTpPlugin()
 
 void CDTpPlugin::init()
 {
-    debug() << "Initializing contactsd telepathy plugin";
+    qCDebug(lcContactsd) << "Initializing contactsd telepathy plugin";
 
     Tp::registerTypes();
-    Tp::enableDebug(isDebugEnabled());
-    Tp::enableWarnings(isWarningsEnabled());
+    Tp::enableDebug(lcContactsd().isDebugEnabled());
+    Tp::enableWarnings(lcContactsd().isWarningEnabled());
 
-    debug() << "Creating controller";
+    qCDebug(lcContactsd) << "Creating controller";
     mController = new CDTpController(this);
     // relay signals
     connect(mController,

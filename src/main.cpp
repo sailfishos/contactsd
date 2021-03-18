@@ -26,6 +26,7 @@
 #include <QTimer>
 #include <QLocale>
 #include <QTranslator>
+#include <QLoggingCategory>
 
 #include <errno.h>
 #include <signal.h>
@@ -35,40 +36,8 @@
 
 using namespace Contactsd;
 
-static QtMessageHandler defaultMsgHandler = 0;
-static QtMsgType messageThreshold = QtWarningMsg;
-static FILE *messageLog = NULL;
-
-static void customMessageHandler(QtMsgType type, const QMessageLogContext &ctxt, const QString &msgStr)
-{
-    if (type < messageThreshold) {
-        return; // no debug messages please
-    }
-
-    const QByteArray &msgData(msgStr.toLocal8Bit());
-    const char *msg = msgData.constData();
-
-    // Actually qInstallMsgHandler() returned null in main() when
-    // I checked, so defaultMsgHandler should be null - but let's be careful.
-    if (defaultMsgHandler) {
-        defaultMsgHandler(type, ctxt, msgStr);
-    } else {
-        fprintf(stderr, "%s\n", msg);
-    }
-
-    if (messageLog) {
-        if (fprintf(messageLog, "%s\n", msg) < 0 || fflush(messageLog) != 0) {
-            const int messageLogError = errno;
-            fclose(messageLog);
-            messageLog = NULL;
-
-            (warning().nospace()
-                    << "An error occured when writing to the log file: "
-                    << strerror(messageLogError) << " (" << messageLogError << "). "
-                    << "The log file is truncated.").space();
-        }
-    }
-}
+static bool useDebug = false;
+static QLoggingCategory::CategoryFilter defaultCategoryFilter;
 
 static void usage()
 {
@@ -79,7 +48,6 @@ static void usage()
             << "\n"
             << "  --plugins PLUGINS    Comma separated list of plugins to load\n"
             << "  --enable-debug       Enable debug logging\n"
-            << "  --log-file FILENAME  Additional write logging information to FILENAME\n"
             << "  --version            Output version information and exit\n"
             << "  --help               Display this help and exit\n"
             << "\n";
@@ -94,7 +62,7 @@ static void setupUnixSignalHandlers()
     sigterm.sa_flags = SA_RESTART;
 
     if (sigaction(SIGTERM, &sigterm, 0) < 0) {
-        warning() << "Could not setup signal handler for SIGTERM";
+        qCWarning(lcContactsd) << "Could not setup signal handler for SIGTERM";
         return;
     }
 
@@ -103,20 +71,27 @@ static void setupUnixSignalHandlers()
     sigint.sa_flags = SA_RESTART;
 
     if (sigaction(SIGINT, &sigint, 0) < 0) {
-        warning() << "Could not setup signal handler for SIGINT";
+        qCWarning(lcContactsd) << "Could not setup signal handler for SIGINT";
         return;
+    }
+}
+
+static void categoryFilter(QLoggingCategory *category)
+{
+    defaultCategoryFilter(category);
+
+    if (qstrcmp(category->categoryName(), "contactsd") == 0 && useDebug) {
+        category->setEnabled(QtDebugMsg, true);
+        category->setEnabled(QtInfoMsg, true);
     }
 }
 
 Q_DECL_EXPORT int main(int argc, char **argv)
 {
-    setupUnixSignalHandlers();
-
     QCoreApplication app(argc, argv);
 
     QStringList plugins;
-    bool useDebug = !qgetenv("CONTACTSD_DEBUG").isEmpty();
-    QString logFileName;
+    useDebug = !qgetenv("CONTACTSD_DEBUG").isEmpty();
 
     const QStringList args = app.arguments();
     int i = 1; // ignore argv[0]
@@ -134,40 +109,25 @@ Q_DECL_EXPORT int main(int argc, char **argv)
             value.replace(" ", ",");
             plugins << value.split(",", QString::SkipEmptyParts);
         } else if (arg == "--version") {
-            debug() << "contactsd version" << VERSION;
+            qDebug() << "contactsd version" << VERSION;
             return 0;
         } else if (arg == "--help") {
             usage();
             return 0;
         } else if (arg == "--enable-debug") {
             useDebug = true;
-        } else if (arg == "--log-file") {
-            if (++i == args.count()) {
-                usage();
-                return -1;
-            }
-
-            logFileName = args.at(i);
         } else {
-            warning() << "Invalid argument" << arg;
+            qWarning() << "Invalid argument" << arg;
             usage();
             return -1;
         }
         ++i;
     }
 
-    if (useDebug) {
-        messageThreshold = QtDebugMsg;
-    }
+    defaultCategoryFilter = QLoggingCategory::installFilter(categoryFilter);
+    setupUnixSignalHandlers();
 
-    if (not logFileName.isEmpty()) {
-        messageLog = fopen(qPrintable(logFileName), "w");
-    }
-
-    defaultMsgHandler = qInstallMessageHandler(customMessageHandler);
-
-    enableDebug(useDebug);
-    debug() << "contactsd version" << VERSION << "started";
+    qCDebug(lcContactsd) << "contactsd version" << VERSION << "started";
 
     const QString translationPath(QString::fromLatin1(TRANSLATIONS_INSTALL_PATH));
 
@@ -183,10 +143,6 @@ Q_DECL_EXPORT int main(int argc, char **argv)
     daemon.loadPlugins(plugins);
 
     const int rc = app.exec();
-
-    if (messageLog) {
-        fclose (messageLog);
-    }
 
     return rc;
 }

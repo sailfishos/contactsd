@@ -36,8 +36,6 @@
 
 static const int DisconnectGracePeriod = 30 * 1000; // ms
 
-using namespace Contactsd;
-
 CDTpAccount::CDTpAccount(const Tp::AccountPtr &account, const QStringList &toAvoid, bool newAccount, QObject *parent)
     : QObject(parent),
       mAccount(account),
@@ -196,7 +194,7 @@ void CDTpAccount::onAccountConnectionChanged(const Tp::ConnectionPtr &connection
     if (not connection.isNull()) {
         mDisconnectTimeout.stop();
     } else if (not mCurrentConnection.isNull() && mCurrentConnection->status() != Tp::ConnectionStatusDisconnected) {
-        debug() << "Lost connection for account" << mAccount->objectPath()
+        qCDebug(lcContactsd) << "Lost connection for account" << mAccount->objectPath()
                 << ", giving a grace period of" << DisconnectGracePeriod << "ms";
         mDisconnectTimeout.start();
         return;
@@ -211,7 +209,7 @@ void CDTpAccount::onAccountConnectionChanged(const Tp::ConnectionPtr &connection
 
 void CDTpAccount::setConnection(const Tp::ConnectionPtr &connection)
 {
-    debug() << "Account" << mAccount->objectPath() << "- has connection:" << (connection != 0);
+    qCDebug(lcContactsd) << "Account" << mAccount->objectPath() << "- has connection:" << (connection != 0);
 
     if (not mCurrentConnection.isNull()) {
         makeRosterCache();
@@ -224,7 +222,7 @@ void CDTpAccount::setConnection(const Tp::ConnectionPtr &connection)
     if (connection) {
         /* If the connection has no roster, no need to bother with sync signals */
         if (not (connection->actualFeatures().contains(Tp::Connection::FeatureRoster))) {
-            debug() << "Account" << mAccount->objectPath() << "has no roster, not emitting sync signals";
+            qCDebug(lcContactsd) << "Account" << mAccount->objectPath() << "has no roster, not emitting sync signals";
 
             return;
         }
@@ -288,11 +286,11 @@ void CDTpAccount::setContactManager(const Tp::ContactManagerPtr &contactManager)
     }
 
     if (mHasRoster) {
-        warning() << "Account" << mAccount->objectPath() << "- already received the roster";
+        qCWarning(lcContactsd) << "Account" << mAccount->objectPath() << "- already received the roster";
         return;
     }
 
-    debug() << "Account" << mAccount->objectPath() << "- received the roster";
+    qCDebug(lcContactsd) << "Account" << mAccount->objectPath() << "- received the roster";
 
     mHasRoster = true;
     connect(contactManager.data(),
@@ -331,14 +329,14 @@ void CDTpAccount::setRosterCache(const QHash<QString, CDTpContact::Info> &cache)
 void CDTpAccount::onAllKnownContactsChanged(const Tp::Contacts &contactsAdded,
         const Tp::Contacts &contactsRemoved)
 {
-    debug() << "Account" << mAccount->objectPath() << "roster contacts changed:";
-    debug() << " " << contactsAdded.size() << "contacts added";
-    debug() << " " << contactsRemoved.size() << "contacts removed";
+    qCDebug(lcContactsd) << "Account" << mAccount->objectPath() << "roster contacts changed:";
+    qCDebug(lcContactsd) << " " << contactsAdded.size() << "contacts added";
+    qCDebug(lcContactsd) << " " << contactsRemoved.size() << "contacts removed";
 
     QList<CDTpContactPtr> added;
     Q_FOREACH (const Tp::ContactPtr &contact, contactsAdded) {
         if (mContacts.contains(contact->id())) {
-            warning() << "Internal error, contact was already in roster";
+            qCWarning(lcContactsd) << "Internal error, contact was already in roster";
             continue;
         }
         if (mContactsToAvoid.contains(contact->id())) {
@@ -355,7 +353,7 @@ void CDTpAccount::onAllKnownContactsChanged(const Tp::Contacts &contactsAdded,
     Q_FOREACH (const Tp::ContactPtr &contact, contactsRemoved) {
         const QString id(contact->id());
         if (!mContacts.contains(id)) {
-            warning() << "Internal error, contact is not in the internal list"
+            qCWarning(lcContactsd) << "Internal error, contact is not in the internal list"
                 "but was removed from roster";
             continue;
         }
@@ -377,7 +375,7 @@ void CDTpAccount::onAccountContactChanged(CDTpContactPtr contactWrapper,
     if ((changes & CDTpContact::Visibility) != 0) {
         // Visibility of this contact changed. Transform this update operation
         // to an add/remove operation
-        debug() << "Visibility changed for contact" << contactWrapper->contact()->id();
+        qCDebug(lcContactsd) << "Visibility changed for contact" << contactWrapper->contact()->id();
 
         QList<CDTpContactPtr> added;
         QList<CDTpContactPtr> removed;
@@ -400,7 +398,7 @@ void CDTpAccount::onAccountContactChanged(CDTpContactPtr contactWrapper,
 
 CDTpContactPtr CDTpAccount::insertContact(const Tp::ContactPtr &contact)
 {
-    debug() << "  creating wrapper for contact" << contact->id();
+    qCDebug(lcContactsd) << "  creating wrapper for contact" << contact->id();
 
     CDTpContactPtr contactWrapper = CDTpContactPtr(new CDTpContact(contact, this));
     connect(contactWrapper.data(),
@@ -413,11 +411,11 @@ CDTpContactPtr CDTpAccount::insertContact(const Tp::ContactPtr &contact)
 void CDTpAccount::maybeRequestExtraInfo(Tp::ContactPtr contact)
 {
     if (!contact->isAvatarTokenKnown()) {
-        debug() << contact->id() << "first seen: request avatar";
+        qCDebug(lcContactsd) << contact->id() << "first seen: request avatar";
         contact->requestAvatarData();
     }
     if (!contact->isContactInfoKnown()) {
-        debug() << contact->id() << "first seen: refresh ContactInfo";
+        qCDebug(lcContactsd) << contact->id() << "first seen: refresh ContactInfo";
         contact->refreshInfo();
     }
 }
@@ -444,7 +442,7 @@ QVariantMap CDTpAccount::storageInfo() const
 void CDTpAccount::onRequestedStorageSpecificInformation(Tp::PendingOperation *op)
 {
     if (!op->isValid()) {
-        debug() << "Cannot get storage specific information for account" << mAccount->objectPath();
+        qCDebug(lcContactsd) << "Cannot get storage specific information for account" << mAccount->objectPath();
         mStorageInfo.clear();
     } else {
         QDBusArgument arg = static_cast<Tp::PendingVariant*>(op)->result().value<QDBusArgument>();

@@ -20,6 +20,8 @@
 # Alternatively, this file may be used in accordance with the terms and
 # conditions contained in a signed written agreement between you and Nokia.
 
+include(../../lib.pri)
+
 INCLUDEPATH += $$PWD
 
 PACKAGENAME = contactsd

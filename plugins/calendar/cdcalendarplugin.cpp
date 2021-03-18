@@ -29,7 +29,7 @@ CDCalendarPlugin::~CDCalendarPlugin()
 
 void CDCalendarPlugin::init()
 {
-    debug() << "Initializing contactsd Calendar plugin";
+    qCDebug(lcContactsd) << "Initializing contactsd Calendar plugin";
 
     mController = new CDCalendarController(this);
 }

@@ -55,6 +55,7 @@ information), and store it to QtContacts.
 %{_datadir}/mapplauncherd/privileges.d/*
 # we currently don't have a backup framework
 %exclude /usr/share/backup-framework/applications/%{name}.conf
+%{_libdir}/libcontactsd.so.*
 
 
 %package devel
@@ -68,7 +69,7 @@ Requires: %{name} = %{version}-%{release}
 %defattr(-,root,root,-)
 %{_includedir}/%{name}-1.0
 %{_libdir}/pkgconfig/*.pc
-
+%{_libdir}/libcontactsd.so
 
 %package tests
 Summary: Tests for %{name}

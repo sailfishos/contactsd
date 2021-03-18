@@ -39,7 +39,7 @@ CDBirthdayPlugin::~CDBirthdayPlugin()
 
 void CDBirthdayPlugin::init()
 {
-    debug() << "Initializing contactsd birthday plugin";
+    qCDebug(lcContactsd) << "Initializing contactsd birthday plugin";
 
     mController = new CDBirthdayController(this);
 }

@@ -20,6 +20,8 @@
 # Alternatively, this file may be used in accordance with the terms and
 # conditions contained in a signed written agreement between you and Nokia.
 
+include(../../lib.pri)
+
 TEMPLATE = lib
 QT -= gui
 
@@ -35,9 +37,6 @@ LIBS += -lgcov
 }
 
 DEFINES += QT_NO_CAST_TO_ASCII QT_NO_CAST_FROM_ASCII
-
-INCLUDEPATH += $$TOP_SOURCEDIR/src
-DEFINES += ENABLE_DEBUG
 
 HEADERS  = cdbirthdaycalendar.h \
     cdbirthdaycontroller.h \

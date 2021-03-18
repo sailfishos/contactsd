@@ -87,7 +87,7 @@ void CDTpAvatarUpdate::onRequestDone()
 QString CDTpAvatarUpdate::writeAvatarFile(QFile &avatarFile, const QDir &cacheDir)
 {
     if (not cacheDir.exists() && not QDir::root().mkpath(cacheDir.absolutePath())) {
-        warning() << "Could not create large avatar cache dir:" << cacheDir.path();
+        qCWarning(lcContactsd) << "Could not create large avatar cache dir:" << cacheDir.path();
         return QString();
     }
 

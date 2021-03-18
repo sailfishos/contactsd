@@ -32,7 +32,7 @@ CDSimPlugin::~CDSimPlugin()
 
 void CDSimPlugin::init()
 {
-    debug() << "Initializing contactsd sim plugin";
+    qCDebug(lcContactsd) << "Initializing contactsd sim plugin";
 
     mController = new CDSimController(this);
 

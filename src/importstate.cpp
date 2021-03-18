@@ -24,8 +24,6 @@
 #include "debug.h"
 #include "importstate.h"
 
-using namespace Contactsd;
-
 static const QLatin1String SettingsOrganization("Nokia");
 static const QLatin1String SettingsApplication("Contactsd");
 
@@ -86,7 +84,7 @@ bool ImportState::serviceHasActiveImports(const QString &service)
 
 void ImportState::addImportingAccount(const QString &service, const QString &account)
 {
-    debug() << Q_FUNC_INFO << service << account;
+    qCDebug(lcContactsd) << Q_FUNC_INFO << service << account;
 
     if (not mService2Accounts.contains(service, account)) {
         mService2Accounts.insert(service, account);
@@ -98,7 +96,7 @@ void ImportState::addImportingAccount(const QString &service, const QString &acc
 bool ImportState::removeImportingAccount(const QString &service, const QString &account,
                                          int added, int removed, int merged)
 {
-    debug() << Q_FUNC_INFO << service << account;
+    qCDebug(lcContactsd) << Q_FUNC_INFO << service << account;
 
     int numRemoved = mService2Accounts.remove(service, account);
 

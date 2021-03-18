@@ -41,12 +41,12 @@ void CDTpAccountCacheLoader::run()
     QFile cacheFile(CDTpAccountCache::cacheFilePath(mAccount));
 
     if (not cacheFile.exists()) {
-        debug() << Q_FUNC_INFO << "Account" << accountPath << "has no cache file";
+        qCDebug(lcContactsd) << Q_FUNC_INFO << "Account" << accountPath << "has no cache file";
         return;
     }
 
     if (not cacheFile.open(QIODevice::ReadOnly)) {
-        warning() << Q_FUNC_INFO << "Can't open" << cacheFile.fileName() << "for reading:"
+        qCWarning(lcContactsd) << Q_FUNC_INFO << "Can't open" << cacheFile.fileName() << "for reading:"
                   << cacheFile.error();
         return;
     }
@@ -57,7 +57,7 @@ void CDTpAccountCacheLoader::run()
     QDataStream stream(cacheData);
 
     if (stream.atEnd()) {
-        debug() << Q_FUNC_INFO << "Empty cache file" << cacheFile.fileName();
+        qCDebug(lcContactsd) << Q_FUNC_INFO << "Empty cache file" << cacheFile.fileName();
         cacheFile.remove();
         return;
     }
@@ -66,7 +66,7 @@ void CDTpAccountCacheLoader::run()
     stream >> cacheVersion;
 
     if (cacheVersion != CDTpAccountCache::Version) {
-        warning() << "Wrong cache version for file" << cacheFile.fileName();
+        qCWarning(lcContactsd) << "Wrong cache version for file" << cacheFile.fileName();
         cacheFile.remove();
     }
 
@@ -75,6 +75,6 @@ void CDTpAccountCacheLoader::run()
 
     mAccount->setRosterCache(cache);
 
-    debug() << "Loaded" << cache.size() << "contacts from cache for account" << accountPath;
+    qCDebug(lcContactsd) << "Loaded" << cache.size() << "contacts from cache for account" << accountPath;
 }
 

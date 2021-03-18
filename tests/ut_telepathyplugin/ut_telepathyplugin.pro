@@ -37,7 +37,6 @@ QT += testlib dbus
 QT -= gui
 CONFIG += link_pkgconfig
 DEFINES += QT_NO_KEYWORDS
-DEFINES += ENABLE_DEBUG
 
 PKGCONFIG += Qt5Contacts qtcontacts-sqlite-qt5-extensions TelepathyQt5 telepathy-glib dbus-glib-1 gio-2.0
 
@@ -53,13 +52,13 @@ QMAKE_CXXFLAGS += -c -g --coverage -ftest-coverage -fprofile-arcs
 LIBS += -lgcov
 }
 
-HEADERS += debug.h \
+HEADERS += \
     test-telepathy-plugin.h \
     test-expectation.h \
     test.h \
     buddymanagementinterface.h
 
-SOURCES += debug.cpp \
+SOURCES += \
     test-telepathy-plugin.cpp \
     test-expectation.cpp \
     test.cpp \
