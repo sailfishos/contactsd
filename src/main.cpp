@@ -78,7 +78,7 @@ static void usage()
             << "Options:\n"
             << "\n"
             << "  --plugins PLUGINS    Comma separated list of plugins to load\n"
-            << "  --log-console        Enable console logging\n"
+            << "  --enable-debug       Enable debug logging\n"
             << "  --log-file FILENAME  Additional write logging information to FILENAME\n"
             << "  --version            Output version information and exit\n"
             << "  --help               Display this help and exit\n"
@@ -115,7 +115,7 @@ Q_DECL_EXPORT int main(int argc, char **argv)
     QCoreApplication app(argc, argv);
 
     QStringList plugins;
-    bool logConsole = !qgetenv("CONTACTSD_DEBUG").isEmpty();
+    bool useDebug = !qgetenv("CONTACTSD_DEBUG").isEmpty();
     QString logFileName;
 
     const QStringList args = app.arguments();
@@ -139,8 +139,8 @@ Q_DECL_EXPORT int main(int argc, char **argv)
         } else if (arg == "--help") {
             usage();
             return 0;
-        } else if (arg == "--log-console") {
-            logConsole = true;
+        } else if (arg == "--enable-debug") {
+            useDebug = true;
         } else if (arg == "--log-file") {
             if (++i == args.count()) {
                 usage();
@@ -156,7 +156,7 @@ Q_DECL_EXPORT int main(int argc, char **argv)
         ++i;
     }
 
-    if (logConsole) {
+    if (useDebug) {
         messageThreshold = QtDebugMsg;
     }
 
@@ -166,7 +166,7 @@ Q_DECL_EXPORT int main(int argc, char **argv)
 
     defaultMsgHandler = qInstallMessageHandler(customMessageHandler);
 
-    enableDebug(logConsole);
+    enableDebug(useDebug);
     debug() << "contactsd version" << VERSION << "started";
 
     const QString translationPath(QString::fromLatin1(TRANSLATIONS_INSTALL_PATH));
