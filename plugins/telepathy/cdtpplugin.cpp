@@ -36,9 +36,7 @@ CDTpPlugin::CDTpPlugin()
 
 CDTpPlugin::~CDTpPlugin()
 {
-    if (mController) {
-        delete mController;
-    }
+    delete mController;
 }
 
 void CDTpPlugin::init()
