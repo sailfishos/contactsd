@@ -179,8 +179,8 @@ Q_DECL_EXPORT int main(int argc, char **argv)
     translator->load(QLocale(), QString::fromLatin1("contactsd"), QString::fromLatin1("-"), translationPath);
     app.installTranslator(translator.data());
 
-    ContactsDaemon *daemon = new ContactsDaemon(&app);
-    daemon->loadPlugins(plugins);
+    ContactsDaemon daemon;
+    daemon.loadPlugins(plugins);
 
     const int rc = app.exec();
 
