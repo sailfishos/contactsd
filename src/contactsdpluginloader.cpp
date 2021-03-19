@@ -288,9 +288,7 @@ void ContactsdPluginLoader::onCheckAliveTimeout()
 
 void ContactsdPluginLoader::startImportTimer()
 {
-    if (mImportTimer) {
-        stopImportTimer();
-    }
+    stopImportTimer();
 
     // Add a timeout timer
     mImportTimer = new QTimer(this);
@@ -301,11 +299,8 @@ void ContactsdPluginLoader::startImportTimer()
 
 void ContactsdPluginLoader::stopImportTimer()
 {
-    if (mImportTimer) {
-        mImportTimer->stop();
-        delete mImportTimer;
-        mImportTimer = 0;
-    }
+    delete mImportTimer;
+    mImportTimer = 0;
 }
 
 QString ContactsdPluginLoader::pluginName(BasePlugin *plugin)
