@@ -39,7 +39,7 @@ class Q_DECL_EXPORT ContactsDaemon : public QObject
     Q_OBJECT
 
 public:
-    ContactsDaemon(QObject *parent);
+    ContactsDaemon(QObject *parent = nullptr);
     virtual ~ContactsDaemon();
 
     void loadPlugins(const QStringList &plugins = QStringList());

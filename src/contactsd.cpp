@@ -94,7 +94,7 @@ ContactsDaemon::ContactsDaemon(QObject *parent)
     // handler is invoked. This will trigger the QSocketNotifier::activated
     // signal (this time *through* the main loop) and call onUnixSignalReceived()
     // from where we can ask the QApplication to quit.
-    if(::socketpair(AF_UNIX, SOCK_STREAM, 0, sigFd) != 0) {
+    if (::socketpair(AF_UNIX, SOCK_STREAM, 0, sigFd) != 0) {
         warning() << "Could not setup UNIX signal handler";
     }
 
