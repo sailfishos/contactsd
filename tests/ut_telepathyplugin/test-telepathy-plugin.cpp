@@ -59,7 +59,6 @@ void TestTelepathyPlugin::initTestCase()
 
     qRegisterMetaType<QContactAbstractRequest::State>("QContactAbstractRequest::State");
 
-    g_type_init();
     g_set_prgname("test-telepathy-plugin");
 
     if (!qgetenv("CONTACTSD_DEBUG").isEmpty()) {
