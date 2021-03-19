@@ -49,7 +49,6 @@ packagesExist(qt5-boostable) {
 HEADERS += contactsd.h \
     contactsdpluginloader.h \
     importstate.h \
-    importstateconst.h \
     contactsimportprogressadaptor.h \
     synctrigger.h \
     debug.h \
@@ -69,8 +68,8 @@ DEFINES += CONTACTSD_LOG_DIR=\\\"$$LOCALSTATEDIR/log\\\"
 DEFINES += CONTACTSD_PLUGINS_DIR=\\\"$$LIBDIR/$${VERSIONED_TARGET}/plugins\\\"
 
 headers.files = BasePlugin base-plugin.h \
-    Debug debug.h \
-    ImportStateConst importstateconst.h
+    Debug debug.h
+
 headers.path = $$INCLUDEDIR/$${VERSIONED_TARGET}/Contactsd
 
 xml.files = com.nokia.contacts.importprogress.xml

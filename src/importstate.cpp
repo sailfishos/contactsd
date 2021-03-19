@@ -22,17 +22,32 @@
  **/
 
 #include "debug.h"
-#include "importstateconst.h"
 #include "importstate.h"
 
 using namespace Contactsd;
+
+static const QLatin1String SettingsOrganization("Nokia");
+static const QLatin1String SettingsApplication("Contactsd");
+
+/*
+ * \enum AccountImportState
+ * Each account's contacts importing state.
+ *
+ * \value Importing - account is actively importing contacts
+ * \value Imported - account has finished importing contacts,
+ *                   but UI has not yet handled these contacts
+ */
+enum AccountImportState {
+    Importing = 1,
+    Imported
+};
 
 ImportState::ImportState()
     : mContactsAdded(0),
       mContactsMerged(0),
       mContactsRemoved(0),
       mStateStore(QSettings::IniFormat, QSettings::UserScope,
-                  Contactsd::SettingsOrganization, Contactsd::SettingsApplication)
+                  SettingsOrganization, SettingsApplication)
 {
 }
 
@@ -44,7 +59,7 @@ bool ImportState::hasActiveImports()
 void ImportState::timeout()
 {
     foreach (const QString &account, mService2Accounts.values()) {
-        mStateStore.setValue(account, Contactsd::Imported);
+        mStateStore.setValue(account, Imported);
     }
 
     mStateStore.sync();
@@ -75,7 +90,7 @@ void ImportState::addImportingAccount(const QString &service, const QString &acc
 
     if (not mService2Accounts.contains(service, account)) {
         mService2Accounts.insert(service, account);
-        mStateStore.setValue(account, Contactsd::Importing);
+        mStateStore.setValue(account, Importing);
         mStateStore.sync();
     }
 }
@@ -91,12 +106,12 @@ bool ImportState::removeImportingAccount(const QString &service, const QString &
         mContactsAdded += added;
         mContactsRemoved += removed;
         mContactsMerged += merged;
-        mStateStore.setValue(account, Contactsd::Imported);
+        mStateStore.setValue(account, Imported);
         mStateStore.sync();
         return true;
-    }
-    else
+    } else {
         return false;
+    }
 }
 
 int ImportState::contactsAdded()
