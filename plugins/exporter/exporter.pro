@@ -1,4 +1,5 @@
 include(../contacts-extensions.pri)
+include(../../lib.pri)
 
 TEMPLATE = lib
 QT -= gui
@@ -13,7 +14,6 @@ DEFINES -= QT_NO_CAST_TO_ASCII
 DEFINES -= QT_NO_CAST_FROM_ASCII
 
 INCLUDEPATH += $$TOP_SOURCEDIR/src
-DEFINES += ENABLE_DEBUG
 
 HEADERS += \
     cdexportercontroller.h \

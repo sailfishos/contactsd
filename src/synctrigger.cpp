@@ -51,7 +51,7 @@ bool SyncTrigger::registerTriggerService()
     }
 
     if (!mDBusConnection->registerObject(QLatin1String("/SyncTrigger"), this, QDBusConnection::ExportAllContents)) {
-        warning() << "Could not register DBus object '/SyncTrigger':" << mDBusConnection->lastError();
+        qCWarning(lcContactsd) << "Could not register DBus object '/SyncTrigger':" << mDBusConnection->lastError();
         return false;
     }
 
@@ -62,7 +62,7 @@ bool SyncTrigger::registerTriggerService()
 void SyncTrigger::triggerSync(const QStringList &accountProviders, int syncPolicy, int directionPolicy)
 {
     // TODO: in the future, handle AdaptivePolicy by coalescing triggered syncs into time segments.
-    debug() << "triggering sync:" << accountProviders << syncPolicy << directionPolicy;
+    qCDebug(lcContactsd) << "triggering sync:" << accountProviders << syncPolicy << directionPolicy;
 
     // We trigger sync with a particular Buteo sync profile if:
     //  - the profile is a per-account (not template) profile
@@ -111,7 +111,7 @@ void SyncTrigger::triggerSync(const QStringList &accountProviders, int syncPolic
         if (notTemplate && isEnabled && isTarget && isContacts
                 && (isUpsync || directionPolicy == SyncTrigger::AnyDirection)
                 && (alwaysUpToDate || syncPolicy == SyncTrigger::ForceSync)) {
-            debug() << "SyncTrigger: profile meets criteria, triggering:" << profileId;
+            qCDebug(lcContactsd) << "SyncTrigger: profile meets criteria, triggering:" << profileId;
             QDBusMessage message = QDBusMessage::createMethodCall(
                     QStringLiteral("com.meego.msyncd"),
                     QStringLiteral("/synchronizer"),

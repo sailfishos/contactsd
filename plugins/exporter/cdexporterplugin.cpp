@@ -30,7 +30,7 @@ CDExporterPlugin::~CDExporterPlugin()
 
 void CDExporterPlugin::init()
 {
-    debug() << "Initializing contactsd exporter plugin";
+    qCDebug(lcContactsd) << "Initializing contactsd exporter plugin";
 
     mController = new CDExporterController(this);
 }

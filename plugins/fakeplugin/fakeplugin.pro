@@ -20,6 +20,8 @@
 # Alternatively, this file may be used in accordance with the terms and
 # conditions contained in a signed written agreement between you and Nokia.
 
+include(../../lib.pri)
+
 TEMPLATE = lib
 QT += dbus
 
@@ -31,9 +33,7 @@ LIBS += -lgcov
 }
 
 CONFIG += link_pkgconfig
-PKGCONFIG += TelepathyQt4
-
-INCLUDEPATH += $$TOP_SOURCEDIR/src
+PKGCONFIG += TelepathyQt5
 
 HEADERS  = fakeplugin.h
 

@@ -30,15 +30,14 @@ QT -= gui
 
 system(qdbusxml2cpp -c ContactsImportProgressAdaptor -a contactsimportprogressadaptor.h:contactsimportprogressadaptor.cpp com.nokia.contacts.importprogress.xml)
 
-INCLUDEPATH += $$TOP_SOURCEDIR/lib
-LIBS += -export-dynamic
-DEFINES += ENABLE_DEBUG
+include(../lib.pri)
 
 TRANSLATIONS_INSTALL_PATH = "/usr/share/translations"
 DEFINES += TRANSLATIONS_INSTALL_PATH=\"\\\"\"$${TRANSLATIONS_INSTALL_PATH}\"\\\"\"
 
 CONFIG += link_pkgconfig
 PKGCONFIG += buteosyncfw5
+
 packagesExist(qt5-boostable) {
     DEFINES += HAS_BOOSTER
     PKGCONFIG += qt5-boostable
@@ -49,10 +48,8 @@ packagesExist(qt5-boostable) {
 HEADERS += contactsd.h \
     contactsdpluginloader.h \
     importstate.h \
-    importstateconst.h \
     contactsimportprogressadaptor.h \
     synctrigger.h \
-    debug.h \
     base-plugin.h
 
 SOURCES += main.cpp \
@@ -60,21 +57,14 @@ SOURCES += main.cpp \
     contactsdpluginloader.cpp \
     importstate.cpp \
     contactsimportprogressadaptor.cpp \
-    synctrigger.cpp \
-    debug.cpp \
-    base-plugin.cpp
+    synctrigger.cpp
 
 DEFINES += VERSION=\\\"$${VERSION}\\\"
-DEFINES += CONTACTSD_LOG_DIR=\\\"$$LOCALSTATEDIR/log\\\"
 DEFINES += CONTACTSD_PLUGINS_DIR=\\\"$$LIBDIR/$${VERSIONED_TARGET}/plugins\\\"
-
-headers.files = BasePlugin base-plugin.h \
-    Debug debug.h \
-    ImportStateConst importstateconst.h
-headers.path = $$INCLUDEDIR/$${VERSIONED_TARGET}/Contactsd
 
 xml.files = com.nokia.contacts.importprogress.xml
 xml.path = $$INCLUDEDIR/$${VERSIONED_TARGET}
 
 target.path = $$BINDIR
-INSTALLS += target headers xml
+
+INSTALLS += target xml

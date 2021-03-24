@@ -39,31 +39,6 @@ const int IMPORT_TIMEOUT = 5 * 60 * 1000;
 // alive check timeout is 30 seconds
 const int ALIVE_TIMEOUT = 30 * 1000;
 
-class MsgHandlerGuard
-{
-private:
-    const QtMessageHandler m_msgHandler;
-    const QString m_context;
-
-public:
-    MsgHandlerGuard(const QString &context)
-        : m_msgHandler(qInstallMessageHandler(0))
-        , m_context(context)
-    {
-        // we had to cheat a bit to lookup the handler - there is no decicated mechanism
-        qInstallMessageHandler(m_msgHandler);
-    }
-
-    ~MsgHandlerGuard()
-    {
-        if (qInstallMessageHandler(m_msgHandler) != m_msgHandler) {
-            warning() << "Message handler got modified by"
-                      << m_context << " - don't do that!";
-        }
-    }
-};
-
-
 ContactsdPluginLoader::ContactsdPluginLoader(QDBusConnection *connection)
     : mImportTimer(0)
     , mCheckAliveTimer(0)
@@ -105,9 +80,7 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir, const QString
 
     Q_FOREACH (const QString &fileName, dir.entryList()) {
         QString absFileName = dir.absoluteFilePath(fileName);
-        debug() << "Trying to load plugin" << absFileName;
-
-        MsgHandlerGuard guard(absFileName);
+        qCDebug(lcContactsd) << "Trying to load plugin" << absFileName;
 
         // We intentionally leak this object, and never unload the plugin
         // When you load a plugin, you can't know what happens in the underlying
@@ -119,38 +92,38 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir, const QString
         QObject *pluginObject = loader.instance();
 
         if (!pluginObject) {
-            warning() << "Error loading plugin" << absFileName << "- " << loader.errorString();
+            qCWarning(lcContactsd) << "Error loading plugin" << absFileName << "- " << loader.errorString();
             continue;
         }
 
         BasePlugin *basePlugin = qobject_cast<BasePlugin *>(pluginObject);
 
         if (!basePlugin) {
-            warning() << "Error loading plugin" << absFileName << "- not a Contactd::BasePlugin";
+            qCWarning(lcContactsd) << "Error loading plugin" << absFileName << "- not a Contactd::BasePlugin";
             continue;
         }
 
         BasePlugin::MetaData metaData = basePlugin->metaData();
 
         if (!metaData.contains(BasePlugin::metaDataKeyName)) {
-            warning() << "Error loading plugin" << absFileName << "- invalid plugin metadata";
+            qCWarning(lcContactsd) << "Error loading plugin" << absFileName << "- invalid plugin metadata";
             continue;
         }
 
         QString pluginName = metaData[BasePlugin::metaDataKeyName].toString();
 
         if (!plugins.isEmpty() && !plugins.contains(pluginName)) {
-            warning() << "Ignoring plugin" << absFileName;
+            qCWarning(lcContactsd) << "Ignoring plugin" << absFileName;
             continue;
         }
 
         if (mPluginStore.contains(pluginName)) {
-            warning() << "Ignoring plugin" << absFileName <<
+            qCWarning(lcContactsd) << "Ignoring plugin" << absFileName <<
                 "- plugin with name" << pluginName << "already registered";
             continue;
         }
 
-        debug() << "Plugin" << pluginName << "loaded";
+        qCDebug(lcContactsd) << "Plugin" << pluginName << "loaded";
         mPluginStore.insert(pluginName, basePlugin);
 
         connect(basePlugin, SIGNAL(importStarted(const QString &, const QString &)),
@@ -163,8 +136,6 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir, const QString
                 this, SLOT(onImportAlive()));
 
         basePlugin->init();
-
-        Q_UNUSED(guard); // actually we do: RAII
     }
 }
 
@@ -182,12 +153,12 @@ void ContactsdPluginLoader::onPluginImportStarted(const QString &service, const 
 {
     BasePlugin *plugin = qobject_cast<BasePlugin *>(sender());
     if (not plugin) {
-        warning() << Q_FUNC_INFO << "invalid Contactsd::BasePlugin object";
-        return ;
+        qCWarning(lcContactsd) << Q_FUNC_INFO << "invalid Contactsd::BasePlugin object";
+        return;
     }
 
     QString name = pluginName(plugin);
-    debug() << Q_FUNC_INFO << "by plugin" << name
+    qCDebug(lcContactsd) << Q_FUNC_INFO << "by plugin" << name
              << "with service" << service << "account" << account;
 
     if (mImportState.hasActiveImports()) {
@@ -211,12 +182,12 @@ void ContactsdPluginLoader::onPluginImportEnded(const QString &service, const QS
 {
     BasePlugin *plugin = qobject_cast<BasePlugin *>(sender());
     if (not plugin) {
-        warning() << Q_FUNC_INFO << "invalid Contactsd::BasePlugin object";
-        return ;
+        qCWarning(lcContactsd) << Q_FUNC_INFO << "invalid Contactsd::BasePlugin object";
+        return;
     }
 
     QString name = pluginName(plugin);
-    debug() << Q_FUNC_INFO << "by plugin" << name
+    qCDebug(lcContactsd) << Q_FUNC_INFO << "by plugin" << name
              << "service" << service << "account" << account
              << "added" << contactsAdded << "removed" << contactsRemoved
              << "merged" << contactsMerged;
@@ -224,8 +195,8 @@ void ContactsdPluginLoader::onPluginImportEnded(const QString &service, const QS
     bool removed = mImportState.removeImportingAccount(service, account, contactsAdded,
                                                        contactsRemoved, contactsMerged);
     if (not removed) {
-        debug() << Q_FUNC_INFO << "account does not exist";
-        return ;
+        qCDebug(lcContactsd) << Q_FUNC_INFO << "account does not exist";
+        return;
     }
 
     if (mImportState.hasActiveImports()) {
@@ -250,7 +221,7 @@ void ContactsdPluginLoader::onImportAlive()
 
 void ContactsdPluginLoader::onImportTimeout()
 {
-    debug() << Q_FUNC_INFO;
+    qCDebug(lcContactsd) << Q_FUNC_INFO;
     stopImportTimer();
     startCheckAliveTimer();
 }
@@ -288,9 +259,7 @@ void ContactsdPluginLoader::onCheckAliveTimeout()
 
 void ContactsdPluginLoader::startImportTimer()
 {
-    if (mImportTimer) {
-        stopImportTimer();
-    }
+    stopImportTimer();
 
     // Add a timeout timer
     mImportTimer = new QTimer(this);
@@ -301,11 +270,8 @@ void ContactsdPluginLoader::startImportTimer()
 
 void ContactsdPluginLoader::stopImportTimer()
 {
-    if (mImportTimer) {
-        mImportTimer->stop();
-        delete mImportTimer;
-        mImportTimer = 0;
-    }
+    delete mImportTimer;
+    mImportTimer = 0;
 }
 
 QString ContactsdPluginLoader::pluginName(BasePlugin *plugin)
@@ -321,12 +287,12 @@ bool ContactsdPluginLoader::registerNotificationService()
     }
 
     if (!mDBusConnection->registerObject("/", this)) {
-        warning() << "Could not register DBus object '/':" <<
+        qCWarning(lcContactsd) << "Could not register DBus object '/':" <<
             mDBusConnection->lastError();
         return false;
     }
 
     mHaveRegisteredDBus = true;
-    (void) new ContactsImportProgressAdaptor(this);
+    new ContactsImportProgressAdaptor(this);
     return true;
 }

@@ -64,7 +64,6 @@ void TestTelepathyPlugin::initTestCase()
     if (!qgetenv("CONTACTSD_DEBUG").isEmpty()) {
         tp_debug_set_flags("all");
         test_debug_enable(TRUE);
-        enableDebug(true);
     }
 
     dbus_g_bus_get(DBUS_BUS_STARTER, 0);
@@ -856,7 +855,7 @@ void TestTelepathyPlugin::runExpectation(TestExpectationPtr exp)
 
 void TestTelepathyPlugin::contactsAdded(const QList<QContactId>& contactIds)
 {
-    debug() << "Got contactsAdded";
+    qCDebug(lcContactsd) << "Got contactsAdded";
     Q_FOREACH (const QContactId &id, contactIds) {
         QVERIFY(!mContactIds.contains(id));
         mContactIds << id;
@@ -866,10 +865,10 @@ void TestTelepathyPlugin::contactsAdded(const QList<QContactId>& contactIds)
 
 void TestTelepathyPlugin::contactsChanged(const QList<QContactId>& contactIds, const QList<QContactDetail::DetailType> &)
 {
-    debug() << "Got contactsChanged";
+    qCDebug(lcContactsd) << "Got contactsChanged";
     Q_FOREACH (const QContactId &id, contactIds) {
         if (!mContactIds.contains(id)) {
-            warning() << "Unknown contact ID changed:" << id;
+            qCWarning(lcContactsd) << "Unknown contact ID changed:" << id;
             mContactIds << id;
         }
     }
@@ -878,10 +877,10 @@ void TestTelepathyPlugin::contactsChanged(const QList<QContactId>& contactIds, c
 
 void TestTelepathyPlugin::contactsRemoved(const QList<QContactId>& contactIds)
 {
-    debug() << "Got contactsRemoved";
+    qCDebug(lcContactsd) << "Got contactsRemoved";
     Q_FOREACH (const QContactId &id, contactIds) {
         if (!mContactIds.contains(id)) {
-            warning() << "Unknown contact ID removed:" << id;
+            qCWarning(lcContactsd) << "Unknown contact ID removed:" << id;
         } else {
             mContactIds.removeOne(id);
         }

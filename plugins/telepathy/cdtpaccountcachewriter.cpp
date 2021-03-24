@@ -58,7 +58,7 @@ void CDTpAccountCacheWriter::run()
     tempFile.setAutoRemove(false);
 
     if (not tempFile.open()) {
-        warning() << "Could not open file" << tempFile.fileName()
+        qCWarning(lcContactsd) << "Could not open file" << tempFile.fileName()
                   << "for writing:" << tempFile.errorString();
         tempFile.setAutoRemove(true);
         return;
@@ -76,7 +76,7 @@ void CDTpAccountCacheWriter::run()
     buffer.close();
 
     if (tempFile.write(data) != data.size()) {
-        warning() << "Could not write roster cache for account" << accountPath << ":" << tempFile.errorString();
+        qCWarning(lcContactsd) << "Could not write roster cache for account" << accountPath << ":" << tempFile.errorString();
         tempFile.setAutoRemove(true);
         return;
     }
@@ -84,16 +84,16 @@ void CDTpAccountCacheWriter::run()
     if (not tempFile.flush()
      || (::fsync(tempFile.handle()) != 0)
      || (tempFile.close(), false)) {
-        warning() << "Could not finalize roster cache for account" << accountPath << ":" << tempFile.errorString();
+        qCWarning(lcContactsd) << "Could not finalize roster cache for account" << accountPath << ":" << tempFile.errorString();
         tempFile.setAutoRemove(true);
         return;
     }
 
     if (::rename(tempFile.fileName().toLocal8Bit(), rosterFileName.toLocal8Bit()) != 0) {
-        warning() << "Could not write roster cache for account" << accountPath << ":" << strerror(errno);
+        qCWarning(lcContactsd) << "Could not write roster cache for account" << accountPath << ":" << strerror(errno);
         tempFile.setAutoRemove(true);
         return;
     }
 
-    debug() << "Wrote" << mAccount->rosterCache().size() << "contacts to cache for account" << accountPath;
+    qCDebug(lcContactsd) << "Wrote" << mAccount->rosterCache().size() << "contacts to cache for account" << accountPath;
 }

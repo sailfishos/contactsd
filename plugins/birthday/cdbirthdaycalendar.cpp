@@ -37,7 +37,6 @@
 #include "cdbirthdaycalendar.h"
 #include "debug.h"
 
-using namespace Contactsd;
 using namespace ML10N;
 
 // A random ID.
@@ -99,7 +98,7 @@ CDBirthdayCalendar::~CDBirthdayCalendar()
         mStorage->close();
     }
 
-    debug() << "Destroyed birthday calendar";
+    qCDebug(lcContactsd) << "Destroyed birthday calendar";
 }
 
 mKCal::Notebook::Ptr CDBirthdayCalendar::createNotebook()
@@ -123,7 +122,7 @@ QHash<QContactId, CalendarBirthday>
 CDBirthdayCalendar::birthdays()
 {
     if (not mStorage->loadNotebookIncidences(calNotebookId)) {
-        warning() << Q_FUNC_INFO << "Failed to load all incidences";
+        qCWarning(lcContactsd) << Q_FUNC_INFO << "Failed to load all incidences";
         return QHash<QContactId, CalendarBirthday>();
     }
 
@@ -136,7 +135,7 @@ CDBirthdayCalendar::birthdays()
         if (!contactId.isNull()) {
             result.insert(contactId, CalendarBirthday(event->dtStart().date(), event->summary()));
         } else {
-            warning() << Q_FUNC_INFO << "Birthday event with a bad uid: " << eventUid;
+            qCWarning(lcContactsd) << Q_FUNC_INFO << "Birthday event with a bad uid: " << eventUid;
         }
     }
 
@@ -150,26 +149,26 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
     const QDate contactBirthday = contact.detail<QContactBirthday>().date();
 
     if (displayLabel.isEmpty() || contactBirthday.isNull()) {
-        warning() << Q_FUNC_INFO << "Contact without name or birthday, local ID: "
+        qCWarning(lcContactsd) << Q_FUNC_INFO << "Contact without name or birthday, local ID: "
                   << contact.id();
         return;
     }
 
     if (contact.id().isNull()) {
-        warning() << Q_FUNC_INFO << "Updating birthday for null contact";
+        qCWarning(lcContactsd) << Q_FUNC_INFO << "Updating birthday for null contact";
         return;
     }
 
     QString eventId = calendarEventId(contact.id());
     if (eventId.isEmpty()) {
-        warning() << Q_FUNC_INFO << "Failed to map contact id to calendar event id" << contact.id();
+        qCWarning(lcContactsd) << Q_FUNC_INFO << "Failed to map contact id to calendar event id" << contact.id();
         return;
     }
 
     setReadOnly(false);
 
     if (not mStorage->isValidNotebook(calNotebookId)) {
-        warning() << Q_FUNC_INFO << "Invalid notebook ID: " << calNotebookId;
+        qCWarning(lcContactsd) << Q_FUNC_INFO << "Invalid notebook ID: " << calNotebookId;
         return;
     }
 
@@ -188,7 +187,7 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
         event->setCategories(QStringList() << QLatin1String("BIRTHDAY"));
 
         if (not mCalendar->addEvent(event, calNotebookId)) {
-            warning() << Q_FUNC_INFO << "Failed to add event to calendar";
+            qCWarning(lcContactsd) << Q_FUNC_INFO << "Failed to add event to calendar";
             return;
         }
     } else {
@@ -265,7 +264,7 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
     event->setReadOnly(true);
     event->endUpdates();
     setReadOnly(true);
-    debug() << "Updated birthday event in calendar, local ID: " << contact.id();
+    qCDebug(lcContactsd) << "Updated birthday event in calendar, local ID: " << contact.id();
 }
 
 void CDBirthdayCalendar::deleteBirthday(const QContactId &contactId)
@@ -273,20 +272,20 @@ void CDBirthdayCalendar::deleteBirthday(const QContactId &contactId)
     KCalendarCore::Event::Ptr event = calendarEvent(contactId);
 
     if (event.isNull()) {
-        debug() << Q_FUNC_INFO << "Not found in calendar:" << contactId;
+        qCDebug(lcContactsd) << Q_FUNC_INFO << "Not found in calendar:" << contactId;
         return;
     }
 
     mCalendar->deleteEvent(event);
 
-    debug() << "Deleted birthday event in calendar, local ID: " << event->uid();
+    qCDebug(lcContactsd) << "Deleted birthday event in calendar, local ID: " << event->uid();
 }
 
 void CDBirthdayCalendar::save()
 {
     setReadOnly(false);
     if (not mStorage->save()) {
-        warning() << Q_FUNC_INFO << "Failed to update birthdays in calendar";
+        qCWarning(lcContactsd) << Q_FUNC_INFO << "Failed to update birthdays in calendar";
     }
     setReadOnly(true);
 }
@@ -327,19 +326,19 @@ KCalendarCore::Event::Ptr CDBirthdayCalendar::calendarEvent(const QContactId &co
     const QString eventId = calendarEventId(contactId);
 
     if (eventId.isEmpty()) {
-        warning() << Q_FUNC_INFO << "Failed to map contact to event id" << contactId.toString();
+        qCWarning(lcContactsd) << Q_FUNC_INFO << "Failed to map contact to event id" << contactId.toString();
         return KCalendarCore::Event::Ptr();
     }
 
     if (not mStorage->load(eventId)) {
-        warning() << Q_FUNC_INFO << "Unable to load event from calendar";
+        qCWarning(lcContactsd) << Q_FUNC_INFO << "Unable to load event from calendar";
         return KCalendarCore::Event::Ptr();
     }
 
     KCalendarCore::Event::Ptr event = mCalendar->event(eventId);
 
     if (event.isNull()) {
-        debug() << Q_FUNC_INFO << "Not found in calendar:" << contactId;
+        qCDebug(lcContactsd) << Q_FUNC_INFO << "Not found in calendar:" << contactId;
     }
 
     return event;
@@ -362,16 +361,16 @@ void CDBirthdayCalendar::onLocaleChanged()
     mKCal::Notebook::Ptr notebook = mStorage->notebook(calNotebookId);
 
     if (notebook.isNull()) {
-        warning() << Q_FUNC_INFO << "Calendar not found while changing locale";
+        qCWarning(lcContactsd) << Q_FUNC_INFO << "Calendar not found while changing locale";
         return;
     }
 
     const QString name = qtTrId("qtn_caln_birthdays");
 
-    debug() << Q_FUNC_INFO << "Updating calendar name to" << name;
+    qCDebug(lcContactsd) << Q_FUNC_INFO << "Updating calendar name to" << name;
     notebook->setName(name);
 
     if (not mStorage->updateNotebook(notebook)) {
-        warning() << Q_FUNC_INFO << "Could not save calendar";
+        qCWarning(lcContactsd) << Q_FUNC_INFO << "Could not save calendar";
     }
 }

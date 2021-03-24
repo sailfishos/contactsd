@@ -78,14 +78,14 @@ ContactsDaemon::ContactsDaemon(QObject *parent)
       mSyncTrigger(new SyncTrigger(&mDBusConnection))
 {
     if (!mDBusConnection.isConnected()) {
-        warning() << "Could not connect to DBus:" << mDBusConnection.lastError();
+        qCWarning(lcContactsd) << "Could not connect to DBus:" << mDBusConnection.lastError();
     } else if (!mDBusConnection.registerService(QStringLiteral("com.nokia.contactsd"))) {
-        warning() << "Could not register DBus service "
+        qCWarning(lcContactsd) << "Could not register DBus service "
             "'com.nokia.contactsd':" << mDBusConnection.lastError();
     } else if (!mLoader->registerNotificationService()) {
-        warning() << "unable to register notification service";
+        qCWarning(lcContactsd) << "unable to register notification service";
     } else if (!mSyncTrigger->registerTriggerService()) {
-        warning() << "unable to register sync trigger service";
+        qCWarning(lcContactsd) << "unable to register sync trigger service";
     }
 
     // The UNIX signals call unixSignalHandler(), but that is not called
@@ -95,7 +95,7 @@ ContactsDaemon::ContactsDaemon(QObject *parent)
     // signal (this time *through* the main loop) and call onUnixSignalReceived()
     // from where we can ask the QApplication to quit.
     if (::socketpair(AF_UNIX, SOCK_STREAM, 0, sigFd) != 0) {
-        warning() << "Could not setup UNIX signal handler";
+        qCWarning(lcContactsd) << "Could not setup UNIX signal handler";
     }
 
     mSignalNotifier = new QSocketNotifier(sigFd[1], QSocketNotifier::Read, this);
@@ -124,7 +124,7 @@ void ContactsDaemon::unixSignalHandler(int)
     // Write a byte on the socket to activate the socket listener
     char a = 1;
     if (::write(sigFd[0], &a, sizeof(a)) != sizeof(a)) {
-        warning() << "Unable to write to sigFd" << errno;
+        qCWarning(lcContactsd) << "Unable to write to sigFd" << errno;
     }
 }
 
@@ -136,10 +136,10 @@ void ContactsDaemon::onUnixSignalReceived()
     // Empty the socket buffer
     char dummy;
     if (::read(sigFd[1], &dummy, sizeof(dummy)) != sizeof(dummy)) {
-        warning() << "Unable to complete read from sigFd" << errno;
+        qCWarning(lcContactsd) << "Unable to complete read from sigFd" << errno;
     }
 
-    debug() << "Received quit signal";
+    qCDebug(lcContactsd) << "Received quit signal";
 
     QCoreApplication::quit();
 

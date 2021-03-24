@@ -1,3 +1,5 @@
+include(../../lib.pri)
+
 TEMPLATE = lib
 QT -= gui
 QT += contacts-private
@@ -9,9 +11,6 @@ PKGCONFIG += accounts-qt5 KF5CalendarCore libmkcal-qt5
 
 DEFINES -= QT_NO_CAST_TO_ASCII
 DEFINES -= QT_NO_CAST_FROM_ASCII
-
-INCLUDEPATH += $$TOP_SOURCEDIR/src
-DEFINES += ENABLE_DEBUG
 
 HEADERS  = \
     cdcalendarcontroller.h \

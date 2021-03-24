@@ -28,8 +28,6 @@
 #include "cdtpcontact.h"
 #include "debug.h"
 
-using namespace Contactsd;
-
 ///////////////////////////////////////////////////////////////////////////////
 
 class CDTpContact::InfoData : public QSharedData

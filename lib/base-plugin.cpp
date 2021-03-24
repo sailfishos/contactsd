@@ -42,7 +42,7 @@ BasePlugin::cacheDir()
 
     if (not cacheDir.exists()) {
         if (not cacheDir.mkpath(QString::fromLatin1("."))) {
-            warning() << "Could not create cache dir";
+            qCWarning(lcContactsd) << "Could not create cache dir";
             return QDir();
         }
     }

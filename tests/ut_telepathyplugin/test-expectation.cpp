@@ -96,11 +96,11 @@ void TestFetchContacts::onContactsFetched()
     if (req->error() == QContactManager::NoError) {
         QList<QContact> contacts;
         Q_FOREACH (const QContact &contact, req->contacts()) {
-            debug() << "Contact fetched:\n\n" << contact << "\n";
+            qCDebug(lcContactsd) << "Contact fetched:\n\n" << contact << "\n";
 
             // For some reason, we get VoiceMail signals sometimes. Ignore them.
             if (contact.detail<QContactTag>().tag() == QLatin1String("voicemail")) {
-                debug() << "Ignoring voicemail contact";
+                qCDebug(lcContactsd) << "Ignoring voicemail contact";
                 continue;
             }
 

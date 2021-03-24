@@ -35,8 +35,6 @@
 #include "cdtpcontroller.h"
 #include "debug.h"
 
-using namespace Contactsd;
-
 const QLatin1String DBusObjectPath("/telepathy");
 static const QString offlineRemovals = QString::fromLatin1("OfflineRemovals");
 static const QString offlineInvitations = QString::fromLatin1("OfflineInvitations");
@@ -49,7 +47,7 @@ CDTpController::CDTpController(QObject *parent)
             SIGNAL(error(int, const QString &)),
             SIGNAL(error(int, const QString &)));
 
-    debug() << "Creating account manager";
+    qCDebug(lcContactsd) << "Creating account manager";
     const QDBusConnection &bus = QDBusConnection::sessionBus();
     Tp::AccountFactoryPtr accountFactory = Tp::AccountFactory::create(bus,
             Tp::Features() << Tp::Account::FeatureCore
@@ -88,12 +86,12 @@ CDTpController::~CDTpController()
 void CDTpController::onAccountManagerReady(Tp::PendingOperation *op)
 {
     if (op->isError()) {
-        debug() << "Could not make account manager ready:" <<
+        qCDebug(lcContactsd) << "Could not make account manager ready:" <<
             op->errorName() << "-" << op->errorMessage();
         return;
     }
 
-    debug() << "Account manager ready";
+    qCDebug(lcContactsd) << "Account manager ready";
 
     Tp::AccountPropertyFilterPtr propFilter;
     Tp::AccountFilterPtr notFilter;
@@ -139,7 +137,7 @@ void CDTpController::onAccountManagerReady(Tp::PendingOperation *op)
 void CDTpController::onAccountAdded(const Tp::AccountPtr &account)
 {
     if (mAccounts.contains(account->objectPath())) {
-        warning() << "Internal error, account was already in controller";
+        qCWarning(lcContactsd) << "Internal error, account was already in controller";
         return;
     }
 
@@ -151,7 +149,7 @@ void CDTpController::onAccountRemoved(const Tp::AccountPtr &account)
 {
     CDTpAccountPtr accountWrapper(mAccounts.take(account->objectPath()));
     if (not accountWrapper) {
-        warning() << "Internal error, account was not in controller";
+        qCWarning(lcContactsd) << "Internal error, account was not in controller";
         return;
     }
     mStorage.removeAccount(accountWrapper);
@@ -172,7 +170,7 @@ void CDTpController::onAccountRemoved(const Tp::AccountPtr &account)
 
 CDTpAccountPtr CDTpController::insertAccount(const Tp::AccountPtr &account, bool newAccount)
 {
-    debug() << "Creating wrapper for account" << account->objectPath();
+    qCDebug(lcContactsd) << "Creating wrapper for account" << account->objectPath();
 
     // Get the list of contact ids waiting to be removed from server
     mOfflineRosterBuffer.beginGroup(offlineRemovals);
@@ -270,14 +268,14 @@ void CDTpController::inviteBuddies(const QString &accountPath, const QStringList
 
 void CDTpController::inviteBuddiesOnContact(const QString &accountPath, const QStringList &imIds, uint localId)
 {
-    debug() << "InviteBuddies:" << accountPath << imIds.join(QLatin1String(", "));
+    qCDebug(lcContactsd) << "InviteBuddies:" << accountPath << imIds.join(QLatin1String(", "));
 
     // Add ids to offlineInvitations, in case operation does not succeed now
     updateOfflineRosterBuffer(offlineInvitations, accountPath, imIds, QStringList());
 
     CDTpAccountPtr accountWrapper = mAccounts[accountPath];
     if (!accountWrapper) {
-        debug() << "Account not found";
+        qCDebug(lcContactsd) << "Account not found";
         return;
     }
 
@@ -295,12 +293,12 @@ void CDTpController::onInvitationFinished(Tp::PendingOperation *op)
     // If an error happend, ids stay in the OfflineRosterBuffer and operation
     // will be retried next time account connects.
     if (op->isError()) {
-        debug() << "Error" << op->errorName() << ":" << op->errorMessage();
+        qCDebug(lcContactsd) << "Error" << op->errorName() << ":" << op->errorMessage();
         return;
     }
 
     CDTpInvitationOperation *iop = qobject_cast<CDTpInvitationOperation *>(op);
-    debug() << "Contacts invited:" << iop->contactIds().join(QLatin1String(", "));
+    qCDebug(lcContactsd) << "Contacts invited:" << iop->contactIds().join(QLatin1String(", "));
 
     CDTpAccountPtr accountWrapper = iop->accountWrapper();
     const QString accountPath = accountWrapper->account()->objectPath();
@@ -309,14 +307,14 @@ void CDTpController::onInvitationFinished(Tp::PendingOperation *op)
 
 void CDTpController::removeBuddies(const QString &accountPath, const QStringList &imIds)
 {
-    debug() << "RemoveBuddies:" << accountPath << imIds.join(QLatin1String(", "));
+    qCDebug(lcContactsd) << "RemoveBuddies:" << accountPath << imIds.join(QLatin1String(", "));
 
     // Add ids to offlineRemovals, in case it does not get removed right now from server
     QStringList currentList = updateOfflineRosterBuffer(offlineRemovals, accountPath, imIds, QStringList());
 
     CDTpAccountPtr accountWrapper = mAccounts[accountPath];
     if (!accountWrapper) {
-        debug() << "Account not found";
+        qCDebug(lcContactsd) << "Account not found";
         return;
     }
 
@@ -340,12 +338,12 @@ void CDTpController::onRemovalFinished(Tp::PendingOperation *op)
     // If an error happend, ids stay in the OfflineRosterBuffer and operation
     // will be retried next time account connects.
     if (op->isError()) {
-        debug() << "Error" << op->errorName() << ":" << op->errorMessage();
+        qCDebug(lcContactsd) << "Error" << op->errorName() << ":" << op->errorMessage();
         return;
     }
 
     CDTpRemovalOperation *rop = qobject_cast<CDTpRemovalOperation *>(op);
-    debug() << "Contacts removed from server:" << rop->contactIds().join(QLatin1String(", "));
+    qCDebug(lcContactsd) << "Contacts removed from server:" << rop->contactIds().join(QLatin1String(", "));
 
     CDTpAccountPtr accountWrapper = rop->accountWrapper();
     const QString accountPath = accountWrapper->account()->objectPath();
@@ -383,12 +381,12 @@ bool CDTpController::registerDBusObject()
 {
     QDBusConnection connection = QDBusConnection::sessionBus();
     if (!connection.isConnected()) {
-        warning() << "Could not connect to DBus:" << connection.lastError();
+        qCWarning(lcContactsd) << "Could not connect to DBus:" << connection.lastError();
         return false;
     }
 
     if (!connection.registerObject(DBusObjectPath, this)) {
-        warning() << "Could not register DBus object '/':" <<
+        qCWarning(lcContactsd) << "Could not register DBus object '/':" <<
             connection.lastError();
         return false;
     }
@@ -399,7 +397,7 @@ CDTpRemovalOperation::CDTpRemovalOperation(CDTpAccountPtr accountWrapper,
         const QStringList &contactIds) : PendingOperation(accountWrapper),
         mContactIds(contactIds), mAccountWrapper(accountWrapper)
 {
-    debug() << "CDTpRemovalOperation: start";
+    qCDebug(lcContactsd) << "CDTpRemovalOperation: start";
 
     if (accountWrapper->account()->connection().isNull()) {
         // If the connection is null, we make up an error and emit it
@@ -445,7 +443,7 @@ CDTpInvitationOperation::CDTpInvitationOperation(CDTpStorage &storage,
     , mAccountWrapper(accountWrapper)
     , mContactLocalId(contactLocalId)
 {
-    debug() << "CDTpInvitationOperation: start";
+    qCDebug(lcContactsd) << "CDTpInvitationOperation: start";
 
     if (accountWrapper->account()->connection().isNull()) {
         // If the connection is null, we make up an error and emit it
