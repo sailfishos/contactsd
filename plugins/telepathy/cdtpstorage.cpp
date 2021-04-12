@@ -374,7 +374,7 @@ QContactId selfContactLocalId(const QContactCollectionId &collectionId)
 QContact selfContact(const QContactCollectionId &collectionId)
 {
     // For the self contact, we only care about accounts/presence/avatars
-    static QContactId selfLocalId(selfContactLocalId(collectionId));
+    QContactId selfLocalId(selfContactLocalId(collectionId));
     static QContactFetchHint hint(contactFetchHint(DetailList() << detailType<QContactOnlineAccount>()
                                                                 << detailType<QContactPresence>()
                                                                 << detailType<QContactGlobalPresence>()
@@ -598,6 +598,32 @@ void reportSelfDetails(CDTpDevicePresence *devicePresence, const QContact &conta
     emit devicePresence->selfUpdate(displayLabel, nameDetail.firstName(), nameDetail.lastName(), nicknames);
 }
 
+void emitAccountChanges(CDTpDevicePresence *devicePresence, QContact &self, bool updateAccountList = false)
+{
+    // See if the global presence has been updated
+    const QContactPresence::PresenceState previousState(self.detail<QContactGlobalPresence>().presenceState());
+
+    DetailList types(DetailList() << detailType<QContactGlobalPresence>());
+    if (updateAccountList) {
+        types << detailType<QContactOnlineAccount>();
+    }
+
+    const QContact updated(manager()->contact(self.id(), contactFetchHint(types)));
+    const QContactPresence::PresenceState updatedState(updated.detail<QContactGlobalPresence>().presenceState());
+
+    if (updatedState != previousState) {
+        emit devicePresence->globalUpdate(updatedState);
+    }
+    if (updateAccountList) {
+        // Ensure that listeners are aware of any invalidated accounts
+        QStringList accountPaths;
+        foreach (const QContactOnlineAccount &qcoa, updated.details<QContactOnlineAccount>()) {
+            accountPaths.append(qcoa.value<QString>(QContactOnlineAccount__FieldAccountPath));
+        }
+        emit devicePresence->accountList(accountPaths);
+    }
+}
+
 bool storeSelfContact(CDTpDevicePresence *devicePresence, QContact &self, const QString &location, CDTpContact::Changes changes = CDTpContact::All, bool updateAccountList = false)
 {
     if (!storeContact(self, location, changes)) {
@@ -605,28 +631,7 @@ bool storeSelfContact(CDTpDevicePresence *devicePresence, QContact &self, const 
     }
 
     if ((changes & CDTpContact::Presence) || updateAccountList) {
-        // See if the global presence has been updated
-        const QContactPresence::PresenceState previousState(self.detail<QContactGlobalPresence>().presenceState());
-
-        DetailList types(DetailList() << detailType<QContactGlobalPresence>());
-        if (updateAccountList) {
-            types << detailType<QContactOnlineAccount>();
-        }
-
-        const QContact updated(manager()->contact(self.id(), contactFetchHint(types)));
-        const QContactPresence::PresenceState updatedState(updated.detail<QContactGlobalPresence>().presenceState());
-
-        if (updatedState != previousState) {
-            emit devicePresence->globalUpdate(updatedState);
-        }
-        if (updateAccountList) {
-            // Ensure that listeners are aware of any invalidated accounts
-            QStringList accountPaths;
-            foreach (const QContactOnlineAccount &qcoa, updated.details<QContactOnlineAccount>()) {
-                accountPaths.append(qcoa.value<QString>(QContactOnlineAccount__FieldAccountPath));
-            }
-            emit devicePresence->accountList(accountPaths);
-        }
+        emitAccountChanges(devicePresence, self, updateAccountList);
     }
     return true;
 }
@@ -2485,6 +2490,7 @@ void CDTpStorage::removeAccount(CDTpAccountPtr accountWrapper)
         qCWarning(lcContactsd) << SRC_LOC << "Unable to retrieve self contact:" << manager()->error();
         return;
     }
+    QContact globalSelf = manager()->contact(manager()->selfContactId());
 
     const QString accountPath(imAccount(accountWrapper));
 
@@ -2495,7 +2501,7 @@ void CDTpStorage::removeAccount(CDTpAccountPtr accountWrapper)
         if (existingPath == accountPath) {
             removeExistingAccount(self, existingAccount);
 
-            storeSelfContact(mDevicePresence, self, SRC_LOC, CDTpContact::All, true);
+            emitAccountChanges(mDevicePresence, globalSelf, true);
             return;
         }
     }
