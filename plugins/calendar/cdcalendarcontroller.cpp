@@ -30,6 +30,7 @@ namespace {
     Sets the \a enabled status for all notebooks associated with the given
     account \a id.
 */
+static const QByteArray VISIBILITY_CHANGED_FLAG("hidden_by_account");
 void updateNotebooks(AccountId id, bool enabled)
 {
     mKCal::ExtendedCalendar::Ptr calendar = mKCal::ExtendedCalendar::Ptr(
@@ -44,8 +45,13 @@ void updateNotebooks(AccountId id, bool enabled)
         AccountId accountInt = accountStr.toULong(&ok);
         if (ok && accountInt == id) {
             bool visible = notebook->isVisible();
-            if (visible != enabled) {
-                notebook->setIsVisible(enabled);
+            if (!enabled && visible) {
+                notebook->setIsVisible(false);
+                notebook->setCustomProperty(VISIBILITY_CHANGED_FLAG, QString::fromLatin1("true"));
+                storage->updateNotebook(notebook);
+            } else if (enabled && !visible && !notebook->customProperty(VISIBILITY_CHANGED_FLAG).isEmpty()) {
+                notebook->setIsVisible(true);
+                notebook->setCustomProperty(VISIBILITY_CHANGED_FLAG, QString());
                 storage->updateNotebook(notebook);
             }
         }
