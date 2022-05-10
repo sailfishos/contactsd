@@ -38,20 +38,20 @@ void updateNotebooks(AccountId id, bool enabled)
     mKCal::ExtendedStorage::Ptr storage = calendar->defaultStorage(calendar);
     storage->open();
 
-    const mKCal::Notebook::List notebooks = storage->notebooks();
-    for (const mKCal::Notebook::Ptr notebook : notebooks) {
-        const QString accountStr = notebook->account();
+    const QList<mKCal::Notebook> notebooks = storage->notebooks();
+    for (mKCal::Notebook notebook : notebooks) {
+        const QString accountStr = notebook.account();
         bool ok = false;
         AccountId accountInt = accountStr.toULong(&ok);
         if (ok && accountInt == id) {
-            bool visible = notebook->isVisible();
+            bool visible = notebook.isVisible();
             if (!enabled && visible) {
-                notebook->setIsVisible(false);
-                notebook->setCustomProperty(VISIBILITY_CHANGED_FLAG, QString::fromLatin1("true"));
+                notebook.setIsVisible(false);
+                notebook.setCustomProperty(VISIBILITY_CHANGED_FLAG, QString::fromLatin1("true"));
                 storage->updateNotebook(notebook);
-            } else if (enabled && !visible && !notebook->customProperty(VISIBILITY_CHANGED_FLAG).isEmpty()) {
-                notebook->setIsVisible(true);
-                notebook->setCustomProperty(VISIBILITY_CHANGED_FLAG, QString());
+            } else if (enabled && !visible && !notebook.customProperty(VISIBILITY_CHANGED_FLAG).isEmpty()) {
+                notebook.setIsVisible(true);
+                notebook.setCustomProperty(VISIBILITY_CHANGED_FLAG, QString());
                 storage->updateNotebook(notebook);
             }
         }
