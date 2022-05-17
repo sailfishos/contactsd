@@ -66,14 +66,12 @@ CDBirthdayCalendar::CDBirthdayCalendar(SyncMode syncMode, QObject *parent) :
 
     mStorage->open();
 
-    mKCal::Notebook::Ptr notebook = mStorage->notebook(calNotebookId);
+    mKCal::Notebook notebook = mStorage->notebook(calNotebookId);
 
-    if (notebook.isNull()) {
+    if (!notebook.isValid()) {
         notebook = createNotebook();
         mStorage->addNotebook(notebook);
     } else {
-        setReadOnly(false);
-
         // Clear the calendar database if and only if restoring from a backup.
         switch(syncMode) {
         case KeepOldDB:
@@ -82,13 +80,11 @@ CDBirthdayCalendar::CDBirthdayCalendar(SyncMode syncMode, QObject *parent) :
             break;
 
         case DropOldDB:
-            mStorage->deleteNotebook(notebook);
+            mStorage->deleteNotebook(calNotebookId);
             notebook = createNotebook();
             mStorage->addNotebook(notebook);
             break;
         }
-
-        setReadOnly(true, true);
     }
 }
 
@@ -101,21 +97,21 @@ CDBirthdayCalendar::~CDBirthdayCalendar()
     qCDebug(lcContactsd) << "Destroyed birthday calendar";
 }
 
-mKCal::Notebook::Ptr CDBirthdayCalendar::createNotebook()
+mKCal::Notebook CDBirthdayCalendar::createNotebook()
 {
-    return mKCal::Notebook::Ptr(new mKCal::Notebook(calNotebookId,
-                                                    //% "Birthdays"
-                                                    qtTrId("qtn_caln_birthdays"),
-                                                    QLatin1String(""),
-                                                    calNotebookColor,
-                                                    false, // Not shared.
-                                                    true, // Is master.
-                                                    false, // Not synced to Ovi.
-                                                    true, // Not writable.
-                                                    true, // Visible.
-                                                    QLatin1String("Birthday-Nokia"),
-                                                    QLatin1String(""),
-                                                    0));
+    return mKCal::Notebook(calNotebookId,
+                           //% "Birthdays"
+                           qtTrId("qtn_caln_birthdays"),
+                           QLatin1String(""),
+                           calNotebookColor,
+                           false, // Not shared.
+                           true, // Is master.
+                           false, // Not synced to Ovi.
+                           true, // Not writable.
+                           true, // Visible.
+                           QLatin1String("Birthday-Nokia"),
+                           QLatin1String(""),
+                           0);
 }
 
 QHash<QContactId, CalendarBirthday>
@@ -165,9 +161,7 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
         return;
     }
 
-    setReadOnly(false);
-
-    if (not mStorage->isValidNotebook(calNotebookId)) {
+    if (not mStorage->containsNotebook(calNotebookId)) {
         qCWarning(lcContactsd) << Q_FUNC_INFO << "Invalid notebook ID: " << calNotebookId;
         return;
     }
@@ -263,7 +257,6 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
 
     event->setReadOnly(true);
     event->endUpdates();
-    setReadOnly(true);
     qCDebug(lcContactsd) << "Updated birthday event in calendar, local ID: " << contact.id();
 }
 
@@ -283,11 +276,9 @@ void CDBirthdayCalendar::deleteBirthday(const QContactId &contactId)
 
 void CDBirthdayCalendar::save()
 {
-    setReadOnly(false);
     if (not mStorage->save()) {
         qCWarning(lcContactsd) << Q_FUNC_INFO << "Failed to update birthdays in calendar";
     }
-    setReadOnly(true);
 }
 
 CalendarBirthday CDBirthdayCalendar::birthday(const QContactId &contactId)
@@ -344,23 +335,11 @@ KCalendarCore::Event::Ptr CDBirthdayCalendar::calendarEvent(const QContactId &co
     return event;
 }
 
-void CDBirthdayCalendar::setReadOnly(bool readOnly, bool save)
-{
-    mKCal::Notebook::Ptr notebook = mStorage->notebook(calNotebookId);
-    if (notebook.isNull() || (notebook->isReadOnly() == readOnly && !save)) {
-        return;
-    }
-    notebook->setIsReadOnly(readOnly);
-    if (save) {
-        mStorage->updateNotebook(notebook);
-    }
-}
-
 void CDBirthdayCalendar::onLocaleChanged()
 {
-    mKCal::Notebook::Ptr notebook = mStorage->notebook(calNotebookId);
+    mKCal::Notebook notebook = mStorage->notebook(calNotebookId);
 
-    if (notebook.isNull()) {
+    if (!notebook.isValid()) {
         qCWarning(lcContactsd) << Q_FUNC_INFO << "Calendar not found while changing locale";
         return;
     }
@@ -368,7 +347,7 @@ void CDBirthdayCalendar::onLocaleChanged()
     const QString name = qtTrId("qtn_caln_birthdays");
 
     qCDebug(lcContactsd) << Q_FUNC_INFO << "Updating calendar name to" << name;
-    notebook->setName(name);
+    notebook.setName(name);
 
     if (not mStorage->updateNotebook(notebook)) {
         qCWarning(lcContactsd) << Q_FUNC_INFO << "Could not save calendar";

@@ -77,13 +77,12 @@ public:
     QHash<QContactId, CalendarBirthday> birthdays();
 
 private:
-    mKCal::Notebook::Ptr createNotebook();
+    mKCal::Notebook createNotebook();
 
     static QContactId localContactId(const QString &calendarEventId);
     static QString calendarEventId(const QContactId &contactId);
 
     KCalendarCore::Event::Ptr calendarEvent(const QContactId &contactId);
-    void setReadOnly(bool readOnly, bool save = false);
 
 private Q_SLOTS:
     void onLocaleChanged();
