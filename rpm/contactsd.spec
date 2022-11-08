@@ -18,7 +18,7 @@ BuildRequires: pkgconfig(Qt5Versit)
 # mlite required only for tests
 BuildRequires: pkgconfig(mlite5)
 BuildRequires: pkgconfig(mlocale5)
-BuildRequires: pkgconfig(libmkcal-qt5)
+BuildRequires: pkgconfig(libmkcal-qt5) >= 0.6.10
 BuildRequires: pkgconfig(KF5CalendarCore)
 BuildRequires: pkgconfig(telepathy-glib)
 BuildRequires: pkgconfig(qofono-qt5)

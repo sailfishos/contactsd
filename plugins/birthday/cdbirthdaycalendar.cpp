@@ -72,8 +72,6 @@ CDBirthdayCalendar::CDBirthdayCalendar(SyncMode syncMode, QObject *parent) :
         notebook = createNotebook();
         mStorage->addNotebook(notebook);
     } else {
-        setReadOnly(false);
-
         // Clear the calendar database if and only if restoring from a backup.
         switch(syncMode) {
         case KeepOldDB:
@@ -87,8 +85,6 @@ CDBirthdayCalendar::CDBirthdayCalendar(SyncMode syncMode, QObject *parent) :
             mStorage->addNotebook(notebook);
             break;
         }
-
-        setReadOnly(true, true);
     }
 }
 
@@ -165,9 +161,7 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
         return;
     }
 
-    setReadOnly(false);
-
-    if (not mStorage->isValidNotebook(calNotebookId)) {
+    if (not mCalendar->hasValidNotebook(calNotebookId)) {
         qCWarning(lcContactsd) << Q_FUNC_INFO << "Invalid notebook ID: " << calNotebookId;
         return;
     }
@@ -263,7 +257,6 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
 
     event->setReadOnly(true);
     event->endUpdates();
-    setReadOnly(true);
     qCDebug(lcContactsd) << "Updated birthday event in calendar, local ID: " << contact.id();
 }
 
@@ -283,11 +276,9 @@ void CDBirthdayCalendar::deleteBirthday(const QContactId &contactId)
 
 void CDBirthdayCalendar::save()
 {
-    setReadOnly(false);
     if (not mStorage->save()) {
         qCWarning(lcContactsd) << Q_FUNC_INFO << "Failed to update birthdays in calendar";
     }
-    setReadOnly(true);
 }
 
 CalendarBirthday CDBirthdayCalendar::birthday(const QContactId &contactId)
@@ -342,18 +333,6 @@ KCalendarCore::Event::Ptr CDBirthdayCalendar::calendarEvent(const QContactId &co
     }
 
     return event;
-}
-
-void CDBirthdayCalendar::setReadOnly(bool readOnly, bool save)
-{
-    mKCal::Notebook::Ptr notebook = mStorage->notebook(calNotebookId);
-    if (notebook.isNull() || (notebook->isReadOnly() == readOnly && !save)) {
-        return;
-    }
-    notebook->setIsReadOnly(readOnly);
-    if (save) {
-        mStorage->updateNotebook(notebook);
-    }
 }
 
 void CDBirthdayCalendar::onLocaleChanged()
