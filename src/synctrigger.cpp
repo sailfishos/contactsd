@@ -121,21 +121,6 @@ void SyncTrigger::triggerSync(const QStringList &accountProviders, int syncPolic
             QDBusConnection::sessionBus().asyncCall(message);
         }
     }
-
-    // And we trigger exchange separately if the "mfe" or "exchange" or "activesync" target is specified.
-    if (accountProviders.isEmpty()
-            || accountProviders.contains(QStringLiteral("mfe"), Qt::CaseInsensitive)
-            || accountProviders.contains(QStringLiteral("exchange"), Qt::CaseInsensitive)
-            || accountProviders.contains(QStringLiteral("activesync"), Qt::CaseInsensitive)) {
-        QDBusMessage message = QDBusMessage::createMethodCall(
-                QStringLiteral("com.nokia.asdbus"),
-                QStringLiteral("/com/nokia/asdbus"),
-                QStringLiteral("com.nokia.asdbus"),
-                QStringLiteral("syncAll"));
-        qint32 dataType = 4; // contacts
-        message.setArguments(QVariantList() << dataType);
-        QDBusConnection::sessionBus().asyncCall(message);
-    }
 }
 
 }
