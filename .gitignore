@@ -6,6 +6,7 @@
 *.prl
 *.pro.user*
 *.so
+*.so.*
 *.moc
 build-stamp*
 moc_*.cpp
