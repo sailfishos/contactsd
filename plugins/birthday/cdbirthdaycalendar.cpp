@@ -26,6 +26,9 @@
 #include <QContactName>
 #include <QContactBirthday>
 #include <QContactDisplayLabel>
+#include <QContactNickname>
+#include <QContactOrganization>
+#include <QContactEmailAddress>
 #include <QContactId>
 
 #include <seasidecache.h>
@@ -140,18 +143,31 @@ CDBirthdayCalendar::birthdays()
 
 void CDBirthdayCalendar::updateBirthday(const QContact &contact)
 {
-    // Retrieve contact details.
-    const QString displayLabel = contact.detail<QContactDisplayLabel>().label();
-    const QDate contactBirthday = contact.detail<QContactBirthday>().date();
-
-    if (displayLabel.isEmpty() || contactBirthday.isNull()) {
-        qCWarning(lcContactsd) << Q_FUNC_INFO << "Contact without name or birthday, local ID: "
-                  << contact.id();
+    if (contact.id().isNull()) {
+        qCWarning(lcContactsd) << Q_FUNC_INFO << "Updating birthday for null contact";
         return;
     }
 
-    if (contact.id().isNull()) {
-        qCWarning(lcContactsd) << Q_FUNC_INFO << "Updating birthday for null contact";
+    const QDate contactBirthday = contact.detail<QContactBirthday>().date();
+
+    if (contactBirthday.isNull()) {
+        qCWarning(lcContactsd) << Q_FUNC_INFO << "Contact without birthday, local ID: " << contact.id();
+        return;
+    }
+
+    QString displayLabel = contact.detail<QContactDisplayLabel>().label();
+    if (displayLabel.isEmpty()) {
+        displayLabel = contact.detail<QContactNickname>().nickname();
+    }
+    if (displayLabel.isEmpty()) {
+        displayLabel = contact.detail<QContactOrganization>().name();
+    }
+    if (displayLabel.isEmpty()) {
+        displayLabel = contact.detail<QContactEmailAddress>().emailAddress();
+    }
+
+    if (displayLabel.isEmpty()) {
+        qCWarning(lcContactsd) << Q_FUNC_INFO << "Contact without name to use " << contact.id();
         return;
     }
 

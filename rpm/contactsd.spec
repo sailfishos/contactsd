@@ -2,7 +2,7 @@ Name: contactsd
 Version: 1.4.2
 Release: 1
 Summary: Telepathy <> QtContacts bridge for contacts
-URL: https://git.sailfishos.org/mer-core/contactsd
+URL: https://github.com/sailfishos/contactsd/
 License: LGPLv2+ and (LGPLv2 or LGPLv2 with Nokia Qt LGPL Exception v1.1)
 Source0: %{name}-%{version}.tar.bz2
 Source1: %{name}.privileges
