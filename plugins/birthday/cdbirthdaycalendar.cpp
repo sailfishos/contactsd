@@ -260,17 +260,6 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
 
     }
 
-    // Clear the alarms on the event
-    event->clearAlarms();
-
-    // We don't want any alarms for birthday events.
-    // To set an alarm for birthday events, uncomment the code below.
-    //KCalendarCore::Alarm::Ptr alarm = event->newAlarm();
-    //alarm->setType(KCalendarCore::Alarm::Audio);
-    //alarm->setEnabled(true);
-    //alarm->setDisplayAlarm(event->summary());
-    //alarm->setStartOffset(KCalendarCore::Duration(-36 * 3600 /* seconds */));
-
     event->setReadOnly(true);
     event->endUpdates();
     qCDebug(lcContactsd) << "Updated birthday event in calendar, local ID: " << contact.id();
