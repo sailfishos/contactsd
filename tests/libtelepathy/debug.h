@@ -18,6 +18,7 @@
 
 G_BEGIN_DECLS
 
+void _test_log (const gchar *format, ...);
 void test_debug_enable (gboolean enable);
 
 G_END_DECLS
