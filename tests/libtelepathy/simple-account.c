@@ -10,6 +10,7 @@
 
 #include "simple-account.h"
 
+#include <telepathy-glib/telepathy-glib.h>
 #include <telepathy-glib/connection.h>
 #include <telepathy-glib/contact.h>
 #include <telepathy-glib/dbus.h>
