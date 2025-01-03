@@ -39,7 +39,7 @@ void updateNotebooks(AccountId id, bool enabled)
     storage->open();
 
     const mKCal::Notebook::List notebooks = storage->notebooks();
-    for (const mKCal::Notebook::Ptr notebook : notebooks) {
+    for (const mKCal::Notebook::Ptr &notebook : notebooks) {
         const QString accountStr = notebook->account();
         bool ok = false;
         AccountId accountInt = accountStr.toULong(&ok);

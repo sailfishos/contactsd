@@ -12,6 +12,8 @@
 
 #include <glib.h>
 
+void _test_log (const gchar *format, ...);
+
 #undef DEBUG
 #define DEBUG(format, ...) \
   _test_log ("%s: " format, G_STRFUNC, ##__VA_ARGS__)
