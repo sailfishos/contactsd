@@ -41,33 +41,12 @@ Requires: mapplauncherd-qt5
 from all the users telepathy accounts (buddies, their status and presence
 information), and store it to QtContacts.
 
-%files
-%defattr(-,root,root,-)
-%license LICENSE.LGPL
-%license LGPL_EXCEPTION.txt
-%{_userunitdir}/%{name}.service
-%{_userunitdir}/post-user-session.target.wants/%{name}.service
-%{_bindir}/%{name}
-%{_libdir}/%{name}-1.0
-%{_datadir}/translations/*.qm
-%{_datadir}/mapplauncherd/privileges.d/*
-# we currently don't have a backup framework
-%exclude /usr/share/backup-framework/applications/%{name}.conf
-%{_libdir}/libcontactsd.so.*
-
-
 %package devel
 Summary: Development files for %{name}
 Requires: %{name} = %{version}-%{release}
 
 %description devel
 %{summary}.
-
-%files devel
-%defattr(-,root,root,-)
-%{_includedir}/%{name}-1.0
-%{_libdir}/pkgconfig/*.pc
-%{_libdir}/libcontactsd.so
 
 %package tests
 Summary: Tests for %{name}
@@ -77,20 +56,11 @@ Requires: blts-tools
 %description tests
 %{summary}.
 
-%files tests
-%defattr(-,root,root,-)
-/opt/tests/%{name}
-
 %package ts-devel
 Summary: Translation source for %{name}
 
 %description ts-devel
 Translation source for %{name}
-
-%files ts-devel
-%defattr(-,root,root,-)
-%{_datadir}/translations/source/*.ts
-
 
 %prep
 %setup -q -n %{name}-%{version}
@@ -100,8 +70,7 @@ export QT_SELECT=5
 export VERSION=%{version}
 ./configure --bindir %{_bindir} --libdir %{_libdir} --includedir %{_includedir}
 %qmake5
-make %{?_smp_mflags}
-
+%make_build
 
 %install
 %qmake5_install
@@ -124,3 +93,26 @@ systemctl-user stop %{name}.service || :
 systemctl-user daemon-reload || :
 fi
 
+%files
+%license LICENSE.LGPL
+%license LGPL_EXCEPTION.txt
+%{_userunitdir}/%{name}.service
+%{_userunitdir}/post-user-session.target.wants/%{name}.service
+%{_bindir}/%{name}
+%{_libdir}/%{name}-1.0
+%{_datadir}/translations/*.qm
+%{_datadir}/mapplauncherd/privileges.d/*
+# we currently don't have a backup framework
+%exclude /usr/share/backup-framework/applications/%{name}.conf
+%{_libdir}/libcontactsd.so.*
+
+%files devel
+%{_includedir}/%{name}-1.0
+%{_libdir}/pkgconfig/*.pc
+%{_libdir}/libcontactsd.so
+
+%files tests
+/opt/tests/%{name}
+
+%files ts-devel
+%{_datadir}/translations/source/*.ts
