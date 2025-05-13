@@ -16,8 +16,6 @@
 #define CDCALENDARCONTROLLER_H
 
 #include <QObject>
-#include <Accounts/Manager>
-#include <extendedstorage.h>
 
 class CDCalendarController : public QObject
 {
@@ -27,18 +25,8 @@ public:
     explicit CDCalendarController(QObject *parent = 0);
     ~CDCalendarController();
 
-public Q_SLOTS:
-    void enabledEventCalDav(Accounts::AccountId id);
-    void enabledEventSync(Accounts::AccountId id);
-
 private:
-    Accounts::Manager * SetupManager(
-            const QString &service,
-            void (CDCalendarController::*enabledEvent)(Accounts::AccountId id));
-
-private:
-    Accounts::Manager *m_manager_caldav;
-    Accounts::Manager *m_manager_sync;
+    void setupListener(const QString &serviceType);
 };
 
 #endif // CDCALENDARCONTROLLER_H
