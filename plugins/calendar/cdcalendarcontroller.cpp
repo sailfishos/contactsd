@@ -12,46 +12,96 @@
  ** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
  **/
 
+#include <Accounts/Manager>
 #include <Accounts/Service>
 
+#include <extendedstorage.h>
+
 #include "cdcalendarcontroller.h"
-#include "cdcalendarplugin.h"
 #include "debug.h"
 
-using namespace Contactsd;
 using namespace Accounts;
 
 namespace {
 // Anonymous namespace
 
-/*!
-    \brief Enable/disable all mKCal notebooks related to the account id
-
-    Sets the \a enabled status for all notebooks associated with the given
-    account \a id.
-*/
-static const QByteArray VISIBILITY_CHANGED_FLAG("hidden_by_account");
-void updateNotebooks(AccountId id, bool enabled)
+mKCal::Notebook::List notebooksFromId(const mKCal::Notebook::List &list, AccountId id)
 {
-    mKCal::ExtendedCalendar::Ptr calendar = mKCal::ExtendedCalendar::Ptr(
-                new mKCal::ExtendedCalendar(QTimeZone::systemTimeZone()));
+    const QString account = QString::number(id);
+    mKCal::Notebook::List notebooks;
+    for (const mKCal::Notebook::Ptr &notebook : list) {
+        if (account == notebook->account()) {
+            notebooks.append(notebook);
+        }
+    }
+    return notebooks;
+}
+
+/*!
+    \brief Enable/disable given mKCal notebook
+
+    Sets the \a enabled status for the given notebook.
+*/
+const QByteArray VISIBILITY_CHANGED_FLAG("hidden_by_account");
+bool updateNotebook(mKCal::Notebook::Ptr notebook, bool enabled)
+{
+    if (notebook->isEnabled() != enabled) {
+        notebook->setIsEnabled(enabled);
+
+        // Backward compatibility when visibility flag was flipped by enable status.
+        if (!notebook->customProperty(VISIBILITY_CHANGED_FLAG).isEmpty()) {
+            notebook->setCustomProperty(VISIBILITY_CHANGED_FLAG, QString());
+            notebook->setIsVisible(true);
+        }
+        return true;
+    }
+    return false;
+}
+
+bool isServiceEnabledByProfile(Manager *manager, AccountId id, const QString &syncProfile)
+{
+    Account *account = manager->account(id);
+    if (!account) {
+        return false;
+    }
+    account->selectService();
+    if (!account->isEnabled()) {
+        return false;
+    }
+
+    bool serviceEnabled = false;
+    for (const Service &service : account->enabledServices()) {
+        account->selectService(service);
+        for (const QString &key : account->allKeys()) {
+            if (key.endsWith(QLatin1String("/profile_id"))) {
+                serviceEnabled = (account->valueAsString(key) == syncProfile);
+                break;
+            }
+        }
+        if (serviceEnabled) {
+            break;
+        }
+    }
+    account->selectService();
+    return serviceEnabled;
+}
+
+void updateNotebooks(AccountId id = 0)
+{
+    mKCal::ExtendedCalendar::Ptr calendar(new mKCal::ExtendedCalendar(QTimeZone::systemTimeZone()));
     mKCal::ExtendedStorage::Ptr storage = calendar->defaultStorage(calendar);
     storage->open();
-
-    const mKCal::Notebook::List notebooks = storage->notebooks();
-    for (const mKCal::Notebook::Ptr &notebook : notebooks) {
-        const QString accountStr = notebook->account();
-        bool ok = false;
-        AccountId accountInt = accountStr.toULong(&ok);
-        if (ok && accountInt == id) {
-            bool visible = notebook->isVisible();
-            if (!enabled && visible) {
-                notebook->setIsVisible(false);
-                notebook->setCustomProperty(VISIBILITY_CHANGED_FLAG, QString::fromLatin1("true"));
-                storage->updateNotebook(notebook);
-            } else if (enabled && !visible && !notebook->customProperty(VISIBILITY_CHANGED_FLAG).isEmpty()) {
-                notebook->setIsVisible(true);
-                notebook->setCustomProperty(VISIBILITY_CHANGED_FLAG, QString());
+    // A generic manager is used to check for the enabled service
+    // matching a profile_id key, since we don't know in advance
+    // which service is associated with a notebook of a given account.
+    Manager manager;
+    for (AccountId accId : (id
+                            ? (AccountIdList() << id)
+                            : manager.accountList())) {
+        for (mKCal::Notebook::Ptr notebook : notebooksFromId(storage->notebooks(), accId)) {
+            qCDebug(lcContactsd) << "checking notebook" << notebook->name()
+                                 << "enabled status for account" << accId;
+            if (updateNotebook(notebook, isServiceEnabledByProfile(&manager, accId, notebook->syncProfile()))) {
                 storage->updateNotebook(notebook);
             }
         }
@@ -66,23 +116,21 @@ void updateNotebooks(AccountId id, bool enabled)
     Creates an Account Manager for the service type and attaches the
     manager's enabledEvent signal to the provided \a enabledEvent slot.
 */
-Manager * CDCalendarController::SetupManager(
-        const QString &service,
-        void (CDCalendarController::*enabledEvent)(AccountId id))
+void CDCalendarController::setupListener(const QString &serviceType)
 {
-
-    Manager * manager = new Manager(service, this);
+    Manager * manager = new Manager(serviceType, this);
 
     Error error = manager->lastError();
     if (error.type() == Error::NoError) {
-        connect(manager, &Manager::enabledEvent, this, enabledEvent);
+        connect(manager, &Manager::enabledEvent,
+                this, [manager] (AccountId id) {
+                          qCDebug(lcContactsd) << "enabled changed" << id << manager->serviceType();
+                          updateNotebooks(id);
+                      });
+    } else {
+        qCWarning(lcContactsd) << "Accounts manager creation failed for" << serviceType
+                               << "with error:" << error.message();
     }
-    else {
-        qWarning() << "Accounts manager creation failed for" << service
-                   << "with error:" << error.message();
-    }
-
-    return manager;
 }
 
 /*!
@@ -102,102 +150,16 @@ CDCalendarController::CDCalendarController(QObject *parent)
     // Managers are needed following the specific service types we're interested
     // in. Without a type, libaccounts-glib won't send any signals (if we do set
     // a type, it sends us signals for all account types!).
-    m_manager_caldav = SetupManager(QStringLiteral("caldav"),
-                                    &CDCalendarController::enabledEventCalDav);
-    m_manager_sync = SetupManager(QStringLiteral("sync"),
-                                  &CDCalendarController::enabledEventSync);
+    setupListener(QStringLiteral("caldav"));
+    setupListener(QStringLiteral("sync"));
+    updateNotebooks();
+
+    // Possible improvement: in case of a single service type
+    // handling notebook (like "calendar"), the code could be
+    // simplified to have a unique restricted manager of this
+    // service type.
 }
 
 CDCalendarController::~CDCalendarController()
 {
-}
-
-/*!
-    \brief Responds to changes in the enabled state for CalDav services
-
-    This is called when the enabled status for account with \a id changes.
-
-    If the account has a relevant service, the notebooks associated with it
-    have their enabled state set using the following recipe:
-
-    "If the account is enabled and at least one calendar service is enabled,
-    then the notebooks will be enabled. Otherwise they will be disabled."
-*/
-void CDCalendarController::enabledEventCalDav(AccountId id)
-{
-    Account *account = m_manager_caldav->account(id);
-
-    const ServiceList serviceList = account->services();
-    if (serviceList.isEmpty()) {
-        // Even when the Account Manager is configured to be only interested
-        // in accounts with a specific service type, libaccounts-glib will still
-        // send events for other accounts, but their service list will be empty.
-        // We want to ignore these events.
-        return;
-    }
-
-    bool enabled = account->enabled();
-    if (enabled) {
-        // The account is enabled, but the calendar service may not be
-        enabled = false;
-        ServiceList::const_iterator it;
-        for (it = serviceList.constBegin();
-             !enabled && it != serviceList.constEnd(); ++it) {
-            account->selectService(*it);
-            enabled = account->enabled();
-        }
-        account->selectService();
-    }
-
-    // Update the mKCal notebook with the result
-    updateNotebooks(id, enabled);
-}
-
-/*!
-    \brief Responds to changes in the enabled state for Google services
-
-    This is called when the enabled status for account with \a id changes.
-
-    If this is a Google account with a relevant service, the notebooks
-    associated with it have their enabled state set using the following recipe:
-
-    "If the account is enabled and at least one calendar service is enabled,
-    then the notebooks will be enabled. Otherwise they will be disabled."
-*/
-void CDCalendarController::enabledEventSync(AccountId id)
-{
-    Account *account = m_manager_sync->account(id);
-
-    if (account->providerName() != QLatin1String("google")) {
-        // We're only interested in Google accounts here
-        return;
-    }
-
-    const ServiceList serviceList = account->services();
-    if (serviceList.isEmpty()) {
-        // Even when the Account Manager is configured to be only interested
-        // in accounts with a specific service type, libaccounts-glib will still
-        // send events for other accounts, but their service list will be empty.
-        // We want to ignore these events.
-        return;
-    }
-
-    bool enabled = account->enabled();
-    if (enabled) {
-        // The account is enabled, but the calendar service may not be
-        enabled = false;
-        ServiceList::const_iterator it;
-        for (it = serviceList.constBegin();
-             !enabled && it != serviceList.constEnd(); ++it) {
-            // This seems to be the only way to check whether it's a calendar
-            if ((*it).name() == QLatin1String("google-calendars")) {
-                account->selectService(*it);
-                enabled = account->enabled();
-            }
-        }
-        account->selectService();
-    }
-
-    // Update the mKCal notebook with the result
-    updateNotebooks(id, enabled);
 }
