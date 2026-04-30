@@ -86,7 +86,7 @@ void CDTpAvatarUpdate::onRequestDone()
 
 QString CDTpAvatarUpdate::writeAvatarFile(QFile &avatarFile, const QDir &cacheDir)
 {
-    if (not cacheDir.exists() && not QDir::root().mkpath(cacheDir.absolutePath())) {
+    if (!cacheDir.exists() && !QDir::root().mkpath(cacheDir.absolutePath())) {
         qCWarning(lcContactsd) << "Could not create large avatar cache dir:" << cacheDir.path();
         return QString();
     }
@@ -123,8 +123,8 @@ QNetworkReply *CDTpAvatarUpdate::updateContactAvatar()
 {
     // Build filename from the image URL's SHA1 hash.
     const QUrl redirectionTarget = mNetworkReply->attribute(QNetworkRequest::RedirectionTargetAttribute).toUrl();
-    const QString avatarUrl = (not redirectionTarget.isEmpty() ? mNetworkReply->url().resolved(redirectionTarget)
-                                                               : mNetworkReply->url()).toString();
+    const QString avatarUrl = (!redirectionTarget.isEmpty() ? mNetworkReply->url().resolved(redirectionTarget)
+                                                            : mNetworkReply->url()).toString();
 
     QString filename(mFilename);
     if (filename.isEmpty()) {
@@ -143,7 +143,7 @@ QNetworkReply *CDTpAvatarUpdate::updateContactAvatar()
         // Seems we can reuse the existing avatar file.
         avatarPath = avatarFile.fileName();
     } else {
-        if (not redirectionTarget.isEmpty()) {
+        if (!redirectionTarget.isEmpty()) {
             return mNetworkReply->manager()->get(QNetworkRequest(redirectionTarget));
         }
 
@@ -151,7 +151,7 @@ QNetworkReply *CDTpAvatarUpdate::updateContactAvatar()
     }
 
     // Update the contact if a new avatar is available.
-    if (not avatarPath.isEmpty() && not mContactWrapper.isNull()) {
+    if (!avatarPath.isEmpty() && !mContactWrapper.isNull()) {
         if (mAvatarType == Square) {
             mContactWrapper->setSquareAvatarPath(avatarPath);
         } else if (mAvatarType == Large) {

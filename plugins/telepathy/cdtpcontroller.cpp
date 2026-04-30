@@ -148,7 +148,7 @@ void CDTpController::onAccountAdded(const Tp::AccountPtr &account)
 void CDTpController::onAccountRemoved(const Tp::AccountPtr &account)
 {
     CDTpAccountPtr accountWrapper(mAccounts.take(account->objectPath()));
-    if (not accountWrapper) {
+    if (!accountWrapper) {
         qCWarning(lcContactsd) << "Internal error, account was not in controller";
         return;
     }

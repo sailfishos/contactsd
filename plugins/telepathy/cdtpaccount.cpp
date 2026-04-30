@@ -66,7 +66,7 @@ CDTpAccount::CDTpAccount(const Tp::AccountPtr &account, const QStringList &toAvo
             SIGNAL(stateChanged(bool)),
             SLOT(onAccountStateChanged()));
 
-    if (not newAccount) {
+    if (!newAccount) {
         CDTpAccountCacheLoader(this).run();
     }
 
@@ -86,7 +86,7 @@ CDTpAccount::CDTpAccount(const Tp::AccountPtr &account, const QStringList &toAvo
 
 CDTpAccount::~CDTpAccount()
 {
-    if (not mCurrentConnection.isNull()) {
+    if (!mCurrentConnection.isNull()) {
         makeRosterCache();
     }
 
@@ -191,9 +191,9 @@ void CDTpAccount::onAccountConnectionChanged(const Tp::ConnectionPtr &connection
     // If we got disconnected, but not on user request, give a grace period
     // before actually updating Tracker, in case the connection comes back
     // quickly
-    if (not connection.isNull()) {
+    if (!connection.isNull()) {
         mDisconnectTimeout.stop();
-    } else if (not mCurrentConnection.isNull() && mCurrentConnection->status() != Tp::ConnectionStatusDisconnected) {
+    } else if (!mCurrentConnection.isNull() && mCurrentConnection->status() != Tp::ConnectionStatusDisconnected) {
         qCDebug(lcContactsd) << "Lost connection for account" << mAccount->objectPath()
                 << ", giving a grace period of" << DisconnectGracePeriod << "ms";
         mDisconnectTimeout.start();
@@ -211,7 +211,7 @@ void CDTpAccount::setConnection(const Tp::ConnectionPtr &connection)
 {
     qCDebug(lcContactsd) << "Account" << mAccount->objectPath() << "- has connection:" << (connection != 0);
 
-    if (not mCurrentConnection.isNull()) {
+    if (!mCurrentConnection.isNull()) {
         makeRosterCache();
     }
 
@@ -221,7 +221,7 @@ void CDTpAccount::setConnection(const Tp::ConnectionPtr &connection)
 
     if (connection) {
         /* If the connection has no roster, no need to bother with sync signals */
-        if (not (connection->actualFeatures().contains(Tp::Connection::FeatureRoster))) {
+        if (!(connection->actualFeatures().contains(Tp::Connection::FeatureRoster))) {
             qCDebug(lcContactsd) << "Account" << mAccount->objectPath() << "has no roster, not emitting sync signals";
 
             return;

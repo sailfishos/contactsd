@@ -289,7 +289,7 @@ void CDTpContact::emitChanged(CDTpContact::Changes changes)
 {
     mQueuedChanges |= changes;
 
-    if (not mQueuedChangesTimer.isActive()) {
+    if (!mQueuedChangesTimer.isActive()) {
         mQueuedChangesTimer.start();
     }
 }

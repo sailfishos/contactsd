@@ -97,7 +97,7 @@ void TestBirthdayPlugin::testAddAndRemoveBirthday()
     mKCal::ExtendedStorage::Ptr storage =
         mKCal::ExtendedCalendar::defaultStorage(calendar);
     storage->open();
-    QVERIFY2(not storage->notebook(calNotebookId).isNull(), "No calendar database found");
+    QVERIFY2(!storage->notebook(calNotebookId).isNull(), "No calendar database found");
 
     // Check calendar database for contact.
     QVERIFY2(storage->loadNotebookIncidences(calNotebookId), "Unable to load events from notebook");
@@ -143,7 +143,7 @@ void TestBirthdayPlugin::testChangeBirthday()
     mKCal::ExtendedStorage::Ptr storage =
         mKCal::ExtendedCalendar::defaultStorage(calendar);
     storage->open();
-    QVERIFY2(not storage->notebook(calNotebookId).isNull(), "No calendar database found");
+    QVERIFY2(!storage->notebook(calNotebookId).isNull(), "No calendar database found");
 
     // Check calendar database for contact.
     QVERIFY2(storage->loadNotebookIncidences(calNotebookId), "Unable to load events from notebook");
@@ -191,7 +191,7 @@ void TestBirthdayPlugin::testChangeName()
     mKCal::ExtendedStorage::Ptr storage =
         mKCal::ExtendedCalendar::defaultStorage(calendar);
     storage->open();
-    QVERIFY2(not storage->notebook(calNotebookId).isNull(), "No calendar database found");
+    QVERIFY2(!storage->notebook(calNotebookId).isNull(), "No calendar database found");
 
     // Check calendar database for contact.
     QVERIFY2(storage->loadNotebookIncidences(calNotebookId), "Unable to load events from notebook");
@@ -233,7 +233,7 @@ void TestBirthdayPlugin::testLocaleChange()
     MLocale locale;
     QVERIFY2(locale.isValid(), "Invalid locale");
 
-    if (not locale.isInstalledTrCatalog(QLatin1String("calendar"))) {
+    if (!locale.isInstalledTrCatalog(QLatin1String("calendar"))) {
         locale.installTrCatalog(QLatin1String("calendar"));
     }
 
@@ -246,7 +246,7 @@ void TestBirthdayPlugin::testLocaleChange()
     mKCal::ExtendedStorage::Ptr storage =
         mKCal::ExtendedCalendar::defaultStorage(calendar);
     storage->open();
-    QVERIFY2(not storage->notebook(calNotebookId).isNull(), "No calendar database found");
+    QVERIFY2(!storage->notebook(calNotebookId).isNull(), "No calendar database found");
 
     // Check if locale name for calendar matches calendar name.
     //QVERIFY2(locale.isInstalledTrCatalog(QLatin1String("calendar")), "Calendar locale catalog not installed");
@@ -299,7 +299,7 @@ void TestBirthdayPlugin::testLeapYears()
         mKCal::ExtendedCalendar::defaultStorage(calendar);
 
     QVERIFY(storage->open());
-    QVERIFY(not storage->notebook(calNotebookId).isNull());
+    QVERIFY(!storage->notebook(calNotebookId).isNull());
 
     // Check calendar database for contact.
     QVERIFY(storage->loadNotebookIncidences(calNotebookId));

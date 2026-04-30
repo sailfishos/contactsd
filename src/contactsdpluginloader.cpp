@@ -152,7 +152,7 @@ QStringList ContactsdPluginLoader::hasActiveImports()
 void ContactsdPluginLoader::onPluginImportStarted(const QString &service, const QString &account)
 {
     BasePlugin *plugin = qobject_cast<BasePlugin *>(sender());
-    if (not plugin) {
+    if (!plugin) {
         qCWarning(lcContactsd) << Q_FUNC_INFO << "invalid Contactsd::BasePlugin object";
         return;
     }
@@ -181,7 +181,7 @@ void ContactsdPluginLoader::onPluginImportEnded(const QString &service, const QS
                                                 int contactsAdded, int contactsRemoved, int contactsMerged)
 {
     BasePlugin *plugin = qobject_cast<BasePlugin *>(sender());
-    if (not plugin) {
+    if (!plugin) {
         qCWarning(lcContactsd) << Q_FUNC_INFO << "invalid Contactsd::BasePlugin object";
         return;
     }
@@ -194,13 +194,13 @@ void ContactsdPluginLoader::onPluginImportEnded(const QString &service, const QS
 
     bool removed = mImportState.removeImportingAccount(service, account, contactsAdded,
                                                        contactsRemoved, contactsMerged);
-    if (not removed) {
+    if (!removed) {
         qCDebug(lcContactsd) << Q_FUNC_INFO << "account does not exist";
         return;
     }
 
     if (mImportState.hasActiveImports()) {
-        if (not mImportState.serviceHasActiveImports(service)) {
+        if (!mImportState.serviceHasActiveImports(service)) {
             // This service has no acive importing accounts anymore
             Q_EMIT importStateChanged(service, QString());
         }

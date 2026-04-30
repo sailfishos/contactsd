@@ -57,7 +57,7 @@ void CDTpAccountCacheWriter::run()
     QTemporaryFile tempFile(rosterFileName);
     tempFile.setAutoRemove(false);
 
-    if (not tempFile.open()) {
+    if (!tempFile.open()) {
         qCWarning(lcContactsd) << "Could not open file" << tempFile.fileName()
                   << "for writing:" << tempFile.errorString();
         tempFile.setAutoRemove(true);
@@ -81,9 +81,9 @@ void CDTpAccountCacheWriter::run()
         return;
     }
 
-    if (not tempFile.flush()
-     || (::fsync(tempFile.handle()) != 0)
-     || (tempFile.close(), false)) {
+    if (!tempFile.flush()
+            || (::fsync(tempFile.handle()) != 0)
+            || (tempFile.close(), false)) {
         qCWarning(lcContactsd) << "Could not finalize roster cache for account" << accountPath << ":" << tempFile.errorString();
         tempFile.setAutoRemove(true);
         return;

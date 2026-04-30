@@ -86,7 +86,7 @@ void ImportState::addImportingAccount(const QString &service, const QString &acc
 {
     qCDebug(lcContactsd) << Q_FUNC_INFO << service << account;
 
-    if (not mService2Accounts.contains(service, account)) {
+    if (!mService2Accounts.contains(service, account)) {
         mService2Accounts.insert(service, account);
         mStateStore.setValue(account, Importing);
         mStateStore.sync();

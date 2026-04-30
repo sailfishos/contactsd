@@ -139,7 +139,7 @@ CDBirthdayController::createStampFile()
 {
     QFile cacheFile(stampFilePath());
 
-    if (not cacheFile.open(QIODevice::WriteOnly)) {
+    if (!cacheFile.open(QIODevice::WriteOnly)) {
         qCWarning(lcContactsd) << Q_FUNC_INFO << "Unable to create birthday plugin stamp file "
                   << cacheFile.fileName() << " with error " << cacheFile.errorString();
     }
