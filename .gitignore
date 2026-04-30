@@ -8,6 +8,8 @@
 *.so
 *.so.*
 *.moc
+*.ts
+*.qm
 build-stamp*
 moc_*.cpp
 src/contactsd
