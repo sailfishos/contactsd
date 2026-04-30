@@ -102,8 +102,6 @@ fi
 %{_libdir}/%{name}-1.0
 %{_datadir}/translations/*.qm
 %{_datadir}/mapplauncherd/privileges.d/*
-# we currently don't have a backup framework
-%exclude /usr/share/backup-framework/applications/%{name}.conf
 %{_libdir}/libcontactsd.so.*
 
 %files devel
