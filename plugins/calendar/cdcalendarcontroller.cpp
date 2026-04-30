@@ -136,7 +136,7 @@ void CDCalendarController::enabledEventCalDav(AccountId id)
         return;
     }
 
-    bool enabled = account->enabled();
+    bool enabled = account->isEnabled();
     if (enabled) {
         // The account is enabled, but the calendar service may not be
         enabled = false;
@@ -144,7 +144,7 @@ void CDCalendarController::enabledEventCalDav(AccountId id)
         for (it = serviceList.constBegin();
              !enabled && it != serviceList.constEnd(); ++it) {
             account->selectService(*it);
-            enabled = account->enabled();
+            enabled = account->isEnabled();
         }
         account->selectService();
     }
@@ -182,7 +182,7 @@ void CDCalendarController::enabledEventSync(AccountId id)
         return;
     }
 
-    bool enabled = account->enabled();
+    bool enabled = account->isEnabled();
     if (enabled) {
         // The account is enabled, but the calendar service may not be
         enabled = false;
@@ -192,7 +192,7 @@ void CDCalendarController::enabledEventSync(AccountId id)
             // This seems to be the only way to check whether it's a calendar
             if ((*it).name() == QLatin1String("google-calendars")) {
                 account->selectService(*it);
-                enabled = account->enabled();
+                enabled = account->isEnabled();
             }
         }
         account->selectService();
