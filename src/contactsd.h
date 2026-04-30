@@ -34,7 +34,7 @@ namespace Contactsd {
     class SyncTrigger;
 }
 
-class Q_DECL_EXPORT ContactsDaemon : public QObject
+class ContactsDaemon : public QObject
 {
     Q_OBJECT
 

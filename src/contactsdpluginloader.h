@@ -36,7 +36,7 @@ class QString;
 class QStringList;
 class QDBusConnection;
 
-class Q_DECL_EXPORT ContactsdPluginLoader : public QObject
+class ContactsdPluginLoader : public QObject
 {
     Q_OBJECT
 
