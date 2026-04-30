@@ -143,20 +143,11 @@ QNetworkReply *CDTpAvatarUpdate::updateContactAvatar()
         // Seems we can reuse the existing avatar file.
         avatarPath = avatarFile.fileName();
     } else {
-        // Follow redirections as done by Facebook's graph API.
         if (not redirectionTarget.isEmpty()) {
             return mNetworkReply->manager()->get(QNetworkRequest(redirectionTarget));
         }
 
-        // Facebook delivers a distinct gif image if no avatar is set. Ignore that bugger.
-        const QString contentType = mNetworkReply->header(QNetworkRequest::ContentTypeHeader).toString();
-
-        static const QLatin1String contentTypeImageGif = QLatin1String("image/gif");
-        static const QLatin1String contentTypeImage = QLatin1String("image/");
-
-        if (contentType.startsWith(contentTypeImage) && contentType != contentTypeImageGif) {
-            avatarPath = writeAvatarFile(avatarFile, cacheDir);
-        }
+        avatarPath = writeAvatarFile(avatarFile, cacheDir);
     }
 
     // Update the contact if a new avatar is available.

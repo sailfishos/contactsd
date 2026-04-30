@@ -990,34 +990,11 @@ QString saveAccountAvatar(CDTpAccountPtr accountWrapper)
     return filename;
 }
 
-void updateFacebookAvatar(QNetworkAccessManager &network, CDTpContactPtr contactWrapper, const QString &facebookId, const QString &avatarType)
-{
-    const QUrl avatarUrl(QLatin1String("http://graph.facebook.com/v2.6/") % facebookId %
-                         QLatin1String("/picture?type=") % avatarType);
-
-    // Initiate an avatar-update operation
-    CDTpAvatarUpdate::updateContact(contactWrapper.data(),
-                                    network.get(QNetworkRequest(avatarUrl)),
-                                    QString::fromLatin1("%1-picture.jpg").arg(facebookId),
-                                    avatarType);
-}
-
 void updateSocialAvatars(QNetworkAccessManager &network, CDTpContactPtr contactWrapper)
 {
-    if (network.networkAccessible() == QNetworkAccessManager::NotAccessible) {
-        return;
-    }
-
-    QRegExp facebookIdPattern(QLatin1String("-(\\d+)@chat\\.facebook\\.com"));
-
-    if (not facebookIdPattern.exactMatch(contactWrapper->contact()->id())) {
-        return; // only supporting Facebook avatars right now
-    }
-
-    const QString socialId = facebookIdPattern.cap(1);
-
-    // Ignore the square avatar, we only need the large one
-    updateFacebookAvatar(network, contactWrapper, socialId, CDTpAvatarUpdate::Large);
+    Q_UNUSED(network)
+    Q_UNUSED(contactWrapper)
+    // TODO: do we need this for anything?
 }
 
 bool onlineAccountEnabled(const QContactOnlineAccount &qcoa)
