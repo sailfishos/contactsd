@@ -28,7 +28,7 @@
 #include <extendedstorage.h>
 #include <extendedcalendar.h>
 
-#include <MGConfItem>
+#include <MDConfItem>
 #include <MLocale>
 
 #include <QContactBirthday>
@@ -223,7 +223,7 @@ void TestBirthdayPlugin::testLocaleChange()
     // Is this the infrastructure for this tets still available?
     QSKIP("MeegoTouch language setting change is not reflected in KCalendarCore...");
 
-    MGConfItem store(QLatin1String("/meegotouch/i18n/language"));
+    MDConfItem store(QLatin1String("/meegotouch/i18n/language"));
     store.set(QLatin1String("en"));
 
     // Leave the time to react to locale change

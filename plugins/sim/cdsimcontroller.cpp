@@ -692,7 +692,7 @@ void CDSimModemData::updateVoicemailConfiguration()
 
     if (!m_voicemailConf || m_voicemailConf->key() != variablePath) {
         delete m_voicemailConf;
-        m_voicemailConf = new MGConfItem(variablePath);
+        m_voicemailConf = new MDConfItem(variablePath);
         connect(m_voicemailConf, SIGNAL(valueChanged()), this, SLOT(voicemailConfigurationChanged()));
 
         voicemailConfigurationChanged();

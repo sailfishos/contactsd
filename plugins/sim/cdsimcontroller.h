@@ -30,7 +30,7 @@
 #include <qofonomessagewaiting.h>
 #include <qofonoextsiminfo.h>
 
-#include <MGConfItem>
+#include <MDConfItem>
 
 QTCONTACTS_USE_NAMESPACE
 QTVERSIT_USE_NAMESPACE
@@ -71,7 +71,7 @@ private:
     bool m_transientImport;
     bool m_busy;
     bool m_active;
-    MGConfItem m_transientImportConf;
+    MDConfItem m_transientImportConf;
     QBasicTimer m_readyTimer;
 
     QMap<QString, CDSimModemData *> m_modems;
@@ -128,7 +128,7 @@ public:
     QOfonoPhonebook m_phonebook;
     QOfonoMessageWaiting m_messageWaiting;
     QOfonoExtSimInfo m_simInfo;
-    MGConfItem *m_voicemailConf;
+    MDConfItem *m_voicemailConf;
     QVersitReader m_contactReader;
     QList<QContact> m_simContacts;
     QContactCollection m_collection;

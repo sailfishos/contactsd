@@ -35,7 +35,7 @@
 #include <QUrl>
 #include <QNetworkAccessManager>
 
-#include <MGConfItem>
+#include <MDConfItem>
 
 #include "cdtpaccount.h"
 #include "cdtpcontact.h"
@@ -109,7 +109,7 @@ private:
     QMap<QString, CDTpAccount::Changes> m_accountPendingChanges;
     CDTpDevicePresence *mDevicePresence;
     DisplayLabelOrder mDisplayLabelOrder;
-    MGConfItem mDisplayLabelOrderConf;
+    MDConfItem mDisplayLabelOrderConf;
 };
 
 #endif // CDTPSTORAGE_H
