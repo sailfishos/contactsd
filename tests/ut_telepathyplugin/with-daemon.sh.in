@@ -27,12 +27,8 @@ set -e
 cleanup ()
 {
   kill $contactsd_pid
-  tracker-control -r > /dev/null
 }
 trap cleanup INT HUP TERM
-
-tracker-control -r > /dev/null
-/usr/lib/tracker/tracker-store >/dev/null 2>&1 &
 
 # Start the unit test in background so it register the AM
 "$@" &
