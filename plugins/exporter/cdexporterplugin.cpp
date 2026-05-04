@@ -43,4 +43,3 @@ CDExporterPlugin::MetaData CDExporterPlugin::metaData()
     data[metaDataKeyComment] = QVariant(QLatin1String("contactsd exporter plugin"));
     return data;
 }
-

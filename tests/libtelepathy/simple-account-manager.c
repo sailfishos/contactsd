@@ -88,7 +88,6 @@ tp_tests_simple_account_manager_get_property (GObject *object,
               GParamSpec *spec)
 {
   TpTestsSimpleAccountManager *self = SIMPLE_ACCOUNT_MANAGER (object);
-  guint i = 0;
 
   switch (property_id) {
     case PROP_INTERFACES:

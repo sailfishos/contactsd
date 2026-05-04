@@ -107,9 +107,9 @@ bool ImportState::removeImportingAccount(const QString &service, const QString &
         mStateStore.setValue(account, Imported);
         mStateStore.sync();
         return true;
-    } else {
-        return false;
     }
+
+    return false;
 }
 
 int ImportState::contactsAdded()

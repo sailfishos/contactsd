@@ -179,8 +179,8 @@ void CDTpAccount::onAccountStateChanged()
         mRosterCache.clear();
         CDTpAccountCacheWriter(this).run();
     } else {
-        /* Since contacts got removed when we disabled the account, we need
-         * to threat this account as new now that it is enabled again */
+        // Since contacts got removed when we disabled the account, we need
+        // to threat this account as new now that it is enabled again
         mNewAccount = true;
     }
 }
@@ -190,8 +190,7 @@ void CDTpAccount::onAccountConnectionChanged(const Tp::ConnectionPtr &connection
     bool oldHasRoster = mHasRoster;
 
     // If we got disconnected, but not on user request, give a grace period
-    // before actually updating Tracker, in case the connection comes back
-    // quickly
+    // before actually updating Tracker, in case the connection comes back quickly
     if (!connection.isNull()) {
         mDisconnectTimeout.stop();
     } else if (!mCurrentConnection.isNull() && mCurrentConnection->status() != Tp::ConnectionStatusDisconnected) {
@@ -327,7 +326,8 @@ void CDTpAccount::setRosterCache(const QHash<QString, CDTpContact::Info> &cache)
 }
 
 void CDTpAccount::onAllKnownContactsChanged(const Tp::Contacts &contactsAdded,
-        const Tp::Contacts &contactsRemoved)
+                                            const Tp::Contacts &contactsRemoved,
+                                            const Tp::Channel::GroupMemberChangeDetails &)
 {
     qCDebug(lcContactsd) << "Account" << mAccount->objectPath() << "roster contacts changed:";
     qCDebug(lcContactsd) << " " << contactsAdded.size() << "contacts added";
@@ -369,8 +369,7 @@ void CDTpAccount::onAllKnownContactsChanged(const Tp::Contacts &contactsAdded,
     }
 }
 
-void CDTpAccount::onAccountContactChanged(CDTpContactPtr contactWrapper,
-        CDTpContact::Changes changes)
+void CDTpAccount::onAccountContactChanged(CDTpContactPtr contactWrapper, CDTpContact::Changes changes)
 {
     if ((changes & CDTpContact::Visibility) != 0) {
         // Visibility of this contact changed. Transform this update operation
@@ -386,13 +385,11 @@ void CDTpAccount::onAccountContactChanged(CDTpContactPtr contactWrapper,
         }
 
         Q_EMIT rosterUpdated(CDTpAccountPtr(this), added, removed);
-
-        return;
-    }
-
-    // Forward changes only if contact is visible
-    if (contactWrapper->isVisible()) {
-        Q_EMIT rosterContactChanged(contactWrapper, changes);
+    } else {
+        // Forward changes only if contact is visible
+        if (contactWrapper->isVisible()) {
+            Q_EMIT rosterContactChanged(contactWrapper, changes);
+        }
     }
 }
 
@@ -454,4 +451,3 @@ void CDTpAccount::onRequestedStorageSpecificInformation(Tp::PendingOperation *op
     else
         setReady();
 }
-

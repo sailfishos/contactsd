@@ -43,15 +43,15 @@
 using namespace ML10N;
 
 // A random ID.
-const QLatin1String calNotebookId("b1376da7-5555-1111-2222-227549c4e570");
-const QLatin1String calNotebookColor("#e00080"); // Pink
-const QString calIdExtension = QLatin1String("com.nokia.birthday/");
+static const QLatin1String calNotebookId("b1376da7-5555-1111-2222-227549c4e570");
+static const QLatin1String calNotebookColor("#e00080"); // Pink
+static const QString calIdExtension = QLatin1String("com.nokia.birthday/");
 
 
-CDBirthdayCalendar::CDBirthdayCalendar(SyncMode syncMode, QObject *parent) :
-    QObject(parent),
-    mCalendar(0),
-    mStorage(0)
+CDBirthdayCalendar::CDBirthdayCalendar(SyncMode syncMode, QObject *parent)
+    : QObject(parent)
+    , mCalendar(nullptr)
+    , mStorage(nullptr)
 {
     mCalendar = mKCal::ExtendedCalendar::Ptr(new mKCal::ExtendedCalendar(QTimeZone::systemTimeZone()));
     mStorage = mKCal::ExtendedCalendar::defaultStorage(mCalendar);
@@ -118,8 +118,7 @@ mKCal::Notebook::Ptr CDBirthdayCalendar::createNotebook()
                                                     0));
 }
 
-QHash<QContactId, CalendarBirthday>
-CDBirthdayCalendar::birthdays()
+QHash<QContactId, CalendarBirthday> CDBirthdayCalendar::birthdays()
 {
     if (!mStorage->loadNotebookIncidences(calNotebookId)) {
         qCWarning(lcContactsd) << Q_FUNC_INFO << "Failed to load all incidences";
@@ -128,7 +127,7 @@ CDBirthdayCalendar::birthdays()
 
     QHash<QContactId, CalendarBirthday> result;
 
-    foreach(const KCalendarCore::Event::Ptr event, mCalendar->events()) {
+    foreach (const KCalendarCore::Event::Ptr event, mCalendar->events()) {
         const QString eventUid = event->uid();
         const QContactId contactId = localContactId(eventUid);
 

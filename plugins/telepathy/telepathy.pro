@@ -28,7 +28,6 @@ QT -= gui
 QT += dbus network
 
 CONFIG += plugin link_pkgconfig
-CONFIG += c++11
 
 PKGCONFIG += Qt5Contacts TelepathyQt5 mlite5 contactcache-qt5
 

@@ -75,7 +75,7 @@ void CDTpAvatarUpdate::setNetworkReply(QNetworkReply *networkReply)
 
 void CDTpAvatarUpdate::onRequestDone()
 {
-    QNetworkReply *newReply = 0;
+    QNetworkReply *newReply = nullptr;
 
     if (mNetworkReply && mNetworkReply->error() == QNetworkReply::NoError) {
         newReply = updateContactAvatar();
@@ -160,5 +160,5 @@ QNetworkReply *CDTpAvatarUpdate::updateContactAvatar()
     }
 
     // No further work to do
-    return 0;
+    return nullptr;
 }

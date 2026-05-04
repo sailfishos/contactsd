@@ -41,7 +41,8 @@ static const QString offlineInvitations = QString::fromLatin1("OfflineInvitation
 
 CDTpController::CDTpController(QObject *parent)
     : QObject(parent)
-    , mOfflineRosterBuffer(QSettings::IniFormat, QSettings::UserScope, QLatin1String("Nokia"), QLatin1String("Contactsd"))
+    , mOfflineRosterBuffer(QSettings::IniFormat, QSettings::UserScope,
+                           QLatin1String("Nokia"), QLatin1String("Contactsd"))
 {
     connect(&mStorage, &CDTpStorage::error,
             this, &CDTpController::error);
@@ -85,8 +86,8 @@ CDTpController::~CDTpController()
 void CDTpController::onAccountManagerReady(Tp::PendingOperation *op)
 {
     if (op->isError()) {
-        qCDebug(lcContactsd) << "Could not make account manager ready:" <<
-            op->errorName() << "-" << op->errorMessage();
+        qCDebug(lcContactsd) << "Could not make account manager ready:" << op->errorName()
+                             << "-" << op->errorMessage();
         return;
     }
 
@@ -204,8 +205,7 @@ void CDTpController::onSyncStarted(Tp::AccountPtr account)
 
 void CDTpController::onSyncEnded(Tp::AccountPtr account, int contactsAdded, int contactsRemoved)
 {
-    Q_EMIT importEnded(account->serviceName(), account->objectPath(),
-        contactsAdded, contactsRemoved, 0);
+    Q_EMIT importEnded(account->serviceName(), account->objectPath(), contactsAdded, contactsRemoved, 0);
 }
 
 void CDTpController::onRosterChanged(CDTpAccountPtr accountWrapper)
@@ -368,8 +368,7 @@ bool CDTpController::registerDBusObject()
     }
 
     if (!connection.registerObject(DBusObjectPath, this)) {
-        qCWarning(lcContactsd) << "Could not register DBus object '/':" <<
-            connection.lastError();
+        qCWarning(lcContactsd) << "Could not register DBus object '/':" << connection.lastError();
         return false;
     }
     return true;

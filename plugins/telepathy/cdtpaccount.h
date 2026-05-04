@@ -78,9 +78,9 @@ public:
 Q_SIGNALS:
     void changed(CDTpAccountPtr accountWrapper, CDTpAccount::Changes changes);
     void rosterChanged(CDTpAccountPtr accountWrapper);
-    void rosterUpdated(CDTpAccountPtr acconutWrapper,
-            const QList<CDTpContactPtr> &contactsAdded,
-            const QList<CDTpContactPtr> &contactsRemoved);
+    void rosterUpdated(CDTpAccountPtr accountWrapper,
+                       const QList<CDTpContactPtr> &contactsAdded,
+                       const QList<CDTpContactPtr> &contactsRemoved);
     void rosterContactChanged(CDTpContactPtr contactWrapper, CDTpContact::Changes changes);
     void syncStarted(Tp::AccountPtr account);
     void syncEnded(Tp::AccountPtr account, int contactsAdded, int contactsRemoved);
@@ -97,7 +97,8 @@ private Q_SLOTS:
     void onAccountContactChanged(CDTpContactPtr contactWrapper,
             CDTpContact::Changes changes);
     void onAllKnownContactsChanged(const Tp::Contacts &contactsAdded,
-            const Tp::Contacts &contactsRemoved);
+                                   const Tp::Contacts &contactsRemoved,
+                                   const Tp::Channel::GroupMemberChangeDetails &);
     void onDisconnectTimeout();
     void onRequestedStorageSpecificInformation(Tp::PendingOperation *op);
 

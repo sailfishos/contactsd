@@ -30,7 +30,7 @@
 using namespace Contactsd;
 
 CDTpPlugin::CDTpPlugin()
-    : mController(0)
+    : mController(nullptr)
 {
 }
 

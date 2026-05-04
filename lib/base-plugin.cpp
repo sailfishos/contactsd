@@ -34,8 +34,7 @@ const QString BasePlugin::metaDataKeyName    = QString::fromLatin1("name");
 const QString BasePlugin::metaDataKeyComment = QString::fromLatin1("comment");
 
 
-QDir
-BasePlugin::cacheDir()
+QDir BasePlugin::cacheDir()
 {
     const QString cacheRoot = QString::fromLatin1(".local/share/system/privileged/Contacts");
     QDir cacheDir = QDir::home().filePath(cacheRoot);
@@ -50,8 +49,7 @@ BasePlugin::cacheDir()
     return cacheDir;
 }
 
-QString
-BasePlugin::cacheFileName(const QString &fileName)
+QString BasePlugin::cacheFileName(const QString &fileName)
 {
     return cacheDir().filePath(fileName);
 }

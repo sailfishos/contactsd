@@ -77,4 +77,3 @@ void CDTpAccountCacheLoader::run()
 
     qCDebug(lcContactsd) << "Loaded" << cache.size() << "contacts from cache for account" << accountPath;
 }
-

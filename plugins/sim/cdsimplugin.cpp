@@ -52,4 +52,3 @@ CDSimPlugin::MetaData CDSimPlugin::metaData()
     data[metaDataKeyComment] = QVariant(QLatin1String("contactsd sim plugin"));
     return data;
 }
-

@@ -84,7 +84,8 @@ void SyncTrigger::triggerSync(const QStringList &accountProviders, int syncPolic
         bool isEnabled = profile->isEnabled();
         bool isUpsync = profile->syncDirection() == Buteo::SyncProfile::SYNC_DIRECTION_TWO_WAY
                      || profile->syncDirection() == Buteo::SyncProfile::SYNC_DIRECTION_TO_REMOTE;
-        bool alwaysUpToDate = profile->key(Buteo::KEY_SYNC_ALWAYS_UP_TO_DATE, QStringLiteral("false")) == QStringLiteral("true");
+        bool alwaysUpToDate = profile->key(Buteo::KEY_SYNC_ALWAYS_UP_TO_DATE,
+                                           QStringLiteral("false")) == QStringLiteral("true");
 
         // By convention, the template profile name should be of the form:
         // "accountProvider.dataType" -- eg, "google.Contacts"
@@ -124,4 +125,3 @@ void SyncTrigger::triggerSync(const QStringList &accountProviders, int syncPolic
 }
 
 }
-

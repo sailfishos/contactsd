@@ -28,7 +28,7 @@
 using namespace Contactsd;
 
 CDBirthdayPlugin::CDBirthdayPlugin()
-    : mController(0)
+    : mController(nullptr)
 {
 }
 
@@ -52,4 +52,3 @@ CDBirthdayPlugin::MetaData CDBirthdayPlugin::metaData()
     data[metaDataKeyComment] = QVariant(QLatin1String("contactsd birthday plugin"));
     return data;
 }
-

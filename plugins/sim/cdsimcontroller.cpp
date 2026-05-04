@@ -442,8 +442,11 @@ void CDSimModemData::ensureSimContactsPresent()
 {
     // Ensure all contacts from the SIM are present in the store
     QContactFetchHint hint;
-    hint.setDetailTypesHint(QList<QContactDetail::DetailType>() << QContactNickname::Type << QContactPhoneNumber::Type);
-    hint.setOptimizationHints(QContactFetchHint::NoRelationships | QContactFetchHint::NoActionPreferences | QContactFetchHint::NoBinaryBlobs);
+    hint.setDetailTypesHint(QList<QContactDetail::DetailType>()
+                            << QContactNickname::Type << QContactPhoneNumber::Type);
+    hint.setOptimizationHints(QContactFetchHint::NoRelationships
+                              | QContactFetchHint::NoActionPreferences
+                              | QContactFetchHint::NoBinaryBlobs);
 
     QContactCollectionFilter collectionFilter;
     collectionFilter.setCollectionId(m_collection.id());
