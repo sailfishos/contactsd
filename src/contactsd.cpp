@@ -42,15 +42,6 @@ using namespace Contactsd;
   \class ContactsDaemon
 
   \brief Main daemon class which manages remote contact plug-ins.
-
-  \section y Populating the contact list with remote contacts
-  Remote contacts are the user's buddies from various online sources, like
-  social networks, and IM accounts set up on the device. We have
-  The daemon is responsible to retrieve remote contacts information from various
-  sources and synchronizes them with tracker as well as providing real-time
-  updates of this information.
-  The remote contacts information can be accessed using the QtMobility contacts
-  API.
 */
 
 /*!
