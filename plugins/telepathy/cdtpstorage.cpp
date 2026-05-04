@@ -1870,9 +1870,11 @@ CDTpStorage::CDTpStorage(QObject *parent)
     , mDisplayLabelOrder(FirstNameFirst)
     , mDisplayLabelOrderConf(QStringLiteral("/org/nemomobile/contacts/display_label_order"))
 {
-    connect(mDevicePresence, SIGNAL(requestUpdate()), this, SLOT(reportPresenceStates()));
+    connect(mDevicePresence, &CDTpDevicePresence::requestUpdate,
+            this, &CDTpStorage::reportPresenceStates);
 
-    connect(&mDisplayLabelOrderConf, SIGNAL(valueChanged()), this, SLOT(displayLabelOrderChanged()));
+    connect(&mDisplayLabelOrderConf, &MDConfItem::valueChanged,
+            this,  &CDTpStorage::displayLabelOrderChanged);
 
     QVariant displayLabelOrder = mDisplayLabelOrderConf.value();
     if (displayLabelOrder.isValid())
@@ -1880,7 +1882,8 @@ CDTpStorage::CDTpStorage(QObject *parent)
 
     mUpdateTimer.setInterval(UPDATE_TIMEOUT);
     mUpdateTimer.setSingleShot(true);
-    connect(&mUpdateTimer, SIGNAL(timeout()), SLOT(onUpdateQueueTimeout()));
+    connect(&mUpdateTimer, &QTimer::timeout,
+            this, &CDTpStorage::onUpdateQueueTimeout);
 
     mWaitTimer.invalidate();
 }
@@ -1910,14 +1913,15 @@ static void updateContactAccount(QContactOnlineAccount &qcoa, CDTpAccountPtr acc
     addIconPath(qcoa, account);
 }
 
-void CDTpStorage::addNewAccount()
+void CDTpStorage::addPendingNewAccount()
 {
     CDTpAccount *account = qobject_cast<CDTpAccount*>(sender());
     if (!account)
         return;
 
     // Disconnect the signal
-    disconnect(account, SIGNAL(readyChanged()), this, SLOT(addNewAccount()));
+    disconnect(account, &CDTpAccount::readyChanged,
+               this, &CDTpStorage::addPendingNewAccount);
 
     // Create a new contact collection for this account
     const QContactCollectionId collectionId = telepathyCollectionId(imAccount(account));
@@ -1937,7 +1941,8 @@ void CDTpStorage::addNewAccount(QContact &self, CDTpAccountPtr accountWrapper)
 
     if (!accountWrapper->isReady()) {
         qCDebug(lcContactsd) << "Waiting to create new self account" << accountPath << "until ready";
-        connect(accountWrapper.data(), SIGNAL(readyChanged()), SLOT(addNewAccount()));
+        connect(accountWrapper.data(), &CDTpAccount::readyChanged,
+                this, &CDTpStorage::addPendingNewAccount);
         return;
     }
 
@@ -2135,14 +2140,15 @@ QList<CDTpContactPtr> accountContacts(CDTpAccountPtr accountWrapper)
     return rv;
 }
 
-void CDTpStorage::updateAccount()
+void CDTpStorage::updatePendingAccount()
 {
     CDTpAccount *account = qobject_cast<CDTpAccount*>(sender());
     if (!account)
         return;
 
     // Disconnect the signal
-    disconnect(account, SIGNAL(readyChanged()), this, SLOT(updateAccount()));
+    disconnect(account, &CDTpAccount::readyChanged,
+               this, &CDTpStorage::updatePendingAccount);
 
     const QString accountPath(imAccount(account));
 
@@ -2170,7 +2176,8 @@ void CDTpStorage::updateAccountChanges(QContact &self, QContactOnlineAccount &qc
             it.value() |= changes;
         } else {
             m_accountPendingChanges.insert(accountPath, changes);
-            connect(accountWrapper.data(), SIGNAL(readyChanged()), SLOT(updateAccount()));
+            connect(accountWrapper.data(), &CDTpAccount::readyChanged,
+                    this, &CDTpStorage::updatePendingAccount);
         }
         return;
     }
@@ -2510,7 +2517,8 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper)
     qCWarning(lcContactsd) << SRC_LOC << "Account not found for sync account:" << accountPath;
 }
 
-void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper, const QList<CDTpContactPtr> &contactsAdded, const QList<CDTpContactPtr> &contactsRemoved)
+void CDTpStorage::syncAccountContactsDetailed(CDTpAccountPtr accountWrapper, const QList<CDTpContactPtr> &contactsAdded,
+                                              const QList<CDTpContactPtr> &contactsRemoved)
 {
     const QString accountPath(imAccount(accountWrapper));
 

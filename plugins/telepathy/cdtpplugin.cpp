@@ -49,16 +49,14 @@ void CDTpPlugin::init()
 
     qCDebug(lcContactsd) << "Creating controller";
     mController = new CDTpController(this);
+
     // relay signals
-    connect(mController,
-            SIGNAL(importStarted(const QString &, const QString &)),
-            SIGNAL(importStarted(const QString &, const QString &)));
-    connect(mController,
-            SIGNAL(importEnded(const QString &, const QString &, int, int, int)),
-            SIGNAL(importEnded(const QString &, const QString &, int, int, int)));
-    connect(mController,
-            SIGNAL(error(int, const QString &)),
-            SIGNAL(error(int, const QString &)));
+    connect(mController, &CDTpController::importStarted,
+            this, &CDTpPlugin::importStarted);
+    connect(mController, &CDTpController::importEnded,
+            this, &CDTpPlugin::importEnded);
+    connect(mController, &CDTpController::error,
+            this, &CDTpPlugin::error);
 }
 
 CDTpPlugin::MetaData CDTpPlugin::metaData()
@@ -69,4 +67,3 @@ CDTpPlugin::MetaData CDTpPlugin::metaData()
     data[metaDataKeyComment] = QVariant(QString::fromLatin1("contactsd telepathy plugin"));
     return data;
 }
-

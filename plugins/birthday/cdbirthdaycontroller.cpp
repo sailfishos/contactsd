@@ -88,7 +88,8 @@ CDBirthdayController::CDBirthdayController(QObject *parent)
 
     mUpdateTimer.setInterval(UPDATE_TIMEOUT);
     mUpdateTimer.setSingleShot(true);
-    connect(&mUpdateTimer, SIGNAL(timeout()), SLOT(onUpdateQueueTimeout()));
+    connect(&mUpdateTimer, &QTimer::timeout,
+            this, &CDBirthdayController::onUpdateQueueTimeout);
 }
 
 CDBirthdayController::~CDBirthdayController()

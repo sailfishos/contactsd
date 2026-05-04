@@ -81,7 +81,8 @@ CDTpAccount::CDTpAccount(const Tp::AccountPtr &account, const QStringList &toAvo
     mDisconnectTimeout.setInterval(DisconnectGracePeriod);
     mDisconnectTimeout.setSingleShot(true);
 
-    connect(&mDisconnectTimeout, SIGNAL(timeout()), SLOT(onDisconnectTimeout()));
+    connect(&mDisconnectTimeout, &QTimer::timeout,
+            this, &CDTpAccount::onDisconnectTimeout);
 }
 
 CDTpAccount::~CDTpAccount()
@@ -293,9 +294,8 @@ void CDTpAccount::setContactManager(const Tp::ContactManagerPtr &contactManager)
     qCDebug(lcContactsd) << "Account" << mAccount->objectPath() << "- received the roster";
 
     mHasRoster = true;
-    connect(contactManager.data(),
-            SIGNAL(allKnownContactsChanged(const Tp::Contacts &, const Tp::Contacts &, const Tp::Channel::GroupMemberChangeDetails &)),
-            SLOT(onAllKnownContactsChanged(const Tp::Contacts &, const Tp::Contacts &)));
+    connect(contactManager.data(), &Tp::ContactManager::allKnownContactsChanged,
+            this, &CDTpAccount::onAllKnownContactsChanged);
 
     Q_FOREACH (const Tp::ContactPtr &contact, contactManager->allKnownContacts()) {
         if (mContactsToAvoid.contains(contact->id())) {

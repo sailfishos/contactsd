@@ -126,14 +126,14 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir, const QString
         qCDebug(lcContactsd) << "Plugin" << pluginName << "loaded";
         mPluginStore.insert(pluginName, basePlugin);
 
-        connect(basePlugin, SIGNAL(importStarted(const QString &, const QString &)),
-                this, SLOT(onPluginImportStarted(const QString &, const QString &)));
-        connect(basePlugin, SIGNAL(importEnded(const QString &, const QString &, int, int, int)),
-                this, SLOT(onPluginImportEnded(const QString &, const QString &, int,int,int)));
-        connect(basePlugin, SIGNAL(error(int, const QString &)),
-                this, SIGNAL(error(int, const QString &)));
-        connect(basePlugin, SIGNAL(importAlive()),
-                this, SLOT(onImportAlive()));
+        connect(basePlugin, &BasePlugin::importStarted,
+                this, &ContactsdPluginLoader::onPluginImportStarted);
+        connect(basePlugin, &BasePlugin::importEnded,
+                this, &ContactsdPluginLoader::onPluginImportEnded);
+        connect(basePlugin, &BasePlugin::error,
+                this, &ContactsdPluginLoader::error);
+        connect(basePlugin, &BasePlugin::importAlive,
+                this, &ContactsdPluginLoader::onImportAlive);
 
         basePlugin->init();
     }
@@ -231,8 +231,8 @@ void ContactsdPluginLoader::startCheckAliveTimer()
     stopCheckAliveTimer();
 
     mCheckAliveTimer = new QTimer(this);
-    connect(mCheckAliveTimer, SIGNAL(timeout()),
-            this, SLOT(onCheckAliveTimeout()));
+    connect(mCheckAliveTimer, &QTimer::timeout,
+            this, &ContactsdPluginLoader::onCheckAliveTimeout);
     mCheckAliveTimer->start(ALIVE_TIMEOUT);
 }
 
@@ -263,8 +263,8 @@ void ContactsdPluginLoader::startImportTimer()
 
     // Add a timeout timer
     mImportTimer = new QTimer(this);
-    connect(mImportTimer, SIGNAL(timeout()),
-            this, SLOT(onImportTimeout()));
+    connect(mImportTimer, &QTimer::timeout,
+            this, &ContactsdPluginLoader::onImportTimeout);
     mImportTimer->start(IMPORT_TIMEOUT);
 }
 

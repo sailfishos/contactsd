@@ -63,7 +63,8 @@ CDBirthdayCalendar::CDBirthdayCalendar(SyncMode syncMode, QObject *parent) :
     }
 
     locale->connectSettings();
-    connect(locale, SIGNAL(settingsChanged()), this, SLOT(onLocaleChanged()));
+    connect(locale, &MLocale::settingsChanged,
+            this, &CDBirthdayCalendar::onLocaleChanged);
 
     MLocale::setDefault(*locale);
 
