@@ -30,7 +30,8 @@ namespace {
     Sets the \a enabled status for all notebooks associated with the given
     account \a id.
 */
-static const QByteArray VISIBILITY_CHANGED_FLAG("hidden_by_account");
+const QByteArray VISIBILITY_CHANGED_FLAG("hidden_by_account");
+
 void updateNotebooks(AccountId id, bool enabled)
 {
     mKCal::ExtendedCalendar::Ptr calendar = mKCal::ExtendedCalendar::Ptr(
@@ -66,18 +67,15 @@ void updateNotebooks(AccountId id, bool enabled)
     Creates an Account Manager for the service type and attaches the
     manager's enabledEvent signal to the provided \a enabledEvent slot.
 */
-Manager * CDCalendarController::SetupManager(
-        const QString &service,
-        void (CDCalendarController::*enabledEvent)(AccountId id))
+Manager * CDCalendarController::SetupManager(const QString &service,
+                                             void (CDCalendarController::*enabledEvent)(AccountId id))
 {
-
     Manager * manager = new Manager(service, this);
 
     Error error = manager->lastError();
     if (error.type() == Error::NoError) {
         connect(manager, &Manager::enabledEvent, this, enabledEvent);
-    }
-    else {
+    } else {
         qWarning() << "Accounts manager creation failed for" << service
                    << "with error:" << error.message();
     }
@@ -136,7 +134,7 @@ void CDCalendarController::enabledEventCalDav(AccountId id)
         return;
     }
 
-    bool enabled = account->enabled();
+    bool enabled = account->isEnabled();
     if (enabled) {
         // The account is enabled, but the calendar service may not be
         enabled = false;
@@ -144,7 +142,7 @@ void CDCalendarController::enabledEventCalDav(AccountId id)
         for (it = serviceList.constBegin();
              !enabled && it != serviceList.constEnd(); ++it) {
             account->selectService(*it);
-            enabled = account->enabled();
+            enabled = account->isEnabled();
         }
         account->selectService();
     }
@@ -182,7 +180,7 @@ void CDCalendarController::enabledEventSync(AccountId id)
         return;
     }
 
-    bool enabled = account->enabled();
+    bool enabled = account->isEnabled();
     if (enabled) {
         // The account is enabled, but the calendar service may not be
         enabled = false;
@@ -192,7 +190,7 @@ void CDCalendarController::enabledEventSync(AccountId id)
             // This seems to be the only way to check whether it's a calendar
             if ((*it).name() == QLatin1String("google-calendars")) {
                 account->selectService(*it);
-                enabled = account->enabled();
+                enabled = account->isEnabled();
             }
         }
         account->selectService();

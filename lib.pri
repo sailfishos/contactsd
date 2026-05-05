@@ -1,2 +1,2 @@
-INCLUDEPATH=$$PWD/lib
-LIBS+=-L$$PWD/lib/ -lcontactsd
+INCLUDEPATH = $$PWD/lib
+LIBS += -L$$PWD/lib/ -lcontactsd

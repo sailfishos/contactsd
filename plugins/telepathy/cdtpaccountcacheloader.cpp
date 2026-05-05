@@ -40,12 +40,12 @@ void CDTpAccountCacheLoader::run()
     const QString accountPath = mAccount->account()->objectPath();
     QFile cacheFile(CDTpAccountCache::cacheFilePath(mAccount));
 
-    if (not cacheFile.exists()) {
+    if (!cacheFile.exists()) {
         qCDebug(lcContactsd) << Q_FUNC_INFO << "Account" << accountPath << "has no cache file";
         return;
     }
 
-    if (not cacheFile.open(QIODevice::ReadOnly)) {
+    if (!cacheFile.open(QIODevice::ReadOnly)) {
         qCWarning(lcContactsd) << Q_FUNC_INFO << "Can't open" << cacheFile.fileName() << "for reading:"
                   << cacheFile.error();
         return;
@@ -77,4 +77,3 @@ void CDTpAccountCacheLoader::run()
 
     qCDebug(lcContactsd) << "Loaded" << cache.size() << "contacts from cache for account" << accountPath;
 }
-

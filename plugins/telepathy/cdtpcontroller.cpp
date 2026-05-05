@@ -41,11 +41,11 @@ static const QString offlineInvitations = QString::fromLatin1("OfflineInvitation
 
 CDTpController::CDTpController(QObject *parent)
     : QObject(parent)
-    , mOfflineRosterBuffer(QSettings::IniFormat, QSettings::UserScope, QLatin1String("Nokia"), QLatin1String("Contactsd"))
+    , mOfflineRosterBuffer(QSettings::IniFormat, QSettings::UserScope,
+                           QLatin1String("Nokia"), QLatin1String("Contactsd"))
 {
-    connect(&mStorage,
-            SIGNAL(error(int, const QString &)),
-            SIGNAL(error(int, const QString &)));
+    connect(&mStorage, &CDTpStorage::error,
+            this, &CDTpController::error);
 
     qCDebug(lcContactsd) << "Creating account manager";
     const QDBusConnection &bus = QDBusConnection::sessionBus();
@@ -70,9 +70,9 @@ CDTpController::CDTpController(QObject *parent)
             channelFactory, contactFactory);
 
     // Wait for AM to become ready
-    connect(mAM->becomeReady(Tp::AccountManager::FeatureCore),
-            SIGNAL(finished(Tp::PendingOperation*)),
-            SLOT(onAccountManagerReady(Tp::PendingOperation*)));
+    connect(mAM->becomeReady(Tp::AccountManager::FeatureCore), &Tp::PendingReady::finished,
+            this, &CDTpController::onAccountManagerReady);
+
     if (registerDBusObject()) {
         (void) new BuddyManagementAdaptor(this);
     }
@@ -86,8 +86,8 @@ CDTpController::~CDTpController()
 void CDTpController::onAccountManagerReady(Tp::PendingOperation *op)
 {
     if (op->isError()) {
-        qCDebug(lcContactsd) << "Could not make account manager ready:" <<
-            op->errorName() << "-" << op->errorMessage();
+        qCDebug(lcContactsd) << "Could not make account manager ready:" << op->errorName()
+                             << "-" << op->errorMessage();
         return;
     }
 
@@ -119,12 +119,10 @@ void CDTpController::onAccountManagerReady(Tp::PendingOperation *op)
     Tp::AccountFilterPtr filter = Tp::AndFilter<Tp::Account>::create(filters);
 
     mAccountSet = mAM->filterAccounts(filter);
-    connect(mAccountSet.data(),
-            SIGNAL(accountAdded(const Tp::AccountPtr &)),
-            SLOT(onAccountAdded(const Tp::AccountPtr &)));
-    connect(mAccountSet.data(),
-            SIGNAL(accountRemoved(const Tp::AccountPtr &)),
-             SLOT(onAccountRemoved(const Tp::AccountPtr &)));
+    connect(mAccountSet.data(), &Tp::AccountSet::accountAdded,
+            this, &CDTpController::onAccountAdded);
+    connect(mAccountSet.data(), &Tp::AccountSet::accountRemoved,
+              this, &CDTpController::onAccountRemoved);
 
     Q_FOREACH (const Tp::AccountPtr &account, mAccountSet->accounts()) {
         insertAccount(account, false);
@@ -148,7 +146,7 @@ void CDTpController::onAccountAdded(const Tp::AccountPtr &account)
 void CDTpController::onAccountRemoved(const Tp::AccountPtr &account)
 {
     CDTpAccountPtr accountWrapper(mAccounts.take(account->objectPath()));
-    if (not accountWrapper) {
+    if (!accountWrapper) {
         qCWarning(lcContactsd) << "Internal error, account was not in controller";
         return;
     }
@@ -183,31 +181,19 @@ CDTpAccountPtr CDTpController::insertAccount(const Tp::AccountPtr &account, bool
     maybeStartOfflineOperations(accountWrapper);
 
     // Connect change notifications
-    connect(accountWrapper.data(),
-            SIGNAL(rosterChanged(CDTpAccountPtr)),
-            SLOT(onRosterChanged(CDTpAccountPtr)));
-    connect(accountWrapper.data(),
-            SIGNAL(changed(CDTpAccountPtr, CDTpAccount::Changes)),
-            &mStorage,
-            SLOT(updateAccount(CDTpAccountPtr, CDTpAccount::Changes)));
-    connect(accountWrapper.data(),
-            SIGNAL(rosterUpdated(CDTpAccountPtr,
-                    const QList<CDTpContactPtr> &,
-                    const QList<CDTpContactPtr> &)),
-            &mStorage,
-            SLOT(syncAccountContacts(CDTpAccountPtr,
-                    const QList<CDTpContactPtr> &,
-                    const QList<CDTpContactPtr> &)));
-    connect(accountWrapper.data(),
-            SIGNAL(rosterContactChanged(CDTpContactPtr, CDTpContact::Changes)),
-            &mStorage,
-            SLOT(updateContact(CDTpContactPtr, CDTpContact::Changes)));
-    connect(accountWrapper.data(),
-            SIGNAL(syncStarted(Tp::AccountPtr)),
-            SLOT(onSyncStarted(Tp::AccountPtr)));
-    connect(accountWrapper.data(),
-            SIGNAL(syncEnded(Tp::AccountPtr, int, int)),
-            SLOT(onSyncEnded(Tp::AccountPtr, int, int)));
+    connect(accountWrapper.data(), &CDTpAccount::rosterChanged,
+            this, &CDTpController::onRosterChanged);
+    connect(accountWrapper.data(), &CDTpAccount::changed,
+            &mStorage, &CDTpStorage::updateAccount);
+
+    connect(accountWrapper.data(), &CDTpAccount::rosterUpdated,
+            &mStorage, &CDTpStorage::syncAccountContactsDetailed);
+    connect(accountWrapper.data(), &CDTpAccount::rosterContactChanged,
+            &mStorage, &CDTpStorage::updateContact);
+    connect(accountWrapper.data(), &CDTpAccount::syncStarted,
+            this, &CDTpController::onSyncStarted);
+    connect(accountWrapper.data(), &CDTpAccount::syncEnded,
+            this, &CDTpController::onSyncEnded);
 
     return accountWrapper;
 }
@@ -219,8 +205,7 @@ void CDTpController::onSyncStarted(Tp::AccountPtr account)
 
 void CDTpController::onSyncEnded(Tp::AccountPtr account, int contactsAdded, int contactsRemoved)
 {
-    Q_EMIT importEnded(account->serviceName(), account->objectPath(),
-        contactsAdded, contactsRemoved, 0);
+    Q_EMIT importEnded(account->serviceName(), account->objectPath(), contactsAdded, contactsRemoved, 0);
 }
 
 void CDTpController::onRosterChanged(CDTpAccountPtr accountWrapper)
@@ -243,9 +228,8 @@ void CDTpController::maybeStartOfflineOperations(CDTpAccountPtr accountWrapper)
     mOfflineRosterBuffer.endGroup();
     if (!idsToRemove.isEmpty()) {
         CDTpRemovalOperation *op = new CDTpRemovalOperation(accountWrapper, idsToRemove);
-        connect(op,
-                SIGNAL(finished(Tp::PendingOperation *)),
-                SLOT(onRemovalFinished(Tp::PendingOperation *)));
+        connect(op, &CDTpRemovalOperation::finished,
+                this, &CDTpController::onRemovalFinished);
     }
 
     // Start invitation operation
@@ -255,9 +239,8 @@ void CDTpController::maybeStartOfflineOperations(CDTpAccountPtr accountWrapper)
     if (!idsToInvite.isEmpty()) {
         // FIXME: We should also save the localId for offline operations
         CDTpInvitationOperation *op = new CDTpInvitationOperation(mStorage, accountWrapper, idsToInvite, 0);
-        connect(op,
-                SIGNAL(finished(Tp::PendingOperation *)),
-                SLOT(onInvitationFinished(Tp::PendingOperation *)));
+        connect(op, &CDTpInvitationOperation::finished,
+                this, &CDTpController::onInvitationFinished);
     }
 }
 
@@ -282,9 +265,8 @@ void CDTpController::inviteBuddiesOnContact(const QString &accountPath, const QS
     // Start invitation operation
     if (accountWrapper->hasRoster()) {
         CDTpInvitationOperation *op = new CDTpInvitationOperation(mStorage, accountWrapper, imIds, localId);
-        connect(op,
-                SIGNAL(finished(Tp::PendingOperation *)),
-                SLOT(onInvitationFinished(Tp::PendingOperation *)));
+        connect(op, &CDTpInvitationOperation::finished,
+                this, &CDTpController::onInvitationFinished);
     }
 }
 
@@ -386,8 +368,7 @@ bool CDTpController::registerDBusObject()
     }
 
     if (!connection.registerObject(DBusObjectPath, this)) {
-        qCWarning(lcContactsd) << "Could not register DBus object '/':" <<
-            connection.lastError();
+        qCWarning(lcContactsd) << "Could not register DBus object '/':" << connection.lastError();
         return false;
     }
     return true;
@@ -455,9 +436,8 @@ CDTpInvitationOperation::CDTpInvitationOperation(CDTpStorage &storage,
 
     Tp::ContactManagerPtr manager = accountWrapper->account()->connection()->contactManager();
     Tp::PendingContacts *call = manager->contactsForIdentifiers(mContactIds);
-    connect(call,
-            SIGNAL(finished(Tp::PendingOperation *)),
-            SLOT(onContactsRetrieved(Tp::PendingOperation *)));
+    connect(call, &Tp::PendingContacts::finished,
+            this, &CDTpInvitationOperation::onContactsRetrieved);
 }
 
 void CDTpInvitationOperation::onContactsRetrieved(Tp::PendingOperation *op)
@@ -491,9 +471,8 @@ void CDTpInvitationOperation::onContactsRetrieved(Tp::PendingOperation *op)
     }
 
     PendingOperation *call = pcontacts->manager()->requestPresenceSubscription(pcontacts->contacts());
-    connect(call,
-            SIGNAL(finished(Tp::PendingOperation *)),
-            SLOT(onPresenceSubscriptionRequested(Tp::PendingOperation *)));
+    connect(call, &PendingOperation::finished,
+            this, &CDTpInvitationOperation::onPresenceSubscriptionRequested);
 }
 
 void CDTpInvitationOperation::onPresenceSubscriptionRequested(Tp::PendingOperation *op)

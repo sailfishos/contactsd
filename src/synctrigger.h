@@ -34,6 +34,7 @@ class SyncTrigger : public QObject, protected QDBusContext
 public:
     SyncTrigger(QDBusConnection *connection);
     ~SyncTrigger();
+
     bool registerTriggerService();
 
     enum SyncPolicy {
@@ -48,7 +49,8 @@ public:
     };
 
 public Q_SLOTS:
-    Q_NOREPLY void triggerSync(const QStringList &accountProviders = QStringList(), int syncPolicy = ForceSync, int directionPolicy = AnyDirection);
+    Q_NOREPLY void triggerSync(const QStringList &accountProviders = QStringList(), int syncPolicy = ForceSync,
+                               int directionPolicy = AnyDirection);
 
 private:
     QDBusConnection *mDBusConnection;

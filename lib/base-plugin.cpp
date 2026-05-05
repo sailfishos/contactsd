@@ -34,14 +34,13 @@ const QString BasePlugin::metaDataKeyName    = QString::fromLatin1("name");
 const QString BasePlugin::metaDataKeyComment = QString::fromLatin1("comment");
 
 
-QDir
-BasePlugin::cacheDir()
+QDir BasePlugin::cacheDir()
 {
     const QString cacheRoot = QString::fromLatin1(".local/share/system/privileged/Contacts");
     QDir cacheDir = QDir::home().filePath(cacheRoot);
 
-    if (not cacheDir.exists()) {
-        if (not cacheDir.mkpath(QString::fromLatin1("."))) {
+    if (!cacheDir.exists()) {
+        if (!cacheDir.mkpath(QString::fromLatin1("."))) {
             qCWarning(lcContactsd) << "Could not create cache dir";
             return QDir();
         }
@@ -50,8 +49,7 @@ BasePlugin::cacheDir()
     return cacheDir;
 }
 
-QString
-BasePlugin::cacheFileName(const QString &fileName)
+QString BasePlugin::cacheFileName(const QString &fileName)
 {
     return cacheDir().filePath(fileName);
 }

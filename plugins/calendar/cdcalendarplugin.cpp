@@ -19,7 +19,7 @@
 using namespace Contactsd;
 
 CDCalendarPlugin::CDCalendarPlugin()
-    : mController(0)
+    : mController(nullptr)
 {
 }
 
@@ -42,4 +42,3 @@ CDCalendarPlugin::MetaData CDCalendarPlugin::metaData()
     data[metaDataKeyComment] = QVariant(QLatin1String("contactsd Calendar plugin"));
     return data;
 }
-

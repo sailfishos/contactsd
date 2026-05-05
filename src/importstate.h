@@ -29,7 +29,7 @@
 #include <QStringList>
 #include <QSettings>
 
-class Q_DECL_EXPORT ImportState
+class ImportState
 {
 public:
     ImportState();

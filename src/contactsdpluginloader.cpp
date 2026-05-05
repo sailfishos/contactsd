@@ -35,13 +35,13 @@
 using namespace Contactsd;
 
 // import timeout is 5 minutes
-const int IMPORT_TIMEOUT = 5 * 60 * 1000;
+static const int IMPORT_TIMEOUT = 5 * 60 * 1000;
 // alive check timeout is 30 seconds
-const int ALIVE_TIMEOUT = 30 * 1000;
+static const int ALIVE_TIMEOUT = 30 * 1000;
 
 ContactsdPluginLoader::ContactsdPluginLoader(QDBusConnection *connection)
-    : mImportTimer(0)
-    , mCheckAliveTimer(0)
+    : mImportTimer(nullptr)
+    , mCheckAliveTimer(nullptr)
     , mDBusConnection(connection)
     , mHaveRegisteredDBus(false)
 {
@@ -118,22 +118,22 @@ void ContactsdPluginLoader::loadPlugins(const QString &pluginsDir, const QString
         }
 
         if (mPluginStore.contains(pluginName)) {
-            qCWarning(lcContactsd) << "Ignoring plugin" << absFileName <<
-                "- plugin with name" << pluginName << "already registered";
+            qCWarning(lcContactsd) << "Ignoring plugin" << absFileName
+                                   << "- plugin with name" << pluginName << "already registered";
             continue;
         }
 
         qCDebug(lcContactsd) << "Plugin" << pluginName << "loaded";
         mPluginStore.insert(pluginName, basePlugin);
 
-        connect(basePlugin, SIGNAL(importStarted(const QString &, const QString &)),
-                this, SLOT(onPluginImportStarted(const QString &, const QString &)));
-        connect(basePlugin, SIGNAL(importEnded(const QString &, const QString &, int, int, int)),
-                this, SLOT(onPluginImportEnded(const QString &, const QString &, int,int,int)));
-        connect(basePlugin, SIGNAL(error(int, const QString &)),
-                this, SIGNAL(error(int, const QString &)));
-        connect(basePlugin, SIGNAL(importAlive()),
-                this, SLOT(onImportAlive()));
+        connect(basePlugin, &BasePlugin::importStarted,
+                this, &ContactsdPluginLoader::onPluginImportStarted);
+        connect(basePlugin, &BasePlugin::importEnded,
+                this, &ContactsdPluginLoader::onPluginImportEnded);
+        connect(basePlugin, &BasePlugin::error,
+                this, &ContactsdPluginLoader::error);
+        connect(basePlugin, &BasePlugin::importAlive,
+                this, &ContactsdPluginLoader::onImportAlive);
 
         basePlugin->init();
     }
@@ -152,7 +152,7 @@ QStringList ContactsdPluginLoader::hasActiveImports()
 void ContactsdPluginLoader::onPluginImportStarted(const QString &service, const QString &account)
 {
     BasePlugin *plugin = qobject_cast<BasePlugin *>(sender());
-    if (not plugin) {
+    if (!plugin) {
         qCWarning(lcContactsd) << Q_FUNC_INFO << "invalid Contactsd::BasePlugin object";
         return;
     }
@@ -163,7 +163,7 @@ void ContactsdPluginLoader::onPluginImportStarted(const QString &service, const 
 
     if (mImportState.hasActiveImports()) {
         // check if any account from the same service is importing now
-        if (not mImportState.serviceHasActiveImports(service)) {
+        if (!mImportState.serviceHasActiveImports(service)) {
             // there was no active import from this service, so we update import state with new services
             Q_EMIT importStateChanged(QString(), service);
         }
@@ -181,7 +181,7 @@ void ContactsdPluginLoader::onPluginImportEnded(const QString &service, const QS
                                                 int contactsAdded, int contactsRemoved, int contactsMerged)
 {
     BasePlugin *plugin = qobject_cast<BasePlugin *>(sender());
-    if (not plugin) {
+    if (!plugin) {
         qCWarning(lcContactsd) << Q_FUNC_INFO << "invalid Contactsd::BasePlugin object";
         return;
     }
@@ -194,13 +194,13 @@ void ContactsdPluginLoader::onPluginImportEnded(const QString &service, const QS
 
     bool removed = mImportState.removeImportingAccount(service, account, contactsAdded,
                                                        contactsRemoved, contactsMerged);
-    if (not removed) {
+    if (!removed) {
         qCDebug(lcContactsd) << Q_FUNC_INFO << "account does not exist";
         return;
     }
 
     if (mImportState.hasActiveImports()) {
-        if (not mImportState.serviceHasActiveImports(service)) {
+        if (!mImportState.serviceHasActiveImports(service)) {
             // This service has no acive importing accounts anymore
             Q_EMIT importStateChanged(service, QString());
         }
@@ -231,26 +231,26 @@ void ContactsdPluginLoader::startCheckAliveTimer()
     stopCheckAliveTimer();
 
     mCheckAliveTimer = new QTimer(this);
-    connect(mCheckAliveTimer, SIGNAL(timeout()),
-            this, SLOT(onCheckAliveTimeout()));
+    connect(mCheckAliveTimer, &QTimer::timeout,
+            this, &ContactsdPluginLoader::onCheckAliveTimeout);
     mCheckAliveTimer->start(ALIVE_TIMEOUT);
 }
 
 void ContactsdPluginLoader::stopCheckAliveTimer()
 {
-    if (0 == mCheckAliveTimer)
+    if (!mCheckAliveTimer)
         return;
 
     mCheckAliveTimer->stop();
     delete mCheckAliveTimer;
-    mCheckAliveTimer = 0;
+    mCheckAliveTimer = nullptr;
 }
 
 void ContactsdPluginLoader::onCheckAliveTimeout()
 {
     stopCheckAliveTimer();
 
-    if (0 == mImportTimer) {
+    if (!mImportTimer) {
         Q_EMIT importEnded(mImportState.contactsAdded(), mImportState.contactsRemoved(),
                            mImportState.contactsMerged());
         mImportState.timeout();
@@ -263,15 +263,15 @@ void ContactsdPluginLoader::startImportTimer()
 
     // Add a timeout timer
     mImportTimer = new QTimer(this);
-    connect(mImportTimer, SIGNAL(timeout()),
-            this, SLOT(onImportTimeout()));
+    connect(mImportTimer, &QTimer::timeout,
+            this, &ContactsdPluginLoader::onImportTimeout);
     mImportTimer->start(IMPORT_TIMEOUT);
 }
 
 void ContactsdPluginLoader::stopImportTimer()
 {
     delete mImportTimer;
-    mImportTimer = 0;
+    mImportTimer = nullptr;
 }
 
 QString ContactsdPluginLoader::pluginName(BasePlugin *plugin)

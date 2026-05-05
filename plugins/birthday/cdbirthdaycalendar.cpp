@@ -43,27 +43,28 @@
 using namespace ML10N;
 
 // A random ID.
-const QLatin1String calNotebookId("b1376da7-5555-1111-2222-227549c4e570");
-const QLatin1String calNotebookColor("#e00080"); // Pink
-const QString calIdExtension = QLatin1String("com.nokia.birthday/");
+static const QLatin1String calNotebookId("b1376da7-5555-1111-2222-227549c4e570");
+static const QLatin1String calNotebookColor("#e00080"); // Pink
+static const QString calIdExtension = QLatin1String("com.nokia.birthday/");
 
 
-CDBirthdayCalendar::CDBirthdayCalendar(SyncMode syncMode, QObject *parent) :
-    QObject(parent),
-    mCalendar(0),
-    mStorage(0)
+CDBirthdayCalendar::CDBirthdayCalendar(SyncMode syncMode, QObject *parent)
+    : QObject(parent)
+    , mCalendar(nullptr)
+    , mStorage(nullptr)
 {
     mCalendar = mKCal::ExtendedCalendar::Ptr(new mKCal::ExtendedCalendar(QTimeZone::systemTimeZone()));
     mStorage = mKCal::ExtendedCalendar::defaultStorage(mCalendar);
 
     MLocale * const locale = new MLocale(this);
 
-    if (not locale->isInstalledTrCatalog(QLatin1String("calendar"))) {
+    if (!locale->isInstalledTrCatalog(QLatin1String("calendar"))) {
         locale->installTrCatalog(QLatin1String("calendar"));
     }
 
     locale->connectSettings();
-    connect(locale, SIGNAL(settingsChanged()), this, SLOT(onLocaleChanged()));
+    connect(locale, &MLocale::settingsChanged,
+            this, &CDBirthdayCalendar::onLocaleChanged);
 
     MLocale::setDefault(*locale);
 
@@ -117,17 +118,16 @@ mKCal::Notebook::Ptr CDBirthdayCalendar::createNotebook()
                                                     0));
 }
 
-QHash<QContactId, CalendarBirthday>
-CDBirthdayCalendar::birthdays()
+QHash<QContactId, CalendarBirthday> CDBirthdayCalendar::birthdays()
 {
-    if (not mStorage->loadNotebookIncidences(calNotebookId)) {
+    if (!mStorage->loadNotebookIncidences(calNotebookId)) {
         qCWarning(lcContactsd) << Q_FUNC_INFO << "Failed to load all incidences";
         return QHash<QContactId, CalendarBirthday>();
     }
 
     QHash<QContactId, CalendarBirthday> result;
 
-    foreach(const KCalendarCore::Event::Ptr event, mCalendar->events()) {
+    foreach (const KCalendarCore::Event::Ptr event, mCalendar->events()) {
         const QString eventUid = event->uid();
         const QContactId contactId = localContactId(eventUid);
 
@@ -177,7 +177,7 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
         return;
     }
 
-    if (not mCalendar->hasValidNotebook(calNotebookId)) {
+    if (!mCalendar->hasValidNotebook(calNotebookId)) {
         qCWarning(lcContactsd) << Q_FUNC_INFO << "Invalid notebook ID: " << calNotebookId;
         return;
     }
@@ -196,7 +196,7 @@ void CDBirthdayCalendar::updateBirthday(const QContact &contact)
         // Ensure events appear as birthdays in the calendar, NB#259710.
         event->setCategories(QStringList() << QLatin1String("BIRTHDAY"));
 
-        if (not mCalendar->addEvent(event, calNotebookId)) {
+        if (!mCalendar->addEvent(event, calNotebookId)) {
             qCWarning(lcContactsd) << Q_FUNC_INFO << "Failed to add event to calendar";
             return;
         }
@@ -292,7 +292,7 @@ void CDBirthdayCalendar::deleteBirthday(const QContactId &contactId)
 
 void CDBirthdayCalendar::save()
 {
-    if (not mStorage->save()) {
+    if (!mStorage->save()) {
         qCWarning(lcContactsd) << Q_FUNC_INFO << "Failed to update birthdays in calendar";
     }
 }
@@ -337,7 +337,7 @@ KCalendarCore::Event::Ptr CDBirthdayCalendar::calendarEvent(const QContactId &co
         return KCalendarCore::Event::Ptr();
     }
 
-    if (not mStorage->load(eventId)) {
+    if (!mStorage->load(eventId)) {
         qCWarning(lcContactsd) << Q_FUNC_INFO << "Unable to load event from calendar";
         return KCalendarCore::Event::Ptr();
     }
@@ -365,7 +365,7 @@ void CDBirthdayCalendar::onLocaleChanged()
     qCDebug(lcContactsd) << Q_FUNC_INFO << "Updating calendar name to" << name;
     notebook->setName(name);
 
-    if (not mStorage->updateNotebook(notebook)) {
+    if (!mStorage->updateNotebook(notebook)) {
         qCWarning(lcContactsd) << Q_FUNC_INFO << "Could not save calendar";
     }
 }

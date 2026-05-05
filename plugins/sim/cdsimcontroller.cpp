@@ -57,13 +57,17 @@ CDSimModemData::CDSimModemData(CDSimController *controller, const QString &modem
     connect(&m_simManager, SIGNAL(presenceChanged(bool)), SLOT(simStateChanged()));
     connect(&m_simManager, SIGNAL(cardIdentifierChanged(QString)), SLOT(simStateChanged()));
 
-    connect(&m_phonebook, SIGNAL(importReady(QString)), SLOT(vcardDataAvailable(QString)));
-    connect(&m_phonebook, SIGNAL(importFailed()), SLOT(vcardReadFailed()));
+    connect(&m_phonebook, &QOfonoPhonebook::importReady,
+            this, &CDSimModemData::vcardDataAvailable);
+    connect(&m_phonebook, &QOfonoPhonebook::importFailed,
+            this, &CDSimModemData::vcardReadFailed);
 
     // Resync the contacts list whenever the phonebook availability changes
-    connect(&m_phonebook, SIGNAL(validChanged(bool)), SLOT(phonebookValidChanged(bool)));
+    connect(&m_phonebook, &QOfonoPhonebook::validChanged,
+            this, &CDSimModemData::phonebookValidChanged);
 
-    connect(&m_contactReader, SIGNAL(stateChanged(QVersitReader::State)), SLOT(readerStateChanged(QVersitReader::State)));
+    connect(&m_contactReader, &QVersitReader::stateChanged,
+            this, &CDSimModemData::readerStateChanged);
 
     connect(&m_messageWaiting, SIGNAL(voicemailMailboxNumberChanged(QString)), SLOT(voicemailConfigurationChanged()));
 
@@ -116,7 +120,9 @@ QList<QContact> CDSimModemData::fetchContacts() const
     filter.setCollectionId(m_collection.id());
 
     QContactFetchHint hint;
-    hint.setOptimizationHints(QContactFetchHint::NoRelationships | QContactFetchHint::NoActionPreferences | QContactFetchHint::NoBinaryBlobs);
+    hint.setOptimizationHints(QContactFetchHint::NoRelationships
+                              | QContactFetchHint::NoActionPreferences
+                              | QContactFetchHint::NoBinaryBlobs);
 
     return manager().contacts(filter, QList<QContactSortOrder>(), hint);
 }
@@ -172,7 +178,8 @@ CDSimController::CDSimController(QObject *parent, bool active)
     if (transientImport.isValid())
         m_transientImport = (transientImport.toInt() == 1);
 
-    connect(&m_transientImportConf, SIGNAL(valueChanged()), this, SLOT(transientImportConfigurationChanged()));
+    connect(&m_transientImportConf, &MDConfItem::valueChanged,
+            this, &CDSimController::transientImportConfigurationChanged);
 }
 
 CDSimController::~CDSimController()
@@ -229,7 +236,8 @@ void CDSimController::setModemPaths(const QStringList &paths)
         CDSimModemData *modemData = m_modems.value(path);
         if (!modemData) {
             modemData = new CDSimModemData(this, path);
-            connect(modemData, SIGNAL(readyChanged(bool)), SLOT(modemReadyChanged(bool)));
+            connect(modemData, &CDSimModemData::readyChanged,
+                    this, &CDSimController::modemReadyChanged);
             m_modems.insert(path, modemData);
         }
 
@@ -434,8 +442,11 @@ void CDSimModemData::ensureSimContactsPresent()
 {
     // Ensure all contacts from the SIM are present in the store
     QContactFetchHint hint;
-    hint.setDetailTypesHint(QList<QContactDetail::DetailType>() << QContactNickname::Type << QContactPhoneNumber::Type);
-    hint.setOptimizationHints(QContactFetchHint::NoRelationships | QContactFetchHint::NoActionPreferences | QContactFetchHint::NoBinaryBlobs);
+    hint.setDetailTypesHint(QList<QContactDetail::DetailType>()
+                            << QContactNickname::Type << QContactPhoneNumber::Type);
+    hint.setOptimizationHints(QContactFetchHint::NoRelationships
+                              | QContactFetchHint::NoActionPreferences
+                              | QContactFetchHint::NoBinaryBlobs);
 
     QContactCollectionFilter collectionFilter;
     collectionFilter.setCollectionId(m_collection.id());
@@ -692,7 +703,7 @@ void CDSimModemData::updateVoicemailConfiguration()
 
     if (!m_voicemailConf || m_voicemailConf->key() != variablePath) {
         delete m_voicemailConf;
-        m_voicemailConf = new MGConfItem(variablePath);
+        m_voicemailConf = new MDConfItem(variablePath);
         connect(m_voicemailConf, SIGNAL(valueChanged()), this, SLOT(voicemailConfigurationChanged()));
 
         voicemailConfigurationChanged();

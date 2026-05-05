@@ -125,24 +125,24 @@ QStringList asStringList(const Tp::ContactInfoField &field, int i)
 QString asString(CDTpContact::Info::Capability c)
 {
     switch (c) {
-        case CDTpContact::Info::TextChats:
-            return QLatin1String("TextChats");
-        case CDTpContact::Info::StreamedMediaCalls:
-            return QLatin1String("StreamedMediaCalls");
-        case CDTpContact::Info::StreamedMediaAudioCalls:
-            return QLatin1String("StreamedMediaAudioCalls");
-        case CDTpContact::Info::StreamedMediaAudioVideoCalls:
-            return QLatin1String("StreamedMediaAudioVideoCalls");
-        case CDTpContact::Info::UpgradingStreamMediaCalls:
-            return QLatin1String("UpgradingStreamMediaCalls");
-        case CDTpContact::Info::FileTransfers:
-            return QLatin1String("FileTransfers");
-        case CDTpContact::Info::StreamTubes:
-            return QLatin1String("StreamTubes");
-        case CDTpContact::Info::DBusTubes:
-            return QLatin1String("DBusTubes");
-        default:
-            break;
+    case CDTpContact::Info::TextChats:
+        return QLatin1String("TextChats");
+    case CDTpContact::Info::StreamedMediaCalls:
+        return QLatin1String("StreamedMediaCalls");
+    case CDTpContact::Info::StreamedMediaAudioCalls:
+        return QLatin1String("StreamedMediaAudioCalls");
+    case CDTpContact::Info::StreamedMediaAudioVideoCalls:
+        return QLatin1String("StreamedMediaAudioVideoCalls");
+    case CDTpContact::Info::UpgradingStreamMediaCalls:
+        return QLatin1String("UpgradingStreamMediaCalls");
+    case CDTpContact::Info::FileTransfers:
+        return QLatin1String("FileTransfers");
+    case CDTpContact::Info::StreamTubes:
+        return QLatin1String("StreamTubes");
+    case CDTpContact::Info::DBusTubes:
+        return QLatin1String("DBusTubes");
+    default:
+        break;
     }
 
     return QString();
@@ -160,7 +160,10 @@ QString asString(CDTpAccount::Changes changes)
     return rv.join(QLatin1Char(':'));
 }
 
-QString asString(const QContactId &id) { return id.toString(); }
+QString asString(const QContactId &id)
+{
+    return id.toString();
+}
 
 }
 
@@ -466,7 +469,8 @@ bool storeContact(QContact &contact, const QString &location, CDTpContact::Chang
         QList<QContact> contacts;
         contacts << contact;
         if (!manager()->saveContacts(&contacts, updates)) {
-            qCWarning(lcContactsd) << "Failed minimized storing contact" << asString(contact.id()) << "from:" << location << "error:" << manager()->error();
+            qCWarning(lcContactsd) << "Failed minimized storing contact" << asString(contact.id())
+                                   << "from:" << location << "error:" << manager()->error();
 #ifndef DEBUG_OVERLOAD
             output(contact);
 #endif
@@ -529,19 +533,19 @@ QChar::Script nameScript(const QString &firstName, const QString &lastName)
 bool nameScriptImpliesFamilyFirst(const QString &firstName, const QString &lastName)
 {
     switch (nameScript(firstName, lastName)) {
-        // These scripts are used by cultures that conform to the family-name-first naming convention:
-        case QChar::Script_Han:
-        case QChar::Script_Lao:
-        case QChar::Script_Hangul:
-        case QChar::Script_Khmer:
-        case QChar::Script_Mongolian:
-        case QChar::Script_Hiragana:
-        case QChar::Script_Katakana:
-        case QChar::Script_Bopomofo:
-        case QChar::Script_Yi:
-            return true;
-        default:
-            return false;
+    // These scripts are used by cultures that conform to the family-name-first naming convention:
+    case QChar::Script_Han:
+    case QChar::Script_Lao:
+    case QChar::Script_Hangul:
+    case QChar::Script_Khmer:
+    case QChar::Script_Mongolian:
+    case QChar::Script_Hiragana:
+    case QChar::Script_Katakana:
+    case QChar::Script_Bopomofo:
+    case QChar::Script_Yi:
+        return true;
+    default:
+        return false;
     }
 }
 
@@ -624,7 +628,8 @@ void emitAccountChanges(CDTpDevicePresence *devicePresence, QContact &self, bool
     }
 }
 
-bool storeSelfContact(CDTpDevicePresence *devicePresence, QContact &self, const QString &location, CDTpContact::Changes changes = CDTpContact::All, bool updateAccountList = false)
+bool storeSelfContact(CDTpDevicePresence *devicePresence, QContact &self, const QString &location,
+                      CDTpContact::Changes changes = CDTpContact::All, bool updateAccountList = false)
 {
     if (!storeContact(self, location, changes)) {
         return false;
@@ -693,7 +698,8 @@ void updateContacts(const QString &location, CDTpStorage::ContactChangeSet *save
                         do {
                             int errorIndex = (*--it);
                             const QContact &badContact(batch.at(errorIndex));
-                            qCWarning(lcContactsd) << "Failed storing contact" << asString(badContact.id()) << "from:" << location << "error:" << errorMap.value(errorIndex);
+                            qCWarning(lcContactsd) << "Failed storing contact" << asString(badContact.id())
+                                                   << "from:" << location << "error:" << errorMap.value(errorIndex);
                             output(badContact);
                             batch.removeAt(errorIndex);
                         } while (it != begin);
@@ -930,7 +936,9 @@ bool isOnlinePresence(Tp::ConnectionPresenceType presenceType, Tp::AccountPtr ac
     return true;
 }
 
-QStringList currentCapabilites(const Tp::CapabilitiesBase &capabilities, Tp::ConnectionPresenceType presenceType, Tp::AccountPtr account)
+QStringList currentCapabilites(const Tp::CapabilitiesBase &capabilities,
+                               Tp::ConnectionPresenceType presenceType,
+                               Tp::AccountPtr account)
 {
     QStringList current;
 
@@ -990,34 +998,11 @@ QString saveAccountAvatar(CDTpAccountPtr accountWrapper)
     return filename;
 }
 
-void updateFacebookAvatar(QNetworkAccessManager &network, CDTpContactPtr contactWrapper, const QString &facebookId, const QString &avatarType)
-{
-    const QUrl avatarUrl(QLatin1String("http://graph.facebook.com/v2.6/") % facebookId %
-                         QLatin1String("/picture?type=") % avatarType);
-
-    // Initiate an avatar-update operation
-    CDTpAvatarUpdate::updateContact(contactWrapper.data(),
-                                    network.get(QNetworkRequest(avatarUrl)),
-                                    QString::fromLatin1("%1-picture.jpg").arg(facebookId),
-                                    avatarType);
-}
-
 void updateSocialAvatars(QNetworkAccessManager &network, CDTpContactPtr contactWrapper)
 {
-    if (network.networkAccessible() == QNetworkAccessManager::NotAccessible) {
-        return;
-    }
-
-    QRegExp facebookIdPattern(QLatin1String("-(\\d+)@chat\\.facebook\\.com"));
-
-    if (not facebookIdPattern.exactMatch(contactWrapper->contact()->id())) {
-        return; // only supporting Facebook avatars right now
-    }
-
-    const QString socialId = facebookIdPattern.cap(1);
-
-    // Ignore the square avatar, we only need the large one
-    updateFacebookAvatar(network, contactWrapper, socialId, CDTpAvatarUpdate::Large);
+    Q_UNUSED(network)
+    Q_UNUSED(contactWrapper)
+    // TODO: do we need this for anything?
 }
 
 bool onlineAccountEnabled(const QContactOnlineAccount &qcoa)
@@ -1025,7 +1010,8 @@ bool onlineAccountEnabled(const QContactOnlineAccount &qcoa)
     return (qcoa.value(QContactOnlineAccount__FieldEnabled).toString() == asString(true));
 }
 
-void reportAccountPresence(CDTpDevicePresence *devicePresence, const QContactOnlineAccount &qcoa, const QContactPresence &presence)
+void reportAccountPresence(CDTpDevicePresence *devicePresence, const QContactOnlineAccount &qcoa,
+                           const QContactPresence &presence)
 {
     emit devicePresence->update(qcoa.value<QString>(QContactOnlineAccount__FieldAccountPath),
                                 qcoa.detailUri(),
@@ -1038,7 +1024,10 @@ void reportAccountPresence(CDTpDevicePresence *devicePresence, const QContactOnl
                                 qcoa.value<QString>(QContactOnlineAccount__FieldEnabled) == asString(true));
 }
 
-CDTpContact::Changes updateAccountDetails(CDTpDevicePresence *devicePresence, QContact &self, QContactOnlineAccount &qcoa, QContactPresence &presence, CDTpAccountPtr accountWrapper, CDTpAccount::Changes changes)
+CDTpContact::Changes updateAccountDetails(CDTpDevicePresence *devicePresence, QContact &self,
+                                          QContactOnlineAccount &qcoa, QContactPresence &presence,
+                                          CDTpAccountPtr accountWrapper,
+                                          CDTpAccount::Changes changes)
 {
     CDTpContact::Changes selfChanges = 0;
 
@@ -1285,12 +1274,12 @@ bool detailListsDiffer(const QList<T> &lhs, const QList<T> &rhs, F detailsDiffer
 bool invalidDetail(const QContactDetail &detail) { return detail.isEmpty(); }
 bool invalidDetail(const QContactAddress &address)
 {
-    return address.postOfficeBox().isEmpty() &&
-           address.street().isEmpty() &&
-           address.locality().isEmpty() &&
-           address.region().isEmpty() &&
-           address.postcode().isEmpty() &&
-           address.country().isEmpty();
+    return address.postOfficeBox().isEmpty()
+            && address.street().isEmpty()
+            && address.locality().isEmpty()
+            && address.region().isEmpty()
+            && address.postcode().isEmpty()
+            && address.country().isEmpty();
 }
 bool invalidDetail(const QContactBirthday &birthday)
 {
@@ -1302,11 +1291,11 @@ bool invalidDetail(const QContactEmailAddress &address)
 }
 bool invalidDetail(const QContactName &name)
 {
-    return name.prefix().isEmpty() &&
-           name.firstName().isEmpty() &&
-           name.middleName().isEmpty() &&
-           name.lastName().isEmpty() &&
-           name.suffix().isEmpty();
+    return name.prefix().isEmpty()
+            && name.firstName().isEmpty()
+            && name.middleName().isEmpty()
+            && name.lastName().isEmpty()
+            && name.suffix().isEmpty();
 }
 bool invalidDetail(const QContactNote &note)
 {
@@ -1314,10 +1303,10 @@ bool invalidDetail(const QContactNote &note)
 }
 bool invalidDetail(const QContactOrganization &org)
 {
-    return org.title().isEmpty() &&
-           org.role().isEmpty() &&
-           org.name().isEmpty() &&
-           org.department().isEmpty();
+    return org.title().isEmpty()
+            && org.role().isEmpty()
+            && org.name().isEmpty()
+            && org.department().isEmpty();
 }
 bool invalidDetail(const QContactPhoneNumber &phoneNumber)
 {
@@ -1350,7 +1339,8 @@ bool replaceDetails(QContact &contact, T &detail, const QString &address, const 
     return replaceDetails(contact, QList<T>() << detail, address, location);
 }
 
-CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QContact &existing, CDTpContactPtr contactWrapper, CDTpContact::Changes changes)
+CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QContact &existing,
+                                          CDTpContactPtr contactWrapper, CDTpContact::Changes changes)
 {
     const QString contactAddress(imAddress(contactWrapper));
     qCDebug(lcContactsd) << "Update contact" << contactAddress;
@@ -1386,7 +1376,9 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
         const QString newMessage(tpPresence.statusMessage());
         const QString newNickname(contact->alias().trimmed());
 
-        if (presence.presenceState() != newState || presence.customMessage() != newMessage || presence.nickname() != newNickname) {
+        if (presence.presenceState() != newState
+                || presence.customMessage() != newMessage
+                || presence.nickname() != newNickname) {
             presence.setPresenceState(newState);
             presence.setCustomMessage(newMessage);
             presence.setNickname(newNickname);
@@ -1412,10 +1404,10 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
         const QString providerDisplayName(accountWrapper->storageInfo().value(QLatin1String("providerDisplayName")).toString());
         const QStringList newCapabilities(currentCapabilites(contact->capabilities(), contact->presence().type(), account));
 
-        if (qcoa.capabilities() != newCapabilities ||
-            onlineAccountEnabled(qcoa) != account->isEnabled() ||
-            qcoa.value(QContactOnlineAccount__FieldAccountDisplayName) != account->displayName() ||
-            qcoa.value(QContactOnlineAccount__FieldServiceProviderDisplayName) != providerDisplayName)
+        if (qcoa.capabilities() != newCapabilities
+                || onlineAccountEnabled(qcoa) != account->isEnabled()
+                || qcoa.value(QContactOnlineAccount__FieldAccountDisplayName) != account->displayName()
+                || qcoa.value(QContactOnlineAccount__FieldServiceProviderDisplayName) != providerDisplayName)
         {
             qcoa.setCapabilities(newCapabilities);
             qcoa.setValue(QContactOnlineAccount__FieldEnabled, asString(account->isEnabled()));
@@ -1604,8 +1596,8 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
                                 formattedName = nickname;
                             }
                         }
-                    } else if (field.fieldName == QLatin1String("note") ||
-                               field.fieldName == QLatin1String("desc")) {
+                    } else if (field.fieldName == QLatin1String("note")
+                               || field.fieldName == QLatin1String("desc")) {
                         QContactNote noteDetail;
                         if (detailContext != invalidContext) {
                             noteDetail.setContexts(detailContext);
@@ -1614,7 +1606,7 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
 
                         newNotes.append(noteDetail);
                     } else if (field.fieldName == QLatin1String("bday")) {
-                        /* FIXME: support more date format for compatibility */
+                        // FIXME: support more date format for compatibility
                         const QString dateText(asString(field, 0));
 
                         QDate date = QDate::fromString(dateText, QLatin1String("yyyy-MM-dd"));
@@ -1669,14 +1661,14 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
             const QList<QContactAddress> oldAddresses = existing.details<QContactAddress>();
             if (detailListsDiffer(oldAddresses, newAddresses,
                 [](const QContactAddress &oldAddress, const QContactAddress &newAddress) {
-                    if ((oldAddress.contexts() != newAddress.contexts()) ||
-                        (oldAddress.subTypes() != newAddress.subTypes()) ||
-                        (oldAddress.postOfficeBox() != newAddress.postOfficeBox()) ||
-                        (oldAddress.street() != newAddress.street()) ||
-                        (oldAddress.locality() != newAddress.locality()) ||
-                        (oldAddress.region() != newAddress.region()) ||
-                        (oldAddress.postcode() != newAddress.postcode()) ||
-                        (oldAddress.country() != newAddress.country())) {
+                    if ((oldAddress.contexts() != newAddress.contexts())
+                        || (oldAddress.subTypes() != newAddress.subTypes())
+                        || (oldAddress.postOfficeBox() != newAddress.postOfficeBox())
+                        || (oldAddress.street() != newAddress.street())
+                        || (oldAddress.locality() != newAddress.locality())
+                        || (oldAddress.region() != newAddress.region())
+                        || (oldAddress.postcode() != newAddress.postcode())
+                        || (oldAddress.country() != newAddress.country())) {
                         return true;
                     }
                     return false;
@@ -1688,16 +1680,16 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
             QContactBirthday oldBirthday = existing.detail<QContactBirthday>();
             if (!oldBirthday.isEmpty() && newBirthday.isEmpty()) {
                 deleteContactDetails<QContactBirthday>(existing);
-            } else if ((oldBirthday.isEmpty() && !newBirthday.isEmpty()) ||
-                       (oldBirthday.date() != newBirthday.date())) {
+            } else if ((oldBirthday.isEmpty() && !newBirthday.isEmpty())
+                       || (oldBirthday.date() != newBirthday.date())) {
                 changed |= replaceDetails(existing, newBirthday, contactAddress, SRC_LOC);
             }
 
             const QList<QContactEmailAddress> oldEmailAddresses = existing.details<QContactEmailAddress>();
             if (detailListsDiffer(oldEmailAddresses, newEmailAddresses,
                 [](const QContactEmailAddress &oldEmailAddress, const QContactEmailAddress &newEmailAddress) {
-                    if ((oldEmailAddress.contexts() != newEmailAddress.contexts()) ||
-                        (oldEmailAddress.emailAddress() != newEmailAddress.emailAddress())) {
+                    if ((oldEmailAddress.contexts() != newEmailAddress.contexts())
+                        || (oldEmailAddress.emailAddress() != newEmailAddress.emailAddress())) {
                         return true;
                     }
                     return false;
@@ -1709,18 +1701,18 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
             QContactGender oldGender = existing.detail<QContactGender>();
             if (!oldGender.isEmpty() && newGender.isEmpty()) {
                 deleteContactDetails<QContactGender>(existing);
-            } else if ((oldGender.isEmpty() && !newGender.isEmpty()) ||
-                       (oldGender.gender() != newGender.gender())) {
+            } else if ((oldGender.isEmpty() && !newGender.isEmpty())
+                       || (oldGender.gender() != newGender.gender())) {
                 changed |= replaceDetails(existing, newGender, contactAddress, SRC_LOC);
             }
 
             QContactName oldName = existing.detail<QContactName>();
-            if ((oldName.firstName() != newName.firstName()) ||
-                (oldName.middleName() != newName.middleName()) ||
-                (oldName.lastName() != newName.lastName()) ||
-                (oldName.value<QString>(QContactName::FieldCustomLabel) != newName.value<QString>(QContactName::FieldCustomLabel)) ||
-                (oldName.prefix() != newName.prefix()) ||
-                (oldName.suffix() != newName.suffix())) {
+            if ((oldName.firstName() != newName.firstName())
+                    || (oldName.middleName() != newName.middleName())
+                    || (oldName.lastName() != newName.lastName())
+                    || (oldName.value<QString>(QContactName::FieldCustomLabel) != newName.value<QString>(QContactName::FieldCustomLabel))
+                    || (oldName.prefix() != newName.prefix())
+                    || (oldName.suffix() != newName.suffix())) {
                 changed |= replaceDetails(existing, newName, contactAddress, SRC_LOC);
             }
 
@@ -1729,8 +1721,8 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
             foreach (QContactNickname newNickname, newNicknames) {
                 bool found = false;
                 foreach (const QContactNickname &oldNickname, oldNicknames) {
-                    if ((oldNickname.contexts() == newNickname.contexts()) &&
-                        (oldNickname.nickname() == newNickname.nickname())) {
+                    if ((oldNickname.contexts() == newNickname.contexts())
+                            && (oldNickname.nickname() == newNickname.nickname())) {
                         // Nickname already present
                         found = true;
                         break;
@@ -1749,8 +1741,8 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
             const QList<QContactNote> oldNotes = existing.details<QContactNote>();
             if (detailListsDiffer(oldNotes, newNotes,
                 [](const QContactNote &oldNote, const QContactNote &newNote) {
-                    if ((oldNote.contexts() != newNote.contexts()) ||
-                        (oldNote.note() != newNote.note())) {
+                    if ((oldNote.contexts() != newNote.contexts())
+                        || (oldNote.note() != newNote.note())) {
                         return true;
                     }
                     return false;
@@ -1762,9 +1754,9 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
             const QList<QContactOrganization> oldOrganizations = existing.details<QContactOrganization>();
             if (detailListsDiffer(oldOrganizations, newOrganizations,
                 [](const QContactOrganization &oldOrganization, const QContactOrganization &newOrganization) {
-                    if ((oldOrganization.contexts() != newOrganization.contexts()) ||
-                        (oldOrganization.name() != newOrganization.name()) ||
-                        (oldOrganization.department() != newOrganization.department())) {
+                    if ((oldOrganization.contexts() != newOrganization.contexts())
+                        || (oldOrganization.name() != newOrganization.name())
+                        || (oldOrganization.department() != newOrganization.department())) {
                         return true;
                     }
                     return false;
@@ -1776,9 +1768,9 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
             const QList<QContactPhoneNumber> oldPhoneNumbers = existing.details<QContactPhoneNumber>();
             if (detailListsDiffer(oldPhoneNumbers, newPhoneNumbers,
                 [](const QContactPhoneNumber &oldPhoneNumber, const QContactPhoneNumber &newPhoneNumber) {
-                    if ((oldPhoneNumber.contexts() != newPhoneNumber.contexts()) ||
-                        (oldPhoneNumber.subTypes() != newPhoneNumber.subTypes()) ||
-                        (oldPhoneNumber.number() != newPhoneNumber.number())) {
+                    if ((oldPhoneNumber.contexts() != newPhoneNumber.contexts())
+                        || (oldPhoneNumber.subTypes() != newPhoneNumber.subTypes())
+                        || (oldPhoneNumber.number() != newPhoneNumber.number())) {
                         return true;
                     }
                     return false;
@@ -1790,8 +1782,8 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
             const QList<QContactUrl> oldUrls = existing.details<QContactUrl>();
             if (detailListsDiffer(oldUrls, newUrls,
                 [](const QContactUrl &oldUrl, const QContactUrl &newUrl) {
-                    if ((oldUrl.contexts() != newUrl.contexts()) ||
-                        (oldUrl.url() != newUrl.url())) {
+                    if ((oldUrl.contexts() != newUrl.contexts())
+                        || (oldUrl.url() != newUrl.url())) {
                         return true;
                     }
                     return false;
@@ -1839,6 +1831,7 @@ CDTpContact::Changes updateContactDetails(QNetworkAccessManager &network, QConta
             }
         }
     }
+
     if (changes & CDTpContact::DefaultAvatar) {
         updateSocialAvatars(network, contactWrapper);
     }
@@ -1893,9 +1886,11 @@ CDTpStorage::CDTpStorage(QObject *parent)
     , mDisplayLabelOrder(FirstNameFirst)
     , mDisplayLabelOrderConf(QStringLiteral("/org/nemomobile/contacts/display_label_order"))
 {
-    connect(mDevicePresence, SIGNAL(requestUpdate()), this, SLOT(reportPresenceStates()));
+    connect(mDevicePresence, &CDTpDevicePresence::requestUpdate,
+            this, &CDTpStorage::reportPresenceStates);
 
-    connect(&mDisplayLabelOrderConf, SIGNAL(valueChanged()), this, SLOT(displayLabelOrderChanged()));
+    connect(&mDisplayLabelOrderConf, &MDConfItem::valueChanged,
+            this,  &CDTpStorage::displayLabelOrderChanged);
 
     QVariant displayLabelOrder = mDisplayLabelOrderConf.value();
     if (displayLabelOrder.isValid())
@@ -1903,7 +1898,8 @@ CDTpStorage::CDTpStorage(QObject *parent)
 
     mUpdateTimer.setInterval(UPDATE_TIMEOUT);
     mUpdateTimer.setSingleShot(true);
-    connect(&mUpdateTimer, SIGNAL(timeout()), SLOT(onUpdateQueueTimeout()));
+    connect(&mUpdateTimer, &QTimer::timeout,
+            this, &CDTpStorage::onUpdateQueueTimeout);
 
     mWaitTimer.invalidate();
 }
@@ -1933,14 +1929,15 @@ static void updateContactAccount(QContactOnlineAccount &qcoa, CDTpAccountPtr acc
     addIconPath(qcoa, account);
 }
 
-void CDTpStorage::addNewAccount()
+void CDTpStorage::addPendingNewAccount()
 {
     CDTpAccount *account = qobject_cast<CDTpAccount*>(sender());
     if (!account)
         return;
 
     // Disconnect the signal
-    disconnect(account, SIGNAL(readyChanged()), this, SLOT(addNewAccount()));
+    disconnect(account, &CDTpAccount::readyChanged,
+               this, &CDTpStorage::addPendingNewAccount);
 
     // Create a new contact collection for this account
     const QContactCollectionId collectionId = telepathyCollectionId(imAccount(account));
@@ -1960,7 +1957,8 @@ void CDTpStorage::addNewAccount(QContact &self, CDTpAccountPtr accountWrapper)
 
     if (!accountWrapper->isReady()) {
         qCDebug(lcContactsd) << "Waiting to create new self account" << accountPath << "until ready";
-        connect(accountWrapper.data(), SIGNAL(readyChanged()), SLOT(addNewAccount()));
+        connect(accountWrapper.data(), &CDTpAccount::readyChanged,
+                this, &CDTpStorage::addPendingNewAccount);
         return;
     }
 
@@ -1994,7 +1992,8 @@ void CDTpStorage::addNewAccount(QContact &self, CDTpAccountPtr accountWrapper)
     }
 
     // Store any information from the account
-    CDTpContact::Changes selfChanges = updateAccountDetails(mDevicePresence, self, newAccount, presence, accountWrapper, CDTpAccount::All);
+    CDTpContact::Changes selfChanges = updateAccountDetails(mDevicePresence, self, newAccount,
+                                                            presence, accountWrapper, CDTpAccount::All);
 
     storeSelfContact(mDevicePresence, self, SRC_LOC, selfChanges);
 }
@@ -2011,18 +2010,20 @@ void CDTpStorage::removeExistingAccount(QContact &self, QContactOnlineAccount &e
     // Delete the collection and its contacts.
     QtContactsSqliteExtensions::ContactManagerEngine *cme = QtContactsSqliteExtensions::contactManagerEngine(*manager());
     QContactManager::Error error = QContactManager::NoError;
+
     if (!cme->storeChanges(nullptr,
-                          nullptr,
-                          QList<QContactCollectionId>() << telepathyCollectionId(accountPath),
-                          QtContactsSqliteExtensions::ContactManagerEngine::PreserveLocalChanges,
-                          true,
-                          &error)) {
+                           nullptr,
+                           QList<QContactCollectionId>() << telepathyCollectionId(accountPath),
+                           QtContactsSqliteExtensions::ContactManagerEngine::PreserveLocalChanges,
+                           true,
+                           &error)) {
         qCWarning(lcContactsd) << SRC_LOC << "Unable to remove linked contacts for account:" << accountPath
                   << "error:" << error;
     }
 }
 
-bool CDTpStorage::initializeNewContact(QContact &newContact, CDTpAccountPtr accountWrapper, const QString &contactId, const QString &alias)
+bool CDTpStorage::initializeNewContact(QContact &newContact, CDTpAccountPtr accountWrapper,
+                                       const QString &contactId, const QString &alias)
 {
     Tp::AccountPtr account = accountWrapper->account();
 
@@ -2115,7 +2116,8 @@ void CDTpStorage::updateContactChanges(CDTpContactPtr contactWrapper, CDTpContac
     updateContacts(SRC_LOC, &saveSet, &removeList);
 }
 
-void CDTpStorage::updateContactChanges(CDTpContactPtr contactWrapper, CDTpContact::Changes changes, QContact &existing, ContactChangeSet *saveSet, QList<QContactId> *removeList)
+void CDTpStorage::updateContactChanges(CDTpContactPtr contactWrapper, CDTpContact::Changes changes, QContact &existing,
+                                       ContactChangeSet *saveSet, QList<QContactId> *removeList)
 {
     const QString accountPath(imAccount(contactWrapper));
     const QString contactAddress(imAddress(contactWrapper));
@@ -2158,14 +2160,15 @@ QList<CDTpContactPtr> accountContacts(CDTpAccountPtr accountWrapper)
     return rv;
 }
 
-void CDTpStorage::updateAccount()
+void CDTpStorage::updatePendingAccount()
 {
     CDTpAccount *account = qobject_cast<CDTpAccount*>(sender());
     if (!account)
         return;
 
     // Disconnect the signal
-    disconnect(account, SIGNAL(readyChanged()), this, SLOT(updateAccount()));
+    disconnect(account, &CDTpAccount::readyChanged,
+               this, &CDTpStorage::updatePendingAccount);
 
     const QString accountPath(imAccount(account));
 
@@ -2179,7 +2182,8 @@ void CDTpStorage::updateAccount()
     updateAccount(CDTpAccountPtr(account), changes);
 }
 
-void CDTpStorage::updateAccountChanges(QContact &self, QContactOnlineAccount &qcoa, CDTpAccountPtr accountWrapper, CDTpAccount::Changes changes)
+void CDTpStorage::updateAccountChanges(QContact &self, QContactOnlineAccount &qcoa, CDTpAccountPtr accountWrapper,
+                                       CDTpAccount::Changes changes)
 {
     Tp::AccountPtr account = accountWrapper->account();
 
@@ -2193,7 +2197,8 @@ void CDTpStorage::updateAccountChanges(QContact &self, QContactOnlineAccount &qc
             it.value() |= changes;
         } else {
             m_accountPendingChanges.insert(accountPath, changes);
-            connect(accountWrapper.data(), SIGNAL(readyChanged()), SLOT(updateAccount()));
+            connect(accountWrapper.data(), &CDTpAccount::readyChanged,
+                    this, &CDTpStorage::updatePendingAccount);
         }
         return;
     }
@@ -2217,7 +2222,7 @@ void CDTpStorage::updateAccountChanges(QContact &self, QContactOnlineAccount &qc
         // Update all contacts reported in the roster changes of this account
         const QHash<QString, CDTpContact::Changes> rosterChanges = accountWrapper->rosterChanges();
         QHash<QString, CDTpContact::Changes>::ConstIterator it = rosterChanges.constBegin(),
-                                                            end = rosterChanges.constEnd();
+                end = rosterChanges.constEnd();
         for ( ; it != end; ++it) {
             const QString address = imAddress(accountPath, it.key());
             CDTpContact::Changes flags = it.value() | CDTpContact::Presence;
@@ -2268,8 +2273,8 @@ void CDTpStorage::updateAccountChanges(QContact &self, QContactOnlineAccount &qc
             // send the initial roster with the avatar missing)
             // Contact updates that have a null avatar will clear the avatar though
             if (changes & CDTpContact::DefaultAvatar) {
-                if (((changes & CDTpContact::All) != CDTpContact::All) &&
-                    contactWrapper->contact()->avatarData().fileName.isEmpty()) {
+                if (((changes & CDTpContact::All) != CDTpContact::All)
+                        && contactWrapper->contact()->avatarData().fileName.isEmpty()) {
                     changes &= ~CDTpContact::DefaultAvatar;
                 }
             }
@@ -2282,7 +2287,8 @@ void CDTpStorage::updateAccountChanges(QContact &self, QContactOnlineAccount &qc
         ContactChangeSet saveSet;
 
         const QContactPresence::PresenceState newState(qContactPresenceState(Tp::ConnectionPresenceTypeUnknown));
-        const QStringList newCapabilities(currentCapabilites(account->capabilities(), Tp::ConnectionPresenceTypeUnknown, account));
+        const QStringList newCapabilities(currentCapabilites(account->capabilities(),
+                                                             Tp::ConnectionPresenceTypeUnknown, account));
 
         // Set presence to unknown for all contacts of this account
         QContactFetchHint hint(contactFetchHint(DetailList() << detailType<QContactPresence>()
@@ -2533,11 +2539,13 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper)
     qCWarning(lcContactsd) << SRC_LOC << "Account not found for sync account:" << accountPath;
 }
 
-void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper, const QList<CDTpContactPtr> &contactsAdded, const QList<CDTpContactPtr> &contactsRemoved)
+void CDTpStorage::syncAccountContactsDetailed(CDTpAccountPtr accountWrapper, const QList<CDTpContactPtr> &contactsAdded,
+                                              const QList<CDTpContactPtr> &contactsRemoved)
 {
     const QString accountPath(imAccount(accountWrapper));
 
-    qWarning() << "CDTpStorage: syncAccountContacts (roster update):" << accountPath << contactsAdded.count() << contactsRemoved.count();
+    qWarning() << "CDTpStorage: syncAccountContacts (roster update):" << accountPath
+               << contactsAdded.count() << contactsRemoved.count();
 
     // Ensure there are no duplicates in the list
     QList<CDTpContactPtr> addedContacts(contactsAdded.toSet().toList());
@@ -2547,7 +2555,9 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper, const QList
     foreach (const CDTpContactPtr &contactWrapper, addedContacts) {
         // This contact must be for the specified account
         if (imAccount(contactWrapper) != accountPath) {
-            qCWarning(lcContactsd) << SRC_LOC << "Unable to add contact from wrong account:" << imAccount(contactWrapper) << accountPath;
+            qCWarning(lcContactsd) << SRC_LOC
+                                   << "Unable to add contact from wrong account:" << imAccount(contactWrapper)
+                                   << accountPath;
             continue;
         }
 
@@ -2556,7 +2566,9 @@ void CDTpStorage::syncAccountContacts(CDTpAccountPtr accountWrapper, const QList
     }
     foreach (const CDTpContactPtr &contactWrapper, removedContacts) {
         if (imAccount(contactWrapper) != accountPath) {
-            qCWarning(lcContactsd) << SRC_LOC << "Unable to remove contact from wrong account:" << imAccount(contactWrapper) << accountPath;
+            qCWarning(lcContactsd) << SRC_LOC
+                                   << "Unable to remove contact from wrong account:" << imAccount(contactWrapper)
+                                   << accountPath;
             continue;
         }
 
@@ -2646,7 +2658,8 @@ void CDTpStorage::removeAccountContacts(CDTpAccountPtr accountWrapper, const QSt
     }
 
     if (!manager()->removeContacts(removeIds)) {
-        qCWarning(lcContactsd) << SRC_LOC << "Unable to remove contacts for account:" << accountPath << "error:" << manager()->error();
+        qCWarning(lcContactsd) << SRC_LOC << "Unable to remove contacts for account:" << accountPath
+                               << "error:" << manager()->error();
     }
 }
 
@@ -2677,7 +2690,9 @@ void CDTpStorage::onUpdateQueueTimeout()
     QHash<CDTpContactPtr, CDTpContact::Changes> updates;
     QSet<QString> contactAddresses;
 
-    QHash<CDTpContactPtr, CDTpContact::Changes>::const_iterator it = mUpdateQueue.constBegin(), end = mUpdateQueue.constEnd();
+    QHash<CDTpContactPtr, CDTpContact::Changes>::const_iterator it = mUpdateQueue.constBegin(),
+            end = mUpdateQueue.constEnd();
+
     for ( ; it != end; ++it) {
         CDTpContactPtr contactWrapper = it.key();
 

@@ -1,5 +1,5 @@
 Name: contactsd
-Version: 1.4.2
+Version: 1.5.0
 Release: 1
 Summary: Telepathy <> QtContacts bridge for contacts
 URL: https://github.com/sailfishos/contactsd/
@@ -15,7 +15,6 @@ BuildRequires: pkgconfig(Qt5Test)
 BuildRequires: pkgconfig(TelepathyQt5)
 BuildRequires: pkgconfig(Qt5Contacts)
 BuildRequires: pkgconfig(Qt5Versit)
-# mlite required only for tests
 BuildRequires: pkgconfig(mlite5)
 BuildRequires: pkgconfig(mlocale5)
 BuildRequires: pkgconfig(libmkcal-qt5) >= 0.6.10
@@ -102,8 +101,6 @@ fi
 %{_libdir}/%{name}-1.0
 %{_datadir}/translations/*.qm
 %{_datadir}/mapplauncherd/privileges.d/*
-# we currently don't have a backup framework
-%exclude /usr/share/backup-framework/applications/%{name}.conf
 %{_libdir}/libcontactsd.so.*
 
 %files devel

@@ -131,7 +131,7 @@ CDTpContact::Changes CDTpContact::Info::diff(const CDTpContact::Info &other) con
 
     // We only compare the relevant fields (status is not saved in Tracker, and isValid is irrelevant)
     if (d->presence.type() != other.d->presence.type()
-     || d->presence.statusMessage() != other.d->presence.statusMessage())
+            || d->presence.statusMessage() != other.d->presence.statusMessage())
         changes |= CDTpContact::Presence;
 
     if (d->capabilities != other.d->capabilities)
@@ -147,13 +147,13 @@ CDTpContact::Changes CDTpContact::Info::diff(const CDTpContact::Info &other) con
         changes |= CDTpContact::SquareAvatar;
 
     if (d->isSubscriptionStateKnown != other.d->isSubscriptionStateKnown
-     || d->isPublishStateKnown != other.d->isPublishStateKnown
-     || d->subscriptionState != other.d->subscriptionState
-     || d->publishState != other.d->publishState)
+            || d->isPublishStateKnown != other.d->isPublishStateKnown
+            || d->subscriptionState != other.d->subscriptionState
+            || d->publishState != other.d->publishState)
         changes |= CDTpContact::Authorization;
 
     if (other.d->isContactInfoKnown
-     && d->infoFields != other.d->infoFields)
+            && d->infoFields != other.d->infoFields)
         changes |= CDTpContact::Information;
 
     if (d->isVisible != other.d->isVisible)
@@ -173,7 +173,8 @@ CDTpContact::CDTpContact(Tp::ContactPtr contact, CDTpAccount *accountWrapper)
 {
     mQueuedChangesTimer.setInterval(0);
     mQueuedChangesTimer.setSingleShot(true);
-    connect(&mQueuedChangesTimer, SIGNAL(timeout()), SLOT(onQueuedChangesTimeout()));
+    connect(&mQueuedChangesTimer, &QTimer::timeout,
+            this, &CDTpContact::onQueuedChangesTimeout);
 
     updateVisibility();
 
@@ -289,7 +290,7 @@ void CDTpContact::emitChanged(CDTpContact::Changes changes)
 {
     mQueuedChanges |= changes;
 
-    if (not mQueuedChangesTimer.isActive()) {
+    if (!mQueuedChangesTimer.isActive()) {
         mQueuedChangesTimer.start();
     }
 }
@@ -427,4 +428,3 @@ QDataStream& operator>>(QDataStream &stream, CDTpContact::Info &info)
 
     return stream;
 }
-

@@ -75,7 +75,7 @@ void CDTpAvatarUpdate::setNetworkReply(QNetworkReply *networkReply)
 
 void CDTpAvatarUpdate::onRequestDone()
 {
-    QNetworkReply *newReply = 0;
+    QNetworkReply *newReply = nullptr;
 
     if (mNetworkReply && mNetworkReply->error() == QNetworkReply::NoError) {
         newReply = updateContactAvatar();
@@ -86,7 +86,7 @@ void CDTpAvatarUpdate::onRequestDone()
 
 QString CDTpAvatarUpdate::writeAvatarFile(QFile &avatarFile, const QDir &cacheDir)
 {
-    if (not cacheDir.exists() && not QDir::root().mkpath(cacheDir.absolutePath())) {
+    if (!cacheDir.exists() && !QDir::root().mkpath(cacheDir.absolutePath())) {
         qCWarning(lcContactsd) << "Could not create large avatar cache dir:" << cacheDir.path();
         return QString();
     }
@@ -123,8 +123,8 @@ QNetworkReply *CDTpAvatarUpdate::updateContactAvatar()
 {
     // Build filename from the image URL's SHA1 hash.
     const QUrl redirectionTarget = mNetworkReply->attribute(QNetworkRequest::RedirectionTargetAttribute).toUrl();
-    const QString avatarUrl = (not redirectionTarget.isEmpty() ? mNetworkReply->url().resolved(redirectionTarget)
-                                                               : mNetworkReply->url()).toString();
+    const QString avatarUrl = (!redirectionTarget.isEmpty() ? mNetworkReply->url().resolved(redirectionTarget)
+                                                            : mNetworkReply->url()).toString();
 
     QString filename(mFilename);
     if (filename.isEmpty()) {
@@ -143,24 +143,15 @@ QNetworkReply *CDTpAvatarUpdate::updateContactAvatar()
         // Seems we can reuse the existing avatar file.
         avatarPath = avatarFile.fileName();
     } else {
-        // Follow redirections as done by Facebook's graph API.
-        if (not redirectionTarget.isEmpty()) {
+        if (!redirectionTarget.isEmpty()) {
             return mNetworkReply->manager()->get(QNetworkRequest(redirectionTarget));
         }
 
-        // Facebook delivers a distinct gif image if no avatar is set. Ignore that bugger.
-        const QString contentType = mNetworkReply->header(QNetworkRequest::ContentTypeHeader).toString();
-
-        static const QLatin1String contentTypeImageGif = QLatin1String("image/gif");
-        static const QLatin1String contentTypeImage = QLatin1String("image/");
-
-        if (contentType.startsWith(contentTypeImage) && contentType != contentTypeImageGif) {
-            avatarPath = writeAvatarFile(avatarFile, cacheDir);
-        }
+        avatarPath = writeAvatarFile(avatarFile, cacheDir);
     }
 
     // Update the contact if a new avatar is available.
-    if (not avatarPath.isEmpty() && not mContactWrapper.isNull()) {
+    if (!avatarPath.isEmpty() && !mContactWrapper.isNull()) {
         if (mAvatarType == Square) {
             mContactWrapper->setSquareAvatarPath(avatarPath);
         } else if (mAvatarType == Large) {
@@ -169,5 +160,5 @@ QNetworkReply *CDTpAvatarUpdate::updateContactAvatar()
     }
 
     // No further work to do
-    return 0;
+    return nullptr;
 }

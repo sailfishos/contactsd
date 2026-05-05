@@ -32,9 +32,8 @@ public Q_SLOTS:
     void enabledEventSync(Accounts::AccountId id);
 
 private:
-    Accounts::Manager * SetupManager(
-            const QString &service,
-            void (CDCalendarController::*enabledEvent)(Accounts::AccountId id));
+    Accounts::Manager * SetupManager(const QString &service,
+                                     void (CDCalendarController::*enabledEvent)(Accounts::AccountId id));
 
 private:
     Accounts::Manager *m_manager_caldav;

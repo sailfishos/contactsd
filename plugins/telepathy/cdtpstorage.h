@@ -35,7 +35,7 @@
 #include <QUrl>
 #include <QNetworkAccessManager>
 
-#include <MGConfItem>
+#include <MDConfItem>
 
 #include "cdtpaccount.h"
 #include "cdtpcontact.h"
@@ -68,9 +68,9 @@ public Q_SLOTS:
     void updateAccount(CDTpAccountPtr accountWrapper, CDTpAccount::Changes changes);
     void removeAccount(CDTpAccountPtr accountWrapper);
     void syncAccountContacts(CDTpAccountPtr accountWrapper);
-    void syncAccountContacts(CDTpAccountPtr accountWrapper,
-            const QList<CDTpContactPtr> &contactsAdded,
-            const QList<CDTpContactPtr> &contactsRemoved);
+    void syncAccountContactsDetailed(CDTpAccountPtr accountWrapper,
+                                     const QList<CDTpContactPtr> &contactsAdded,
+                                     const QList<CDTpContactPtr> &contactsRemoved);
     void updateContact(CDTpContactPtr contactWrapper, CDTpContact::Changes changes);
     void reportPresenceStates();
     void reportPresenceState(QContact &self);
@@ -83,8 +83,8 @@ private Q_SLOTS:
     void onUpdateQueueTimeout();
     void displayLabelOrderChanged();
 
-    void addNewAccount();
-    void updateAccount();
+    void addPendingNewAccount();
+    void updatePendingAccount();
 
 private:
     void cancelQueuedUpdates(const QList<CDTpContactPtr> &contacts);
@@ -92,13 +92,15 @@ private:
     void addNewAccount(QContact &self, CDTpAccountPtr accountWrapper);
     void removeExistingAccount(QContact &self, QContactOnlineAccount &existing);
 
-    void updateAccountChanges(QContact &self, QContactOnlineAccount &qcoa, CDTpAccountPtr accountWrapper, CDTpAccount::Changes changes);
+    void updateAccountChanges(QContact &self, QContactOnlineAccount &qcoa, CDTpAccountPtr accountWrapper,
+                              CDTpAccount::Changes changes);
 
-    bool initializeNewContact(QContact &newContact, CDTpAccountPtr accountWrapper, const QString &contactId, const QString &alias);
+    bool initializeNewContact(QContact &newContact, CDTpAccountPtr accountWrapper, const QString &contactId,
+                              const QString &alias);
     bool initializeNewContact(QContact &newContact, CDTpContactPtr contactWrapper);
 
-    void updateContactChanges(CDTpContactPtr contactWrapper, CDTpContact::Changes changes, QContact &existing, ContactChangeSet *saveList,
-                              QList<QContactId> *removeList);
+    void updateContactChanges(CDTpContactPtr contactWrapper, CDTpContact::Changes changes, QContact &existing,
+                              ContactChangeSet *saveList, QList<QContactId> *removeList);
     void updateContactChanges(CDTpContactPtr contactWrapper, CDTpContact::Changes changes);
 
 private:
@@ -109,7 +111,7 @@ private:
     QMap<QString, CDTpAccount::Changes> m_accountPendingChanges;
     CDTpDevicePresence *mDevicePresence;
     DisplayLabelOrder mDisplayLabelOrder;
-    MGConfItem mDisplayLabelOrderConf;
+    MDConfItem mDisplayLabelOrderConf;
 };
 
 #endif // CDTPSTORAGE_H

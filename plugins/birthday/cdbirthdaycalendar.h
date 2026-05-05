@@ -37,8 +37,11 @@ class CalendarBirthday
 {
 public:
     CalendarBirthday(const QDate &date, const QString &summary)
-    : mDate(date), mSummary(summary) {}
-    CalendarBirthday() {}
+        : mDate(date), mSummary(summary)
+    {}
+
+    CalendarBirthday()
+    {}
 
 public:
     const QDate & date() const { return mDate; }
